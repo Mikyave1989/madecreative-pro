@@ -44,3 +44,4 @@ apps/api/prisma/migrations/
 
 # Misc
 .vercel
+.claude/worktrees/
