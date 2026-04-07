@@ -46,8 +46,8 @@ export function Nav({ t, locale }: NavProps) {
   const navLinks = [
     { label: t.nav.howItWorks, href: `/${locale}#how-it-works` },
     { label: t.nav.results, href: `/${locale}#results` },
-    { label: t.nav.pricing, href: `/${locale}#pricing` },
-    { label: t.nav.demo, href: `/${locale}#demo` },
+    { label: t.nav.pricing, href: `/${locale}/prezzi` },
+    { label: t.nav.demo, href: `/${locale}/demo` },
   ];
 
   return (
@@ -73,13 +73,13 @@ export function Nav({ t, locale }: NavProps) {
           {/* Desktop links */}
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.label}
                 href={link.href}
                 className="text-sm text-white/70 hover:text-white transition-colors duration-200"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -129,12 +129,12 @@ export function Nav({ t, locale }: NavProps) {
             </div>
 
             {/* CTA */}
-            <a
-              href={`/${locale}#demo`}
+            <Link
+              href={`/${locale}/demo`}
               className="bg-[#f59e0b] text-[#0a0a0a] px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#fcd34d] transition-colors shadow-lg shadow-amber-500/25"
             >
               {t.nav.startFree}
-            </a>
+            </Link>
           </div>
 
           {/* Mobile hamburger */}
@@ -166,14 +166,14 @@ export function Nav({ t, locale }: NavProps) {
           >
             <div className="px-4 py-4 space-y-2">
               {navLinks.map((link) => (
-                <a
+                <Link
                   key={link.label}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
                   className="block py-3 px-4 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-sm"
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
               <div className="pt-2 border-t border-white/10">
                 <div className="grid grid-cols-4 gap-1 mb-3">
@@ -191,13 +191,13 @@ export function Nav({ t, locale }: NavProps) {
                     </button>
                   ))}
                 </div>
-                <a
-                  href={`/${locale}#demo`}
+                <Link
+                  href={`/${locale}/demo`}
                   onClick={() => setMobileOpen(false)}
                   className="block w-full text-center bg-[#f59e0b] text-[#0a0a0a] px-5 py-3 rounded-xl text-sm font-semibold"
                 >
                   {t.nav.startFree}
-                </a>
+                </Link>
               </div>
             </div>
           </motion.div>

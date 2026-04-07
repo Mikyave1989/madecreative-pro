@@ -89,14 +89,14 @@ export function Footer({ t, locale }: FooterProps) {
                 </a>
               </li>
               <li>
-                <a href={`/${locale}#pricing`} className="text-white/40 hover:text-white text-sm transition-colors">
+                <Link href={`/${locale}/prezzi`} className="text-white/40 hover:text-white text-sm transition-colors">
                   Pricing
-                </a>
+                </Link>
               </li>
               <li>
-                <a href={`/${locale}#demo`} className="text-white/40 hover:text-white text-sm transition-colors">
+                <Link href={`/${locale}/demo`} className="text-white/40 hover:text-white text-sm transition-colors">
                   Demo
-                </a>
+                </Link>
               </li>
               <li>
                 <a href="https://app.madecreative.pro/login" className="text-white/40 hover:text-white text-sm transition-colors">
