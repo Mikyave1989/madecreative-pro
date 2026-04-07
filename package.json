@@ -18,7 +18,9 @@
     "db:push": "turbo run db:push",
     "db:migrate": "turbo run db:migrate",
     "db:studio": "cd apps/api && npx prisma studio",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "check-env": "npx tsx scripts/check-env.ts",
+    "launch-batch": "npx tsx scripts/launch-batch.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

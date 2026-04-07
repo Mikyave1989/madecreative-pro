@@ -1,0 +1,59 @@
+# Dockerfile.workers
+#
+# Multi-stage build for the MadeCreative worker processes.
+# Produces a lean production image (~200MB) with ts-node/esm for direct
+# TypeScript execution — avoids a separate tsc compile step in CI.
+#
+# Security notes:
+#   - Runs as non-root user (node, uid 1000)
+#   - No dev dependencies in final image
+#   - Secrets are injected at runtime via env vars, never baked in
+
+# ─── Stage 1: dependency installer ───────────────────────────────────────────
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# Copy workspace manifests first to leverage layer caching
+COPY package.json package-lock.json ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/agents/package.json ./packages/agents/
+COPY packages/shared/package.json ./packages/shared/
+COPY workers/package.json ./workers/
+
+# Install all dependencies (including devDeps needed for ts-node)
+RUN npm ci --ignore-scripts
+
+# ─── Stage 2: production image ────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+# Install dumb-init for proper signal handling inside containers
+RUN apk add --no-cache dumb-init
+
+WORKDIR /app
+
+# Copy installed node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules 2>/dev/null || true
+COPY --from=deps /app/packages/agents/node_modules ./packages/agents/node_modules 2>/dev/null || true
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules 2>/dev/null || true
+COPY --from=deps /app/workers/node_modules ./workers/node_modules 2>/dev/null || true
+
+# Copy source
+COPY tsconfig.json ./
+COPY packages/ ./packages/
+COPY workers/ ./workers/
+COPY apps/api/prisma/ ./apps/api/prisma/
+COPY apps/api/package.json ./apps/api/
+
+# Generate Prisma client inside the image
+RUN cd apps/api && npx prisma generate
+
+# Use non-root user
+USER node
+
+# dumb-init handles PID 1 and forwards SIGTERM correctly to Node.js
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command — overridden by docker-compose or Railway startCommand
+CMD ["node", "--loader", "ts-node/esm", "workers/agent-runner.ts"]

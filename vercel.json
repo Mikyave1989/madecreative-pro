@@ -5,17 +5,26 @@
     {
       "name": "madecreative-marketing",
       "rootDirectory": "apps/marketing",
-      "framework": "nextjs"
+      "framework": "nextjs",
+      "domains": ["madecreative.pro", "www.madecreative.pro"]
     },
     {
       "name": "madecreative-admin",
       "rootDirectory": "apps/admin",
-      "framework": "nextjs"
+      "framework": "nextjs",
+      "domains": ["admin.madecreative.pro"]
     },
     {
       "name": "madecreative-portal",
       "rootDirectory": "apps/portal",
-      "framework": "nextjs"
+      "framework": "nextjs",
+      "domains": ["app.madecreative.pro"]
+    },
+    {
+      "name": "madecreative-api",
+      "rootDirectory": "apps/api",
+      "framework": null,
+      "domains": ["api.madecreative.pro"]
     }
   ]
 }

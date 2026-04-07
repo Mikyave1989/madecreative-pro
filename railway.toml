@@ -1,0 +1,92 @@
+# railway.toml — MadeCreative Worker Services
+#
+# Deploys all six background workers to Railway EU (Frankfurt region).
+# Each service runs independently with its own process and scaling settings.
+# Environment variables are set in the Railway dashboard per-service or via
+# a shared environment group.
+#
+# Deploy: railway up --service <name>
+# Logs:   railway logs --service <name>
+
+[build]
+builder = "nixpacks"
+
+# Nixpacks installs Node 20 and all npm workspaces automatically.
+# ts-node/esm is used so workers run directly from TypeScript source
+# without a separate compile step — keeps deploy times under 60s.
+
+# ─── Agent Runner ─────────────────────────────────────────────────────────────
+# Central dispatcher: polls AgentJob table and routes to the correct agent.
+[[services]]
+name = "agent-runner"
+startCommand = "node --loader ts-node/esm workers/agent-runner.ts"
+
+[services.deploy]
+region = "europe-west1"
+numReplicas = 1
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[services.healthcheck]
+path = "/healthz"
+timeout = 10
+
+# ─── Scraper Cron ─────────────────────────────────────────────────────────────
+# Runs nightly at 02:00-05:00 CET. Reads ScrapeConfig and enqueues jobs.
+[[services]]
+name = "scraper-cron"
+startCommand = "node --loader ts-node/esm workers/scraper-cron.ts"
+
+[services.deploy]
+region = "europe-west1"
+numReplicas = 1
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# ─── Outreach Worker ──────────────────────────────────────────────────────────
+# Processes follow-up email sequences (steps 2 & 3) via BullMQ queue.
+[[services]]
+name = "outreach-worker"
+startCommand = "node --loader ts-node/esm workers/outreach-worker.ts"
+
+[services.deploy]
+region = "europe-west1"
+numReplicas = 1
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# ─── Social Worker ────────────────────────────────────────────────────────────
+# Generates and publishes social media posts to Instagram/Facebook.
+[[services]]
+name = "social-worker"
+startCommand = "node --loader ts-node/esm workers/social-worker.ts"
+
+[services.deploy]
+region = "europe-west1"
+numReplicas = 1
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# ─── Report Worker ────────────────────────────────────────────────────────────
+# Generates monthly PDF reports and emails them to clients.
+[[services]]
+name = "report-worker"
+startCommand = "node --loader ts-node/esm workers/report-worker.ts"
+
+[services.deploy]
+region = "europe-west1"
+numReplicas = 1
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# ─── Monitoring Worker ────────────────────────────────────────────────────────
+# Watches platform health, sends alerts to admin on anomalies.
+[[services]]
+name = "monitoring-worker"
+startCommand = "node --loader ts-node/esm workers/monitoring-worker.ts"
+
+[services.deploy]
+region = "europe-west1"
+numReplicas = 1
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

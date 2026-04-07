@@ -1,5 +1,59 @@
 version: "3.9"
 
+# ─── MadeCreative — Local Development Stack ───────────────────────────────────
+#
+# Usage:
+#   Start infrastructure only:
+#     docker compose up postgres redis -d
+#
+#   Start all workers (requires .env file at repo root):
+#     docker compose --profile workers up -d
+#
+#   Start dev tooling (Redis UI, MailHog):
+#     docker compose --profile dev-tools up -d
+#
+#   Full stack (infra + workers + tools):
+#     docker compose --profile workers --profile dev-tools up -d
+#
+# Note: The Next.js apps (marketing, admin, portal) and the Hono API are run
+# via "npm run dev" in the Turborepo, not via Docker, for hot-reload support.
+
+# ─── Shared environment ───────────────────────────────────────────────────────
+x-worker-env: &worker-env
+  DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@postgres:5432/madecreative}
+  DIRECT_URL: ${DIRECT_URL:-postgresql://postgres:password@postgres:5432/madecreative}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+  RESEND_API_KEY: ${RESEND_API_KEY}
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+  JWT_SECRET: ${JWT_SECRET}
+  API_URL: ${API_URL:-http://localhost:8000}
+  PORTAL_URL: ${PORTAL_URL:-http://localhost:3001}
+  ADMIN_URL: ${ADMIN_URL:-http://localhost:3002}
+  MARKETING_URL: ${MARKETING_URL:-http://localhost:3000}
+  CLOUDFLARE_R2_BUCKET: ${CLOUDFLARE_R2_BUCKET:-}
+  CLOUDFLARE_R2_ACCESS_KEY: ${CLOUDFLARE_R2_ACCESS_KEY:-}
+  CLOUDFLARE_R2_SECRET_KEY: ${CLOUDFLARE_R2_SECRET_KEY:-}
+  EMAIL_DOMAIN: ${EMAIL_DOMAIN:-madecreative.pro}
+  EMAIL_DAILY_LIMIT: ${EMAIL_DAILY_LIMIT:-20}
+  NODE_ENV: ${NODE_ENV:-development}
+
+x-worker-base: &worker-base
+  build:
+    context: .
+    dockerfile: Dockerfile.workers
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  profiles:
+    - workers
+
+# ─── Infrastructure ───────────────────────────────────────────────────────────
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -34,6 +88,82 @@ services:
       timeout: 5s
       retries: 5
 
+  # ─── Workers (profile: workers) ─────────────────────────────────────────────
+
+  agent-runner:
+    <<: *worker-base
+    container_name: madecreative-agent-runner
+    command: node --loader ts-node/esm workers/agent-runner.ts
+    environment:
+      <<: *worker-env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  scraper-cron:
+    <<: *worker-base
+    container_name: madecreative-scraper-cron
+    command: node --loader ts-node/esm workers/scraper-cron.ts
+    environment:
+      <<: *worker-env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  outreach-worker:
+    <<: *worker-base
+    container_name: madecreative-outreach-worker
+    command: node --loader ts-node/esm workers/outreach-worker.ts
+    environment:
+      <<: *worker-env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  social-worker:
+    <<: *worker-base
+    container_name: madecreative-social-worker
+    command: node --loader ts-node/esm workers/social-worker.ts
+    environment:
+      <<: *worker-env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  report-worker:
+    <<: *worker-base
+    container_name: madecreative-report-worker
+    command: node --loader ts-node/esm workers/report-worker.ts
+    environment:
+      <<: *worker-env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  monitoring-worker:
+    <<: *worker-base
+    container_name: madecreative-monitoring-worker
+    command: node --loader ts-node/esm workers/monitoring-worker.ts
+    environment:
+      <<: *worker-env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── Dev tooling (profile: dev-tools) ───────────────────────────────────────
+
   redis-commander:
     image: rediscommander/redis-commander:latest
     container_name: madecreative-redis-ui
@@ -56,6 +186,8 @@ services:
       - "8025:8025"  # Web UI
     profiles:
       - dev-tools
+
+# ─── Volumes ──────────────────────────────────────────────────────────────────
 
 volumes:
   postgres_data:
