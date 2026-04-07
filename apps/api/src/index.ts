@@ -24,6 +24,9 @@ import portalWebsiteRoutes from "./routes/portal/website.js";
 import portalChatbotRoutes from "./routes/portal/chatbot.js";
 import portalBillingRoutes from "./routes/portal/billing.js";
 import portalSupportRoutes from "./routes/portal/support.js";
+import portalAutomationsRoutes from "./routes/portal/automations.js";
+import portalReportsRoutes from "./routes/portal/reports.js";
+import portalSocialRoutes from "./routes/portal/social.js";
 
 // Public Routes
 import webhookRoutes from "./routes/public/webhook.js";
@@ -103,12 +106,18 @@ app.use("/portal/websites/*", clientAuthMiddleware);
 app.use("/portal/chatbots/*", clientAuthMiddleware);
 app.use("/portal/billing/*", clientAuthMiddleware);
 app.use("/portal/support/*", clientAuthMiddleware);
+app.use("/portal/automations/*", clientAuthMiddleware);
+app.use("/portal/reports/*", clientAuthMiddleware);
+app.use("/portal/social/*", clientAuthMiddleware);
 
 app.route("/portal/dashboard", portalDashboardRoutes);
 app.route("/portal/websites", portalWebsiteRoutes);
 app.route("/portal/chatbots", portalChatbotRoutes);
 app.route("/portal/billing", portalBillingRoutes);
 app.route("/portal/support", portalSupportRoutes);
+app.route("/portal/automations", portalAutomationsRoutes);
+app.route("/portal/reports", portalReportsRoutes);
+app.route("/portal/social", portalSocialRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 

@@ -400,6 +400,7 @@ export interface ReportData {
 
 export interface ReportMetrics {
   websiteVisits: number;
+  bounceRate?: number;
   leadsGenerated: number;
   leadsConverted: number;
   conversionRate: number;
@@ -407,8 +408,10 @@ export interface ReportMetrics {
   timeSavedHours: number;
   socialReach: number;
   socialEngagement: number;
+  socialPostsPublished?: number;
   chatbotConversations: number;
   chatbotResolved: number;
+  automationRuns?: number;
 }
 
 export interface MonthlyReport {
