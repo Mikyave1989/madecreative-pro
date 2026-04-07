@@ -1,0 +1,74 @@
+import { Queue } from "bullmq";
+import { Redis as IORedis } from "ioredis";
+import type { AgentType } from "@madecreative/shared";
+import { AGENT_QUEUE_NAMES } from "@madecreative/shared";
+
+let _redisConnection: InstanceType<typeof IORedis> | null = null;
+
+export function getRedisConnection(): InstanceType<typeof IORedis> {
+  if (!_redisConnection) {
+    const url = process.env["REDIS_URL"];
+    if (!url) throw new Error("REDIS_URL environment variable is not set");
+
+    _redisConnection = new IORedis(url, {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      lazyConnect: true,
+    });
+
+    _redisConnection.on("error", (err: Error) => {
+      console.error("Redis connection error:", err.message);
+    });
+  }
+
+  return _redisConnection;
+}
+
+const _queues: Partial<Record<AgentType, Queue>> = {};
+
+export function getQueue(agentType: AgentType): Queue {
+  if (!_queues[agentType]) {
+    const queueName = AGENT_QUEUE_NAMES[agentType];
+    _queues[agentType] = new Queue(queueName, {
+      connection: getRedisConnection(),
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 5000,
+        },
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 500 },
+      },
+    });
+  }
+  return _queues[agentType]!;
+}
+
+export async function enqueueAgentJob(params: {
+  agentType: AgentType;
+  jobId: string;
+  input: Record<string, unknown>;
+  priority?: number;
+  delay?: number;
+}): Promise<void> {
+  const queue = getQueue(params.agentType);
+  await queue.add(
+    params.agentType,
+    { jobId: params.jobId, input: params.input },
+    {
+      jobId: params.jobId,
+      priority: params.priority,
+      delay: params.delay,
+    }
+  );
+}
+
+export async function closeAllQueues(): Promise<void> {
+  const closePromises = Object.values(_queues).map((q) => q?.close());
+  await Promise.all(closePromises);
+  if (_redisConnection) {
+    await _redisConnection.quit();
+    _redisConnection = null;
+  }
+}

@@ -1,0 +1,301 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("OPERATOR")
+  createdAt    DateTime @default(now())
+}
+
+model Prospect {
+  id                 String         @id @default(cuid())
+  companyName        String
+  contactName        String?
+  contactEmail       String?
+  contactPhone       String?
+  website            String?
+  googleMapsUrl      String?
+  googleRating       Float?
+  reviewCount        Int?
+  country            String
+  city               String?
+  region             String?
+  sector             String
+  employeeEstimate   Int?
+  hasWebsite         Boolean        @default(false)
+  websiteQuality     Int?
+  socialPresence     Int?
+  leadScore          Int            @default(0)
+  painPoints         Json?
+  suggestedServices  Json?
+  aiAnalysis         String?
+  previewSiteUrl     String?
+  previewGeneratedAt DateTime?
+  status             String         @default("SCRAPED")
+  source             String
+  scrapeJobId        String?
+  firstContactedAt   DateTime?
+  lastContactedAt    DateTime?
+  repliedAt          DateTime?
+  convertedAt        DateTime?
+  clientId           String?        @unique
+  client             Client?        @relation(fields: [clientId], references: [id])
+  outreachEmails     OutreachEmail[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([country, sector, leadScore])
+  @@index([status])
+}
+
+model OutreachEmail {
+  id         String    @id @default(cuid())
+  prospectId String
+  prospect   Prospect  @relation(fields: [prospectId], references: [id])
+  stepNumber Int
+  subject    String
+  body       String
+  language   String
+  sentAt     DateTime?
+  openedAt   DateTime?
+  clickedAt  DateTime?
+  repliedAt  DateTime?
+  bouncedAt  DateTime?
+  status     String    @default("draft")
+}
+
+model Client {
+  id                   String             @id @default(cuid())
+  companyName          String
+  contactName          String
+  email                String             @unique
+  phone                String?
+  passwordHash         String
+  country              String
+  city                 String?
+  sector               String
+  language             String             @default("de")
+  plan                 String             @default("STARTER")
+  status               String             @default("ONBOARDING")
+  stripeCustomerId     String?            @unique
+  stripeSubId          String?            @unique
+  setupFeePaid         Boolean            @default(false)
+  monthlyAmount        Float              @default(297)
+  igAccessToken        String?            @db.Text
+  igAccountId          String?
+  fbPageId             String?
+  fbPageAccessToken    String?            @db.Text
+  socialPostingEnabled Boolean            @default(false)
+  socialAutoPublish    Boolean            @default(false)
+  totalRevGenerated    Float              @default(0)
+  totalLeadsGen        Int                @default(0)
+  totalTimeSaved       Int                @default(0)
+  lastLoginAt          DateTime?
+  prospect             Prospect?
+  websites             ClientWebsite[]
+  leads                ClientLead[]
+  automations          ClientAutomation[]
+  chatbots             ClientChatbot[]
+  invoices             ClientInvoice[]
+  tickets              SupportTicket[]
+  reports              MonthlyReport[]
+  socialPosts          ClientSocialPost[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model ClientWebsite {
+  id              String   @id @default(cuid())
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id])
+  name            String
+  domain          String?
+  status          String   @default("BUILDING")
+  designTokens    Json?
+  pages           Json
+  seoConfig       Json?
+  deployUrl       String?
+  repoUrl         String?
+  lighthouseScore Int?
+  monthlyVisits   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ClientLead {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id])
+  name      String
+  email     String?
+  phone     String?
+  source    String
+  message   String?
+  status    String   @default("new")
+  value     Float?
+  createdAt DateTime @default(now())
+}
+
+model ClientAutomation {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  name        String
+  description String?
+  type        String
+  trigger     Json
+  actions     Json
+  isActive    Boolean  @default(true)
+  runCount    Int      @default(0)
+  timeSaved   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model ClientChatbot {
+  id                 String   @id @default(cuid())
+  clientId           String
+  client             Client   @relation(fields: [clientId], references: [id])
+  name               String
+  knowledgeBase      Json
+  personality        Json?
+  widgetConfig       Json?
+  isActive           Boolean  @default(false)
+  totalConversations Int      @default(0)
+  resolvedRate       Float    @default(0)
+  createdAt          DateTime @default(now())
+}
+
+model SocialPost {
+  id           String    @id @default(cuid())
+  platform     String
+  type         String
+  contentType  String
+  caption      String
+  hashtags     String?
+  mediaUrls    Json
+  language     String
+  igMediaId    String?
+  fbPostId     String?
+  likes        Int       @default(0)
+  comments     Int       @default(0)
+  reach        Int       @default(0)
+  impressions  Int       @default(0)
+  scheduledFor DateTime
+  publishedAt  DateTime?
+  status       String    @default("scheduled")
+  createdAt    DateTime  @default(now())
+}
+
+model ClientSocialPost {
+  id              String    @id @default(cuid())
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id])
+  platform        String
+  type            String
+  caption         String
+  hashtags        String?
+  mediaUrls       Json
+  language        String
+  status          String    @default("draft")
+  scheduledFor    DateTime
+  approvedAt      DateTime?
+  publishedAt     DateTime?
+  igMediaId       String?
+  fbPostId        String?
+  likes           Int       @default(0)
+  comments        Int       @default(0)
+  reach           Int       @default(0)
+  isCustom        Boolean   @default(false)
+  clientMediaUrls Json?
+  createdAt       DateTime  @default(now())
+}
+
+model ClientInvoice {
+  id              String    @id @default(cuid())
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id])
+  stripeInvoiceId String?   @unique
+  amount          Float
+  type            String
+  status          String    @default("PENDING")
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model MonthlyReport {
+  id        String    @id @default(cuid())
+  clientId  String
+  client    Client    @relation(fields: [clientId], references: [id])
+  month     Int
+  year      Int
+  data      Json
+  pdfUrl    String?
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model SupportTicket {
+  id         String    @id @default(cuid())
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id])
+  subject    String
+  message    String
+  type       String    @default("general")
+  status     String    @default("open")
+  priority   String    @default("normal")
+  aiResponse String?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model AgentJob {
+  id          String    @id @default(cuid())
+  agentType   String
+  status      String    @default("QUEUED")
+  input       Json
+  output      Json?
+  progress    Int       @default(0)
+  logs        Json?
+  error       String?
+  apiCost     Float?
+  prospectId  String?
+  clientId    String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model ScrapeConfig {
+  id              String    @id @default(cuid())
+  name            String
+  sector          String
+  countries       Json
+  cities          Json?
+  keywords        Json
+  excludeKeywords Json?
+  minRating       Float?
+  maxResults      Int       @default(100)
+  isActive        Boolean   @default(true)
+  lastRunAt       DateTime?
+  totalFound      Int       @default(0)
+  schedule        String?
+  createdAt       DateTime  @default(now())
+}
+
+model PlatformMetric {
+  id       String   @id @default(cuid())
+  date     DateTime @default(now())
+  metric   String
+  value    Float
+  metadata Json?
+}

@@ -1,0 +1,245 @@
+import Anthropic from "@anthropic-ai/sdk";
+import type { MessageParam, Tool, Message, ContentBlock } from "@anthropic-ai/sdk/resources/messages/index";
+import { AI_MODELS, AI_COST_PER_MILLION_TOKENS } from "@madecreative/shared";
+
+export type ClaudeModel = keyof typeof AI_COST_PER_MILLION_TOKENS;
+
+export interface ClaudeCallOptions {
+  model?: ClaudeModel;
+  maxTokens?: number;
+  system?: string;
+  tools?: Tool[];
+  toolChoice?: Anthropic.ToolChoiceAuto | Anthropic.ToolChoiceAny | Anthropic.ToolChoiceTool;
+  temperature?: number;
+  maxRetries?: number;
+  retryDelayMs?: number;
+}
+
+export interface ClaudeCallResult {
+  content: ContentBlock[];
+  stopReason: string | null;
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;
+  model: string;
+}
+
+export interface ToolUseLoopResult {
+  messages: MessageParam[];
+  finalContent: ContentBlock[];
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCost: number;
+  iterations: number;
+}
+
+function calculateCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
+  const modelKey = model as ClaudeModel;
+  const pricing = AI_COST_PER_MILLION_TOKENS[modelKey];
+  if (!pricing) return 0;
+  return (
+    (inputTokens / 1_000_000) * pricing.input +
+    (outputTokens / 1_000_000) * pricing.output
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export class ClaudeClient {
+  private client: Anthropic;
+  private defaultModel: ClaudeModel;
+
+  constructor(apiKey?: string) {
+    this.client = new Anthropic({
+      apiKey: apiKey ?? process.env["ANTHROPIC_API_KEY"],
+    });
+    this.defaultModel = AI_MODELS.DEFAULT as ClaudeModel;
+  }
+
+  async call(
+    messages: MessageParam[],
+    options: ClaudeCallOptions = {}
+  ): Promise<ClaudeCallResult> {
+    const {
+      model = this.defaultModel,
+      maxTokens = 4096,
+      system,
+      tools,
+      toolChoice,
+      temperature,
+      maxRetries = 3,
+      retryDelayMs = 1000,
+    } = options;
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const params: Anthropic.MessageCreateParams = {
+          model,
+          max_tokens: maxTokens,
+          messages,
+          ...(system ? { system } : {}),
+          ...(tools && tools.length > 0 ? { tools } : {}),
+          ...(toolChoice ? { tool_choice: toolChoice } : {}),
+          ...(temperature !== undefined ? { temperature } : {}),
+        };
+
+        const response = await this.client.messages.create(params);
+        const msg = response as Message;
+
+        const inputTokens = msg.usage.input_tokens;
+        const outputTokens = msg.usage.output_tokens;
+        const cost = calculateCost(model, inputTokens, outputTokens);
+
+        return {
+          content: msg.content,
+          stopReason: msg.stop_reason,
+          inputTokens,
+          outputTokens,
+          cost,
+          model,
+        };
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // Check if it's a rate limit or overload error — retry
+        const isRetryable =
+          lastError.message.includes("529") ||
+          lastError.message.includes("overloaded") ||
+          lastError.message.includes("rate_limit") ||
+          lastError.message.includes("529");
+
+        if (!isRetryable || attempt === maxRetries) {
+          throw lastError;
+        }
+
+        const delay = retryDelayMs * Math.pow(2, attempt);
+        console.warn(
+          `Claude API attempt ${attempt + 1} failed, retrying in ${delay}ms: ${lastError.message}`
+        );
+        await sleep(delay);
+      }
+    }
+
+    throw lastError ?? new Error("Claude API call failed after all retries");
+  }
+
+  async callWithText(
+    messages: MessageParam[],
+    options: ClaudeCallOptions = {}
+  ): Promise<{ text: string; cost: number; inputTokens: number; outputTokens: number }> {
+    const result = await this.call(messages, options);
+    const textBlocks = result.content.filter((b) => b.type === "text");
+    const text = textBlocks.map((b) => (b as Anthropic.TextBlock).text).join("\n");
+    return {
+      text,
+      cost: result.cost,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+    };
+  }
+
+  /**
+   * Runs a tool use loop: sends messages, processes tool calls, loops until end_turn
+   */
+  async toolUseLoop(
+    initialMessages: MessageParam[],
+    toolHandler: (
+      toolName: string,
+      toolInput: Record<string, unknown>
+    ) => Promise<unknown>,
+    options: ClaudeCallOptions = {}
+  ): Promise<ToolUseLoopResult> {
+    const messages: MessageParam[] = [...initialMessages];
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalCost = 0;
+    let iterations = 0;
+    const maxIterations = 20;
+    let finalContent: ContentBlock[] = [];
+
+    while (iterations < maxIterations) {
+      iterations++;
+      const result = await this.call(messages, options);
+
+      totalInputTokens += result.inputTokens;
+      totalOutputTokens += result.outputTokens;
+      totalCost += result.cost;
+      finalContent = result.content;
+
+      // Add assistant message
+      messages.push({ role: "assistant", content: result.content });
+
+      if (result.stopReason === "end_turn") {
+        break;
+      }
+
+      if (result.stopReason !== "tool_use") {
+        break;
+      }
+
+      // Process tool calls
+      const toolUseBlocks = result.content.filter((b) => b.type === "tool_use");
+      if (toolUseBlocks.length === 0) {
+        break;
+      }
+
+      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+      for (const block of toolUseBlocks) {
+        if (block.type !== "tool_use") continue;
+        const toolBlock = block as Anthropic.ToolUseBlock;
+
+        try {
+          const output = await toolHandler(
+            toolBlock.name,
+            toolBlock.input as Record<string, unknown>
+          );
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolBlock.id,
+            content: JSON.stringify(output),
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolBlock.id,
+            content: `Error: ${errMsg}`,
+            is_error: true,
+          });
+        }
+      }
+
+      messages.push({ role: "user", content: toolResults });
+    }
+
+    return {
+      messages,
+      finalContent,
+      totalInputTokens,
+      totalOutputTokens,
+      totalCost,
+      iterations,
+    };
+  }
+}
+
+// Singleton instance
+let _claudeClient: ClaudeClient | null = null;
+
+export function getClaudeClient(): ClaudeClient {
+  if (!_claudeClient) {
+    _claudeClient = new ClaudeClient();
+  }
+  return _claudeClient;
+}
+
+export { calculateCost };

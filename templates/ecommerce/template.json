@@ -1,0 +1,14 @@
+{
+  "slug": "ecommerce",
+  "name": "Ecommerce Template",
+  "sector": "ecommerce",
+  "defaultPages": ["home", "services", "about", "contact"],
+  "designDefaults": {
+    "primaryColor": "#2563EB",
+    "secondaryColor": "#F0F6FF",
+    "accentColor": "#1E40AF",
+    "fontHeading": "Inter",
+    "fontBody": "Inter",
+    "borderRadius": "8px"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "slug": "restaurant",
+  "name": "Restaurant Template",
+  "sector": "restaurant",
+  "defaultPages": ["home", "menu", "about", "contact", "reservations"],
+  "defaultSections": {
+    "home": [
+      { "type": "hero", "variant": "full-width-image" },
+      { "type": "featured-dishes", "variant": "grid-3" },
+      { "type": "about-teaser", "variant": "split" },
+      { "type": "testimonials", "variant": "carousel" },
+      { "type": "cta-reservation", "variant": "centered" }
+    ],
+    "menu": [
+      { "type": "menu-header", "variant": "simple" },
+      { "type": "menu-categories", "variant": "tabs" }
+    ],
+    "about": [
+      { "type": "story", "variant": "split-image" },
+      { "type": "team", "variant": "grid" },
+      { "type": "values", "variant": "icons" }
+    ],
+    "contact": [
+      { "type": "contact-form", "variant": "side-by-side" },
+      { "type": "map", "variant": "full-width" },
+      { "type": "hours", "variant": "table" }
+    ]
+  },
+  "designDefaults": {
+    "primaryColor": "#D4501A",
+    "secondaryColor": "#F5E6D3",
+    "accentColor": "#2C3E50",
+    "fontHeading": "Playfair Display",
+    "fontBody": "Lato",
+    "borderRadius": "8px"
+  }
+}

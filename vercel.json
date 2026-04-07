@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "projects": [
+    {
+      "name": "madecreative-marketing",
+      "rootDirectory": "apps/marketing",
+      "framework": "nextjs"
+    },
+    {
+      "name": "madecreative-admin",
+      "rootDirectory": "apps/admin",
+      "framework": "nextjs"
+    },
+    {
+      "name": "madecreative-portal",
+      "rootDirectory": "apps/portal",
+      "framework": "nextjs"
+    }
+  ]
+}

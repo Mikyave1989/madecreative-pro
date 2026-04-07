@@ -1,0 +1,14 @@
+{
+  "slug": "beauty",
+  "name": "Beauty Template",
+  "sector": "beauty",
+  "defaultPages": ["home", "services", "about", "contact"],
+  "designDefaults": {
+    "primaryColor": "#2563EB",
+    "secondaryColor": "#F0F6FF",
+    "accentColor": "#1E40AF",
+    "fontHeading": "Inter",
+    "fontBody": "Inter",
+    "borderRadius": "8px"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@madecreative/workers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch agent-runner.ts",
+    "start:agent-runner": "node dist/agent-runner.js",
+    "start:scraper-cron": "node dist/scraper-cron.js",
+    "start:outreach": "node dist/outreach-worker.js",
+    "start:social": "node dist/social-worker.js",
+    "start:report": "node dist/report-worker.js",
+    "start:monitoring": "node dist/monitoring-worker.js",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@madecreative/agents": "*",
+    "@madecreative/db": "*",
+    "@madecreative/shared": "*",
+    "bullmq": "^5.34.2",
+    "dotenv": "^16.4.7",
+    "ioredis": "^5.4.1",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
