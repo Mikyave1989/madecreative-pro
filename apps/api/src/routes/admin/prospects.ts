@@ -7,6 +7,7 @@ import {
   ScrapeConfigCreateSchema,
 } from "@madecreative/shared";
 import { PAGINATION } from "@madecreative/shared";
+import { generatePaymentLink } from "../../lib/stripe.js";
 
 const app = new Hono();
 
@@ -527,6 +528,240 @@ app.post("/:id/analyze", async (c) => {
   });
 
   return c.json({ success: true, data: { jobId: job.id } }, 202);
+});
+
+// GET /admin/pipeline — Prospects grouped by status with counters
+app.get("/pipeline", async (c) => {
+  const PIPELINE_STATUSES = [
+    "PREVIEW_GENERATED",
+    "EMAIL_SENT",
+    "REPLIED",
+    "CALL_SCHEDULED",
+    "CONVERTED",
+    "LOST",
+  ] as const;
+
+  // Fetch prospects for pipeline-relevant statuses
+  const [prospects, countsByStatus] = await Promise.all([
+    prisma.prospect.findMany({
+      where: {
+        status: {
+          in: [
+            "PREVIEW_GENERATED",
+            "EMAIL_SENT",
+            "REPLIED",
+            "CALL_SCHEDULED",
+            "CONVERTED",
+            "LOST",
+          ],
+        },
+      },
+      select: {
+        id: true,
+        companyName: true,
+        country: true,
+        sector: true,
+        leadScore: true,
+        status: true,
+        lastContactedAt: true,
+        repliedAt: true,
+        convertedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        outreachEmails: {
+          orderBy: { sentAt: "desc" },
+          take: 1,
+          select: { sentAt: true, subject: true, status: true },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.prospect.groupBy({
+      by: ["status"],
+      _count: { id: true },
+    }),
+  ]);
+
+  // Build counts map
+  const counts: Record<string, number> = {};
+  for (const row of countsByStatus) {
+    counts[row.status] = row._count.id;
+  }
+
+  // Group prospects by status column
+  const columns: Record<string, typeof prospects> = {};
+  for (const s of PIPELINE_STATUSES) {
+    columns[s] = [];
+  }
+  for (const p of prospects) {
+    if (p.status in columns) {
+      columns[p.status]!.push(p);
+    }
+  }
+
+  return c.json({ success: true, data: { columns, counts } });
+});
+
+// POST /admin/prospects/:id/generate-payment-link
+app.post("/:id/generate-payment-link", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json().catch(() => null) as { plan?: string } | null;
+  const plan = (body?.plan as "STARTER" | "GROWTH" | "ENTERPRISE" | undefined) ?? "STARTER";
+
+  const validPlans = ["STARTER", "GROWTH", "ENTERPRISE"];
+  if (!validPlans.includes(plan)) {
+    return c.json({ success: false, error: "Invalid plan. Must be STARTER, GROWTH, or ENTERPRISE" }, 400);
+  }
+
+  const prospect = await prisma.prospect.findUnique({
+    where: { id },
+    select: { id: true, companyName: true, contactEmail: true, status: true },
+  });
+
+  if (!prospect) {
+    return c.json({ success: false, error: "Prospect not found" }, 404);
+  }
+
+  if (!prospect.contactEmail) {
+    return c.json({ success: false, error: "Prospect has no contact email" }, 422);
+  }
+
+  if (prospect.status === "BLACKLISTED") {
+    return c.json({ success: false, error: "Cannot generate payment link for blacklisted prospect" }, 422);
+  }
+
+  try {
+    const { checkoutUrl, expiresAt } = await generatePaymentLink({
+      prospectId: id,
+      plan,
+      email: prospect.contactEmail,
+    });
+
+    return c.json({ success: true, data: { checkoutUrl, expiresAt } });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ success: false, error: msg }, 500);
+  }
+});
+
+// POST /admin/prospects/:id/analyze-reply
+app.post("/:id/analyze-reply", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json().catch(() => null) as { replyText?: string } | null;
+
+  if (!body?.replyText) {
+    return c.json({ success: false, error: "replyText is required" }, 400);
+  }
+
+  const prospect = await prisma.prospect.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      companyName: true,
+      contactEmail: true,
+      status: true,
+      sector: true,
+      country: true,
+    },
+  });
+
+  if (!prospect) {
+    return c.json({ success: false, error: "Prospect not found" }, 404);
+  }
+
+  // Update prospect status to REPLIED
+  await prisma.prospect.update({
+    where: { id },
+    data: { status: "REPLIED", repliedAt: new Date() },
+  });
+
+  // Analyze sentiment with Claude
+  try {
+    const { analyzeReply } = await import("@madecreative/agents");
+    const result = await analyzeReply(id, body.replyText);
+
+    // If OPT_OUT, blacklist automatically
+    if (result.sentiment === "OPT_OUT" && prospect.contactEmail) {
+      const { getRedisConnection } = await import("../../lib/queue.js");
+      const redis = getRedisConnection();
+      await redis.sadd("blacklist:emails", prospect.contactEmail);
+      await prisma.prospect.update({
+        where: { id },
+        data: { status: "BLACKLISTED" },
+      });
+    }
+
+    return c.json({ success: true, data: result });
+  } catch (err) {
+    // Fallback: basic keyword analysis if agent fails
+    const text = body.replyText.toLowerCase();
+    let sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "OPT_OUT" = "NEUTRAL";
+
+    const positiveKeywords = ["interessato", "voglio", "procediamo", "sì", "ok", "perfetto", "quanto", "quando", "interested", "yes", "proceed", "like to", "would like"];
+    const negativeKeywords = ["non interessato", "no grazie", "troppo caro", "not interested", "no thanks", "too expensive", "pass"];
+    const optOutKeywords = ["rimuovi", "cancella", "unsubscribe", "remove me", "opt out", "stop"];
+
+    if (optOutKeywords.some((kw) => text.includes(kw))) sentiment = "OPT_OUT";
+    else if (negativeKeywords.some((kw) => text.includes(kw))) sentiment = "NEGATIVE";
+    else if (positiveKeywords.some((kw) => text.includes(kw))) sentiment = "POSITIVE";
+
+    if (sentiment === "OPT_OUT" && prospect.contactEmail) {
+      const { getRedisConnection } = await import("../../lib/queue.js");
+      const redis = getRedisConnection();
+      await redis.sadd("blacklist:emails", prospect.contactEmail);
+      await prisma.prospect.update({
+        where: { id },
+        data: { status: "BLACKLISTED" },
+      });
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        sentiment,
+        confidence: 0.6,
+        suggestedAction: sentiment === "POSITIVE" ? "Send payment link" : sentiment === "OPT_OUT" ? "Blacklisted" : "No action",
+        keyPhrases: [],
+        fallback: true,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+  }
+});
+
+// POST /admin/prospects/:id/mark-lost
+app.post("/:id/mark-lost", async (c) => {
+  const id = c.req.param("id");
+  const existing = await prisma.prospect.findUnique({ where: { id } });
+  if (!existing) return c.json({ success: false, error: "Prospect not found" }, 404);
+
+  const updated = await prisma.prospect.update({
+    where: { id },
+    data: { status: "LOST" },
+  });
+  return c.json({ success: true, data: updated });
+});
+
+// POST /admin/prospects/:id/blacklist
+app.post("/:id/blacklist", async (c) => {
+  const id = c.req.param("id");
+  const prospect = await prisma.prospect.findUnique({
+    where: { id },
+    select: { id: true, contactEmail: true },
+  });
+  if (!prospect) return c.json({ success: false, error: "Prospect not found" }, 404);
+
+  if (prospect.contactEmail) {
+    const { getRedisConnection } = await import("../../lib/queue.js");
+    const redis = getRedisConnection();
+    await redis.sadd("blacklist:emails", prospect.contactEmail);
+  }
+
+  const updated = await prisma.prospect.update({
+    where: { id },
+    data: { status: "BLACKLISTED" },
+  });
+  return c.json({ success: true, data: updated });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

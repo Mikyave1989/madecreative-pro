@@ -1,6 +1,8 @@
 import Stripe from "stripe";
 import { prisma } from "@madecreative/db";
 import { PLANS } from "@madecreative/shared";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 export function getStripeClient(): Stripe {
   const key = process.env["STRIPE_SECRET_KEY"];
@@ -44,6 +46,23 @@ export async function createCheckoutSession(params: {
   });
 
   return session;
+}
+
+export async function generatePaymentLink(params: {
+  prospectId: string;
+  plan: "STARTER" | "GROWTH" | "ENTERPRISE";
+  email: string;
+}): Promise<{ checkoutUrl: string; expiresAt: Date }> {
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h expiry
+  const session = await createCheckoutSession({
+    email: params.email,
+    planId: params.plan,
+    prospectId: params.prospectId,
+    successUrl: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/pricing`,
+  });
+
+  return { checkoutUrl: session.url ?? "", expiresAt };
 }
 
 export async function createBillingPortalSession(params: {
@@ -165,9 +184,8 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // Create new client with temporary password hash
-  const { default: bcrypt } = await import("bcryptjs");
-  const tempPassword = Math.random().toString(36).slice(2, 10);
+  // Create new client with cryptographically secure password
+  const tempPassword = crypto.randomBytes(12).toString("base64url");
   const passwordHash = await bcrypt.hash(tempPassword, 12);
 
   const client = await prisma.client.create({
@@ -210,6 +228,54 @@ async function handleCheckoutCompleted(
       paidAt: new Date(),
     },
   });
+
+  // Store temp password in Redis (TTL 24h) for welcome email
+  try {
+    const { getRedisConnection } = await import("../lib/queue.js");
+    const redis = getRedisConnection();
+    await redis.set(`onboarding:temp_password:${client.id}`, tempPassword, "EX", 86400);
+  } catch {
+    // Redis not critical here — continue
+  }
+
+  // Enqueue onboarding job
+  try {
+    const { Queue } = await import("bullmq");
+    const { getRedisConnection } = await import("../lib/queue.js");
+    const onboardingQueue = new Queue("onboarding-queue", {
+      connection: getRedisConnection(),
+    });
+    await onboardingQueue.add(
+      "ONBOARDING",
+      { clientId: client.id, prospectId: prospectId ?? null, tempPassword },
+      { jobId: `onboarding-${client.id}`, delay: 0 }
+    );
+    await onboardingQueue.close();
+  } catch (err) {
+    console.error("[Stripe] Failed to enqueue onboarding job:", err);
+  }
+
+  // Send payment confirmation email via Resend
+  try {
+    const resendApiKey = process.env["RESEND_API_KEY"];
+    if (resendApiKey) {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: `MadeCreative <onboarding@${process.env["EMAIL_DOMAIN"] ?? "madecreative.pro"}>`,
+          to: [client.email],
+          subject: "Payment confirmed — your site is being prepared",
+          html: `<p>Hi ${client.contactName},</p><p>Thank you for your payment! We are now setting up your website and digital presence. You will receive your login credentials within 15 minutes.</p><p>Plan: <strong>${plan.name}</strong></p><p>The MadeCreative Team</p>`,
+        }),
+      });
+    }
+  } catch {
+    // Non-critical
+  }
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {

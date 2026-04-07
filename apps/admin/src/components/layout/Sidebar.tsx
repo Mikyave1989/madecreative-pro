@@ -14,6 +14,7 @@ import {
   Briefcase,
   Menu,
   X,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: Bot,
     badge: 0,
     color: "#f59e0b",
+  },
+  {
+    label: "Pipeline",
+    href: "/pipeline",
+    icon: TrendingUp,
+    color: "#22c55e",
   },
   {
     label: "Clients",

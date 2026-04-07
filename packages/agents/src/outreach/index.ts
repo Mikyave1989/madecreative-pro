@@ -931,6 +931,88 @@ export class OutreachAgent extends BaseAgent {
   }
 }
 
+// ─── Reply sentiment result ───────────────────────────────────────────────────
+
+export interface ReplyAnalysisResult {
+  sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "OPT_OUT";
+  confidence: number;
+  suggestedAction: string;
+  keyPhrases: string[];
+}
+
+// ─── Standalone reply analyzer (no BullMQ job context needed) ─────────────────
+
+export async function analyzeReply(
+  _prospectId: string,
+  replyText: string
+): Promise<ReplyAnalysisResult> {
+  const { getClaudeClient } = await import("@madecreative/ai");
+  const client = getClaudeClient();
+
+  const systemPrompt = `You are a sales intelligence assistant. Analyze the sentiment of prospect reply emails.`;
+
+  const userPrompt = `Analyze the following reply from a prospect and classify its sentiment.
+
+Reply text:
+"""
+${replyText}
+"""
+
+Respond with a JSON object exactly like this (no markdown, no extra text):
+{
+  "sentiment": "POSITIVE",
+  "confidence": 0.9,
+  "suggestedAction": "Send payment link",
+  "keyPhrases": ["interested", "when can we start"]
+}
+
+Sentiment values:
+- POSITIVE: prospect is interested, asks for info, wants to proceed, mentions pricing or timing
+- NEGATIVE: not interested, too expensive, wrong timing, already has solution
+- NEUTRAL: needs more info before deciding, asks generic questions, ambiguous
+- OPT_OUT: wants to be removed from the list, asks to stop emails, unsubscribe/remove/stop`;
+
+  try {
+    const result = await client.callWithText(
+      [{ role: "user", content: userPrompt }],
+      { system: systemPrompt, maxTokens: 512 }
+    );
+
+    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON in Claude response");
+    return JSON.parse(jsonMatch[0]) as ReplyAnalysisResult;
+  } catch {
+    // Fallback keyword analysis
+    const text = replyText.toLowerCase();
+    let sentiment: ReplyAnalysisResult["sentiment"] = "NEUTRAL";
+    if (
+      ["unsubscribe", "remove me", "opt out", "stop emailing", "rimuovi", "cancella"].some(
+        (kw) => text.includes(kw)
+      )
+    ) {
+      sentiment = "OPT_OUT";
+    } else if (
+      ["not interested", "no thanks", "too expensive", "non interessato", "no grazie"].some(
+        (kw) => text.includes(kw)
+      )
+    ) {
+      sentiment = "NEGATIVE";
+    } else if (
+      ["interested", "would like", "quanto costa", "how much", "when can", "sì", "yes", "proceed"].some(
+        (kw) => text.includes(kw)
+      )
+    ) {
+      sentiment = "POSITIVE";
+    }
+    return {
+      sentiment,
+      confidence: 0.5,
+      suggestedAction: sentiment === "POSITIVE" ? "Send payment link" : "No action",
+      keyPhrases: [],
+    };
+  }
+}
+
 // ─── Tracking injection helper ────────────────────────────────────────────────
 
 function injectTracking(html: string, emailId: string, apiBase: string): string {
