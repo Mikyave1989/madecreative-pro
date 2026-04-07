@@ -273,6 +273,8 @@ export const REDIS_KEYS = {
   REFRESH_TOKEN: (token: string) => `rt:${token}`,
   AGENT_JOB: (jobId: string) => `job:${jobId}`,
   PLATFORM_METRICS: "platform:metrics",
+  CHATBOT_SESSION_MESSAGES: (sessionId: string) => `chatbot:session:${sessionId}:messages`,
+  CHATBOT_SESSION_META: (sessionId: string) => `chatbot:session:${sessionId}:meta`,
 } as const;
 
 // ─── Pagination ───────────────────────────────────────────────────────────────

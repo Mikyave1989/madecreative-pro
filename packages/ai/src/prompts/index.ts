@@ -207,25 +207,31 @@ export function buildChatbotSystemPrompt(params: {
   sector: string;
   language: string;
   knowledgeBase: {
-    faqs: Array<{ question: string; answer: string }>;
+    faqs: Array<{ question: string; answer: string; category?: string }>;
     businessInfo: {
       name: string;
       description: string;
-      phone?: string;
-      email?: string;
-      hours?: string;
+      address?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      hours?: string | null;
+      website?: string | null;
     };
-    services: Array<{ name: string; description: string; price?: string }>;
+    services: Array<{ name: string; description: string; price?: string | null }>;
+    policies?: string[] | null;
+    customRules?: string[] | null;
   };
   personality: {
+    name?: string;
     tone: string;
     greeting: string;
     fallbackMessage: string;
+    language?: string;
   };
 }): string {
   const faqText = params.knowledgeBase.faqs
-    .slice(0, 10)
-    .map((f) => `Q: ${f.question}\nA: ${f.answer}`)
+    .slice(0, 12)
+    .map((f) => `D: ${f.question}\nR: ${f.answer}`)
     .join("\n\n");
 
   const servicesText = params.knowledgeBase.services
@@ -235,28 +241,69 @@ export function buildChatbotSystemPrompt(params: {
     )
     .join("\n");
 
-  return `You are a helpful assistant for ${params.businessName}, a ${params.sector} business.
+  const personaName = params.personality.name ?? "Assistente";
+  const lang = params.personality.language ?? params.language;
 
-Respond in: ${params.language}
-Tone: ${params.personality.tone}
-Greeting: ${params.personality.greeting}
+  const contactInfo = [
+    params.knowledgeBase.businessInfo.phone
+      ? `Tel: ${params.knowledgeBase.businessInfo.phone}`
+      : null,
+    params.knowledgeBase.businessInfo.email
+      ? `Email: ${params.knowledgeBase.businessInfo.email}`
+      : null,
+    params.knowledgeBase.businessInfo.address
+      ? `Indirizzo: ${params.knowledgeBase.businessInfo.address}`
+      : null,
+    params.knowledgeBase.businessInfo.hours
+      ? `Orari: ${params.knowledgeBase.businessInfo.hours}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
 
-Business Information:
-- Name: ${params.knowledgeBase.businessInfo.name}
-- Description: ${params.knowledgeBase.businessInfo.description}
-- Phone: ${params.knowledgeBase.businessInfo.phone ?? "Not provided"}
-- Email: ${params.knowledgeBase.businessInfo.email ?? "Not provided"}
-- Hours: ${params.knowledgeBase.businessInfo.hours ?? "Not provided"}
+  const policiesText =
+    params.knowledgeBase.policies && params.knowledgeBase.policies.length > 0
+      ? `\nPOLITICHE:\n${params.knowledgeBase.policies.map((p) => `- ${p}`).join("\n")}`
+      : "";
 
-Services:
+  const customRulesText =
+    params.knowledgeBase.customRules && params.knowledgeBase.customRules.length > 0
+      ? `\nREGOLE AGGIUNTIVE:\n${params.knowledgeBase.customRules.map((r) => `- ${r}`).join("\n")}`
+      : "";
+
+  const contactForFallback =
+    params.knowledgeBase.businessInfo.phone ??
+    params.knowledgeBase.businessInfo.email ??
+    "il nostro team";
+
+  return `Sei ${personaName}, l'assistente virtuale di ${params.businessName}.
+
+INFORMAZIONI BUSINESS:
+Nome: ${params.knowledgeBase.businessInfo.name}
+Descrizione: ${params.knowledgeBase.businessInfo.description}
+${contactInfo}
+
+SERVIZI:
 ${servicesText}
 
-Frequently Asked Questions:
+DOMANDE FREQUENTI:
 ${faqText}
+${policiesText}
+${customRulesText}
 
-If you cannot answer a question: ${params.personality.fallbackMessage}
+REGOLE:
+1. Rispondi SEMPRE in ${lang} — non cambiare mai lingua
+2. Tono: ${params.personality.tone}
+3. Se non conosci la risposta → invita a contattare ${contactForFallback}
+4. Non inventare prezzi o disponibilita se non presenti nel contesto
+5. Per prenotazioni → fornisci numero di telefono o link appropriato
+6. Risposte brevi e utili (max 3 frasi)
+7. Se l'utente sembra pronto all'acquisto → proponi di contattarli
 
-Always respond in ${params.language}.`;
+SALUTO: ${params.personality.greeting}
+MESSAGGIO FALLBACK: ${params.personality.fallbackMessage}
+
+Always respond in ${lang}.`;
 }
 
 // ─── QA Agent Prompts ─────────────────────────────────────────────────────────

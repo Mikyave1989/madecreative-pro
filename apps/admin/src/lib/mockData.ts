@@ -172,13 +172,16 @@ export const MOCK_JOBS: AgentJob[] = Array.from({ length: 50 }, (_, i) =>
 
 export const MOCK_AGENT_STATS: AgentStats[] = AGENT_TYPES.map((type, i) => ({
   agentType: type,
-  status: (["IDLE", "RUNNING", "IDLE", "IDLE", "ERROR", "IDLE", "IDLE"] as const)[i],
-  jobsToday: [14, 8, 3, 6, 0, 2, 5][i],
-  costTodayEur: [0.42, 1.87, 0.0, 0.31, 0.0, 0.05, 0.28][i],
+  status: (["IDLE", "RUNNING", "IDLE", "IDLE", "IDLE", "IDLE", "IDLE"] as const)[i],
+  // CHATBOT at index 4 has realistic stats
+  jobsToday: [14, 8, 3, 6, 9, 2, 5][i],
+  costTodayEur: [0.42, 1.87, 0.0, 0.31, 0.12, 0.05, 0.28][i],
   lastRunAt:
     i === 1
       ? new Date().toISOString()
-      : new Date(Date.now() - (i + 1) * 3_600_000).toISOString(),
+      : i === 4
+        ? new Date(Date.now() - 25 * 60 * 1000).toISOString() // 25 min ago
+        : new Date(Date.now() - (i + 1) * 3_600_000).toISOString(),
 }));
 
 // ─── Recent Jobs (for live feed) ──────────────────────────────

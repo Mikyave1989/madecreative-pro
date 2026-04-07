@@ -3,6 +3,7 @@ import { prisma } from "@madecreative/db";
 import { ChatbotMessageSchema } from "@madecreative/shared";
 import { buildChatbotSystemPrompt } from "@madecreative/ai";
 import { getClaudeClient } from "@madecreative/ai";
+import { getRedisConnection } from "../../lib/queue.js";
 import type {
   KnowledgeBase,
   ChatbotPersonality,
@@ -11,7 +12,105 @@ import type {
 
 const app = new Hono();
 
-// GET /public/chatbot/:chatbotId/config — returns widget config for embed
+// ─── Rate limit helper (20 msg/min per IP for chatbot) ───────────────────────
+
+async function checkChatbotRateLimit(
+  ip: string
+): Promise<{ allowed: boolean; remaining: number }> {
+  try {
+    const redis = getRedisConnection();
+    const windowMs = 60_000;
+    const maxRequests = 20;
+    const windowStart = Math.floor(Date.now() / windowMs) * windowMs;
+    const key = `rl:chatbot_widget:${ip}:${windowStart}`;
+
+    const pipeline = redis.pipeline();
+    pipeline.incr(key);
+    pipeline.expire(key, 65);
+    const results = await pipeline.exec();
+
+    const count = (results?.[0]?.[1] as number) ?? 1;
+    const remaining = Math.max(0, maxRequests - count);
+    return { allowed: count <= maxRequests, remaining };
+  } catch {
+    // If Redis is unavailable, allow
+    return { allowed: true, remaining: 20 };
+  }
+}
+
+// ─── Redis session helpers ────────────────────────────────────────────────────
+
+interface SessionMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+interface SessionMeta {
+  chatbotId: string;
+  startedAt: string;
+  messageCount: number;
+}
+
+const SESSION_TTL = 24 * 60 * 60; // 24 hours in seconds
+const MAX_SESSION_MESSAGES = 20; // Keep last 20 messages for context
+
+async function getSessionMessages(sessionId: string): Promise<SessionMessage[]> {
+  try {
+    const redis = getRedisConnection();
+    const key = `chatbot:session:${sessionId}:messages`;
+    const raw = await redis.get(key);
+    if (!raw) return [];
+    return JSON.parse(raw) as SessionMessage[];
+  } catch {
+    return [];
+  }
+}
+
+async function saveSessionMessages(
+  sessionId: string,
+  messages: SessionMessage[]
+): Promise<void> {
+  try {
+    const redis = getRedisConnection();
+    const key = `chatbot:session:${sessionId}:messages`;
+    // Keep last N messages
+    const trimmed = messages.slice(-MAX_SESSION_MESSAGES);
+    await redis.setex(key, SESSION_TTL, JSON.stringify(trimmed));
+  } catch {
+    // Non-fatal
+  }
+}
+
+async function updateSessionMeta(
+  sessionId: string,
+  chatbotId: string
+): Promise<void> {
+  try {
+    const redis = getRedisConnection();
+    const key = `chatbot:session:${sessionId}:meta`;
+    const existing = await redis.get(key);
+    let meta: SessionMeta;
+
+    if (existing) {
+      meta = JSON.parse(existing) as SessionMeta;
+      meta.messageCount += 1;
+    } else {
+      meta = {
+        chatbotId,
+        startedAt: new Date().toISOString(),
+        messageCount: 1,
+      };
+    }
+
+    await redis.setex(key, SESSION_TTL, JSON.stringify(meta));
+  } catch {
+    // Non-fatal
+  }
+}
+
+// ─── GET /public/chatbot/:chatbotId/config ────────────────────────────────────
+
 app.get("/:chatbotId/config", async (c) => {
   const chatbotId = c.req.param("chatbotId");
 
@@ -24,7 +123,7 @@ app.get("/:chatbotId/config", async (c) => {
       widgetConfig: true,
       personality: true,
       client: {
-        select: { sector: true, language: true },
+        select: { sector: true, language: true, companyName: true },
       },
     },
   });
@@ -33,26 +132,49 @@ app.get("/:chatbotId/config", async (c) => {
     return c.json({ error: "Chatbot not found or inactive" }, 404);
   }
 
+  const wc = chatbot.widgetConfig as WidgetConfig | null;
+  const personality = chatbot.personality as ChatbotPersonality | null;
+
   return c.json({
     success: true,
     data: {
       chatbotId: chatbot.id,
       name: chatbot.name,
-      widgetConfig: chatbot.widgetConfig,
+      widgetConfig: wc ?? {
+        position: "bottom-right",
+        primaryColor: "#6366f1",
+        title: chatbot.name,
+        subtitle: `Assistente di ${chatbot.client.companyName}`,
+      },
       language: chatbot.client.language,
+      greeting: personality?.greeting ?? "Ciao! Come posso aiutarti?",
+      sector: chatbot.client.sector,
     },
   });
 });
 
-// POST /public/chatbot/:chatbotId/message — process a visitor message
-app.post("/:chatbotId/message", async (c) => {
-  const chatbotId = c.req.param("chatbotId");
+// ─── POST /public/chatbot/:chatbotId/message ──────────────────────────────────
 
+app.post("/:chatbotId/message", async (c) => {
+  // Rate limiting per IP
+  const ip =
+    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+    c.req.header("x-real-ip") ??
+    "unknown";
+
+  const { allowed, remaining } = await checkChatbotRateLimit(ip);
+  c.header("X-RateLimit-Remaining", remaining.toString());
+
+  if (!allowed) {
+    return c.json(
+      { success: false, error: "Too many messages, please wait a moment" },
+      429
+    );
+  }
+
+  const chatbotId = c.req.param("chatbotId");
   const body = await c.req.json().catch(() => null);
-  const messageData = {
-    ...body,
-    chatbotId,
-  };
+  const messageData = { ...body, chatbotId };
 
   const parsed = ChatbotMessageSchema.safeParse(messageData);
   if (!parsed.success) {
@@ -93,8 +215,6 @@ app.post("/:chatbotId/message", async (c) => {
 
   const knowledgeBase = chatbot.knowledgeBase as KnowledgeBase;
   const personality = chatbot.personality as ChatbotPersonality | null;
-  const widgetConfig = chatbot.widgetConfig as WidgetConfig | null;
-  void widgetConfig;
 
   const systemPrompt = buildChatbotSystemPrompt({
     businessName: chatbot.client.companyName,
@@ -103,16 +223,27 @@ app.post("/:chatbotId/message", async (c) => {
     knowledgeBase,
     personality: personality ?? {
       tone: "professional",
-      greeting: "Hello! How can I help you today?",
-      fallbackMessage:
-        "I'll have someone from our team get back to you shortly.",
+      greeting: "Ciao! Come posso aiutarti?",
+      fallbackMessage: "Non ho questa informazione. Contattaci direttamente.",
     },
   });
+
+  // Load session history for context
+  const sessionMessages = await getSessionMessages(parsed.data.sessionId);
+
+  // Build messages with history (last 8 messages for context window efficiency)
+  const historyMessages = sessionMessages.slice(-8).map((m) => ({
+    role: m.role as "user" | "assistant",
+    content: m.content,
+  }));
 
   try {
     const claude = getClaudeClient();
     const result = await claude.callWithText(
-      [{ role: "user", content: parsed.data.message }],
+      [
+        ...historyMessages,
+        { role: "user", content: parsed.data.message },
+      ],
       {
         system: systemPrompt,
         maxTokens: 512,
@@ -120,7 +251,27 @@ app.post("/:chatbotId/message", async (c) => {
       }
     );
 
-    // Update conversation count asynchronously
+    // Save messages to Redis session
+    const updatedMessages: SessionMessage[] = [
+      ...sessionMessages,
+      {
+        role: "user",
+        content: parsed.data.message,
+        timestamp: new Date().toISOString(),
+      },
+      {
+        role: "assistant",
+        content: result.text,
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    await Promise.all([
+      saveSessionMessages(parsed.data.sessionId, updatedMessages),
+      updateSessionMeta(parsed.data.sessionId, chatbotId),
+    ]);
+
+    // Increment conversation count asynchronously
     prisma.clientChatbot
       .update({
         where: { id: chatbotId },
@@ -144,7 +295,7 @@ app.post("/:chatbotId/message", async (c) => {
         data: {
           response:
             personality?.fallbackMessage ??
-            "I'm sorry, I'm having trouble responding right now. Please try again later or contact us directly.",
+            "Mi dispiace, ho un problema tecnico. Riprova o contattaci direttamente.",
           sessionId: parsed.data.sessionId,
         },
       },
@@ -153,119 +304,184 @@ app.post("/:chatbotId/message", async (c) => {
   }
 });
 
-// GET /public/chatbot-widget.js — serve the embeddable widget script
+// ─── GET /public/chatbot-widget.js ────────────────────────────────────────────
+// Optimized vanilla JS widget with:
+// - Bubble button (bottom-right / bottom-left configurable)
+// - Animated chat panel
+// - Typing indicator (3 dots)
+// - Basic markdown support (bold, links)
+// - Mobile responsive
+// - Auto-scroll
+// - Session persistence via localStorage
+
 app.get("/chatbot-widget.js", (c) => {
   const apiUrl = process.env["API_URL"] ?? "https://api.madecreative.pro";
 
-  const script = `
-(function() {
-  var config = window.MadeCreativeConfig || {};
-  if (!config.chatbotId) return;
+  const script = `(function(){
+var C=window.MadeCreativeConfig||{};
+if(!C.chatbotId)return;
+var AU=C.apiUrl||'${apiUrl}';
+var CID=C.chatbotId;
+var SID=function(){var k='mc_sid_'+CID;var s=localStorage.getItem(k);if(!s){s='mc_'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem(k,s);}return s;}();
+var OPEN=false;
+var container,panel,msgs,btn,inp,sendBtn,typingEl;
 
-  var apiUrl = config.apiUrl || '${apiUrl}';
-  var chatbotId = config.chatbotId;
-  var sessionId = 'mc_' + Math.random().toString(36).slice(2);
+function md(t){
+  t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">$1</a>');
+  t=t.replace(/\n/g,'<br>');
+  return t;
+}
 
-  fetch(apiUrl + '/public/chatbot/' + chatbotId + '/config')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (!data.success) return;
-      var cfg = data.data;
-      var wc = cfg.widgetConfig || {};
+function addMsg(text,isUser,raw){
+  if(typingEl&&typingEl.parentNode)typingEl.parentNode.removeChild(typingEl);
+  var d=document.createElement('div');
+  var color=window._mcColor||'#6366f1';
+  d.style.cssText='max-width:82%;padding:9px 13px;border-radius:16px;font-size:13px;line-height:1.45;word-break:break-word;'+(isUser?'background:'+color+';color:#fff;align-self:flex-end;border-bottom-right-radius:4px;':'background:#f4f4f8;color:#1a1a2e;align-self:flex-start;border-bottom-left-radius:4px;');
+  if(raw){d.innerHTML=md(text);}else{d.textContent=text;}
+  msgs.appendChild(d);
+  msgs.scrollTop=msgs.scrollHeight;
+}
 
-      // Create widget container
-      var container = document.createElement('div');
-      container.id = 'mc-chatbot';
-      container.style.cssText = [
-        'position:fixed',
-        (wc.position === 'bottom-left' ? 'left:20px' : 'right:20px'),
-        'bottom:20px',
-        'z-index:999999',
-        'font-family:system-ui,sans-serif'
-      ].join(';');
+function showTyping(){
+  typingEl=document.createElement('div');
+  typingEl.style.cssText='align-self:flex-start;padding:10px 14px;background:#f4f4f8;border-radius:16px;border-bottom-left-radius:4px;';
+  typingEl.innerHTML='<span style="display:inline-flex;gap:4px;align-items:center"><span style="width:7px;height:7px;border-radius:50%;background:#aaa;animation:mc-bounce 1.2s infinite 0s"></span><span style="width:7px;height:7px;border-radius:50%;background:#aaa;animation:mc-bounce 1.2s infinite 0.2s"></span><span style="width:7px;height:7px;border-radius:50%;background:#aaa;animation:mc-bounce 1.2s infinite 0.4s"></span></span>';
+  msgs.appendChild(typingEl);
+  msgs.scrollTop=msgs.scrollHeight;
+}
 
-      var primaryColor = wc.primaryColor || '#6366f1';
+function sendMsg(){
+  var t=(inp.value||'').trim();
+  if(!t||sendBtn.disabled)return;
+  addMsg(t,true,false);
+  inp.value='';
+  sendBtn.disabled=true;
+  inp.disabled=true;
+  showTyping();
+  fetch(AU+'/public/chatbot/'+CID+'/message',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({message:t,sessionId:SID})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.success&&d.data&&d.data.response){addMsg(d.data.response,false,true);}
+    else{addMsg('Errore nella risposta. Riprova.',false,false);}
+  })
+  .catch(function(){
+    if(typingEl&&typingEl.parentNode)typingEl.parentNode.removeChild(typingEl);
+    addMsg('Errore di connessione. Riprova.',false,false);
+  })
+  .finally(function(){sendBtn.disabled=false;inp.disabled=false;inp.focus();});
+}
 
-      // Toggle button
-      var btn = document.createElement('button');
-      btn.style.cssText = 'width:56px;height:56px;border-radius:50%;background:' + primaryColor + ';border:none;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;margin-left:auto;';
-      btn.innerHTML = '<svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
+function togglePanel(){
+  OPEN=!OPEN;
+  panel.style.display=OPEN?'flex':'none';
+  panel.style.opacity=OPEN?'1':'0';
+  btn.innerHTML=OPEN?
+    '<svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>':
+    '<svg width="22" height="22" fill="white" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
+  if(OPEN&&msgs.children.length===0){
+    fetch(AU+'/public/chatbot/'+CID+'/config')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.success&&d.data&&d.data.greeting){addMsg(d.data.greeting,false,false);}
+      }).catch(function(){});
+  }
+  if(OPEN)setTimeout(function(){inp.focus();},150);
+}
 
-      // Chat panel
-      var panel = document.createElement('div');
-      panel.style.cssText = 'display:none;flex-direction:column;width:320px;height:440px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);margin-bottom:8px;overflow:hidden;';
+function buildWidget(cfg){
+  var wc=cfg.widgetConfig||{};
+  var color=wc.primaryColor||'#6366f1';
+  var pos=wc.position==='bottom-left'?'left:20px':'right:20px';
+  window._mcColor=color;
 
-      var header = document.createElement('div');
-      header.style.cssText = 'background:' + primaryColor + ';color:white;padding:16px;font-weight:600;font-size:14px;';
-      header.textContent = wc.title || cfg.name;
+  var style=document.createElement('style');
+  style.textContent='@keyframes mc-bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}@keyframes mc-slide-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}#mc-chatbot *{box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif}#mc-panel{animation:mc-slide-up 0.2s ease}@media(max-width:480px){#mc-panel{width:calc(100vw - 24px) !important;height:calc(100vh - 100px) !important;right:12px !important;left:12px !important;}}';
+  document.head.appendChild(style);
 
-      var messages = document.createElement('div');
-      messages.style.cssText = 'flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;';
+  container=document.createElement('div');
+  container.id='mc-chatbot';
+  container.style.cssText='position:fixed;'+pos+';bottom:20px;z-index:2147483647;';
 
-      var inputRow = document.createElement('div');
-      inputRow.style.cssText = 'display:flex;padding:8px;border-top:1px solid #eee;gap:8px;';
+  panel=document.createElement('div');
+  panel.id='mc-panel';
+  panel.style.cssText='display:none;flex-direction:column;width:340px;height:480px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);margin-bottom:10px;overflow:hidden;border:1px solid rgba(0,0,0,.08);';
 
-      var input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = 'Type a message...';
-      input.style.cssText = 'flex:1;border:1px solid #ddd;border-radius:20px;padding:8px 12px;font-size:13px;outline:none;';
+  var header=document.createElement('div');
+  header.style.cssText='background:'+color+';color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;';
+  var avatarDiv=document.createElement('div');
+  avatarDiv.style.cssText='width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;';
+  avatarDiv.textContent=wc.avatarEmoji||'💬';
+  var headerText=document.createElement('div');
+  headerText.style.cssText='flex:1;min-width:0;';
+  var headerTitle=document.createElement('div');
+  headerTitle.style.cssText='font-weight:700;font-size:14px;';
+  headerTitle.textContent=wc.title||cfg.name||'Assistente';
+  var headerSub=document.createElement('div');
+  headerSub.style.cssText='font-size:11px;opacity:0.85;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+  headerSub.textContent=wc.subtitle||'Online';
+  var onlineDot=document.createElement('span');
+  onlineDot.style.cssText='width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.4);';
+  headerText.appendChild(headerTitle);
+  headerText.appendChild(headerSub);
+  header.appendChild(avatarDiv);
+  header.appendChild(headerText);
+  header.appendChild(onlineDot);
 
-      var sendBtn = document.createElement('button');
-      sendBtn.style.cssText = 'background:' + primaryColor + ';color:white;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
-      sendBtn.innerHTML = '<svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+  msgs=document.createElement('div');
+  msgs.style.cssText='flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:9px;scroll-behavior:smooth;';
+  msgs.style.overscrollBehavior='contain';
 
-      function addMessage(text, isUser) {
-        var msg = document.createElement('div');
-        msg.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.4;' + (isUser ? 'background:' + primaryColor + ';color:white;align-self:flex-end;' : 'background:#f1f1f1;color:#333;align-self:flex-start;');
-        msg.textContent = text;
-        messages.appendChild(msg);
-        messages.scrollTop = messages.scrollHeight;
-      }
+  var inputRow=document.createElement('div');
+  inputRow.style.cssText='display:flex;padding:10px 12px;border-top:1px solid #f0f0f0;gap:8px;align-items:center;flex-shrink:0;background:#fafafa;';
 
-      function sendMessage() {
-        var text = input.value.trim();
-        if (!text) return;
-        addMessage(text, true);
-        input.value = '';
-        sendBtn.disabled = true;
+  inp=document.createElement('input');
+  inp.type='text';
+  inp.placeholder=cfg.language==='it'?'Scrivi un messaggio...':cfg.language==='de'?'Nachricht schreiben...':cfg.language==='fr'?'Votre message...':cfg.language==='es'?'Escribe un mensaje...':'Type a message...';
+  inp.style.cssText='flex:1;border:1.5px solid #e5e7eb;border-radius:24px;padding:9px 14px;font-size:13px;outline:none;background:#fff;transition:border-color 0.15s;color:#111;';
+  inp.addEventListener('focus',function(){inp.style.borderColor=color;});
+  inp.addEventListener('blur',function(){inp.style.borderColor='#e5e7eb';});
 
-        fetch(apiUrl + '/public/chatbot/' + chatbotId + '/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, sessionId: sessionId })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          if (d.success) addMessage(d.data.response, false);
-        })
-        .catch(function() { addMessage('Sorry, something went wrong.', false); })
-        .finally(function() { sendBtn.disabled = false; });
-      }
+  sendBtn=document.createElement('button');
+  sendBtn.type='button';
+  sendBtn.style.cssText='background:'+color+';color:#fff;border:none;border-radius:50%;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;';
+  sendBtn.innerHTML='<svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+  sendBtn.addEventListener('mouseenter',function(){sendBtn.style.opacity='0.85';});
+  sendBtn.addEventListener('mouseleave',function(){sendBtn.style.opacity='1';});
 
-      sendBtn.addEventListener('click', sendMessage);
-      input.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendMessage(); });
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+  sendBtn.addEventListener('click',sendMsg);
 
-      var isOpen = false;
-      btn.addEventListener('click', function() {
-        isOpen = !isOpen;
-        panel.style.display = isOpen ? 'flex' : 'none';
-        if (isOpen && messages.children.length === 0) {
-          addMessage(wc.subtitle || 'Hello! How can I help you today?', false);
-        }
-      });
+  inputRow.appendChild(inp);
+  inputRow.appendChild(sendBtn);
+  panel.appendChild(header);
+  panel.appendChild(msgs);
+  panel.appendChild(inputRow);
 
-      inputRow.appendChild(input);
-      inputRow.appendChild(sendBtn);
-      panel.appendChild(header);
-      panel.appendChild(messages);
-      panel.appendChild(inputRow);
-      container.appendChild(panel);
-      container.appendChild(btn);
-      document.body.appendChild(container);
-    })
-    .catch(function(e) { console.error('MadeCreative widget error:', e); });
-})();
-`;
+  btn=document.createElement('button');
+  btn.type='button';
+  btn.style.cssText='width:56px;height:56px;border-radius:50%;background:'+color+';border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;margin-left:auto;transition:transform 0.15s,box-shadow 0.15s;';
+  btn.innerHTML='<svg width="22" height="22" fill="white" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
+  btn.setAttribute('aria-label','Apri chat');
+  btn.addEventListener('mouseenter',function(){btn.style.transform='scale(1.08)';btn.style.boxShadow='0 6px 20px rgba(0,0,0,.3)';});
+  btn.addEventListener('mouseleave',function(){btn.style.transform='scale(1)';btn.style.boxShadow='0 4px 16px rgba(0,0,0,.25)';});
+  btn.addEventListener('click',togglePanel);
+
+  container.appendChild(panel);
+  container.appendChild(btn);
+  document.body.appendChild(container);
+}
+
+fetch(AU+'/public/chatbot/'+CID+'/config')
+  .then(function(r){return r.json();})
+  .then(function(d){if(d.success&&d.data){buildWidget(d.data);}})
+  .catch(function(e){console.warn('MadeCreative widget error:',e);});
+})();`;
 
   c.header("Content-Type", "application/javascript");
   c.header("Cache-Control", "public, max-age=3600");
