@@ -4,6 +4,7 @@ import {
   ProspectFilterSchema,
   ProspectCreateSchema,
   ProspectUpdateSchema,
+  ScrapeConfigCreateSchema,
 } from "@madecreative/shared";
 import { PAGINATION } from "@madecreative/shared";
 
@@ -200,6 +201,186 @@ app.post("/:id/analyze", async (c) => {
   });
 
   return c.json({ success: true, data: { jobId: job.id } }, 202);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scrape management endpoints  /admin/scrape/*
+// ─────────────────────────────────────────────────────────────────────────────
+
+// POST /admin/scrape/start — ad-hoc scrape run
+app.post("/scrape/start", async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const parsed = ScrapeConfigCreateSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return c.json(
+      {
+        success: false,
+        error: "Validation error",
+        details: parsed.error.flatten(),
+      },
+      400
+    );
+  }
+
+  const { enqueueAgentJob } = await import("../../lib/queue.js");
+
+  // Persist a transient ScrapeConfig (isActive=false for ad-hoc runs)
+  const config = await prisma.scrapeConfig.create({
+    data: {
+      name: parsed.data.name,
+      sector: parsed.data.sector,
+      countries: parsed.data.countries,
+      cities: parsed.data.cities ?? [],
+      keywords: parsed.data.keywords,
+      excludeKeywords: parsed.data.excludeKeywords ?? [],
+      minRating: parsed.data.minRating ?? null,
+      maxResults: parsed.data.maxResults,
+      schedule: parsed.data.schedule ?? null,
+      isActive: false,
+    },
+  });
+
+  const job = await prisma.agentJob.create({
+    data: {
+      agentType: "SCRAPER",
+      status: "QUEUED",
+      input: {
+        scrapeConfigId: config.id,
+        configId: config.id,
+        sector: config.sector,
+        countries: config.countries as string[],
+        cities: (config.cities as string[] | null) ?? undefined,
+        keywords: config.keywords as string[],
+        maxResults: config.maxResults,
+        minRating: config.minRating ?? undefined,
+      },
+    },
+  });
+
+  await enqueueAgentJob({
+    agentType: "SCRAPER",
+    jobId: job.id,
+    input: job.input as Record<string, unknown>,
+  });
+
+  return c.json(
+    { success: true, data: { jobId: job.id, scrapeConfigId: config.id } },
+    202
+  );
+});
+
+// GET /admin/scrape/configs — list all ScrapeConfig entries
+app.get("/scrape/configs", async (c) => {
+  const configs = await prisma.scrapeConfig.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  return c.json({ success: true, data: configs });
+});
+
+// POST /admin/scrape/configs — create a new ScrapeConfig
+app.post("/scrape/configs", async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const parsed = ScrapeConfigCreateSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return c.json(
+      {
+        success: false,
+        error: "Validation error",
+        details: parsed.error.flatten(),
+      },
+      400
+    );
+  }
+
+  const config = await prisma.scrapeConfig.create({
+    data: {
+      name: parsed.data.name,
+      sector: parsed.data.sector,
+      countries: parsed.data.countries,
+      cities: parsed.data.cities ?? [],
+      keywords: parsed.data.keywords,
+      excludeKeywords: parsed.data.excludeKeywords ?? [],
+      minRating: parsed.data.minRating ?? null,
+      maxResults: parsed.data.maxResults,
+      schedule: parsed.data.schedule ?? null,
+      isActive: true,
+    },
+  });
+
+  return c.json({ success: true, data: config }, 201);
+});
+
+// PATCH /admin/scrape/configs/:id — update a ScrapeConfig
+app.patch("/scrape/configs/:id", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json().catch(() => null);
+  const parsed = ScrapeConfigCreateSchema.partial()
+    .extend({ isActive: (await import("zod")).z.boolean().optional() })
+    .safeParse(body);
+
+  if (!parsed.success) {
+    return c.json(
+      {
+        success: false,
+        error: "Validation error",
+        details: parsed.error.flatten(),
+      },
+      400
+    );
+  }
+
+  const existing = await prisma.scrapeConfig.findUnique({ where: { id } });
+  if (!existing) {
+    return c.json({ success: false, error: "ScrapeConfig not found" }, 404);
+  }
+
+  const updated = await prisma.scrapeConfig.update({
+    where: { id },
+    data: {
+      ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+      ...(parsed.data.sector !== undefined ? { sector: parsed.data.sector } : {}),
+      ...(parsed.data.countries !== undefined
+        ? { countries: parsed.data.countries }
+        : {}),
+      ...(parsed.data.cities !== undefined ? { cities: parsed.data.cities } : {}),
+      ...(parsed.data.keywords !== undefined
+        ? { keywords: parsed.data.keywords }
+        : {}),
+      ...(parsed.data.excludeKeywords !== undefined
+        ? { excludeKeywords: parsed.data.excludeKeywords }
+        : {}),
+      ...(parsed.data.minRating !== undefined
+        ? { minRating: parsed.data.minRating }
+        : {}),
+      ...(parsed.data.maxResults !== undefined
+        ? { maxResults: parsed.data.maxResults }
+        : {}),
+      ...(parsed.data.schedule !== undefined
+        ? { schedule: parsed.data.schedule }
+        : {}),
+      ...((parsed.data as { isActive?: boolean }).isActive !== undefined
+        ? { isActive: (parsed.data as { isActive?: boolean }).isActive }
+        : {}),
+    },
+  });
+
+  return c.json({ success: true, data: updated });
+});
+
+// DELETE /admin/scrape/configs/:id — delete a ScrapeConfig
+app.delete("/scrape/configs/:id", async (c) => {
+  const id = c.req.param("id");
+
+  const existing = await prisma.scrapeConfig.findUnique({ where: { id } });
+  if (!existing) {
+    return c.json({ success: false, error: "ScrapeConfig not found" }, 404);
+  }
+
+  await prisma.scrapeConfig.delete({ where: { id } });
+
+  return c.json({ success: true, message: "ScrapeConfig deleted" });
 });
 
 export default app;

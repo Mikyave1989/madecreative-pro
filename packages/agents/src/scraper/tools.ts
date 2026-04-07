@@ -1,92 +1,157 @@
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 
+/**
+ * Claude Tool Use definitions for the Scraper Agent.
+ * Each tool corresponds to a handler in ScraperAgent.handleToolCall().
+ */
 export const scraperTools: Tool[] = [
+  // ─── Tool 1: search_google_maps ───────────────────────────────────────────
   {
     name: "search_google_maps",
     description:
-      "Search Google Maps for businesses matching the given criteria. Returns a list of businesses with their details.",
+      "Search Google Maps for businesses matching a sector query in a specific city. " +
+      "Returns a list of business listing URLs and basic metadata. " +
+      "Use this as the first step for each target city.",
     input_schema: {
       type: "object" as const,
       properties: {
         query: {
           type: "string",
-          description: "The search query (e.g., 'restaurants in Berlin')",
+          description:
+            "The search query combining sector keywords and city, " +
+            "e.g. 'Zahnarzt München' or 'Friseursalon Berlin'",
         },
-        location: {
+        city: {
           type: "string",
-          description: "The location to search in (city or country)",
+          description: "Target city name, e.g. 'München'",
         },
-        maxResults: {
+        country: {
+          type: "string",
+          description: "ISO-2 country code, e.g. 'DE'",
+        },
+      },
+      required: ["query", "city", "country"],
+    },
+  },
+
+  // ─── Tool 2: extract_business_details ────────────────────────────────────
+  {
+    name: "extract_business_details",
+    description:
+      "Visit a Google Maps business listing URL and extract all available details: " +
+      "company name, address, phone, website, rating, review count, category, " +
+      "opening hours, and up to 3 photo URLs. " +
+      "Applies a random 3-8 second delay to avoid rate limiting.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        businessUrl: {
+          type: "string",
+          description: "Full Google Maps URL of the business listing",
+        },
+      },
+      required: ["businessUrl"],
+    },
+  },
+
+  // ─── Tool 3: check_duplicate ─────────────────────────────────────────────
+  {
+    name: "check_duplicate",
+    description:
+      "Check whether a business already exists as a Prospect or Client in the database. " +
+      "Performs exact match on phone/email and fuzzy match on name+city (Fuse.js threshold 0.2). " +
+      "Returns { isDuplicate: boolean, matchedId?: string, matchReason?: string }.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        name: {
+          type: "string",
+          description: "Business/company name",
+        },
+        city: {
+          type: "string",
+          description: "City where the business is located",
+        },
+        phone: {
+          type: "string",
+          description: "Normalized phone number (optional)",
+        },
+        email: {
+          type: "string",
+          description: "Contact email address (optional)",
+        },
+      },
+      required: ["name"],
+    },
+  },
+
+  // ─── Tool 4: save_prospect ───────────────────────────────────────────────
+  {
+    name: "save_prospect",
+    description:
+      "Save a business as a new Prospect in the database with status SCRAPED. " +
+      "Only call this after check_duplicate returned isDuplicate=false.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        companyName: { type: "string", description: "Business name" },
+        contactEmail: {
+          type: "string",
+          description: "Email address (optional)",
+        },
+        contactPhone: {
+          type: "string",
+          description: "Phone number (optional)",
+        },
+        website: { type: "string", description: "Website URL (optional)" },
+        googleMapsUrl: {
+          type: "string",
+          description: "Full Google Maps URL of this listing",
+        },
+        googleRating: {
           type: "number",
-          description: "Maximum number of results to return (max 100)",
+          description: "Google rating 0-5 (optional)",
         },
-      },
-      required: ["query", "location"],
-    },
-  },
-  {
-    name: "check_website_exists",
-    description:
-      "Check if a website URL is valid and returns basic info about it.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        url: {
+        reviewCount: {
+          type: "number",
+          description: "Number of Google reviews (optional)",
+        },
+        country: { type: "string", description: "ISO-2 country code" },
+        city: { type: "string", description: "City name (optional)" },
+        sector: { type: "string", description: "Business sector" },
+        hasWebsite: {
+          type: "boolean",
+          description: "Whether the business has a website",
+        },
+        address: {
           type: "string",
-          description: "The website URL to check",
+          description: "Full address string (optional)",
         },
-      },
-      required: ["url"],
-    },
-  },
-  {
-    name: "extract_contact_info",
-    description:
-      "Extract contact information from a business website (phone, email, address).",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        url: {
+        openingHours: {
           type: "string",
-          description: "The website URL to extract contact info from",
+          description: "Opening hours as a string (optional)",
         },
-      },
-      required: ["url"],
-    },
-  },
-  {
-    name: "save_prospects",
-    description:
-      "Save a list of scraped businesses to the database as prospects.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        businesses: {
+        photoUrls: {
           type: "array",
-          description: "Array of business objects to save",
-          items: {
-            type: "object",
-            properties: {
-              companyName: { type: "string" },
-              contactEmail: { type: "string" },
-              contactPhone: { type: "string" },
-              website: { type: "string" },
-              googleRating: { type: "number" },
-              reviewCount: { type: "number" },
-              country: { type: "string" },
-              city: { type: "string" },
-              sector: { type: "string" },
-              hasWebsite: { type: "boolean" },
-            },
-            required: ["companyName", "country", "sector"],
-          },
-        },
-        source: {
-          type: "string",
-          description: "Source of the data (GOOGLE_MAPS, BRIGHTDATA, etc.)",
+          items: { type: "string" },
+          description: "Up to 3 photo URLs (optional)",
         },
       },
-      required: ["businesses", "source"],
+      required: ["companyName", "country", "sector", "hasWebsite", "googleMapsUrl"],
+    },
+  },
+
+  // ─── Tool 5: rotate_proxy_session ────────────────────────────────────────
+  {
+    name: "rotate_proxy_session",
+    description:
+      "Create a new Bright Data proxy session to rotate the outbound IP address. " +
+      "Call this when you encounter a CAPTCHA, rate limit (429), or 3+ consecutive errors. " +
+      "Returns { success: boolean, newSessionId: string }.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [],
     },
   },
 ];
