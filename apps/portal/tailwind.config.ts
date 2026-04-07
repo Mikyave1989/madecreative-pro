@@ -8,11 +8,20 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
+      },
       colors: {
         brand: {
+          50: "#eef2ff",
+          100: "#e0e7ff",
           500: "#6366f1",
           600: "#4f46e5",
+          700: "#4338ca",
         },
+      },
+      borderWidth: {
+        "3": "3px",
       },
     },
   },

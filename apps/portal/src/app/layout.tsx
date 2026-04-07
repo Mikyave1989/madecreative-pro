@@ -1,15 +1,22 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Toaster } from "sonner";
+import { AuthProvider } from "@/lib/auth";
+import { ReactQueryProvider } from "@/lib/queryClient";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: {
-    default: "MadeCreative — Client Portal",
-    template: "%s | MadeCreative Portal",
+    default: "MadeCreative — Portale Cliente",
+    template: "%s | MadeCreative",
   },
-  description: "Manage your digital presence with MadeCreative",
+  description: "Gestisci la tua presenza digitale con MadeCreative",
   robots: "noindex, nofollow",
 };
 
@@ -19,8 +26,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="it" className={inter.variable}>
+      <body className="font-sans bg-slate-50 antialiased">
+        <ReactQueryProvider>
+          <AuthProvider>
+            {children}
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              toastOptions={{
+                classNames: {
+                  toast: "font-sans",
+                },
+              }}
+            />
+          </AuthProvider>
+        </ReactQueryProvider>
+      </body>
     </html>
   );
 }
