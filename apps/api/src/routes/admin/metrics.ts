@@ -106,7 +106,7 @@ app.get("/", async (c) => {
 // GET /admin/metrics/revenue-chart
 app.get("/revenue-chart", async (c) => {
   const months = 12;
-  const data = [];
+  const data: Array<{ month: string; revenue: number }> = [];
 
   for (let i = months - 1; i >= 0; i--) {
     const date = new Date();
