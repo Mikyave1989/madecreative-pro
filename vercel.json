@@ -1,30 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "projects": [
-    {
-      "name": "madecreative-marketing",
-      "rootDirectory": "apps/marketing",
-      "framework": "nextjs",
-      "domains": ["madecreative.pro", "www.madecreative.pro"]
-    },
-    {
-      "name": "madecreative-admin",
-      "rootDirectory": "apps/admin",
-      "framework": "nextjs",
-      "domains": ["admin.madecreative.pro"]
-    },
-    {
-      "name": "madecreative-portal",
-      "rootDirectory": "apps/portal",
-      "framework": "nextjs",
-      "domains": ["app.madecreative.pro"]
-    },
-    {
-      "name": "madecreative-api",
-      "rootDirectory": "apps/api",
-      "framework": null,
-      "domains": ["api.madecreative.pro"]
-    }
-  ]
+  "buildCommand": "npx turbo run build --filter=@madecreative/marketing",
+  "outputDirectory": "apps/marketing/.next",
+  "installCommand": "npm install",
+  "framework": "nextjs"
 }
