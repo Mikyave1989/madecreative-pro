@@ -1,7 +1,8 @@
+import React from "react";
 import { clsx } from "clsx";
 import { type Plan, type ClientStatus } from "@/lib/mockData";
 
-type BadgeVariant =
+export type BadgeVariant =
   | "indigo"
   | "violet"
   | "amber"
@@ -9,13 +10,17 @@ type BadgeVariant =
   | "red"
   | "yellow"
   | "gray"
-  | "blue";
+  | "blue"
+  | "default"
+  | "success";
 
 interface BadgeProps {
-  label: string;
+  label?: string;
   variant?: BadgeVariant;
   size?: "sm" | "md";
   dot?: boolean;
+  className?: string;
+  children?: React.ReactNode;
 }
 
 const variantMap: Record<BadgeVariant, string> = {
@@ -27,6 +32,8 @@ const variantMap: Record<BadgeVariant, string> = {
   yellow: "bg-yellow-50 text-yellow-700 ring-yellow-200",
   gray: "bg-gray-50 text-gray-700 ring-gray-200",
   blue: "bg-blue-50 text-blue-700 ring-blue-200",
+  default: "bg-gray-100 text-gray-600 ring-gray-200",
+  success: "bg-green-50 text-green-700 ring-green-200",
 };
 
 const dotColorMap: Record<BadgeVariant, string> = {
@@ -38,6 +45,8 @@ const dotColorMap: Record<BadgeVariant, string> = {
   yellow: "bg-yellow-500",
   gray: "bg-gray-500",
   blue: "bg-blue-500",
+  default: "bg-gray-400",
+  success: "bg-green-500",
 };
 
 export function Badge({
@@ -45,13 +54,16 @@ export function Badge({
   variant = "gray",
   size = "sm",
   dot = false,
+  className,
+  children,
 }: BadgeProps) {
   return (
     <span
       className={clsx(
         "inline-flex items-center gap-1.5 rounded-full font-medium ring-1 ring-inset",
         variantMap[variant],
-        size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm"
+        size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
+        className
       )}
     >
       {dot && (
@@ -59,7 +71,7 @@ export function Badge({
           className={clsx("h-1.5 w-1.5 rounded-full", dotColorMap[variant])}
         />
       )}
-      {label}
+      {children ?? label}
     </span>
   );
 }

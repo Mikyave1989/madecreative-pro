@@ -620,7 +620,9 @@ async function generateMonthlyReport(
     where: { clientId, month, year },
   });
 
-  const reportJson = reportData as unknown as import("@prisma/client").Prisma.InputJsonValue;
+  // Cast to satisfy Prisma's Json field type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const reportJson = reportData as any;
 
   if (existing) {
     await prisma.monthlyReport.update({

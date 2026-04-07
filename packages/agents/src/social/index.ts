@@ -292,7 +292,8 @@ export class SocialAgent extends BaseAgent {
             contentType: parsed.data.contentType,
             caption: parsed.data.caption,
             hashtags: parsed.data.hashtags ?? null,
-            mediaUrls: (parsed.data.mediaUrls ?? []) as unknown as import("@prisma/client").Prisma.InputJsonValue,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            mediaUrls: (parsed.data.mediaUrls ?? []) as any,
             language: parsed.data.language,
             scheduledFor,
             status: "scheduled",
@@ -477,7 +478,8 @@ export class SocialAgent extends BaseAgent {
             type: parsed.data.type,
             caption: parsed.data.caption,
             hashtags: parsed.data.hashtags ?? null,
-            mediaUrls: (parsed.data.mediaUrls ?? []) as unknown as import("@prisma/client").Prisma.InputJsonValue,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            mediaUrls: (parsed.data.mediaUrls ?? []) as any,
             language: parsed.data.language,
             scheduledFor,
             status,
@@ -532,7 +534,8 @@ export class SocialAgent extends BaseAgent {
             type,
             caption,
             hashtags: hashtags ?? null,
-            mediaUrls: (mediaUrls ?? []) as unknown as import("@prisma/client").Prisma.InputJsonValue,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            mediaUrls: (mediaUrls ?? []) as any,
             language,
             scheduledFor: new Date(scheduledFor),
             status: "draft",
@@ -593,8 +596,8 @@ export class SocialAgent extends BaseAgent {
               .aggregate({
                 _sum: { timeSaved: true },
               })
-              .then((r) =>
-                Math.round(((r._sum.timeSaved ?? 0) / 60) * 10) / 10
+              .then((r: { _sum: { timeSaved: number | null } }) =>
+                Math.round((((r._sum.timeSaved ?? 0) as number) / 60) * 10) / 10
               ),
           ]);
           contextData = {
