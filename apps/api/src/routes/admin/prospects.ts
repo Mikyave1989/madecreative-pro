@@ -283,6 +283,224 @@ app.post("/:id/build-preview", async (c) => {
   );
 });
 
+// POST /admin/prospects/:id/send-outreach — Avvia sequenza email manualmente
+app.post("/:id/send-outreach", async (c) => {
+  const id = c.req.param("id");
+  const { enqueueAgentJob } = await import("../../lib/queue.js");
+
+  const prospect = await prisma.prospect.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      companyName: true,
+      contactEmail: true,
+      status: true,
+      country: true,
+      previewSiteUrl: true,
+    },
+  });
+
+  if (!prospect) {
+    return c.json({ success: false, error: "Prospect not found" }, 404);
+  }
+
+  // Prerequisite checks
+  if (!prospect.contactEmail) {
+    return c.json(
+      { success: false, error: "Prospect has no contact email" },
+      422
+    );
+  }
+
+  const blockedStatuses = ["BLACKLISTED"];
+  if (blockedStatuses.includes(prospect.status)) {
+    return c.json(
+      { success: false, error: `Cannot send outreach to prospect with status: ${prospect.status}` },
+      422
+    );
+  }
+
+  const readyStatuses = ["ANALYZED", "PREVIEW_GENERATED", "PREVIEW_READY"];
+  const allStatuses = [
+    "SCRAPED", "ANALYZED", "PREVIEW_GENERATED", "EMAIL_QUEUED",
+    "EMAIL_SENT", "REPLIED", "CALL_SCHEDULED", "CONVERTED", "LOST", "BLACKLISTED"
+  ];
+  const statusIndex = allStatuses.indexOf(prospect.status);
+  if (statusIndex < 1) {
+    return c.json(
+      {
+        success: false,
+        error: `Prospect must be at least ANALYZED before outreach. Current status: ${prospect.status}`,
+      },
+      422
+    );
+  }
+
+  void readyStatuses; // suppress unused variable
+
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  const language = (body["language"] as string | undefined) ?? undefined;
+
+  const job = await prisma.agentJob.create({
+    data: {
+      agentType: "OUTREACH",
+      status: "QUEUED",
+      input: {
+        prospectId: id,
+        stepNumber: 1,
+        ...(language ? { language } : {}),
+      },
+      prospectId: id,
+    },
+  });
+
+  await enqueueAgentJob({
+    agentType: "OUTREACH",
+    jobId: job.id,
+    input: {
+      prospectId: id,
+      stepNumber: 1,
+      ...(language ? { language } : {}),
+    },
+  });
+
+  return c.json(
+    {
+      success: true,
+      data: {
+        jobId: job.id,
+        message: `Outreach sequence queued for ${prospect.companyName}`,
+        estimatedDuration: "1-2 minutes",
+      },
+    },
+    202
+  );
+});
+
+// GET /admin/outreach/stats — Email statistics
+// NOTE: registered as /outreach/stats on the sub-router (mounted at /admin/prospects)
+// Full path: GET /admin/prospects/outreach/stats
+app.get("/outreach/stats", async (c) => {
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Aggregations
+  const [
+    sentToday,
+    totalSent,
+    totalOpened,
+    totalClicked,
+    totalBounced,
+    totalReplied,
+    recentEmails,
+    topSubjects,
+  ] = await Promise.all([
+    // Sent today
+    prisma.outreachEmail.count({
+      where: { status: { in: ["sent", "opened", "clicked", "replied"] }, sentAt: { gte: todayStart } },
+    }),
+
+    // Total sent (all time)
+    prisma.outreachEmail.count({
+      where: { status: { in: ["sent", "opened", "clicked", "replied", "bounced"] } },
+    }),
+
+    // Total opened
+    prisma.outreachEmail.count({
+      where: { openedAt: { not: null } },
+    }),
+
+    // Total clicked
+    prisma.outreachEmail.count({
+      where: { clickedAt: { not: null } },
+    }),
+
+    // Total bounced
+    prisma.outreachEmail.count({
+      where: { status: "bounced" },
+    }),
+
+    // Total replied
+    prisma.outreachEmail.count({
+      where: { repliedAt: { not: null } },
+    }),
+
+    // Last 7 days — daily send counts
+    prisma.outreachEmail.findMany({
+      where: {
+        sentAt: { gte: sevenDaysAgo },
+        status: { in: ["sent", "opened", "clicked", "replied", "bounced"] },
+      },
+      select: { sentAt: true },
+    }),
+
+    // Top performing subjects (by open rate)
+    prisma.outreachEmail.groupBy({
+      by: ["subject"],
+      where: { status: { in: ["sent", "opened", "clicked", "replied"] } },
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
+      take: 10,
+    }),
+  ]);
+
+  // Build daily chart
+  const dailyMap: Record<string, number> = {};
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    dailyMap[d.toISOString().slice(0, 10)] = 0;
+  }
+  for (const email of recentEmails) {
+    if (email.sentAt) {
+      const key = email.sentAt.toISOString().slice(0, 10);
+      if (key in dailyMap) {
+        dailyMap[key] = (dailyMap[key] ?? 0) + 1;
+      }
+    }
+  }
+
+  const dailyChart = Object.entries(dailyMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ date, count }));
+
+  const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
+  const clickRate = totalSent > 0 ? Math.round((totalClicked / totalSent) * 100) : 0;
+  const bounceRate = totalSent > 0 ? Math.round((totalBounced / totalSent) * 100) : 0;
+  const replyRate = totalSent > 0 ? Math.round((totalReplied / totalSent) * 100) : 0;
+
+  return c.json({
+    success: true,
+    data: {
+      today: {
+        sent: sentToday,
+      },
+      totals: {
+        sent: totalSent,
+        opened: totalOpened,
+        clicked: totalClicked,
+        bounced: totalBounced,
+        replied: totalReplied,
+      },
+      rates: {
+        openRate,
+        clickRate,
+        bounceRate,
+        replyRate,
+      },
+      topSubjects: topSubjects.map((s: { subject: string; _count: { id: number } }) => ({
+        subject: s.subject,
+        count: s._count.id,
+      })),
+      dailyChart,
+    },
+  });
+});
+
 // POST /admin/prospects/:id/analyze
 app.post("/:id/analyze", async (c) => {
   const id = c.req.param("id");

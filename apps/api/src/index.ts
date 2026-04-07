@@ -28,6 +28,8 @@ import portalSupportRoutes from "./routes/portal/support.js";
 // Public Routes
 import webhookRoutes from "./routes/public/webhook.js";
 import chatbotWidgetRoutes from "./routes/public/chatbot-widget.js";
+import unsubscribeRoutes from "./routes/public/unsubscribe.js";
+import trackRoutes from "./routes/public/track.js";
 
 const app = new Hono();
 
@@ -67,6 +69,8 @@ app.get("/health", (c) => {
 
 app.route("/public/webhook", webhookRoutes);
 app.route("/public/chatbot", chatbotWidgetRoutes);
+app.route("/public/unsubscribe", unsubscribeRoutes);
+app.route("/track", trackRoutes);
 
 // ─── Admin Auth Routes (rate limited) ────────────────────────────────────────
 

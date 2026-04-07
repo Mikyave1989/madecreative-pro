@@ -59,19 +59,29 @@ model Prospect {
 }
 
 model OutreachEmail {
-  id         String    @id @default(cuid())
-  prospectId String
-  prospect   Prospect  @relation(fields: [prospectId], references: [id])
-  stepNumber Int
-  subject    String
-  body       String
-  language   String
-  sentAt     DateTime?
-  openedAt   DateTime?
-  clickedAt  DateTime?
-  repliedAt  DateTime?
-  bouncedAt  DateTime?
-  status     String    @default("draft")
+  id               String    @id @default(cuid())
+  prospectId       String
+  prospect         Prospect  @relation(fields: [prospectId], references: [id])
+  stepNumber       Int
+  subject          String
+  body             String
+  bodyPlain        String?
+  language         String
+  fromName         String?
+  fromEmail        String?
+  resendMessageId  String?   @unique
+  sentAt           DateTime?
+  openedAt         DateTime?
+  clickedAt        DateTime?
+  repliedAt        DateTime?
+  bouncedAt        DateTime?
+  cancelledAt      DateTime?
+  status           String    @default("draft")
+  createdAt        DateTime  @default(now())
+
+  @@index([prospectId, stepNumber])
+  @@index([status])
+  @@index([resendMessageId])
 }
 
 model Client {
