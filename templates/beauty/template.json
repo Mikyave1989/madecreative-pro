@@ -1,14 +1,46 @@
 {
-  "slug": "beauty",
-  "name": "Beauty Template",
   "sector": "beauty",
-  "defaultPages": ["home", "services", "about", "contact"],
-  "designDefaults": {
-    "primaryColor": "#2563EB",
-    "secondaryColor": "#F0F6FF",
-    "accentColor": "#1E40AF",
-    "fontHeading": "Inter",
-    "fontBody": "Inter",
-    "borderRadius": "8px"
+  "fonts": {
+    "heading": "Tenor Sans",
+    "body": "Questrial",
+    "weights": [400],
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Tenor+Sans&family=Questrial&display=swap"
+  },
+  "defaultColors": {
+    "primary": "#2a1f1a",
+    "accent": "#c9967a",
+    "background": "#fdf8f5",
+    "text": "#3d2e26",
+    "textLight": "#8a7068",
+    "border": "#ead8cc",
+    "surface": "#ffffff"
+  },
+  "sections": ["hero", "services", "about", "gallery", "testimonials", "booking"],
+  "heroVariant": "editorial_portrait",
+  "animationPreset": "soft_reveal",
+  "components": {
+    "hero": { "variant": "editorial_portrait", "hasTagline": true, "hasSoftOverlay": true },
+    "services": { "variant": "treatment_list", "columnsDesktop": 2, "columnsMobile": 1 },
+    "about": { "variant": "intimate_split", "hasSignature": true },
+    "gallery": { "variant": "editorial_grid", "columnsDesktop": 4, "columnsMobile": 2 },
+    "testimonials": { "variant": "soft_cards", "columnsDesktop": 3 },
+    "booking": { "variant": "booking_form", "hasGDPR": true, "hasServiceSelector": true }
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s | Beauty & Wellness",
+    "defaultDescription": "Centro estetico professionale. Trattamenti viso, corpo e benessere in un ambiente esclusivo.",
+    "structuredDataType": "BeautySalon"
+  },
+  "animations": {
+    "heroEntrance": "soft_fade",
+    "scrollReveal": "soft_reveal",
+    "navTransition": "transparent_to_cream",
+    "ctaHover": "soft_lift",
+    "carouselTransition": "dissolve"
+  },
+  "lighthouse": {
+    "performance": 90,
+    "accessibility": 90,
+    "seo": 95
   }
 }

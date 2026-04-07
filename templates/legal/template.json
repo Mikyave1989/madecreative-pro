@@ -1,14 +1,46 @@
 {
-  "slug": "legal",
-  "name": "Legal Template",
   "sector": "legal",
-  "defaultPages": ["home", "services", "about", "contact"],
-  "designDefaults": {
-    "primaryColor": "#2563EB",
-    "secondaryColor": "#F0F6FF",
-    "accentColor": "#1E40AF",
-    "fontHeading": "Inter",
-    "fontBody": "Inter",
-    "borderRadius": "8px"
+  "fonts": {
+    "heading": "Libre Baskerville",
+    "body": "Karla",
+    "weights": [400, 700],
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Karla:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap"
+  },
+  "defaultColors": {
+    "primary": "#1a1a2e",
+    "accent": "#c5a028",
+    "background": "#f8f7f4",
+    "text": "#2d2d3e",
+    "textLight": "#6b6b7d",
+    "border": "#e0ddd5",
+    "surface": "#ffffff"
+  },
+  "sections": ["hero", "practice_areas", "about", "team", "testimonials", "contact"],
+  "heroVariant": "authority_split",
+  "animationPreset": "authoritative_reveal",
+  "components": {
+    "hero": { "variant": "authority_split", "hasCredentials": true, "hasConsultationCta": true },
+    "practice_areas": { "variant": "list_cards", "columnsDesktop": 2, "columnsMobile": 1 },
+    "about": { "variant": "heritage_split", "hasTimeline": true },
+    "team": { "variant": "portrait_list", "columnsDesktop": 3 },
+    "testimonials": { "variant": "pull_quotes", "columnsDesktop": 2 },
+    "contact": { "variant": "formal_form", "hasConsultationScheduler": true, "hasGDPR": true }
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s | Studio Legale",
+    "defaultDescription": "Studio legale professionale. Assistenza legale specializzata e consulenza personalizzata.",
+    "structuredDataType": "LegalService"
+  },
+  "animations": {
+    "heroEntrance": "word_reveal",
+    "scrollReveal": "authoritative_reveal",
+    "navTransition": "transparent_to_dark",
+    "ctaHover": "underline_expand",
+    "carouselTransition": "crossfade"
+  },
+  "lighthouse": {
+    "performance": 90,
+    "accessibility": 95,
+    "seo": 95
   }
 }

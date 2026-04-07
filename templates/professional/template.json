@@ -1,14 +1,46 @@
 {
-  "slug": "professional",
-  "name": "Professional Template",
   "sector": "professional",
-  "defaultPages": ["home", "services", "about", "contact"],
-  "designDefaults": {
-    "primaryColor": "#2563EB",
-    "secondaryColor": "#F0F6FF",
-    "accentColor": "#1E40AF",
-    "fontHeading": "Inter",
-    "fontBody": "Inter",
-    "borderRadius": "8px"
+  "fonts": {
+    "heading": "Playfair Display",
+    "body": "Nunito",
+    "weights": [300, 400, 500, 600, 700],
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap"
+  },
+  "defaultColors": {
+    "primary": "#1e2d40",
+    "accent": "#2563eb",
+    "background": "#f5f7fa",
+    "text": "#2a3854",
+    "textLight": "#6278a0",
+    "border": "#d8dce8",
+    "surface": "#ffffff"
+  },
+  "sections": ["hero", "services", "about", "portfolio", "testimonials", "contact"],
+  "heroVariant": "professional_split",
+  "animationPreset": "professional_reveal",
+  "components": {
+    "hero": { "variant": "professional_split", "hasKeySkills": true, "hasConsultationCta": true },
+    "services": { "variant": "service_cards", "columnsDesktop": 3, "columnsMobile": 1 },
+    "about": { "variant": "credentials_split", "hasTimeline": false },
+    "portfolio": { "variant": "case_studies", "columnsDesktop": 3, "columnsMobile": 1 },
+    "testimonials": { "variant": "linkedin_style", "columnsDesktop": 3 },
+    "contact": { "variant": "professional_form", "hasCalendlyLink": false, "hasGDPR": true }
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s | Professionista",
+    "defaultDescription": "Servizi professionali di qualità. Consulenza personalizzata e soluzioni su misura.",
+    "structuredDataType": "ProfessionalService"
+  },
+  "animations": {
+    "heroEntrance": "word_reveal",
+    "scrollReveal": "professional_reveal",
+    "navTransition": "transparent_to_white",
+    "ctaHover": "lift_shadow",
+    "carouselTransition": "slide"
+  },
+  "lighthouse": {
+    "performance": 90,
+    "accessibility": 95,
+    "seo": 95
   }
 }

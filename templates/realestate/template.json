@@ -1,14 +1,46 @@
 {
-  "slug": "realestate",
-  "name": "Realestate Template",
   "sector": "realestate",
-  "defaultPages": ["home", "services", "about", "contact"],
-  "designDefaults": {
-    "primaryColor": "#2563EB",
-    "secondaryColor": "#F0F6FF",
-    "accentColor": "#1E40AF",
-    "fontHeading": "Inter",
-    "fontBody": "Inter",
-    "borderRadius": "8px"
+  "fonts": {
+    "heading": "Playfair Display",
+    "body": "Nunito",
+    "weights": [300, 400, 500, 600, 700],
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap"
+  },
+  "defaultColors": {
+    "primary": "#1a2744",
+    "accent": "#c9a84c",
+    "background": "#f8f7f5",
+    "text": "#2a3554",
+    "textLight": "#6272a0",
+    "border": "#ddd8cc",
+    "surface": "#ffffff"
+  },
+  "sections": ["hero", "listings", "services", "about", "testimonials", "contact"],
+  "heroVariant": "property_search",
+  "animationPreset": "premium_rise",
+  "components": {
+    "hero": { "variant": "property_search", "hasSearchBar": true, "hasPropertyStats": true },
+    "listings": { "variant": "property_cards", "columnsDesktop": 3, "columnsMobile": 1 },
+    "services": { "variant": "service_cards", "columnsDesktop": 3 },
+    "about": { "variant": "agent_profile", "hasStats": true },
+    "testimonials": { "variant": "client_stories", "columnsDesktop": 2 },
+    "contact": { "variant": "valuation_form", "hasGDPR": true }
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s | Agenzia Immobiliare",
+    "defaultDescription": "Agenzia immobiliare professionale. Compra, vendi o affitta con i migliori professionisti del settore.",
+    "structuredDataType": "RealEstateAgent"
+  },
+  "animations": {
+    "heroEntrance": "property_reveal",
+    "scrollReveal": "premium_rise",
+    "navTransition": "transparent_to_white",
+    "ctaHover": "property_lift",
+    "carouselTransition": "slide"
+  },
+  "lighthouse": {
+    "performance": 90,
+    "accessibility": 90,
+    "seo": 95
   }
 }

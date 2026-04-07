@@ -1,14 +1,46 @@
 {
-  "slug": "dental",
-  "name": "Dental Template",
   "sector": "dental",
-  "defaultPages": ["home", "services", "about", "contact"],
-  "designDefaults": {
-    "primaryColor": "#2563EB",
-    "secondaryColor": "#F0F6FF",
-    "accentColor": "#1E40AF",
-    "fontHeading": "Inter",
-    "fontBody": "Inter",
-    "borderRadius": "8px"
+  "fonts": {
+    "heading": "Outfit",
+    "body": "Source Sans 3",
+    "weights": [300, 400, 500, 600, 700],
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap"
+  },
+  "defaultColors": {
+    "primary": "#0a2540",
+    "accent": "#00b4d8",
+    "background": "#f0f8ff",
+    "text": "#1a3050",
+    "textLight": "#4a6285",
+    "border": "#d0e8f5",
+    "surface": "#ffffff"
+  },
+  "sections": ["hero", "services", "team", "process", "testimonials", "contact"],
+  "heroVariant": "centered_clean",
+  "animationPreset": "clean_rise",
+  "components": {
+    "hero": { "variant": "centered_clean", "hasStatsBanner": true, "hasTrustBadges": true },
+    "services": { "variant": "icon_cards", "columnsDesktop": 3, "columnsMobile": 1 },
+    "team": { "variant": "photo_grid", "columnsDesktop": 4, "columnsMobile": 2 },
+    "process": { "variant": "steps_horizontal", "stepCount": 4 },
+    "testimonials": { "variant": "cards_grid", "columnsDesktop": 3 },
+    "contact": { "variant": "split_form", "hasAppointmentBooking": true, "hasGDPR": true }
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s | Studio Dentistico",
+    "defaultDescription": "Studio dentistico professionale. Cura dei denti con tecnologie moderne e personale specializzato.",
+    "structuredDataType": "Dentist"
+  },
+  "animations": {
+    "heroEntrance": "word_reveal",
+    "scrollReveal": "clean_rise",
+    "navTransition": "transparent_to_white",
+    "ctaHover": "lift_shadow",
+    "carouselTransition": "fade"
+  },
+  "lighthouse": {
+    "performance": 90,
+    "accessibility": 95,
+    "seo": 95
   }
 }

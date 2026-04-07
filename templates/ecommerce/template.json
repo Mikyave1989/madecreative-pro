@@ -1,14 +1,46 @@
 {
-  "slug": "ecommerce",
-  "name": "Ecommerce Template",
   "sector": "ecommerce",
-  "defaultPages": ["home", "services", "about", "contact"],
-  "designDefaults": {
-    "primaryColor": "#2563EB",
-    "secondaryColor": "#F0F6FF",
-    "accentColor": "#1E40AF",
-    "fontHeading": "Inter",
-    "fontBody": "Inter",
-    "borderRadius": "8px"
+  "fonts": {
+    "heading": "Playfair Display",
+    "body": "Nunito",
+    "weights": [300, 400, 500, 600, 700, 800],
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap"
+  },
+  "defaultColors": {
+    "primary": "#1a1a1a",
+    "accent": "#e63946",
+    "background": "#ffffff",
+    "text": "#1a1a1a",
+    "textLight": "#666666",
+    "border": "#e5e5e5",
+    "surface": "#f9f9f9"
+  },
+  "sections": ["hero", "featured_products", "categories", "benefits", "testimonials", "newsletter"],
+  "heroVariant": "product_showcase",
+  "animationPreset": "clean_fade",
+  "components": {
+    "hero": { "variant": "product_showcase", "hasSearchBar": false, "hasHeroBadge": true },
+    "featured_products": { "variant": "product_grid", "columnsDesktop": 4, "columnsMobile": 2 },
+    "categories": { "variant": "category_tiles", "columnsDesktop": 3, "columnsMobile": 2 },
+    "benefits": { "variant": "icon_row", "columnsDesktop": 4 },
+    "testimonials": { "variant": "rating_cards", "columnsDesktop": 3 },
+    "newsletter": { "variant": "email_capture", "hasCouponIncentive": true }
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s | Shop Online",
+    "defaultDescription": "Acquista online i migliori prodotti. Spedizione veloce, pagamenti sicuri e resi facili.",
+    "structuredDataType": "Store"
+  },
+  "animations": {
+    "heroEntrance": "product_reveal",
+    "scrollReveal": "clean_fade",
+    "navTransition": "sticky_white",
+    "ctaHover": "add_to_cart",
+    "carouselTransition": "slide"
+  },
+  "lighthouse": {
+    "performance": 92,
+    "accessibility": 90,
+    "seo": 95
   }
 }

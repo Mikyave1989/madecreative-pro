@@ -1,14 +1,46 @@
 {
-  "slug": "hotel",
-  "name": "Hotel Template",
   "sector": "hotel",
-  "defaultPages": ["home", "services", "about", "contact"],
-  "designDefaults": {
-    "primaryColor": "#2563EB",
-    "secondaryColor": "#F0F6FF",
-    "accentColor": "#1E40AF",
-    "fontHeading": "Inter",
-    "fontBody": "Inter",
-    "borderRadius": "8px"
+  "fonts": {
+    "heading": "Italiana",
+    "body": "Crimson Text",
+    "weights": [400, 600],
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Italiana&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap"
+  },
+  "defaultColors": {
+    "primary": "#1c1610",
+    "accent": "#c9a84c",
+    "background": "#f9f6f0",
+    "text": "#2c2418",
+    "textLight": "#7a6a52",
+    "border": "#e5d9c5",
+    "surface": "#ffffff"
+  },
+  "sections": ["hero", "rooms", "amenities", "experiences", "testimonials", "booking"],
+  "heroVariant": "luxury_fullscreen",
+  "animationPreset": "luxury_reveal",
+  "components": {
+    "hero": { "variant": "luxury_fullscreen", "hasBookingBar": true, "hasParallax": true },
+    "rooms": { "variant": "room_cards", "columnsDesktop": 3, "columnsMobile": 1 },
+    "amenities": { "variant": "icon_list", "columnsDesktop": 4, "columnsMobile": 2 },
+    "experiences": { "variant": "editorial_split", "columnsDesktop": 2 },
+    "testimonials": { "variant": "luxury_quotes", "columnsDesktop": 2 },
+    "booking": { "variant": "booking_form", "hasDatePicker": true, "hasRoomSelector": true, "hasGDPR": true }
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s | Hotel & Resort",
+    "defaultDescription": "Hotel boutique di charme. Soggiorna in un'atmosfera unica con servizi esclusivi.",
+    "structuredDataType": "Hotel"
+  },
+  "animations": {
+    "heroEntrance": "luxury_fade",
+    "scrollReveal": "luxury_reveal",
+    "navTransition": "transparent_to_dark",
+    "ctaHover": "gold_glow",
+    "carouselTransition": "crossfade_slow"
+  },
+  "lighthouse": {
+    "performance": 90,
+    "accessibility": 90,
+    "seo": 95
   }
 }

@@ -1,14 +1,46 @@
 {
-  "slug": "medical",
-  "name": "Medical Template",
   "sector": "medical",
-  "defaultPages": ["home", "services", "about", "contact"],
-  "designDefaults": {
-    "primaryColor": "#2563EB",
-    "secondaryColor": "#F0F6FF",
-    "accentColor": "#1E40AF",
-    "fontHeading": "Inter",
-    "fontBody": "Inter",
-    "borderRadius": "8px"
+  "fonts": {
+    "heading": "Outfit",
+    "body": "Source Sans 3",
+    "weights": [300, 400, 500, 600, 700],
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap"
+  },
+  "defaultColors": {
+    "primary": "#005f73",
+    "accent": "#0a9396",
+    "background": "#f0fbfc",
+    "text": "#1a3a40",
+    "textLight": "#4a7a82",
+    "border": "#c8e8ec",
+    "surface": "#ffffff"
+  },
+  "sections": ["hero", "specialties", "team", "process", "testimonials", "contact"],
+  "heroVariant": "trust_centered",
+  "animationPreset": "clinical_rise",
+  "components": {
+    "hero": { "variant": "trust_centered", "hasAccreditations": true, "hasBookingCta": true },
+    "specialties": { "variant": "specialty_cards", "columnsDesktop": 3, "columnsMobile": 1 },
+    "team": { "variant": "doctor_grid", "columnsDesktop": 4, "columnsMobile": 2 },
+    "process": { "variant": "patient_journey", "stepCount": 4 },
+    "testimonials": { "variant": "patient_reviews", "columnsDesktop": 3 },
+    "contact": { "variant": "appointment_form", "hasGDPR": true, "hasInsuranceField": true }
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s | Medico Specialista",
+    "defaultDescription": "Studio medico specialistico. Prenota una visita con i nostri medici esperti.",
+    "structuredDataType": "MedicalClinic"
+  },
+  "animations": {
+    "heroEntrance": "word_reveal",
+    "scrollReveal": "clinical_rise",
+    "navTransition": "transparent_to_white",
+    "ctaHover": "trust_lift",
+    "carouselTransition": "fade"
+  },
+  "lighthouse": {
+    "performance": 90,
+    "accessibility": 95,
+    "seo": 95
   }
 }

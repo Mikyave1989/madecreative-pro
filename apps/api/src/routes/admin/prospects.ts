@@ -222,6 +222,67 @@ app.get("/stats", async (c) => {
   });
 });
 
+// POST /admin/prospects/:id/build-preview — Avvia Builder Agent per un prospect
+app.post("/:id/build-preview", async (c) => {
+  const id = c.req.param("id");
+  const { enqueueAgentJob } = await import("../../lib/queue.js");
+
+  const prospect = await prisma.prospect.findUnique({ where: { id } });
+  if (!prospect) {
+    return c.json({ success: false, error: "Prospect not found" }, 404);
+  }
+
+  // Validate that we have enough data to build
+  if (!prospect.sector || !prospect.country) {
+    return c.json(
+      {
+        success: false,
+        error: "Prospect is missing required fields: sector and country are required for preview generation",
+      },
+      422
+    );
+  }
+
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  const templateSlug = (body["templateSlug"] as string | undefined) ?? prospect.sector;
+  const customizations = body["customizations"] as Record<string, unknown> | undefined;
+
+  const job = await prisma.agentJob.create({
+    data: {
+      agentType: "BUILDER",
+      status: "QUEUED",
+      input: {
+        prospectId: id,
+        templateSlug,
+        ...(customizations ? { customizations } : {}),
+      },
+      prospectId: id,
+    },
+  });
+
+  await enqueueAgentJob({
+    agentType: "BUILDER",
+    jobId: job.id,
+    input: {
+      prospectId: id,
+      templateSlug,
+      ...(customizations ? { customizations } : {}),
+    },
+  });
+
+  return c.json(
+    {
+      success: true,
+      data: {
+        jobId: job.id,
+        message: `Builder Agent queued for prospect: ${prospect.companyName}`,
+        estimatedDuration: "2-5 minutes",
+      },
+    },
+    202
+  );
+});
+
 // POST /admin/prospects/:id/analyze
 app.post("/:id/analyze", async (c) => {
   const id = c.req.param("id");

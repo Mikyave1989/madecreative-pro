@@ -1,14 +1,46 @@
 {
-  "slug": "fitness",
-  "name": "Fitness Template",
   "sector": "fitness",
-  "defaultPages": ["home", "services", "about", "contact"],
-  "designDefaults": {
-    "primaryColor": "#2563EB",
-    "secondaryColor": "#F0F6FF",
-    "accentColor": "#1E40AF",
-    "fontHeading": "Inter",
-    "fontBody": "Inter",
-    "borderRadius": "8px"
+  "fonts": {
+    "heading": "Bebas Neue",
+    "body": "Barlow",
+    "weights": [300, 400, 500, 600, 700],
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap"
+  },
+  "defaultColors": {
+    "primary": "#0d0d0d",
+    "accent": "#ff3d00",
+    "background": "#111111",
+    "text": "#f5f5f5",
+    "textLight": "#aaaaaa",
+    "border": "#2a2a2a",
+    "surface": "#1a1a1a"
+  },
+  "sections": ["hero", "programs", "trainers", "transformation", "pricing", "contact"],
+  "heroVariant": "fullscreen_impact",
+  "animationPreset": "high_energy",
+  "components": {
+    "hero": { "variant": "fullscreen_impact", "hasCountdown": false, "hasVideoBackground": false },
+    "programs": { "variant": "bold_cards", "columnsDesktop": 3, "columnsMobile": 1 },
+    "trainers": { "variant": "photo_hover", "columnsDesktop": 4, "columnsMobile": 2 },
+    "transformation": { "variant": "before_after", "columnsDesktop": 3 },
+    "pricing": { "variant": "comparison_table", "columnsDesktop": 3 },
+    "contact": { "variant": "dark_form", "hasTrialCta": true, "hasGDPR": true }
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s | Fitness & Training",
+    "defaultDescription": "Centro fitness professionale. Personal training, corsi di gruppo e programmi personalizzati.",
+    "structuredDataType": "SportsActivityLocation"
+  },
+  "animations": {
+    "heroEntrance": "slam_reveal",
+    "scrollReveal": "high_energy",
+    "navTransition": "transparent_to_black",
+    "ctaHover": "scale_burst",
+    "carouselTransition": "slide_fast"
+  },
+  "lighthouse": {
+    "performance": 90,
+    "accessibility": 90,
+    "seo": 95
   }
 }
