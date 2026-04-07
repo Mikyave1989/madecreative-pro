@@ -2,8 +2,208 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Font Variables ─────────────────────────────────────────── */
+:root {
+  --font-orbitron: "Orbitron", monospace;
+  --font-share-tech-mono: "Share Tech Mono", monospace;
+  --font-dm-sans: "DM Sans", sans-serif;
+
+  --color-cyan: #00f0ff;
+  --color-violet: #a855f7;
+  --color-amber: #f59e0b;
+  --color-green: #10b981;
+  --color-blue: #3b82f6;
+  --color-red: #ef4444;
+  --color-pink: #ec4899;
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────── */
 @layer base {
-  body {
-    @apply antialiased bg-gray-50;
+  * {
+    box-sizing: border-box;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply antialiased;
+    background-color: #06080d;
+    color: #e2e8f0;
+    font-family: var(--font-dm-sans), sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+/* ─── Animated Grid Background ───────────────────────────────── */
+.animated-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridShimmer 6s ease-in-out infinite;
+}
+
+@keyframes gridShimmer {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* ─── Scan Line Overlay ──────────────────────────────────────── */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.scanlines::before {
+  content: "";
+  position: absolute;
+  top: -100%;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 240, 255, 0.03) 50%,
+    transparent 100%
+  );
+  animation: scanline 10s linear infinite;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(200vh); }
+}
+
+/* ─── Grain Overlay ──────────────────────────────────────────── */
+.grain {
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 2;
+  width: 200%;
+  height: 200%;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  animation: grain 0.5s steps(1) infinite;
+}
+
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-2%, -3%); }
+  20% { transform: translate(3%, 1%); }
+  30% { transform: translate(-1%, 4%); }
+  40% { transform: translate(4%, -2%); }
+  50% { transform: translate(-3%, 3%); }
+  60% { transform: translate(2%, -4%); }
+  70% { transform: translate(-4%, 1%); }
+  80% { transform: translate(1%, -1%); }
+  90% { transform: translate(-2%, 2%); }
+}
+
+/* ─── Neon Glow Utilities ────────────────────────────────────── */
+@layer utilities {
+  .glow-cyan {
+    box-shadow: 0 0 8px #00f0ff60, 0 0 20px #00f0ff30;
+    border-color: #00f0ff;
+  }
+  .glow-violet {
+    box-shadow: 0 0 8px #a855f760, 0 0 20px #a855f730;
+    border-color: #a855f7;
+  }
+  .glow-amber {
+    box-shadow: 0 0 8px #f59e0b60, 0 0 20px #f59e0b30;
+    border-color: #f59e0b;
+  }
+  .glow-green {
+    box-shadow: 0 0 8px #10b98160, 0 0 20px #10b98130;
+    border-color: #10b981;
+  }
+  .glow-blue {
+    box-shadow: 0 0 8px #3b82f660, 0 0 20px #3b82f630;
+    border-color: #3b82f6;
+  }
+  .glow-red {
+    box-shadow: 0 0 8px #ef444460, 0 0 20px #ef444430;
+    border-color: #ef4444;
+  }
+  .glow-pink {
+    box-shadow: 0 0 8px #ec489960, 0 0 20px #ec489930;
+    border-color: #ec4899;
+  }
+
+  .text-glow-cyan { text-shadow: 0 0 10px #00f0ff80; }
+  .text-glow-violet { text-shadow: 0 0 10px #a855f780; }
+  .text-glow-amber { text-shadow: 0 0 10px #f59e0b80; }
+  .text-glow-green { text-shadow: 0 0 10px #10b98180; }
+  .text-glow-blue { text-shadow: 0 0 10px #3b82f680; }
+  .text-glow-red { text-shadow: 0 0 10px #ef444480; }
+  .text-glow-pink { text-shadow: 0 0 10px #ec489980; }
+
+  .font-orbitron { font-family: var(--font-orbitron), monospace; }
+  .font-mono-tech { font-family: var(--font-share-tech-mono), monospace; }
+}
+
+/* ─── Cyberpunk Scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0d14;
+}
+::-webkit-scrollbar-thumb {
+  background: #00f0ff40;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00f0ff80;
+}
+
+/* ─── Pulsing System Online Badge ────────────────────────────── */
+@keyframes systemPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px #10b981; }
+  50% { opacity: 0.6; box-shadow: 0 0 12px #10b981, 0 0 24px #10b98150; }
+}
+
+.system-online {
+  animation: systemPulse 2s ease-in-out infinite;
+}
+
+/* ─── Progress Bar Animation ─────────────────────────────────── */
+@keyframes progressFill {
+  from { width: 0%; }
+  to { width: var(--progress-width, 100%); }
+}
+
+.progress-animated {
+  animation: progressFill 1s ease-out forwards;
+}
+
+/* ─── Entry Animations ───────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slideInFromRight 0.3s ease-out both;
 }

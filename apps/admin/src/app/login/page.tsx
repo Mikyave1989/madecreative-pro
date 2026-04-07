@@ -1,118 +1,115 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Lock, Mail, AlertCircle } from "lucide-react";
 
-export default function AdminLoginPage() {
-  const router = useRouter();
+function LoginForm() {
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError(null);
     setLoading(true);
-
     try {
-      const apiUrl =
-        process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.madecreative.pro";
-
-      const res = await fetch(`${apiUrl}/admin/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = (await res.json()) as {
-        success: boolean;
-        error?: string;
-        data?: { accessToken: string; refreshToken: string };
-      };
-
-      if (!res.ok || !data.success) {
-        setError(data.error ?? "Login failed");
-        return;
-      }
-
-      if (data.data) {
-        localStorage.setItem("mc_admin_token", data.data.accessToken);
-        localStorage.setItem("mc_admin_refresh", data.data.refreshToken);
-      }
-
-      router.push("/dashboard");
+      await login(email, password);
     } catch {
-      setError("Network error. Please try again.");
+      setError("Invalid credentials. Check your email and password.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">
-            Made<span className="text-blue-400">Creative</span>
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="mb-10 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-neon-cyan/40 bg-neon-cyan/10">
+            <span
+              className="font-orbitron text-lg font-black text-neon-cyan"
+              style={{ textShadow: "0 0 16px #00f0ff" }}
+            >
+              MC
+            </span>
+          </div>
+          <h1
+            className="font-orbitron text-xl font-bold tracking-[0.2em] text-neon-cyan uppercase"
+            style={{ textShadow: "0 0 12px #00f0ff60" }}
+          >
+            MadeCreative
           </h1>
-          <p className="text-slate-400 mt-2">Admin Dashboard</p>
+          <p className="mt-1 font-mono-tech text-[10px] uppercase tracking-widest text-slate-600">
+            Admin Panel — Secure Access
+          </p>
         </div>
 
-        <div className="bg-slate-800 rounded-2xl p-8 shadow-xl border border-slate-700">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="admin@madecreative.pro"
-              />
-            </div>
+        {/* Card */}
+        <div className="relative rounded-lg border border-neon-cyan/20 bg-bg-card p-6 shadow-neon-cyan">
+          <p className="mb-5 text-center font-mono-tech text-[10px] uppercase tracking-widest text-slate-500">
+            Authentication Required
+          </p>
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="••••••••"
-              />
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <Input
+              type="email"
+              label="Email"
+              placeholder="admin@madecreative.it"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              leftIcon={<Mail className="h-3.5 w-3.5" />}
+            />
+            <Input
+              type="password"
+              label="Password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              leftIcon={<Lock className="h-3.5 w-3.5" />}
+            />
 
             {error && (
-              <div className="bg-red-900/50 border border-red-700 text-red-300 rounded-lg px-4 py-3 text-sm">
-                {error}
+              <div className="flex items-center gap-2 rounded border border-neon-red/30 bg-neon-red/10 px-3 py-2">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-neon-red" />
+                <p className="font-mono-tech text-[10px] text-neon-red">{error}</p>
               </div>
             )}
 
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white rounded-lg px-4 py-3 font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              color="cyan"
+              variant="solid"
+              size="md"
+              loading={loading}
+              className="w-full"
             >
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
+              {loading ? "Authenticating..." : "Access System"}
+            </Button>
           </form>
         </div>
+
+        <p className="mt-6 text-center font-mono-tech text-[9px] uppercase tracking-widest text-slate-800">
+          MadeCreative Admin v1.0 — Restricted Access
+        </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <AuthProvider>
+      <LoginForm />
+    </AuthProvider>
   );
 }
