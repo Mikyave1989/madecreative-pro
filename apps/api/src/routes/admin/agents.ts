@@ -128,6 +128,54 @@ app.delete("/jobs/:id", async (c) => {
   return c.json({ success: true, message: "Job cancelled" });
 });
 
+// POST /admin/agents/bulk-analyze — queue ANALYZER jobs for all SCRAPED prospects without a score
+app.post("/bulk-analyze", async (c) => {
+  const BULK_LIMIT = 50;
+
+  const prospects = await prisma.prospect.findMany({
+    where: {
+      status: "SCRAPED",
+      leadScore: 0,
+    },
+    take: BULK_LIMIT,
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  if (prospects.length === 0) {
+    return c.json({
+      success: true,
+      data: { enqueued: 0, jobIds: [], message: "No eligible prospects found" },
+    });
+  }
+
+  const jobIds: string[] = [];
+
+  for (const prospect of prospects) {
+    const job = await prisma.agentJob.create({
+      data: {
+        agentType: "ANALYZER",
+        status: "QUEUED",
+        input: { prospectId: prospect.id },
+        prospectId: prospect.id,
+      },
+    });
+
+    await enqueueAgentJob({
+      agentType: "ANALYZER",
+      jobId: job.id,
+      input: { prospectId: prospect.id },
+    });
+
+    jobIds.push(job.id);
+  }
+
+  return c.json({
+    success: true,
+    data: { enqueued: jobIds.length, jobIds },
+  });
+});
+
 // GET /admin/agents/stats
 app.get("/stats", async (c) => {
   const [byStatus, byType, recentCost] = await Promise.all([
