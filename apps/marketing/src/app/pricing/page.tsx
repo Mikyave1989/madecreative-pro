@@ -414,8 +414,8 @@ export default function PricingPage() {
               30-day money-back guarantee
             </h3>
             <p className="text-gray-600 max-w-lg mx-auto text-sm">
-              Not satisfied in the first 30 days? We'll refund your setup fee and first month,
-              no questions asked. We're that confident in what we deliver.
+              Not satisfied in the first 30 days? We&apos;ll refund your setup fee and first month,
+              no questions asked. We&apos;re that confident in what we deliver.
             </p>
           </div>
         </div>

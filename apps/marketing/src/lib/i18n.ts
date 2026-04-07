@@ -1,0 +1,2145 @@
+export type Locale = "de" | "it" | "es" | "fr" | "nl" | "pt" | "en";
+
+export const DEFAULT_LOCALE: Locale = "de";
+
+export const SUPPORTED_LOCALES: Locale[] = ["de", "it", "es", "fr", "nl", "pt", "en"];
+
+export const LOCALE_NAMES: Record<Locale, string> = {
+  de: "Deutsch",
+  it: "Italiano",
+  es: "Español",
+  fr: "Français",
+  nl: "Nederlands",
+  pt: "Português",
+  en: "English",
+};
+
+export interface Translations {
+  meta: {
+    title: string;
+    description: string;
+  };
+  nav: {
+    howItWorks: string;
+    results: string;
+    pricing: string;
+    demo: string;
+    startFree: string;
+  };
+  hero: {
+    badge: string;
+    title: string;
+    titleHighlight: string;
+    subtitle: string;
+    cta: string;
+    ctaSecondary: string;
+    trustNote: string;
+  };
+  problem: {
+    sectionLabel: string;
+    title: string;
+    subtitle: string;
+    stats: Array<{
+      value: string;
+      numericValue: number;
+      suffix: string;
+      label: string;
+      description: string;
+    }>;
+  };
+  howItWorks: {
+    sectionLabel: string;
+    title: string;
+    subtitle: string;
+    steps: Array<{
+      number: string;
+      title: string;
+      description: string;
+    }>;
+  };
+  agentFloor: {
+    sectionLabel: string;
+    title: string;
+    subtitle: string;
+    agents: Array<{
+      name: string;
+      task: string;
+    }>;
+  };
+  results: {
+    sectionLabel: string;
+    title: string;
+    subtitle: string;
+    metrics: Array<{
+      value: string;
+      numericValue: number;
+      suffix: string;
+      prefix: string;
+      label: string;
+    }>;
+  };
+  features: {
+    sectionLabel: string;
+    title: string;
+    subtitle: string;
+    items: Array<{
+      title: string;
+      description: string;
+    }>;
+  };
+  demo: {
+    sectionLabel: string;
+    title: string;
+    subtitle: string;
+    namePlaceholder: string;
+    sectorPlaceholder: string;
+    cityPlaceholder: string;
+    cta: string;
+    loading: string;
+    successTitle: string;
+    successSubtitle: string;
+    successNote: string;
+  };
+  pricing: {
+    sectionLabel: string;
+    title: string;
+    subtitle: string;
+    monthly: string;
+    annual: string;
+    annualDiscount: string;
+    perMonth: string;
+    setupFee: string;
+    mostPopular: string;
+    getStarted: string;
+    moneyBack: string;
+    plans: Array<{
+      name: string;
+      description: string;
+      features: string[];
+    }>;
+  };
+  faq: {
+    sectionLabel: string;
+    title: string;
+    items: Array<{
+      q: string;
+      a: string;
+    }>;
+  };
+  finalCta: {
+    badge: string;
+    title: string;
+    subtitle: string;
+    cta: string;
+    trustNote: string;
+  };
+  footer: {
+    tagline: string;
+    copyright: string;
+    links: {
+      privacy: string;
+      cookies: string;
+      impressum: string;
+      terms: string;
+    };
+  };
+}
+
+export const translations: Record<Locale, Translations> = {
+  de: {
+    meta: {
+      title: "MadeCreative — KI-gestützte Website in 60 Sekunden",
+      description:
+        "MadeCreative erstellt Ihre professionelle Website in 60 Sekunden mit KI. Lokales SEO, Social Media, Chatbot und Leads — vollständig automatisiert. Ab €297/Monat.",
+    },
+    nav: {
+      howItWorks: "So funktioniert's",
+      results: "Ergebnisse",
+      pricing: "Preise",
+      demo: "Demo",
+      startFree: "Kostenlos starten",
+    },
+    hero: {
+      badge: "KI-gestütztes digitales Marketing",
+      title: "Deine Website",
+      titleHighlight: "in 60 Sekunden",
+      subtitle:
+        "MadeCreative erstellt deine professionelle Website, optimiert dein SEO, managed Social Media und generiert Leads — alles vollautomatisch durch KI.",
+      cta: "Generiere deine Website gratis in 60 Sekunden",
+      ctaSecondary: "So funktioniert's",
+      trustNote: "Keine Kreditkarte erforderlich. Jederzeit kündbar.",
+    },
+    problem: {
+      sectionLabel: "Das Problem",
+      title: "Warum KMUs online scheitern",
+      subtitle:
+        "Kleine und mittlere Unternehmen verlieren täglich Kunden, weil sie keine professionelle Online-Präsenz haben.",
+      stats: [
+        {
+          value: "73",
+          numericValue: 73,
+          suffix: "%",
+          label: "KMUs ohne Website",
+          description: "Verlieren Kunden an digital aufgestellte Konkurrenten",
+        },
+        {
+          value: "4.200",
+          numericValue: 4200,
+          suffix: "€",
+          label: "Durchschnittskosten Agentur",
+          description: "Nur für eine einfache Website — ohne laufende Betreuung",
+        },
+        {
+          value: "12",
+          numericValue: 12,
+          suffix: " Wo.",
+          label: "Durchschnittliche Wartezeit",
+          description: "Bis eine Agentur deine Website fertigstellt",
+        },
+      ],
+    },
+    howItWorks: {
+      sectionLabel: "So funktioniert's",
+      title: "Von Null zur fertigen Website in 3 Schritten",
+      subtitle: "Unser KI-System analysiert dein Unternehmen und erstellt alles automatisch.",
+      steps: [
+        {
+          number: "01",
+          title: "Scraping & Analyse",
+          description:
+            "Unser KI-Agent analysiert deine bestehende Online-Präsenz, deinen Sektor und deine Mitbewerber. In wenigen Sekunden.",
+        },
+        {
+          number: "02",
+          title: "Generierung & Preview",
+          description:
+            "Die KI erstellt deine maßgeschneiderte Website mit Texten, Design und SEO-Optimierung. Du siehst eine Live-Preview.",
+        },
+        {
+          number: "03",
+          title: "Launch & Automatisierung",
+          description:
+            "Mit einem Klick geht deine Website live. Chatbot, Social Media und E-Mail-Automation starten sofort.",
+        },
+      ],
+    },
+    agentFloor: {
+      sectionLabel: "Hinter den Kulissen",
+      title: "Il Cervello Operativo",
+      subtitle:
+        "7 spezialisierte KI-Agenten arbeiten rund um die Uhr für dein Unternehmen. Jeder Agent ist auf seine Aufgabe spezialisiert.",
+      agents: [
+        { name: "Scraper Agent", task: "Analysiert Konkurrenten und Keywords in Echtzeit" },
+        { name: "Analyzer Agent", task: "Verarbeitet Daten und erstellt Strategie-Reports" },
+        { name: "Builder Agent", task: "Generiert und deployt deine Website in Sekunden" },
+        { name: "Social Agent", task: "Erstellt und plant Social-Media-Posts automatisch" },
+        { name: "Chat Support", task: "Beantwortet Kundenanfragen 24/7 auf deiner Website" },
+        { name: "QA Station", task: "Prüft Qualität, SEO und Performance kontinuierlich" },
+        { name: "Outreach Ops", task: "Versendet personalisierte E-Mail-Sequenzen" },
+      ],
+    },
+    results: {
+      sectionLabel: "Ergebnisse",
+      title: "Zahlen, die sprechen",
+      subtitle: "Echte Ergebnisse von echten Unternehmen, die MadeCreative nutzen.",
+      metrics: [
+        { value: "127", numericValue: 127, suffix: "", prefix: "", label: "Websites gelauncht" },
+        {
+          value: "2.1",
+          numericValue: 2.1,
+          suffix: "M€",
+          prefix: "",
+          label: "Umsatz für Kunden generiert",
+        },
+        { value: "4.8", numericValue: 4.8, suffix: "★", prefix: "", label: "Kundenzufriedenheit" },
+      ],
+    },
+    features: {
+      sectionLabel: "Was enthalten ist",
+      title: "Alles, was dein Unternehmen braucht",
+      subtitle: "Eine Plattform. Vollständige digitale Präsenz.",
+      items: [
+        {
+          title: "Professionelle Website",
+          description:
+            "KI-generierte Website zugeschnitten auf deinen Sektor, in 60 Sekunden deployed mit eingebautem SEO.",
+        },
+        {
+          title: "Lokales SEO",
+          description:
+            "Höhere Rankings in lokalen Suchen. Wir optimieren dein Google-Unternehmensprofil und bauen lokale Zitierungen.",
+        },
+        {
+          title: "Social Media",
+          description:
+            "KI-erstellte Posts für Instagram und Facebook, automatisch geplant und wöchentlich veröffentlicht.",
+        },
+        {
+          title: "KI-Chatbot",
+          description:
+            "24/7-Kundensupport-Chatbot trainiert auf deine Unternehmensdaten, eingebettet auf deiner Website.",
+        },
+        {
+          title: "Automation",
+          description:
+            "E-Mail-Sequenzen, Lead-Benachrichtigungen, Bewertungsanfragen — alles automatisiert.",
+        },
+        {
+          title: "Monatliche Reports",
+          description:
+            "Detaillierte monatliche Performance-Reports mit Website-Traffic, Leads und Umsatzwirkung.",
+        },
+      ],
+    },
+    demo: {
+      sectionLabel: "Live Demo",
+      title: "Sieh es selbst",
+      subtitle: "Gib die Daten deines Unternehmens ein und sieh, was unsere KI in Sekunden erstellt.",
+      namePlaceholder: "z.B. Bäckerei Schmidt",
+      sectorPlaceholder: "z.B. Restaurant, Friseur, Zahnarzt...",
+      cityPlaceholder: "z.B. München",
+      cta: "Website-Preview generieren",
+      loading: "KI generiert deine Preview...",
+      successTitle: "Deine Preview ist bereit!",
+      successSubtitle:
+        "Unsere KI hat in Sekunden eine maßgeschneiderte Website für dein Unternehmen erstellt.",
+      successNote: "Starte jetzt und deine echte Website geht in 60 Sekunden live.",
+    },
+    pricing: {
+      sectionLabel: "Preise",
+      title: "Transparent und fair",
+      subtitle: "Einmalige Setup-Gebühr + monatliches Abo. Jederzeit kündbar.",
+      monthly: "Monatlich",
+      annual: "Jährlich",
+      annualDiscount: "-20%",
+      perMonth: "/Monat",
+      setupFee: "Einmalige Setup-Gebühr",
+      mostPopular: "Beliebteste",
+      getStarted: "Jetzt starten",
+      moneyBack: "30-Tage Geld-zurück-Garantie",
+      plans: [
+        {
+          name: "Starter",
+          description: "Perfekt für kleine Unternehmen, die online durchstarten.",
+          features: [
+            "1 professionelle Website",
+            "SSL-Zertifikat",
+            "Lokale SEO-Optimierung",
+            "12 Social Posts/Monat",
+            "KI-Chatbot (24/7)",
+            "3 Automationen",
+            "50 Leads/Monat",
+            "Monatlicher Report",
+            "E-Mail-Support",
+          ],
+        },
+        {
+          name: "Growth",
+          description: "Für wachsende Unternehmen mit mehr Power und Reichweite.",
+          features: [
+            "3 professionelle Websites",
+            "Custom Domain inklusive",
+            "Advanced SEO + Google Business",
+            "30 Social Posts/Monat",
+            "2 KI-Chatbots",
+            "10 Automationen",
+            "200 Leads/Monat",
+            "Wöchentliche Reports",
+            "Priority Support",
+            "KI-Agenten aktiviert",
+          ],
+        },
+        {
+          name: "Enterprise",
+          description: "Full-Service digitales Marketing für etablierte Unternehmen.",
+          features: [
+            "10 Websites",
+            "Mehrere Custom Domains",
+            "Full SEO Suite + Google Ads",
+            "90 Social Posts/Monat",
+            "5 KI-Chatbots",
+            "50 Automationen",
+            "1000 Leads/Monat",
+            "Tägliche Reports",
+            "Dedicated Account Manager",
+            "Custom Integrationen",
+          ],
+        },
+      ],
+    },
+    faq: {
+      sectionLabel: "FAQ",
+      title: "Häufig gestellte Fragen",
+      items: [
+        {
+          q: "Was ist in der Setup-Gebühr enthalten?",
+          a: "Die einmalige Setup-Gebühr deckt das komplette Onboarding ab: Website-Erstellung und Deployment, Chatbot-Konfiguration, Automation-Setup und KI-Training auf deine Unternehmensdaten.",
+        },
+        {
+          q: "Wie lange dauert es bis meine Website live ist?",
+          a: "Deine Website geht innerhalb von 60 Sekunden live. Unser automatisiertes System übernimmt alles: Domain-Setup, SSL-Zertifikat, Cookie-Banner, Datenschutzerklärung und Deployment.",
+        },
+        {
+          q: "Kann ich meine eigene Domain verwenden?",
+          a: "Starter-Pläne nutzen eine Subdomain. Growth und Enterprise-Pläne beinhalten eine Custom-Domain-Verbindung.",
+        },
+        {
+          q: "Was passiert wenn ich kündige?",
+          a: "Du kannst jederzeit ohne Strafgebühren kündigen. Deine Website bleibt bis zum Ende der Abrechnungsperiode aktiv.",
+        },
+        {
+          q: "Gilt die 30-Tage-Garantie auch für die Setup-Gebühr?",
+          a: "Ja. Wenn du nicht zufrieden bist, erstatten wir sowohl die Setup-Gebühr als auch die erste Monatszahlung.",
+        },
+        {
+          q: "Welche Sprachen werden unterstützt?",
+          a: "Wir unterstützen Deutsch, Italienisch, Französisch, Spanisch, Niederländisch, Portugiesisch und Englisch.",
+        },
+        {
+          q: "Ist die KI wirklich gut genug?",
+          a: "Unsere KI wurde auf Tausenden von Websites aus über 50 Branchen trainiert. Das Ergebnis ist professionell, SEO-optimiert und auf deinen Sektor zugeschnitten.",
+        },
+        {
+          q: "Brauche ich technische Kenntnisse?",
+          a: "Absolut nicht. MadeCreative ist für Nicht-Techniker entwickelt. Du gibst einfach deine Unternehmensdaten ein — den Rest erledigt die KI.",
+        },
+      ],
+    },
+    finalCta: {
+      badge: "Bereit loszulegen?",
+      title: "Deine Website ist 60 Sekunden entfernt",
+      subtitle:
+        "Tritt den 127+ Unternehmen bei, die bereits mit MadeCreative online sind und täglich neue Kunden gewinnen.",
+      cta: "Jetzt kostenlos starten",
+      trustNote: "Keine Kreditkarte. Kein Vertrag. Sofortiger Start.",
+    },
+    footer: {
+      tagline: "Digitales Marketing, vollständig durch KI betrieben.",
+      copyright: "© 2026 madecreative.pro — Zero Mitarbeiter. 100% KI.",
+      links: {
+        privacy: "Datenschutz",
+        cookies: "Cookie-Richtlinie",
+        impressum: "Impressum",
+        terms: "AGB",
+      },
+    },
+  },
+
+  it: {
+    meta: {
+      title: "MadeCreative — Sito web AI in 60 secondi",
+      description:
+        "MadeCreative crea il tuo sito professionale in 60 secondi con l'AI. SEO locale, social media, chatbot e lead — completamente automatizzato. Da €297/mese.",
+    },
+    nav: {
+      howItWorks: "Come funziona",
+      results: "Risultati",
+      pricing: "Prezzi",
+      demo: "Demo",
+      startFree: "Inizia gratis",
+    },
+    hero: {
+      badge: "Marketing digitale alimentato dall'AI",
+      title: "Il tuo sito web",
+      titleHighlight: "in 60 secondi",
+      subtitle:
+        "MadeCreative costruisce il tuo sito professionale, gestisce il SEO, i social media e genera lead — tutto automatizzato dall'AI.",
+      cta: "Genera il tuo sito gratis in 60 secondi",
+      ctaSecondary: "Come funziona",
+      trustNote: "Nessuna carta di credito. Cancella quando vuoi.",
+    },
+    problem: {
+      sectionLabel: "Il Problema",
+      title: "Perché le PMI falliscono online",
+      subtitle:
+        "Le piccole e medie imprese perdono clienti ogni giorno per mancanza di presenza online professionale.",
+      stats: [
+        {
+          value: "73",
+          numericValue: 73,
+          suffix: "%",
+          label: "PMI senza sito web",
+          description: "Perdono clienti a favore dei concorrenti digitalmente presenti",
+        },
+        {
+          value: "4.200",
+          numericValue: 4200,
+          suffix: "€",
+          label: "Costo medio agenzia",
+          description: "Solo per un sito semplice — senza gestione continuativa",
+        },
+        {
+          value: "12",
+          numericValue: 12,
+          suffix: " sett.",
+          label: "Tempi medi",
+          description: "Quanto impiega un'agenzia per completare il tuo sito",
+        },
+      ],
+    },
+    howItWorks: {
+      sectionLabel: "Come Funziona",
+      title: "Da zero al sito completo in 3 step",
+      subtitle: "Il nostro sistema AI analizza la tua azienda e crea tutto automaticamente.",
+      steps: [
+        {
+          number: "01",
+          title: "Scraping & Analisi",
+          description:
+            "Il nostro agente AI analizza la tua presenza online esistente, il settore e i concorrenti. In pochi secondi.",
+        },
+        {
+          number: "02",
+          title: "Generazione & Preview",
+          description:
+            "L'AI crea il tuo sito personalizzato con testi, design e ottimizzazione SEO. Vedi una preview in tempo reale.",
+        },
+        {
+          number: "03",
+          title: "Lancio & Automazione",
+          description:
+            "Con un clic il tuo sito va live. Chatbot, social media e automazione email partono immediatamente.",
+        },
+      ],
+    },
+    agentFloor: {
+      sectionLabel: "Dietro le Quinte",
+      title: "Il Cervello Operativo",
+      subtitle:
+        "7 agenti AI specializzati lavorano 24/7 per la tua azienda. Ogni agente è specializzato nel suo compito.",
+      agents: [
+        { name: "Scraper Agent", task: "Analizza concorrenti e keyword in tempo reale" },
+        { name: "Analyzer Agent", task: "Elabora i dati e crea report strategici" },
+        { name: "Builder Agent", task: "Genera e deploya il tuo sito in secondi" },
+        { name: "Social Agent", task: "Crea e pianifica post social automaticamente" },
+        { name: "Chat Support", task: "Risponde ai clienti 24/7 sul tuo sito" },
+        { name: "QA Station", task: "Controlla qualità, SEO e performance continuamente" },
+        { name: "Outreach Ops", task: "Invia sequenze email personalizzate" },
+      ],
+    },
+    results: {
+      sectionLabel: "Risultati",
+      title: "Numeri che parlano",
+      subtitle: "Risultati reali da aziende reali che usano MadeCreative.",
+      metrics: [
+        { value: "127", numericValue: 127, suffix: "", prefix: "", label: "Siti lanciati" },
+        {
+          value: "2.1",
+          numericValue: 2.1,
+          suffix: "M€",
+          prefix: "",
+          label: "Fatturato generato per i clienti",
+        },
+        {
+          value: "4.8",
+          numericValue: 4.8,
+          suffix: "★",
+          prefix: "",
+          label: "Soddisfazione clienti",
+        },
+      ],
+    },
+    features: {
+      sectionLabel: "Cosa Include",
+      title: "Tutto ciò che serve alla tua azienda",
+      subtitle: "Una piattaforma. Presenza digitale completa.",
+      items: [
+        {
+          title: "Sito Web Professionale",
+          description:
+            "Sito generato dall'AI su misura per il tuo settore, deployato in 60 secondi con SEO integrato.",
+        },
+        {
+          title: "SEO Locale",
+          description:
+            "Posizionamento più alto nelle ricerche locali. Ottimizziamo il tuo Google Business Profile.",
+        },
+        {
+          title: "Social Media",
+          description:
+            "Post creati dall'AI per Instagram e Facebook, pianificati e pubblicati automaticamente ogni settimana.",
+        },
+        {
+          title: "Chatbot AI",
+          description:
+            "Chatbot di supporto 24/7 addestrato sui dati della tua azienda, incorporato nel tuo sito.",
+        },
+        {
+          title: "Automazione",
+          description:
+            "Sequenze email, notifiche lead, richieste di recensioni — tutto automatizzato.",
+        },
+        {
+          title: "Report Mensili",
+          description:
+            "Report mensili dettagliati su traffico, lead e impatto sul fatturato.",
+        },
+      ],
+    },
+    demo: {
+      sectionLabel: "Demo Live",
+      title: "Vedilo tu stesso",
+      subtitle:
+        "Inserisci i dati della tua azienda e guarda cosa crea la nostra AI in pochi secondi.",
+      namePlaceholder: "es. Pizzeria Bella Italia",
+      sectorPlaceholder: "es. Ristorante, Parrucchiere, Dentista...",
+      cityPlaceholder: "es. Milano",
+      cta: "Genera preview sito",
+      loading: "L'AI sta generando la tua preview...",
+      successTitle: "La tua preview è pronta!",
+      successSubtitle:
+        "La nostra AI ha creato in secondi un sito personalizzato per la tua azienda.",
+      successNote: "Inizia ora e il tuo sito reale sarà live in 60 secondi.",
+    },
+    pricing: {
+      sectionLabel: "Prezzi",
+      title: "Trasparente e giusto",
+      subtitle: "Costo di setup una tantum + abbonamento mensile. Cancella quando vuoi.",
+      monthly: "Mensile",
+      annual: "Annuale",
+      annualDiscount: "-20%",
+      perMonth: "/mese",
+      setupFee: "Costo di setup una tantum",
+      mostPopular: "Più popolare",
+      getStarted: "Inizia ora",
+      moneyBack: "Garanzia soddisfatti o rimborsati 30 giorni",
+      plans: [
+        {
+          name: "Starter",
+          description: "Perfetto per piccole imprese che iniziano online.",
+          features: [
+            "1 sito web professionale",
+            "Certificato SSL",
+            "Ottimizzazione SEO locale",
+            "12 post social/mese",
+            "Chatbot AI (24/7)",
+            "3 automazioni",
+            "50 lead/mese",
+            "Report mensile",
+            "Supporto email",
+          ],
+        },
+        {
+          name: "Growth",
+          description: "Per aziende in crescita che hanno bisogno di più potenza.",
+          features: [
+            "3 siti web professionali",
+            "Dominio personalizzato incluso",
+            "SEO avanzato + Google Business",
+            "30 post social/mese",
+            "2 chatbot AI",
+            "10 automazioni",
+            "200 lead/mese",
+            "Report settimanali",
+            "Supporto prioritario",
+            "Agenti AI attivati",
+          ],
+        },
+        {
+          name: "Enterprise",
+          description: "Marketing digitale full-service per aziende affermate.",
+          features: [
+            "10 siti web",
+            "Più domini personalizzati",
+            "SEO suite completa + Google Ads",
+            "90 post social/mese",
+            "5 chatbot AI",
+            "50 automazioni",
+            "1000 lead/mese",
+            "Report giornalieri",
+            "Account manager dedicato",
+            "Integrazioni personalizzate",
+          ],
+        },
+      ],
+    },
+    faq: {
+      sectionLabel: "FAQ",
+      title: "Domande frequenti",
+      items: [
+        {
+          q: "Cosa include il costo di setup?",
+          a: "Il costo di setup una tantum copre l'onboarding completo: creazione e deployment del sito, configurazione del chatbot, setup delle automazioni e addestramento AI sui tuoi dati aziendali.",
+        },
+        {
+          q: "Quanto tempo ci vuole perché il mio sito sia live?",
+          a: "Il tuo sito va live in 60 secondi. Il nostro sistema automatizzato gestisce tutto: configurazione del dominio, SSL, cookie banner, privacy policy e deployment.",
+        },
+        {
+          q: "Posso usare il mio dominio?",
+          a: "I piani Starter usano un sottodominio. I piani Growth ed Enterprise includono la connessione di un dominio personalizzato.",
+        },
+        {
+          q: "Cosa succede se cancello?",
+          a: "Puoi cancellare in qualsiasi momento senza penali. Il tuo sito rimane attivo fino alla fine del periodo di fatturazione.",
+        },
+        {
+          q: "La garanzia 30 giorni vale anche per il setup?",
+          a: "Sì. Se non sei soddisfatto entro i primi 30 giorni, rimborsiamo sia il costo di setup che il primo mese.",
+        },
+        {
+          q: "Quali lingue sono supportate?",
+          a: "Supportiamo tedesco, italiano, francese, spagnolo, olandese, portoghese e inglese.",
+        },
+        {
+          q: "L'AI è davvero abbastanza buona?",
+          a: "La nostra AI è stata addestrata su migliaia di siti web in oltre 50 settori. Il risultato è professionale, ottimizzato per il SEO e su misura per il tuo settore.",
+        },
+        {
+          q: "Ho bisogno di competenze tecniche?",
+          a: "Assolutamente no. MadeCreative è progettato per non-tecnici. Inserisci semplicemente i dati della tua azienda — il resto lo fa l'AI.",
+        },
+      ],
+    },
+    finalCta: {
+      badge: "Pronto a iniziare?",
+      title: "Il tuo sito è a 60 secondi di distanza",
+      subtitle:
+        "Unisciti alle 127+ aziende già online con MadeCreative che ogni giorno acquisiscono nuovi clienti.",
+      cta: "Inizia gratis ora",
+      trustNote: "Nessuna carta di credito. Nessun contratto. Inizio immediato.",
+    },
+    footer: {
+      tagline: "Marketing digitale completamente alimentato dall'AI.",
+      copyright: "© 2026 madecreative.pro — Zero dipendenti. 100% AI.",
+      links: {
+        privacy: "Privacy Policy",
+        cookies: "Cookie Policy",
+        impressum: "Impressum",
+        terms: "Termini",
+      },
+    },
+  },
+
+  es: {
+    meta: {
+      title: "MadeCreative — Sitio web con IA en 60 segundos",
+      description:
+        "MadeCreative crea tu sitio profesional en 60 segundos con IA. SEO local, redes sociales, chatbot y leads — completamente automatizado. Desde €297/mes.",
+    },
+    nav: {
+      howItWorks: "Cómo funciona",
+      results: "Resultados",
+      pricing: "Precios",
+      demo: "Demo",
+      startFree: "Empieza gratis",
+    },
+    hero: {
+      badge: "Marketing digital impulsado por IA",
+      title: "Tu sitio web",
+      titleHighlight: "en 60 segundos",
+      subtitle:
+        "MadeCreative construye tu sitio profesional, gestiona el SEO, las redes sociales y genera leads — todo automatizado por IA.",
+      cta: "Genera tu sitio gratis en 60 segundos",
+      ctaSecondary: "Cómo funciona",
+      trustNote: "Sin tarjeta de crédito. Cancela cuando quieras.",
+    },
+    problem: {
+      sectionLabel: "El Problema",
+      title: "Por qué las PYMES fallan online",
+      subtitle:
+        "Las pequeñas y medianas empresas pierden clientes cada día por falta de presencia digital profesional.",
+      stats: [
+        {
+          value: "73",
+          numericValue: 73,
+          suffix: "%",
+          label: "PYMES sin sitio web",
+          description: "Pierden clientes a favor de competidores digitales",
+        },
+        {
+          value: "4.200",
+          numericValue: 4200,
+          suffix: "€",
+          label: "Coste medio agencia",
+          description: "Solo por un sitio básico — sin gestión continua",
+        },
+        {
+          value: "12",
+          numericValue: 12,
+          suffix: " sem.",
+          label: "Tiempo medio de espera",
+          description: "Cuánto tarda una agencia en completar tu sitio",
+        },
+      ],
+    },
+    howItWorks: {
+      sectionLabel: "Cómo Funciona",
+      title: "De cero al sitio completo en 3 pasos",
+      subtitle: "Nuestro sistema IA analiza tu empresa y lo crea todo automáticamente.",
+      steps: [
+        {
+          number: "01",
+          title: "Scraping & Análisis",
+          description:
+            "Nuestro agente IA analiza tu presencia online existente, tu sector y competidores. En segundos.",
+        },
+        {
+          number: "02",
+          title: "Generación & Preview",
+          description:
+            "La IA crea tu sitio personalizado con textos, diseño y optimización SEO. Ves una preview en tiempo real.",
+        },
+        {
+          number: "03",
+          title: "Lanzamiento & Automatización",
+          description:
+            "Con un clic tu sitio va live. Chatbot, redes sociales y automatización de email arrancan inmediatamente.",
+        },
+      ],
+    },
+    agentFloor: {
+      sectionLabel: "Entre Bastidores",
+      title: "Il Cervello Operativo",
+      subtitle:
+        "7 agentes IA especializados trabajan 24/7 para tu empresa. Cada agente está especializado en su tarea.",
+      agents: [
+        { name: "Scraper Agent", task: "Analiza competidores y keywords en tiempo real" },
+        { name: "Analyzer Agent", task: "Procesa datos y crea informes estratégicos" },
+        { name: "Builder Agent", task: "Genera y despliega tu sitio en segundos" },
+        { name: "Social Agent", task: "Crea y programa posts sociales automáticamente" },
+        { name: "Chat Support", task: "Responde a clientes 24/7 en tu sitio" },
+        { name: "QA Station", task: "Verifica calidad, SEO y rendimiento continuamente" },
+        { name: "Outreach Ops", task: "Envía secuencias de email personalizadas" },
+      ],
+    },
+    results: {
+      sectionLabel: "Resultados",
+      title: "Números que hablan",
+      subtitle: "Resultados reales de empresas reales que usan MadeCreative.",
+      metrics: [
+        { value: "127", numericValue: 127, suffix: "", prefix: "", label: "Sitios lanzados" },
+        {
+          value: "2.1",
+          numericValue: 2.1,
+          suffix: "M€",
+          prefix: "",
+          label: "Facturación generada para clientes",
+        },
+        {
+          value: "4.8",
+          numericValue: 4.8,
+          suffix: "★",
+          prefix: "",
+          label: "Satisfacción clientes",
+        },
+      ],
+    },
+    features: {
+      sectionLabel: "Qué Incluye",
+      title: "Todo lo que necesita tu empresa",
+      subtitle: "Una plataforma. Presencia digital completa.",
+      items: [
+        {
+          title: "Sitio Web Profesional",
+          description:
+            "Sitio generado por IA adaptado a tu sector, desplegado en 60 segundos con SEO integrado.",
+        },
+        {
+          title: "SEO Local",
+          description:
+            "Mejor posición en búsquedas locales. Optimizamos tu Google Business Profile.",
+        },
+        {
+          title: "Redes Sociales",
+          description:
+            "Posts creados por IA para Instagram y Facebook, programados y publicados automáticamente.",
+        },
+        {
+          title: "Chatbot IA",
+          description:
+            "Chatbot de soporte 24/7 entrenado con los datos de tu empresa, integrado en tu sitio.",
+        },
+        {
+          title: "Automatización",
+          description:
+            "Secuencias email, notificaciones lead, solicitudes de reseñas — todo automatizado.",
+        },
+        {
+          title: "Informes Mensuales",
+          description:
+            "Informes mensuales detallados sobre tráfico, leads e impacto en facturación.",
+        },
+      ],
+    },
+    demo: {
+      sectionLabel: "Demo en Vivo",
+      title: "Véalo tú mismo",
+      subtitle:
+        "Introduce los datos de tu empresa y observa lo que nuestra IA crea en segundos.",
+      namePlaceholder: "ej. Restaurante García",
+      sectorPlaceholder: "ej. Restaurante, Peluquería, Dentista...",
+      cityPlaceholder: "ej. Madrid",
+      cta: "Generar preview del sitio",
+      loading: "La IA está generando tu preview...",
+      successTitle: "¡Tu preview está lista!",
+      successSubtitle: "Nuestra IA ha creado en segundos un sitio personalizado para tu empresa.",
+      successNote: "Empieza ahora y tu sitio real estará live en 60 segundos.",
+    },
+    pricing: {
+      sectionLabel: "Precios",
+      title: "Transparente y justo",
+      subtitle: "Coste de setup único + suscripción mensual. Cancela cuando quieras.",
+      monthly: "Mensual",
+      annual: "Anual",
+      annualDiscount: "-20%",
+      perMonth: "/mes",
+      setupFee: "Coste de setup único",
+      mostPopular: "Más popular",
+      getStarted: "Empezar ahora",
+      moneyBack: "Garantía de devolución 30 días",
+      plans: [
+        {
+          name: "Starter",
+          description: "Perfecto para pequeñas empresas que empiezan online.",
+          features: [
+            "1 sitio web profesional",
+            "Certificado SSL",
+            "SEO local optimizado",
+            "12 posts sociales/mes",
+            "Chatbot IA (24/7)",
+            "3 automatizaciones",
+            "50 leads/mes",
+            "Informe mensual",
+            "Soporte email",
+          ],
+        },
+        {
+          name: "Growth",
+          description: "Para empresas en crecimiento que necesitan más potencia.",
+          features: [
+            "3 sitios web profesionales",
+            "Dominio personalizado incluido",
+            "SEO avanzado + Google Business",
+            "30 posts sociales/mes",
+            "2 chatbots IA",
+            "10 automatizaciones",
+            "200 leads/mes",
+            "Informes semanales",
+            "Soporte prioritario",
+            "Agentes IA activados",
+          ],
+        },
+        {
+          name: "Enterprise",
+          description: "Marketing digital completo para empresas establecidas.",
+          features: [
+            "10 sitios web",
+            "Múltiples dominios personalizados",
+            "Suite SEO completa + Google Ads",
+            "90 posts sociales/mes",
+            "5 chatbots IA",
+            "50 automatizaciones",
+            "1000 leads/mes",
+            "Informes diarios",
+            "Account manager dedicado",
+            "Integraciones personalizadas",
+          ],
+        },
+      ],
+    },
+    faq: {
+      sectionLabel: "FAQ",
+      title: "Preguntas frecuentes",
+      items: [
+        {
+          q: "¿Qué incluye el coste de setup?",
+          a: "El coste de setup único cubre el onboarding completo: creación y despliegue del sitio, configuración del chatbot, setup de automatizaciones y entrenamiento IA con tus datos empresariales.",
+        },
+        {
+          q: "¿Cuánto tiempo hasta que mi sitio esté live?",
+          a: "Tu sitio va live en 60 segundos. Nuestro sistema automatizado gestiona todo: configuración del dominio, SSL, banner de cookies, política de privacidad y despliegue.",
+        },
+        {
+          q: "¿Puedo usar mi propio dominio?",
+          a: "Los planes Starter usan un subdominio. Los planes Growth y Enterprise incluyen conexión de dominio personalizado.",
+        },
+        {
+          q: "¿Qué pasa si cancelo?",
+          a: "Puedes cancelar en cualquier momento sin penalizaciones. Tu sitio permanece activo hasta el final del período de facturación.",
+        },
+        {
+          q: "¿La garantía 30 días aplica también al setup?",
+          a: "Sí. Si no estás satisfecho en los primeros 30 días, reembolsamos tanto el coste de setup como el primer mes.",
+        },
+        {
+          q: "¿Qué idiomas se admiten?",
+          a: "Admitimos alemán, italiano, francés, español, neerlandés, portugués e inglés.",
+        },
+        {
+          q: "¿La IA es realmente suficientemente buena?",
+          a: "Nuestra IA ha sido entrenada en miles de sitios web de más de 50 sectores. El resultado es profesional, optimizado para SEO y adaptado a tu sector.",
+        },
+        {
+          q: "¿Necesito conocimientos técnicos?",
+          a: "En absoluto. MadeCreative está diseñado para no técnicos. Simplemente introduce los datos de tu empresa — el resto lo hace la IA.",
+        },
+      ],
+    },
+    finalCta: {
+      badge: "¿Listo para empezar?",
+      title: "Tu sitio web está a 60 segundos",
+      subtitle:
+        "Únete a las 127+ empresas ya online con MadeCreative que cada día consiguen nuevos clientes.",
+      cta: "Empezar gratis ahora",
+      trustNote: "Sin tarjeta de crédito. Sin contrato. Inicio inmediato.",
+    },
+    footer: {
+      tagline: "Marketing digital completamente impulsado por IA.",
+      copyright: "© 2026 madecreative.pro — Cero empleados. 100% IA.",
+      links: {
+        privacy: "Política de Privacidad",
+        cookies: "Política de Cookies",
+        impressum: "Aviso Legal",
+        terms: "Términos",
+      },
+    },
+  },
+
+  fr: {
+    meta: {
+      title: "MadeCreative — Site web IA en 60 secondes",
+      description:
+        "MadeCreative crée votre site professionnel en 60 secondes avec l'IA. SEO local, réseaux sociaux, chatbot et leads — entièrement automatisé. À partir de €297/mois.",
+    },
+    nav: {
+      howItWorks: "Comment ça marche",
+      results: "Résultats",
+      pricing: "Tarifs",
+      demo: "Démo",
+      startFree: "Commencer gratuitement",
+    },
+    hero: {
+      badge: "Marketing digital propulsé par l'IA",
+      title: "Votre site web",
+      titleHighlight: "en 60 secondes",
+      subtitle:
+        "MadeCreative construit votre site professionnel, gère le SEO, les réseaux sociaux et génère des leads — le tout automatisé par l'IA.",
+      cta: "Générez votre site gratuitement en 60 secondes",
+      ctaSecondary: "Comment ça marche",
+      trustNote: "Sans carte bancaire. Annulez quand vous voulez.",
+    },
+    problem: {
+      sectionLabel: "Le Problème",
+      title: "Pourquoi les PME échouent en ligne",
+      subtitle:
+        "Les petites et moyennes entreprises perdent des clients chaque jour par manque de présence numérique professionnelle.",
+      stats: [
+        {
+          value: "73",
+          numericValue: 73,
+          suffix: "%",
+          label: "PME sans site web",
+          description: "Perdent des clients au profit de concurrents numériques",
+        },
+        {
+          value: "4 200",
+          numericValue: 4200,
+          suffix: "€",
+          label: "Coût moyen agence",
+          description: "Rien que pour un site simple — sans gestion continue",
+        },
+        {
+          value: "12",
+          numericValue: 12,
+          suffix: " sem.",
+          label: "Délai moyen",
+          description: "Le temps qu'une agence met pour finir votre site",
+        },
+      ],
+    },
+    howItWorks: {
+      sectionLabel: "Comment Ça Marche",
+      title: "De zéro au site complet en 3 étapes",
+      subtitle: "Notre système IA analyse votre entreprise et crée tout automatiquement.",
+      steps: [
+        {
+          number: "01",
+          title: "Scraping & Analyse",
+          description:
+            "Notre agent IA analyse votre présence en ligne existante, votre secteur et vos concurrents. En quelques secondes.",
+        },
+        {
+          number: "02",
+          title: "Génération & Preview",
+          description:
+            "L'IA crée votre site personnalisé avec textes, design et optimisation SEO. Vous voyez un aperçu en temps réel.",
+        },
+        {
+          number: "03",
+          title: "Lancement & Automatisation",
+          description:
+            "En un clic votre site est en ligne. Chatbot, réseaux sociaux et automatisation email démarrent immédiatement.",
+        },
+      ],
+    },
+    agentFloor: {
+      sectionLabel: "Dans les Coulisses",
+      title: "Il Cervello Operativo",
+      subtitle:
+        "7 agents IA spécialisés travaillent 24/7 pour votre entreprise. Chaque agent est spécialisé dans sa tâche.",
+      agents: [
+        { name: "Scraper Agent", task: "Analyse les concurrents et mots-clés en temps réel" },
+        { name: "Analyzer Agent", task: "Traite les données et crée des rapports stratégiques" },
+        { name: "Builder Agent", task: "Génère et déploie votre site en secondes" },
+        { name: "Social Agent", task: "Crée et planifie des posts sociaux automatiquement" },
+        { name: "Chat Support", task: "Répond aux clients 24/7 sur votre site" },
+        { name: "QA Station", task: "Vérifie qualité, SEO et performance en continu" },
+        { name: "Outreach Ops", task: "Envoie des séquences email personnalisées" },
+      ],
+    },
+    results: {
+      sectionLabel: "Résultats",
+      title: "Des chiffres qui parlent",
+      subtitle: "Résultats réels d'entreprises réelles qui utilisent MadeCreative.",
+      metrics: [
+        { value: "127", numericValue: 127, suffix: "", prefix: "", label: "Sites lancés" },
+        {
+          value: "2.1",
+          numericValue: 2.1,
+          suffix: "M€",
+          prefix: "",
+          label: "Chiffre d'affaires généré pour les clients",
+        },
+        {
+          value: "4.8",
+          numericValue: 4.8,
+          suffix: "★",
+          prefix: "",
+          label: "Satisfaction clients",
+        },
+      ],
+    },
+    features: {
+      sectionLabel: "Ce Qui Est Inclus",
+      title: "Tout ce dont votre entreprise a besoin",
+      subtitle: "Une plateforme. Présence digitale complète.",
+      items: [
+        {
+          title: "Site Web Professionnel",
+          description:
+            "Site généré par IA adapté à votre secteur, déployé en 60 secondes avec SEO intégré.",
+        },
+        {
+          title: "SEO Local",
+          description:
+            "Meilleur classement dans les recherches locales. Nous optimisons votre profil Google Business.",
+        },
+        {
+          title: "Réseaux Sociaux",
+          description:
+            "Posts créés par IA pour Instagram et Facebook, planifiés et publiés automatiquement chaque semaine.",
+        },
+        {
+          title: "Chatbot IA",
+          description:
+            "Chatbot de support 24/7 entraîné sur vos données d'entreprise, intégré dans votre site.",
+        },
+        {
+          title: "Automatisation",
+          description:
+            "Séquences email, notifications leads, demandes d'avis — tout automatisé.",
+        },
+        {
+          title: "Rapports Mensuels",
+          description:
+            "Rapports mensuels détaillés sur le trafic, les leads et l'impact sur le chiffre d'affaires.",
+        },
+      ],
+    },
+    demo: {
+      sectionLabel: "Démo Live",
+      title: "Voyez par vous-même",
+      subtitle:
+        "Entrez les données de votre entreprise et regardez ce que notre IA crée en quelques secondes.",
+      namePlaceholder: "ex. Boulangerie Dupont",
+      sectorPlaceholder: "ex. Restaurant, Coiffeur, Dentiste...",
+      cityPlaceholder: "ex. Paris",
+      cta: "Générer l'aperçu du site",
+      loading: "L'IA génère votre aperçu...",
+      successTitle: "Votre aperçu est prêt!",
+      successSubtitle:
+        "Notre IA a créé en quelques secondes un site personnalisé pour votre entreprise.",
+      successNote: "Commencez maintenant et votre vrai site sera en ligne en 60 secondes.",
+    },
+    pricing: {
+      sectionLabel: "Tarifs",
+      title: "Transparent et juste",
+      subtitle: "Frais de setup uniques + abonnement mensuel. Annulez quand vous voulez.",
+      monthly: "Mensuel",
+      annual: "Annuel",
+      annualDiscount: "-20%",
+      perMonth: "/mois",
+      setupFee: "Frais de setup uniques",
+      mostPopular: "Le plus populaire",
+      getStarted: "Commencer maintenant",
+      moneyBack: "Garantie satisfait ou remboursé 30 jours",
+      plans: [
+        {
+          name: "Starter",
+          description: "Parfait pour les petites entreprises qui se lancent en ligne.",
+          features: [
+            "1 site web professionnel",
+            "Certificat SSL",
+            "SEO local optimisé",
+            "12 posts sociaux/mois",
+            "Chatbot IA (24/7)",
+            "3 automatisations",
+            "50 leads/mois",
+            "Rapport mensuel",
+            "Support email",
+          ],
+        },
+        {
+          name: "Growth",
+          description: "Pour les entreprises en croissance qui ont besoin de plus de puissance.",
+          features: [
+            "3 sites web professionnels",
+            "Domaine personnalisé inclus",
+            "SEO avancé + Google Business",
+            "30 posts sociaux/mois",
+            "2 chatbots IA",
+            "10 automatisations",
+            "200 leads/mois",
+            "Rapports hebdomadaires",
+            "Support prioritaire",
+            "Agents IA activés",
+          ],
+        },
+        {
+          name: "Enterprise",
+          description: "Marketing digital complet pour les entreprises établies.",
+          features: [
+            "10 sites web",
+            "Plusieurs domaines personnalisés",
+            "Suite SEO complète + Google Ads",
+            "90 posts sociaux/mois",
+            "5 chatbots IA",
+            "50 automatisations",
+            "1000 leads/mois",
+            "Rapports quotidiens",
+            "Account manager dédié",
+            "Intégrations personnalisées",
+          ],
+        },
+      ],
+    },
+    faq: {
+      sectionLabel: "FAQ",
+      title: "Questions fréquentes",
+      items: [
+        {
+          q: "Que comprennent les frais de setup?",
+          a: "Les frais de setup uniques couvrent l'onboarding complet: création et déploiement du site, configuration du chatbot, setup des automatisations et entraînement IA sur vos données d'entreprise.",
+        },
+        {
+          q: "Combien de temps avant que mon site soit en ligne?",
+          a: "Votre site est en ligne en 60 secondes. Notre système automatisé gère tout: configuration du domaine, SSL, bannière cookies, politique de confidentialité et déploiement.",
+        },
+        {
+          q: "Puis-je utiliser mon propre domaine?",
+          a: "Les plans Starter utilisent un sous-domaine. Les plans Growth et Enterprise incluent la connexion d'un domaine personnalisé.",
+        },
+        {
+          q: "Que se passe-t-il si j'annule?",
+          a: "Vous pouvez annuler à tout moment sans pénalités. Votre site reste actif jusqu'à la fin de la période de facturation.",
+        },
+        {
+          q: "La garantie 30 jours s'applique aussi au setup?",
+          a: "Oui. Si vous n'êtes pas satisfait dans les 30 premiers jours, nous remboursons les frais de setup et le premier mois.",
+        },
+        {
+          q: "Quelles langues sont prises en charge?",
+          a: "Nous prenons en charge l'allemand, l'italien, le français, l'espagnol, le néerlandais, le portugais et l'anglais.",
+        },
+        {
+          q: "L'IA est-elle vraiment assez bonne?",
+          a: "Notre IA a été entraînée sur des milliers de sites web dans plus de 50 secteurs. Le résultat est professionnel, optimisé SEO et adapté à votre secteur.",
+        },
+        {
+          q: "Ai-je besoin de compétences techniques?",
+          a: "Absolument pas. MadeCreative est conçu pour les non-techniciens. Entrez simplement les données de votre entreprise — l'IA fait le reste.",
+        },
+      ],
+    },
+    finalCta: {
+      badge: "Prêt à commencer?",
+      title: "Votre site est à 60 secondes",
+      subtitle:
+        "Rejoignez les 127+ entreprises déjà en ligne avec MadeCreative qui acquièrent chaque jour de nouveaux clients.",
+      cta: "Commencer gratuitement",
+      trustNote: "Sans carte bancaire. Sans contrat. Démarrage immédiat.",
+    },
+    footer: {
+      tagline: "Marketing digital entièrement propulsé par l'IA.",
+      copyright: "© 2026 madecreative.pro — Zéro employés. 100% IA.",
+      links: {
+        privacy: "Politique de Confidentialité",
+        cookies: "Politique de Cookies",
+        impressum: "Mentions Légales",
+        terms: "CGU",
+      },
+    },
+  },
+
+  nl: {
+    meta: {
+      title: "MadeCreative — AI-website in 60 seconden",
+      description:
+        "MadeCreative maakt uw professionele website in 60 seconden met AI. Lokale SEO, social media, chatbot en leads — volledig geautomatiseerd. Vanaf €297/maand.",
+    },
+    nav: {
+      howItWorks: "Hoe het werkt",
+      results: "Resultaten",
+      pricing: "Prijzen",
+      demo: "Demo",
+      startFree: "Gratis starten",
+    },
+    hero: {
+      badge: "AI-aangedreven digitale marketing",
+      title: "Uw website",
+      titleHighlight: "in 60 seconden",
+      subtitle:
+        "MadeCreative bouwt uw professionele website, beheert SEO, social media en genereert leads — alles geautomatiseerd door AI.",
+      cta: "Genereer uw website gratis in 60 seconden",
+      ctaSecondary: "Hoe het werkt",
+      trustNote: "Geen creditcard nodig. Op elk moment opzegbaar.",
+    },
+    problem: {
+      sectionLabel: "Het Probleem",
+      title: "Waarom mkb's online falen",
+      subtitle:
+        "Kleine en middelgrote bedrijven verliezen elke dag klanten door gebrek aan professionele online aanwezigheid.",
+      stats: [
+        {
+          value: "73",
+          numericValue: 73,
+          suffix: "%",
+          label: "Mkb's zonder website",
+          description: "Verliezen klanten aan digitaal aanwezige concurrenten",
+        },
+        {
+          value: "4.200",
+          numericValue: 4200,
+          suffix: "€",
+          label: "Gemiddelde kosten bureau",
+          description: "Alleen voor een eenvoudige website — zonder doorlopend beheer",
+        },
+        {
+          value: "12",
+          numericValue: 12,
+          suffix: " wk.",
+          label: "Gemiddelde doorlooptijd",
+          description: "Hoelang een bureau doet over uw website",
+        },
+      ],
+    },
+    howItWorks: {
+      sectionLabel: "Hoe Het Werkt",
+      title: "Van nul naar complete website in 3 stappen",
+      subtitle: "Ons AI-systeem analyseert uw bedrijf en maakt alles automatisch.",
+      steps: [
+        {
+          number: "01",
+          title: "Scraping & Analyse",
+          description:
+            "Onze AI-agent analyseert uw bestaande online aanwezigheid, sector en concurrenten. In seconden.",
+        },
+        {
+          number: "02",
+          title: "Generatie & Preview",
+          description:
+            "De AI maakt uw op maat gemaakte website met teksten, design en SEO-optimalisatie. U ziet een live preview.",
+        },
+        {
+          number: "03",
+          title: "Launch & Automatisering",
+          description:
+            "Met één klik gaat uw website live. Chatbot, social media en e-mailautomatisering starten direct.",
+        },
+      ],
+    },
+    agentFloor: {
+      sectionLabel: "Achter de Schermen",
+      title: "Il Cervello Operativo",
+      subtitle:
+        "7 gespecialiseerde AI-agenten werken 24/7 voor uw bedrijf. Elke agent is gespecialiseerd in zijn taak.",
+      agents: [
+        { name: "Scraper Agent", task: "Analyseert concurrenten en keywords in realtime" },
+        { name: "Analyzer Agent", task: "Verwerkt data en maakt strategische rapporten" },
+        { name: "Builder Agent", task: "Genereert en deployt uw website in seconden" },
+        { name: "Social Agent", task: "Maakt en plant social media posts automatisch" },
+        { name: "Chat Support", task: "Beantwoordt klantvragen 24/7 op uw website" },
+        { name: "QA Station", task: "Controleert kwaliteit, SEO en prestaties continu" },
+        { name: "Outreach Ops", task: "Verstuurt gepersonaliseerde e-mailsequenties" },
+      ],
+    },
+    results: {
+      sectionLabel: "Resultaten",
+      title: "Cijfers die spreken",
+      subtitle: "Echte resultaten van echte bedrijven die MadeCreative gebruiken.",
+      metrics: [
+        { value: "127", numericValue: 127, suffix: "", prefix: "", label: "Websites gelanceerd" },
+        {
+          value: "2.1",
+          numericValue: 2.1,
+          suffix: "M€",
+          prefix: "",
+          label: "Omzet gegenereerd voor klanten",
+        },
+        {
+          value: "4.8",
+          numericValue: 4.8,
+          suffix: "★",
+          prefix: "",
+          label: "Klanttevredenheid",
+        },
+      ],
+    },
+    features: {
+      sectionLabel: "Wat Is Inbegrepen",
+      title: "Alles wat uw bedrijf nodig heeft",
+      subtitle: "Eén platform. Volledige digitale aanwezigheid.",
+      items: [
+        {
+          title: "Professionele Website",
+          description:
+            "AI-gegenereerde website op maat voor uw sector, in 60 seconden gedeployed met ingebouwde SEO.",
+        },
+        {
+          title: "Lokale SEO",
+          description:
+            "Hogere rankings in lokale zoekopdrachten. We optimaliseren uw Google Business-profiel.",
+        },
+        {
+          title: "Social Media",
+          description:
+            "AI-gemaakte posts voor Instagram en Facebook, automatisch gepland en wekelijks gepubliceerd.",
+        },
+        {
+          title: "AI-Chatbot",
+          description:
+            "24/7 klantenservice-chatbot getraind op uw bedrijfsgegevens, ingebed op uw website.",
+        },
+        {
+          title: "Automatisering",
+          description:
+            "E-mailsequenties, leadmeldingen, beoordelingsverzoeken — alles geautomatiseerd.",
+        },
+        {
+          title: "Maandelijkse Rapporten",
+          description:
+            "Gedetailleerde maandelijkse prestatieraporten over websiteverkeer, leads en omzetimpact.",
+        },
+      ],
+    },
+    demo: {
+      sectionLabel: "Live Demo",
+      title: "Zie het zelf",
+      subtitle:
+        "Voer de gegevens van uw bedrijf in en zie wat onze AI in seconden maakt.",
+      namePlaceholder: "bijv. Bakkerij De Smid",
+      sectorPlaceholder: "bijv. Restaurant, Kapper, Tandarts...",
+      cityPlaceholder: "bijv. Amsterdam",
+      cta: "Website-preview genereren",
+      loading: "AI genereert uw preview...",
+      successTitle: "Uw preview is klaar!",
+      successSubtitle:
+        "Onze AI heeft in seconden een op maat gemaakte website voor uw bedrijf gemaakt.",
+      successNote: "Start nu en uw echte website is in 60 seconden live.",
+    },
+    pricing: {
+      sectionLabel: "Prijzen",
+      title: "Transparant en eerlijk",
+      subtitle: "Eenmalige setupkosten + maandelijks abonnement. Op elk moment opzegbaar.",
+      monthly: "Maandelijks",
+      annual: "Jaarlijks",
+      annualDiscount: "-20%",
+      perMonth: "/maand",
+      setupFee: "Eenmalige setupkosten",
+      mostPopular: "Meest populair",
+      getStarted: "Nu beginnen",
+      moneyBack: "30 dagen niet-goed-geld-terug garantie",
+      plans: [
+        {
+          name: "Starter",
+          description: "Perfect voor kleine bedrijven die online starten.",
+          features: [
+            "1 professionele website",
+            "SSL-certificaat",
+            "Lokale SEO-optimalisatie",
+            "12 social posts/maand",
+            "AI-chatbot (24/7)",
+            "3 automatiseringen",
+            "50 leads/maand",
+            "Maandelijks rapport",
+            "E-mailondersteuning",
+          ],
+        },
+        {
+          name: "Growth",
+          description: "Voor groeiende bedrijven die meer kracht en bereik nodig hebben.",
+          features: [
+            "3 professionele websites",
+            "Eigen domein inbegrepen",
+            "Geavanceerde SEO + Google Business",
+            "30 social posts/maand",
+            "2 AI-chatbots",
+            "10 automatiseringen",
+            "200 leads/maand",
+            "Wekelijkse rapporten",
+            "Prioriteitsondersteuning",
+            "AI-agenten geactiveerd",
+          ],
+        },
+        {
+          name: "Enterprise",
+          description: "Volledige digitale marketingservice voor gevestigde bedrijven.",
+          features: [
+            "10 websites",
+            "Meerdere eigen domeinen",
+            "Volledige SEO-suite + Google Ads",
+            "90 social posts/maand",
+            "5 AI-chatbots",
+            "50 automatiseringen",
+            "1000 leads/maand",
+            "Dagelijkse rapporten",
+            "Dedicated accountmanager",
+            "Maatwerk integraties",
+          ],
+        },
+      ],
+    },
+    faq: {
+      sectionLabel: "FAQ",
+      title: "Veelgestelde vragen",
+      items: [
+        {
+          q: "Wat is inbegrepen in de setupkosten?",
+          a: "De eenmalige setupkosten omvatten de volledige onboarding: website bouwen en deployen, chatbot configureren, automatiseringen instellen en AI trainen op uw bedrijfsgegevens.",
+        },
+        {
+          q: "Hoe lang duurt het voor mijn website live is?",
+          a: "Uw website gaat in 60 seconden live. Ons geautomatiseerde systeem regelt alles: domeinconfiguratie, SSL, cookiebanner, privacybeleid en deployment.",
+        },
+        {
+          q: "Kan ik mijn eigen domein gebruiken?",
+          a: "Starter-plannen gebruiken een subdomein. Growth en Enterprise-plannen bevatten een eigen domeinverbinding.",
+        },
+        {
+          q: "Wat gebeurt er als ik opzeg?",
+          a: "U kunt op elk moment opzeggen zonder boetes. Uw website blijft actief tot het einde van de factureringsperiode.",
+        },
+        {
+          q: "Geldt de 30-dagengarantie ook voor de setupkosten?",
+          a: "Ja. Als u niet tevreden bent binnen de eerste 30 dagen, vergoeden we zowel de setupkosten als de eerste maand.",
+        },
+        {
+          q: "Welke talen worden ondersteund?",
+          a: "We ondersteunen Duits, Italiaans, Frans, Spaans, Nederlands, Portugees en Engels.",
+        },
+        {
+          q: "Is de AI echt goed genoeg?",
+          a: "Onze AI is getraind op duizenden websites in meer dan 50 sectoren. Het resultaat is professioneel, SEO-geoptimaliseerd en afgestemd op uw sector.",
+        },
+        {
+          q: "Heb ik technische kennis nodig?",
+          a: "Absoluut niet. MadeCreative is ontworpen voor niet-technici. Voer gewoon uw bedrijfsgegevens in — de AI doet de rest.",
+        },
+      ],
+    },
+    finalCta: {
+      badge: "Klaar om te beginnen?",
+      title: "Uw website is 60 seconden weg",
+      subtitle:
+        "Sluit u aan bij de 127+ bedrijven die al online zijn met MadeCreative en elke dag nieuwe klanten winnen.",
+      cta: "Nu gratis beginnen",
+      trustNote: "Geen creditcard. Geen contract. Direct starten.",
+    },
+    footer: {
+      tagline: "Digitale marketing volledig aangedreven door AI.",
+      copyright: "© 2026 madecreative.pro — Nul medewerkers. 100% AI.",
+      links: {
+        privacy: "Privacybeleid",
+        cookies: "Cookiebeleid",
+        impressum: "Impressum",
+        terms: "Voorwaarden",
+      },
+    },
+  },
+
+  pt: {
+    meta: {
+      title: "MadeCreative — Site web com IA em 60 segundos",
+      description:
+        "MadeCreative cria o seu site profissional em 60 segundos com IA. SEO local, redes sociais, chatbot e leads — completamente automatizado. A partir de €297/mês.",
+    },
+    nav: {
+      howItWorks: "Como funciona",
+      results: "Resultados",
+      pricing: "Preços",
+      demo: "Demo",
+      startFree: "Começar grátis",
+    },
+    hero: {
+      badge: "Marketing digital impulsionado por IA",
+      title: "O seu site web",
+      titleHighlight: "em 60 segundos",
+      subtitle:
+        "MadeCreative constrói o seu site profissional, gere o SEO, as redes sociais e gera leads — tudo automatizado pela IA.",
+      cta: "Gere o seu site grátis em 60 segundos",
+      ctaSecondary: "Como funciona",
+      trustNote: "Sem cartão de crédito. Cancele quando quiser.",
+    },
+    problem: {
+      sectionLabel: "O Problema",
+      title: "Por que as PMEs falham online",
+      subtitle:
+        "As pequenas e médias empresas perdem clientes todos os dias por falta de presença digital profissional.",
+      stats: [
+        {
+          value: "73",
+          numericValue: 73,
+          suffix: "%",
+          label: "PMEs sem site web",
+          description: "Perdem clientes para concorrentes digitalmente presentes",
+        },
+        {
+          value: "4.200",
+          numericValue: 4200,
+          suffix: "€",
+          label: "Custo médio agência",
+          description: "Só para um site simples — sem gestão contínua",
+        },
+        {
+          value: "12",
+          numericValue: 12,
+          suffix: " sem.",
+          label: "Prazo médio",
+          description: "Quanto tempo uma agência demora para terminar o seu site",
+        },
+      ],
+    },
+    howItWorks: {
+      sectionLabel: "Como Funciona",
+      title: "Do zero ao site completo em 3 passos",
+      subtitle: "O nosso sistema de IA analisa a sua empresa e cria tudo automaticamente.",
+      steps: [
+        {
+          number: "01",
+          title: "Scraping & Análise",
+          description:
+            "O nosso agente de IA analisa a sua presença online existente, setor e concorrentes. Em segundos.",
+        },
+        {
+          number: "02",
+          title: "Geração & Preview",
+          description:
+            "A IA cria o seu site personalizado com textos, design e otimização SEO. Vê uma pré-visualização em tempo real.",
+        },
+        {
+          number: "03",
+          title: "Lançamento & Automação",
+          description:
+            "Com um clique o seu site fica online. Chatbot, redes sociais e automação de email arrancam imediatamente.",
+        },
+      ],
+    },
+    agentFloor: {
+      sectionLabel: "Nos Bastidores",
+      title: "Il Cervello Operativo",
+      subtitle:
+        "7 agentes de IA especializados trabalham 24/7 para a sua empresa. Cada agente está especializado na sua tarefa.",
+      agents: [
+        { name: "Scraper Agent", task: "Analisa concorrentes e keywords em tempo real" },
+        { name: "Analyzer Agent", task: "Processa dados e cria relatórios estratégicos" },
+        { name: "Builder Agent", task: "Gera e faz deploy do seu site em segundos" },
+        { name: "Social Agent", task: "Cria e agenda posts sociais automaticamente" },
+        { name: "Chat Support", task: "Responde a clientes 24/7 no seu site" },
+        { name: "QA Station", task: "Verifica qualidade, SEO e desempenho continuamente" },
+        { name: "Outreach Ops", task: "Envia sequências de email personalizadas" },
+      ],
+    },
+    results: {
+      sectionLabel: "Resultados",
+      title: "Números que falam",
+      subtitle: "Resultados reais de empresas reais que usam MadeCreative.",
+      metrics: [
+        { value: "127", numericValue: 127, suffix: "", prefix: "", label: "Sites lançados" },
+        {
+          value: "2.1",
+          numericValue: 2.1,
+          suffix: "M€",
+          prefix: "",
+          label: "Faturação gerada para clientes",
+        },
+        {
+          value: "4.8",
+          numericValue: 4.8,
+          suffix: "★",
+          prefix: "",
+          label: "Satisfação dos clientes",
+        },
+      ],
+    },
+    features: {
+      sectionLabel: "O Que Está Incluído",
+      title: "Tudo o que a sua empresa precisa",
+      subtitle: "Uma plataforma. Presença digital completa.",
+      items: [
+        {
+          title: "Site Web Profissional",
+          description:
+            "Site gerado por IA adaptado ao seu setor, deployed em 60 segundos com SEO integrado.",
+        },
+        {
+          title: "SEO Local",
+          description:
+            "Melhor posicionamento nas pesquisas locais. Otimizamos o seu perfil Google Business.",
+        },
+        {
+          title: "Redes Sociais",
+          description:
+            "Posts criados por IA para Instagram e Facebook, agendados e publicados automaticamente cada semana.",
+        },
+        {
+          title: "Chatbot IA",
+          description:
+            "Chatbot de suporte 24/7 treinado nos dados da sua empresa, integrado no seu site.",
+        },
+        {
+          title: "Automação",
+          description:
+            "Sequências de email, notificações de leads, pedidos de avaliação — tudo automatizado.",
+        },
+        {
+          title: "Relatórios Mensais",
+          description:
+            "Relatórios mensais detalhados sobre tráfego, leads e impacto na faturação.",
+        },
+      ],
+    },
+    demo: {
+      sectionLabel: "Demo ao Vivo",
+      title: "Veja por si mesmo",
+      subtitle:
+        "Introduza os dados da sua empresa e veja o que a nossa IA cria em segundos.",
+      namePlaceholder: "ex. Pastelaria Rodrigues",
+      sectorPlaceholder: "ex. Restaurante, Cabeleireiro, Dentista...",
+      cityPlaceholder: "ex. Lisboa",
+      cta: "Gerar preview do site",
+      loading: "A IA está a gerar a sua preview...",
+      successTitle: "A sua preview está pronta!",
+      successSubtitle:
+        "A nossa IA criou em segundos um site personalizado para a sua empresa.",
+      successNote: "Comece agora e o seu site real ficará online em 60 segundos.",
+    },
+    pricing: {
+      sectionLabel: "Preços",
+      title: "Transparente e justo",
+      subtitle: "Custo de setup único + subscrição mensal. Cancele quando quiser.",
+      monthly: "Mensal",
+      annual: "Anual",
+      annualDiscount: "-20%",
+      perMonth: "/mês",
+      setupFee: "Custo de setup único",
+      mostPopular: "Mais popular",
+      getStarted: "Começar agora",
+      moneyBack: "Garantia de reembolso 30 dias",
+      plans: [
+        {
+          name: "Starter",
+          description: "Perfeito para pequenas empresas que começam online.",
+          features: [
+            "1 site web profissional",
+            "Certificado SSL",
+            "Otimização SEO local",
+            "12 posts sociais/mês",
+            "Chatbot IA (24/7)",
+            "3 automações",
+            "50 leads/mês",
+            "Relatório mensal",
+            "Suporte email",
+          ],
+        },
+        {
+          name: "Growth",
+          description: "Para empresas em crescimento que precisam de mais poder.",
+          features: [
+            "3 sites web profissionais",
+            "Domínio personalizado incluído",
+            "SEO avançado + Google Business",
+            "30 posts sociais/mês",
+            "2 chatbots IA",
+            "10 automações",
+            "200 leads/mês",
+            "Relatórios semanais",
+            "Suporte prioritário",
+            "Agentes IA ativados",
+          ],
+        },
+        {
+          name: "Enterprise",
+          description: "Marketing digital completo para empresas estabelecidas.",
+          features: [
+            "10 sites web",
+            "Múltiplos domínios personalizados",
+            "Suite SEO completa + Google Ads",
+            "90 posts sociais/mês",
+            "5 chatbots IA",
+            "50 automações",
+            "1000 leads/mês",
+            "Relatórios diários",
+            "Account manager dedicado",
+            "Integrações personalizadas",
+          ],
+        },
+      ],
+    },
+    faq: {
+      sectionLabel: "FAQ",
+      title: "Perguntas frequentes",
+      items: [
+        {
+          q: "O que inclui o custo de setup?",
+          a: "O custo de setup único cobre o onboarding completo: criação e deploy do site, configuração do chatbot, setup das automações e treino da IA com os seus dados empresariais.",
+        },
+        {
+          q: "Quanto tempo até o meu site estar online?",
+          a: "O seu site fica online em 60 segundos. O nosso sistema automatizado trata de tudo: configuração do domínio, SSL, banner de cookies, política de privacidade e deploy.",
+        },
+        {
+          q: "Posso usar o meu próprio domínio?",
+          a: "Os planos Starter usam um subdomínio. Os planos Growth e Enterprise incluem ligação de domínio personalizado.",
+        },
+        {
+          q: "O que acontece se cancelar?",
+          a: "Pode cancelar a qualquer momento sem penalizações. O seu site permanece ativo até ao final do período de faturação.",
+        },
+        {
+          q: "A garantia de 30 dias aplica-se também ao setup?",
+          a: "Sim. Se não estiver satisfeito nos primeiros 30 dias, reembolsamos tanto o custo de setup como o primeiro mês.",
+        },
+        {
+          q: "Que idiomas são suportados?",
+          a: "Suportamos alemão, italiano, francês, espanhol, neerlandês, português e inglês.",
+        },
+        {
+          q: "A IA é realmente boa o suficiente?",
+          a: "A nossa IA foi treinada em milhares de sites web em mais de 50 setores. O resultado é profissional, otimizado para SEO e adaptado ao seu setor.",
+        },
+        {
+          q: "Preciso de conhecimentos técnicos?",
+          a: "De modo algum. MadeCreative foi concebido para não técnicos. Basta introduzir os dados da sua empresa — a IA faz o resto.",
+        },
+      ],
+    },
+    finalCta: {
+      badge: "Pronto para começar?",
+      title: "O seu site está a 60 segundos",
+      subtitle:
+        "Junte-se às 127+ empresas já online com MadeCreative que ganham novos clientes todos os dias.",
+      cta: "Começar grátis agora",
+      trustNote: "Sem cartão de crédito. Sem contrato. Início imediato.",
+    },
+    footer: {
+      tagline: "Marketing digital completamente impulsionado por IA.",
+      copyright: "© 2026 madecreative.pro — Zero funcionários. 100% IA.",
+      links: {
+        privacy: "Política de Privacidade",
+        cookies: "Política de Cookies",
+        impressum: "Impressum",
+        terms: "Termos",
+      },
+    },
+  },
+
+  en: {
+    meta: {
+      title: "MadeCreative — AI-powered website in 60 seconds",
+      description:
+        "MadeCreative creates your professional website in 60 seconds with AI. Local SEO, social media, chatbot and leads — fully automated. From €297/month.",
+    },
+    nav: {
+      howItWorks: "How it works",
+      results: "Results",
+      pricing: "Pricing",
+      demo: "Demo",
+      startFree: "Start free",
+    },
+    hero: {
+      badge: "AI-powered digital marketing",
+      title: "Your website",
+      titleHighlight: "in 60 seconds",
+      subtitle:
+        "MadeCreative builds your professional website, manages SEO, social media and generates leads — all automated by AI.",
+      cta: "Generate your website free in 60 seconds",
+      ctaSecondary: "How it works",
+      trustNote: "No credit card required. Cancel anytime.",
+    },
+    problem: {
+      sectionLabel: "The Problem",
+      title: "Why SMBs fail online",
+      subtitle:
+        "Small and medium businesses lose customers every day due to lack of professional online presence.",
+      stats: [
+        {
+          value: "73",
+          numericValue: 73,
+          suffix: "%",
+          label: "SMBs without a website",
+          description: "Lose customers to digitally present competitors",
+        },
+        {
+          value: "4,200",
+          numericValue: 4200,
+          suffix: "€",
+          label: "Average agency cost",
+          description: "Just for a simple website — without ongoing management",
+        },
+        {
+          value: "12",
+          numericValue: 12,
+          suffix: " wks",
+          label: "Average delivery time",
+          description: "How long an agency takes to complete your website",
+        },
+      ],
+    },
+    howItWorks: {
+      sectionLabel: "How It Works",
+      title: "From zero to complete website in 3 steps",
+      subtitle: "Our AI system analyzes your business and creates everything automatically.",
+      steps: [
+        {
+          number: "01",
+          title: "Scraping & Analysis",
+          description:
+            "Our AI agent analyzes your existing online presence, sector and competitors. In seconds.",
+        },
+        {
+          number: "02",
+          title: "Generation & Preview",
+          description:
+            "The AI creates your tailored website with copy, design and SEO optimization. You see a live preview.",
+        },
+        {
+          number: "03",
+          title: "Launch & Automation",
+          description:
+            "With one click your website goes live. Chatbot, social media and email automation start immediately.",
+        },
+      ],
+    },
+    agentFloor: {
+      sectionLabel: "Behind the Scenes",
+      title: "Il Cervello Operativo",
+      subtitle:
+        "7 specialized AI agents work 24/7 for your business. Each agent is specialized in their task.",
+      agents: [
+        { name: "Scraper Agent", task: "Analyzes competitors and keywords in real time" },
+        { name: "Analyzer Agent", task: "Processes data and creates strategic reports" },
+        { name: "Builder Agent", task: "Generates and deploys your website in seconds" },
+        { name: "Social Agent", task: "Creates and schedules social media posts automatically" },
+        { name: "Chat Support", task: "Answers customer queries 24/7 on your website" },
+        { name: "QA Station", task: "Checks quality, SEO and performance continuously" },
+        { name: "Outreach Ops", task: "Sends personalized email sequences" },
+      ],
+    },
+    results: {
+      sectionLabel: "Results",
+      title: "Numbers that speak",
+      subtitle: "Real results from real businesses using MadeCreative.",
+      metrics: [
+        { value: "127", numericValue: 127, suffix: "", prefix: "", label: "Websites launched" },
+        {
+          value: "2.1",
+          numericValue: 2.1,
+          suffix: "M€",
+          prefix: "",
+          label: "Revenue generated for clients",
+        },
+        {
+          value: "4.8",
+          numericValue: 4.8,
+          suffix: "★",
+          prefix: "",
+          label: "Customer satisfaction",
+        },
+      ],
+    },
+    features: {
+      sectionLabel: "What's Included",
+      title: "Everything your business needs",
+      subtitle: "One platform. Complete digital presence.",
+      items: [
+        {
+          title: "Professional Website",
+          description:
+            "AI-generated website tailored to your sector, deployed in 60 seconds with built-in SEO.",
+        },
+        {
+          title: "Local SEO",
+          description:
+            "Higher rankings in local searches. We optimize your Google Business Profile.",
+        },
+        {
+          title: "Social Media",
+          description:
+            "AI-created posts for Instagram and Facebook, scheduled and published automatically every week.",
+        },
+        {
+          title: "AI Chatbot",
+          description:
+            "24/7 customer support chatbot trained on your business data, embedded on your website.",
+        },
+        {
+          title: "Automation",
+          description:
+            "Email sequences, lead notifications, review requests — all automated.",
+        },
+        {
+          title: "Monthly Reports",
+          description:
+            "Detailed monthly performance reports on website traffic, leads and revenue impact.",
+        },
+      ],
+    },
+    demo: {
+      sectionLabel: "Live Demo",
+      title: "See it for yourself",
+      subtitle:
+        "Enter your business details and watch what our AI creates in seconds.",
+      namePlaceholder: "e.g. Smith's Bakery",
+      sectorPlaceholder: "e.g. Restaurant, Hair Salon, Dentist...",
+      cityPlaceholder: "e.g. London",
+      cta: "Generate website preview",
+      loading: "AI is generating your preview...",
+      successTitle: "Your preview is ready!",
+      successSubtitle: "Our AI has created a tailored website for your business in seconds.",
+      successNote: "Start now and your real website will be live in 60 seconds.",
+    },
+    pricing: {
+      sectionLabel: "Pricing",
+      title: "Transparent and fair",
+      subtitle: "One-time setup fee + monthly subscription. Cancel anytime.",
+      monthly: "Monthly",
+      annual: "Annual",
+      annualDiscount: "-20%",
+      perMonth: "/month",
+      setupFee: "One-time setup fee",
+      mostPopular: "Most popular",
+      getStarted: "Get started",
+      moneyBack: "30-day money-back guarantee",
+      plans: [
+        {
+          name: "Starter",
+          description: "Perfect for small businesses getting started online.",
+          features: [
+            "1 professional website",
+            "SSL certificate",
+            "Local SEO optimization",
+            "12 social posts/month",
+            "AI chatbot (24/7)",
+            "3 automations",
+            "50 leads/month",
+            "Monthly report",
+            "Email support",
+          ],
+        },
+        {
+          name: "Growth",
+          description: "For growing businesses that need more power and reach.",
+          features: [
+            "3 professional websites",
+            "Custom domain included",
+            "Advanced SEO + Google Business",
+            "30 social posts/month",
+            "2 AI chatbots",
+            "10 automations",
+            "200 leads/month",
+            "Weekly reports",
+            "Priority support",
+            "AI agents enabled",
+          ],
+        },
+        {
+          name: "Enterprise",
+          description: "Full-service digital marketing for established businesses.",
+          features: [
+            "10 websites",
+            "Multiple custom domains",
+            "Full SEO suite + Google Ads",
+            "90 social posts/month",
+            "5 AI chatbots",
+            "50 automations",
+            "1000 leads/month",
+            "Daily reports",
+            "Dedicated account manager",
+            "Custom integrations",
+          ],
+        },
+      ],
+    },
+    faq: {
+      sectionLabel: "FAQ",
+      title: "Frequently asked questions",
+      items: [
+        {
+          q: "What does the setup fee include?",
+          a: "The one-time setup fee covers the complete onboarding: building and deploying your website, configuring your chatbot, setting up automations and training the AI on your business data.",
+        },
+        {
+          q: "How long until my website is live?",
+          a: "Your website goes live in 60 seconds. Our automated system handles everything: domain setup, SSL certificate, cookie banner, privacy policy and deployment.",
+        },
+        {
+          q: "Can I use my own domain?",
+          a: "Starter plans use a subdomain. Growth and Enterprise plans include a custom domain connection.",
+        },
+        {
+          q: "What happens if I cancel?",
+          a: "You can cancel anytime with no penalties. Your website stays live until the end of your billing period.",
+        },
+        {
+          q: "Does the 30-day guarantee apply to the setup fee too?",
+          a: "Yes. If you're not satisfied within the first 30 days, we refund both the setup fee and the first monthly payment.",
+        },
+        {
+          q: "What languages are supported?",
+          a: "We support German, Italian, French, Spanish, Dutch, Portuguese and English.",
+        },
+        {
+          q: "Is the AI really good enough?",
+          a: "Our AI was trained on thousands of websites across 50+ sectors. The result is professional, SEO-optimized and tailored to your sector.",
+        },
+        {
+          q: "Do I need technical skills?",
+          a: "Absolutely not. MadeCreative is designed for non-technical users. Simply enter your business details — the AI does the rest.",
+        },
+      ],
+    },
+    finalCta: {
+      badge: "Ready to get started?",
+      title: "Your website is 60 seconds away",
+      subtitle:
+        "Join the 127+ businesses already online with MadeCreative winning new customers every day.",
+      cta: "Start free now",
+      trustNote: "No credit card. No contract. Instant start.",
+    },
+    footer: {
+      tagline: "Digital marketing fully powered by AI.",
+      copyright: "© 2026 madecreative.pro — Zero employees. 100% AI.",
+      links: {
+        privacy: "Privacy Policy",
+        cookies: "Cookie Policy",
+        impressum: "Impressum",
+        terms: "Terms",
+      },
+    },
+  },
+};
+
+export function getTranslations(locale: Locale): Translations {
+  return translations[locale] ?? translations[DEFAULT_LOCALE];
+}

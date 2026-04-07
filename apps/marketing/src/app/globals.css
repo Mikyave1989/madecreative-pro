@@ -2,10 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,700&display=swap');
+
 @layer base {
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
+    --gold: #f59e0b;
+    --ink: #0a0a0a;
   }
 
   html {
@@ -14,5 +18,54 @@
 
   body {
     @apply antialiased;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
   }
+
+  h1, h2, h3 {
+    font-family: var(--font-cormorant), Georgia, serif;
+  }
+}
+
+@layer utilities {
+  .text-gold {
+    color: #f59e0b;
+  }
+
+  .bg-ink {
+    background-color: #0a0a0a;
+  }
+
+  .font-heading {
+    font-family: var(--font-cormorant), Georgia, serif;
+  }
+
+  .font-body {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+  }
+
+  .gradient-gold {
+    background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%);
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #f59e0b44;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
 }
