@@ -70,17 +70,12 @@ async function collectMetrics(): Promise<MetricSnapshot> {
   return {
     totalClients,
     activeClients,
-    mrr: activeClients * 297, // Fixed subscription price
+    mrr: activeClients * 297,
     totalProspects,
     totalAgentJobs,
     failedJobsLast24h: failedJobs,
     apiCostLast24h: apiCostResult._sum.apiCost ?? 0,
   };
-}
-
-async function saveMetrics(metrics: MetricSnapshot): Promise<void> {
-  // Log metrics — no PlatformMetric table in schema
-  console.log("[Monitoring] Metrics snapshot:", metrics);
 }
 
 async function checkPlatformAlerts(metrics: MetricSnapshot): Promise<void> {
@@ -100,7 +95,6 @@ async function checkPlatformAlerts(metrics: MetricSnapshot): Promise<void> {
 
   if (alerts.length > 0) {
     console.warn("[Monitoring] ALERTS:", alerts.join("\n"));
-
     await resend.emails.send({
       from: "MadeCreative Monitoring <monitoring@madecreative.pro>",
       to: ADMIN_EMAIL,
@@ -134,16 +128,13 @@ async function checkWebsiteUptime(data: UptimeJobData): Promise<void> {
     isDown = res.status >= 500;
   } catch (err) {
     isDown = true;
-    errorMessage =
-      err instanceof Error ? err.message : "Connection failed";
+    errorMessage = err instanceof Error ? err.message : "Connection failed";
   }
 
   if (isDown) {
     console.warn(
       `[Uptime] DOWN — ${data.domain} (status=${statusCode ?? "N/A"}, err=${errorMessage})`
     );
-
-    // Send alert email
     await resend.emails.send({
       from: "MadeCreative Monitoring <monitoring@madecreative.pro>",
       to: ADMIN_EMAIL,
@@ -156,7 +147,6 @@ async function checkWebsiteUptime(data: UptimeJobData): Promise<void> {
         `Detected at: ${new Date().toISOString()}`,
       ].join("\n"),
     });
-
   } else {
     console.log(`[Uptime] OK — ${data.domain} (${statusCode})`);
   }
@@ -168,9 +158,7 @@ async function enqueueUptimeChecks(
   queue: Queue<UptimeJobData>
 ): Promise<void> {
   const websites = await prisma.clientWebsite.findMany({
-    where: {
-      deployUrl: { not: null },
-    },
+    where: { deployUrl: { not: null } },
     include: {
       client: { select: { id: true, email: true, companyName: true } },
     },
@@ -187,11 +175,7 @@ async function enqueueUptimeChecks(
         clientEmail: site.client.email,
         companyName: site.client.companyName,
       },
-      {
-        removeOnComplete: 50,
-        removeOnFail: 20,
-        attempts: 1,
-      }
+      { removeOnComplete: 50, removeOnFail: 20, attempts: 1 }
     );
   }
 
@@ -203,15 +187,7 @@ async function enqueueUptimeChecks(
 async function detectChurnedClients(): Promise<void> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  interface ChurnClient {
-    id: string;
-    email: string;
-    companyName: string;
-    contactName: string;
-    lastLoginAt: Date | null;
-  }
-
-  const churnRisk: ChurnClient[] = await prisma.client.findMany({
+  const churnRisk = await prisma.client.findMany({
     where: {
       status: "ACTIVE",
       lastLoginAt: { lt: thirtyDaysAgo },
@@ -231,14 +207,12 @@ async function detectChurnedClients(): Promise<void> {
     `[Monitoring] ${churnRisk.length} clients have not logged in for >30 days`
   );
 
-  const rows: string = churnRisk
+  const rows = churnRisk
     .map(
-      (c: ChurnClient) =>
+      (c) =>
         `- ${c.companyName} (${c.email}) — last login: ${c.lastLoginAt?.toISOString() ?? "never"}`
     )
     .join("\n");
-
-  // Send alert email listing at-risk clients
 
   await resend.emails.send({
     from: "MadeCreative Monitoring <monitoring@madecreative.pro>",
@@ -248,30 +222,14 @@ async function detectChurnedClients(): Promise<void> {
   });
 }
 
-// ─── Update monthly visit counts ─────────────────────────────────────────────
-
-async function refreshMonthlyVisits(): Promise<void> {
-  // Visit tracking via external analytics — monthlyVisits updated by API webhooks
-  console.log("[Monitoring] refreshMonthlyVisits: skipped (use analytics webhook)");
-}
-
-// ─── Daily metric persistence ─────────────────────────────────────────────────
+// ─── Daily metric run ─────────────────────────────────────────────────────────
 
 async function runDailyMetrics(): Promise<void> {
   try {
     const metrics = await collectMetrics();
-    await saveMetrics(metrics);
+    console.log("[Monitoring] Daily metrics:", metrics);
     await checkPlatformAlerts(metrics);
     await detectChurnedClients();
-    await refreshMonthlyVisits();
-
-    console.log("[Monitoring] Daily metrics saved:", {
-      clients: `${metrics.activeClients}/${metrics.totalClients}`,
-      mrr: `$${metrics.mrr.toFixed(0)}`,
-      prospects: metrics.totalProspects,
-      failedJobs24h: metrics.failedJobsLast24h,
-      apiCost24h: `$${metrics.apiCostLast24h.toFixed(2)}`,
-    });
   } catch (err) {
     console.error("[Monitoring] Error in daily metrics run:", err);
   }
@@ -287,16 +245,12 @@ async function main(): Promise<void> {
     connection: redis,
   });
 
-  // BullMQ worker: processes uptime check jobs
   const uptimeWorker = new Worker<UptimeJobData>(
     UPTIME_QUEUE,
     async (job) => {
       await checkWebsiteUptime(job.data);
     },
-    {
-      connection: createRedis(),
-      concurrency: 10,
-    }
+    { connection: createRedis(), concurrency: 10 }
   );
 
   uptimeWorker.on("failed", (job, err) => {
@@ -306,17 +260,14 @@ async function main(): Promise<void> {
     );
   });
 
-  // Every 15 minutes: enqueue uptime checks for all active client websites
   cron.schedule("*/15 * * * *", () => {
     enqueueUptimeChecks(uptimeQueue).catch(console.error);
   });
 
-  // Daily at 06:00 UTC: collect platform metrics, detect churn, update visits
   cron.schedule("0 6 * * *", () => {
     runDailyMetrics().catch(console.error);
   });
 
-  // Run both immediately on startup
   await enqueueUptimeChecks(uptimeQueue);
   await runDailyMetrics();
 
@@ -334,7 +285,6 @@ async function main(): Promise<void> {
     process.exit(0);
   });
 
-  // Keep alive
   setInterval(() => {}, 60_000);
 
   console.log(

@@ -7,17 +7,13 @@ import fs from "fs";
 import os from "os";
 
 // ─── PDF generation helper ────────────────────────────────────────────────────
-// Uses pdfkit to produce a structured monthly report PDF.
-// Falls back to /tmp/ when Cloudflare R2 is not available.
 
 async function generatePdf(params: {
   clientName: string;
-  plan: string;
   month: number;
   year: number;
   reportData: ReportData;
 }): Promise<string> {
-  // Dynamic import so the worker still starts even if pdfkit is absent in dev
   const PDFDocumentModule = await import("pdfkit").catch(() => null);
   if (!PDFDocumentModule) {
     console.warn("[ReportWorker] pdfkit not available, skipping PDF generation");
@@ -30,18 +26,8 @@ async function generatePdf(params: {
       : (PDFDocumentModule as unknown as typeof import("pdfkit"));
 
   const monthNames = [
-    "Gennaio",
-    "Febbraio",
-    "Marzo",
-    "Aprile",
-    "Maggio",
-    "Giugno",
-    "Luglio",
-    "Agosto",
-    "Settembre",
-    "Ottobre",
-    "Novembre",
-    "Dicembre",
+    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
   ];
   const monthName = monthNames[(params.month - 1) % 12] ?? String(params.month);
 
@@ -54,13 +40,10 @@ async function generatePdf(params: {
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
-
     const BRAND_INDIGO = "#4f46e5";
     const BRAND_DARK = "#1e1b4b";
     const GRAY_600 = "#4b5563";
     const GRAY_200 = "#e5e7eb";
-    const WHITE = "#ffffff";
 
     function headerBar() {
       doc.rect(0, 0, doc.page.width, 8).fill(BRAND_INDIGO);
@@ -91,10 +74,7 @@ async function generatePdf(params: {
         .fillColor(GRAY_600)
         .font("Helvetica")
         .text(label, x, y, { continued: true, width: 250 });
-      doc
-        .font("Helvetica-Bold")
-        .fillColor(BRAND_DARK)
-        .text(value, { align: "right" });
+      doc.font("Helvetica-Bold").fillColor(BRAND_DARK).text(value, { align: "right" });
       if (note) {
         doc
           .fontSize(9)
@@ -178,9 +158,7 @@ async function generatePdf(params: {
       .fontSize(12)
       .fillColor(GRAY_600)
       .font("Helvetica")
-      .text(`Cliente: ${params.clientName}`)
-      .moveDown(0.2)
-      .text(`Piano: ${params.plan}`);
+      .text(`Cliente: ${params.clientName}`);
 
     doc
       .moveDown(6)
@@ -210,12 +188,8 @@ async function generatePdf(params: {
     sectionTitle("Metriche Sito Web");
 
     kpiRow("Visite mensili", String(params.reportData.metrics.websiteVisits));
-    kpiRow(
-      "Bounce rate",
-      `${params.reportData.metrics.bounceRate ?? "—"}%`
-    );
+    kpiRow("Bounce rate", `${params.reportData.metrics.bounceRate ?? "—"}%`);
 
-    // Mini bar chart — simulated weekly visits (divide by 4)
     const visits = params.reportData.metrics.websiteVisits;
     const weeklyVisits = [
       Math.round(visits * 0.22),
@@ -223,21 +197,12 @@ async function generatePdf(params: {
       Math.round(visits * 0.24),
       Math.round(visits * 0.28),
     ];
-    const weekLabels = ["Sett 1", "Sett 2", "Sett 3", "Sett 4"];
-    miniBarChart(weeklyVisits, weekLabels);
+    miniBarChart(weeklyVisits, ["Sett 1", "Sett 2", "Sett 3", "Sett 4"]);
 
-    // Top pages (placeholder)
-    doc
-      .fontSize(10)
-      .fillColor(GRAY_600)
-      .font("Helvetica-Bold")
-      .text("Pagine più visitate:");
+    doc.fontSize(10).fillColor(GRAY_600).font("Helvetica-Bold").text("Pagine più visitate:");
     doc.moveDown(0.2);
-    ["/ (Homepage)", "/servizi", "/contatti"].forEach((page) =>
-      bulletPoint(page)
-    );
+    ["/ (Homepage)", "/servizi", "/contatti"].forEach((page) => bulletPoint(page));
 
-    // Fonti traffico (placeholder)
     doc.moveDown(0.5);
     doc.fontSize(10).fillColor(GRAY_600).font("Helvetica-Bold").text("Fonti traffico:");
     doc.moveDown(0.2);
@@ -258,10 +223,7 @@ async function generatePdf(params: {
 
     kpiRow("Totale lead", String(params.reportData.metrics.leadsGenerated));
     kpiRow("Lead convertiti", String(params.reportData.metrics.leadsConverted));
-    kpiRow(
-      "Tasso di conversione",
-      `${params.reportData.metrics.conversionRate}%`
-    );
+    kpiRow("Tasso di conversione", `${params.reportData.metrics.conversionRate}%`);
     kpiRow(
       "Valore stimato",
       `€${(params.reportData.metrics.leadsGenerated * 150).toLocaleString("it-IT")}`
@@ -278,21 +240,11 @@ async function generatePdf(params: {
 
     sectionTitle("Performance Chatbot");
 
-    kpiRow(
-      "Conversazioni totali",
-      String(params.reportData.metrics.chatbotConversations)
-    );
-    kpiRow(
-      "Tasso di risoluzione",
-      `${params.reportData.metrics.chatbotResolved ?? 0}%`
-    );
+    kpiRow("Conversazioni totali", String(params.reportData.metrics.chatbotConversations));
+    kpiRow("Tasso di risoluzione", `${params.reportData.metrics.chatbotResolved ?? 0}%`);
 
     doc.moveDown(0.5);
-    doc
-      .fontSize(10)
-      .fillColor(GRAY_600)
-      .font("Helvetica-Bold")
-      .text("Domande più frequenti:");
+    doc.fontSize(10).fillColor(GRAY_600).font("Helvetica-Bold").text("Domande più frequenti:");
     doc.moveDown(0.2);
     [
       "Orari di apertura",
@@ -305,7 +257,7 @@ async function generatePdf(params: {
     sectionTitle("Automazioni");
 
     kpiRow("Chatbot attivo", "Sì");
-    kpiRow("Risposte automatiche", `${params.reportData.metrics.chatbotResolved ?? 0}%`);
+    kpiRow("Risposte automatizzate", `${params.reportData.metrics.chatbotResolved ?? 0}%`);
 
     // ── Raccomandazioni ────────────────────────────────────────────────────────
 
@@ -315,23 +267,21 @@ async function generatePdf(params: {
 
     sectionTitle("Raccomandazioni per il prossimo mese");
 
-    (params.reportData.recommendations ?? [])
-      .slice(0, 3)
-      .forEach((rec, i) => {
-        doc
-          .fontSize(10)
-          .fillColor(BRAND_DARK)
-          .font("Helvetica-Bold")
-          .text(`${i + 1}. ${rec}`);
-        doc.moveDown(0.3);
-      });
+    (params.reportData.recommendations ?? []).slice(0, 3).forEach((rec, i) => {
+      doc
+        .fontSize(10)
+        .fillColor(BRAND_DARK)
+        .font("Helvetica-Bold")
+        .text(`${i + 1}. ${rec}`);
+      doc.moveDown(0.3);
+    });
 
     // ── ROI Section ────────────────────────────────────────────────────────────
 
     doc.moveDown(1);
     sectionTitle("ROI — Valore generato");
 
-    const monthlyAmount = 297; // Default — in production pull from client.monthlyAmount
+    const monthlyAmount = 297;
     const estimatedValue =
       params.reportData.metrics.leadsGenerated * 150 +
       (params.reportData.metrics.websiteVisits / 1000) * 50;
@@ -360,8 +310,6 @@ async function generatePdf(params: {
         "* Il valore è stimato sulla base del valore medio per lead del settore e dei costi equivalenti di advertising."
       );
 
-    // ── Footer ─────────────────────────────────────────────────────────────────
-
     doc
       .moveDown(3)
       .fontSize(9)
@@ -379,29 +327,23 @@ async function generatePdf(params: {
   });
 }
 
-// ─── Upload PDF to R2 (or keep on disk) ──────────────────────────────────────
+// ─── Upload PDF to R2 ─────────────────────────────────────────────────────────
 
-async function uploadPdfToR2(
-  filePath: string,
-  key: string
-): Promise<string | null> {
+async function uploadPdfToR2(filePath: string, key: string): Promise<string | null> {
   const accountId = process.env["CLOUDFLARE_ACCOUNT_ID"];
   const bucketName = process.env["R2_BUCKET_NAME"];
   const accessKeyId = process.env["R2_ACCESS_KEY_ID"];
   const secretAccessKey = process.env["R2_SECRET_ACCESS_KEY"];
 
   if (!accountId || !bucketName || !accessKeyId || !secretAccessKey) {
-    console.warn(
-      "[ReportWorker] R2 not configured — PDF saved locally at",
-      filePath
-    );
+    console.warn("[ReportWorker] R2 not configured — PDF saved locally at", filePath);
     return null;
   }
 
   try {
-    const { S3Client, PutObjectCommand } = await import(
-      "@aws-sdk/client-s3"
-    ).catch(() => ({ S3Client: null, PutObjectCommand: null }));
+    const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3").catch(
+      () => ({ S3Client: null, PutObjectCommand: null })
+    );
 
     if (!S3Client || !PutObjectCommand) {
       console.warn("[ReportWorker] @aws-sdk/client-s3 not available");
@@ -426,7 +368,7 @@ async function uploadPdfToR2(
     );
 
     const publicUrl = `${process.env["R2_PUBLIC_URL"] ?? `https://pub-${accountId}.r2.dev`}/${key}`;
-    fs.unlinkSync(filePath); // Clean up temp file after upload
+    fs.unlinkSync(filePath);
     return publicUrl;
   } catch (err) {
     console.error("[ReportWorker] R2 upload failed:", err);
@@ -441,21 +383,10 @@ async function generateMonthlyReport(
   month: number,
   year: number
 ): Promise<void> {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0, 23, 59, 59);
-
-  const [
-    client,
-    websiteVisits,
-    chatbotStats,
-  ] = await Promise.all([
+  const [client, websiteVisits, chatbotStats] = await Promise.all([
     prisma.client.findUnique({
       where: { id: clientId },
-      select: {
-        companyName: true,
-        sector: true,
-        email: true,
-      },
+      select: { companyName: true, sector: true, email: true },
     }),
     prisma.clientWebsite.findUnique({
       where: { clientId },
@@ -508,10 +439,8 @@ async function generateMonthlyReport(
     ],
   };
 
-  // Generate PDF
   const pdfPath = await generatePdf({
     clientName: client.companyName,
-    plan: "Standard",
     month,
     year,
     reportData,
@@ -522,19 +451,12 @@ async function generateMonthlyReport(
   if (pdfPath) {
     const r2Key = `reports/${clientId}/${year}-${String(month).padStart(2, "0")}.pdf`;
     pdfUrl = await uploadPdfToR2(pdfPath, r2Key);
-
-    // If R2 not available, keep local path as reference
-    if (!pdfUrl) {
-      pdfUrl = null; // Don't store local tmp path in DB — not accessible from web
-    }
   }
 
-  // Upsert report in DB
   const existing = await prisma.monthlyReport.findFirst({
     where: { clientId, month, year },
   });
 
-  // Cast to satisfy Prisma's Json field type
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reportJson = reportData as any;
 
@@ -545,18 +467,12 @@ async function generateMonthlyReport(
     });
   } else {
     await prisma.monthlyReport.create({
-      data: {
-        clientId,
-        month,
-        year,
-        data: reportJson,
-        pdfUrl,
-      },
+      data: { clientId, month, year, data: reportJson, pdfUrl },
     });
   }
 
   console.log(
-    `[ReportWorker] Report generated for ${client.companyName} — ${month}/${year}${pdfUrl ? " (PDF uploaded)" : " (PDF local)"}`
+    `[ReportWorker] Report generated for ${client.companyName} — ${month}/${year}${pdfUrl ? " (PDF uploaded)" : ""}`
   );
 }
 
@@ -565,8 +481,7 @@ async function generateMonthlyReport(
 async function generateAllMonthlyReports(): Promise<void> {
   const now = new Date();
   const lastMonth = now.getMonth() === 0 ? 12 : now.getMonth();
-  const year =
-    now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
 
   console.log(`[ReportWorker] Generating reports for ${lastMonth}/${year}`);
 
@@ -575,16 +490,11 @@ async function generateAllMonthlyReports(): Promise<void> {
     select: { id: true },
   });
 
-  console.log(
-    `[ReportWorker] Processing ${activeClients.length} active clients`
-  );
+  console.log(`[ReportWorker] Processing ${activeClients.length} active clients`);
 
   for (const client of activeClients) {
     await generateMonthlyReport(client.id, lastMonth, year).catch((err) => {
-      console.error(
-        `[ReportWorker] Failed for client ${client.id}:`,
-        err
-      );
+      console.error(`[ReportWorker] Failed for client ${client.id}:`, err);
     });
   }
 
@@ -596,7 +506,6 @@ async function generateAllMonthlyReports(): Promise<void> {
 async function main(): Promise<void> {
   console.log("[ReportWorker] Starting...");
 
-  // Run on 1st of every month at 08:00
   cron.schedule("0 8 1 * *", () => {
     generateAllMonthlyReports().catch(console.error);
   });
@@ -605,7 +514,6 @@ async function main(): Promise<void> {
     await generateAllMonthlyReports();
   }
 
-  // Single-client on-demand trigger
   if (process.env["REPORT_CLIENT_ID"]) {
     const now = new Date();
     const month = parseInt(
@@ -619,9 +527,7 @@ async function main(): Promise<void> {
     await generateMonthlyReport(process.env["REPORT_CLIENT_ID"], month, year);
   }
 
-  console.log(
-    "[ReportWorker] Running — scheduled for 1st of each month at 08:00"
-  );
+  console.log("[ReportWorker] Running — scheduled for 1st of each month at 08:00");
 
   process.on("SIGTERM", () => process.exit(0));
   process.on("SIGINT", () => process.exit(0));
