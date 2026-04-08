@@ -1,4 +1,5 @@
 import { serve } from "@hono/node-server";
+import { handle } from "@hono/node-server/vercel";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -136,17 +137,16 @@ app.onError((err, c) => {
 
 // ─── Server Start ─────────────────────────────────────────────────────────────
 
-const port = parseInt(process.env["PORT"] ?? "8000", 10);
+// ─── Local dev server ─────────────────────────────────────────────────────────
+if (process.env["NODE_ENV"] !== "production" || process.env["PORT"]) {
+  const port = parseInt(process.env["PORT"] ?? "8000", 10);
+  serve(
+    { fetch: app.fetch, port },
+    (info) => {
+      console.log(`MadeCreative API running on http://localhost:${info.port}`);
+    }
+  );
+}
 
-serve(
-  {
-    fetch: app.fetch,
-    port,
-  },
-  (info) => {
-    console.log(`MadeCreative API running on http://localhost:${info.port}`);
-    console.log(`Environment: ${process.env["NODE_ENV"] ?? "development"}`);
-  }
-);
-
-export default app;
+// ─── Vercel serverless handler ────────────────────────────────────────────────
+export default handle(app);
