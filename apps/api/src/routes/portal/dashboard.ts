@@ -57,7 +57,7 @@ app.get("/", async (c) => {
     return c.json({ success: false, error: "Client not found" }, 404);
   }
 
-  const totalRevenue = client.invoices.reduce((sum, inv) => sum + inv.amount, 0);
+  const totalRevenue = client.invoices.reduce((sum: number, inv: { amount: number }) => sum + inv.amount, 0);
 
   return c.json({
     success: true,
