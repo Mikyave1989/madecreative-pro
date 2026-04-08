@@ -93,7 +93,7 @@ app.patch("/pages", async (c) => {
 
   await prisma.clientWebsite.update({
     where: { id: website.id },
-    data: { pages: updatedPages as unknown as Parameters<typeof prisma.clientWebsite.update>[0]["data"]["pages"] },
+    data: { pages: JSON.parse(JSON.stringify(updatedPages)) },
   });
 
   return c.json({ success: true, data: { saved: true } });
