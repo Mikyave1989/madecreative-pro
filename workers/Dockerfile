@@ -8,6 +8,12 @@ RUN apk add --no-cache python3 make g++ openssl
 COPY package.json package-lock.json ./
 COPY tsconfig.json ./
 
+# Copy app package.json stubs so npm workspaces resolves all members
+COPY apps/api/package.json apps/api/
+COPY apps/portal/package.json apps/portal/
+COPY apps/marketing/package.json apps/marketing/
+COPY apps/admin/package.json apps/admin/
+
 # Copy Prisma schema (needed for prisma generate)
 COPY apps/api/prisma apps/api/prisma/
 
@@ -43,6 +49,12 @@ RUN apk add --no-cache openssl
 
 COPY package.json package-lock.json ./
 COPY tsconfig.json ./
+
+COPY apps/api/package.json apps/api/
+COPY apps/portal/package.json apps/portal/
+COPY apps/marketing/package.json apps/marketing/
+COPY apps/admin/package.json apps/admin/
+
 COPY apps/api/prisma apps/api/prisma/
 COPY packages/db/ packages/db/
 COPY packages/shared/ packages/shared/
