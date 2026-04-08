@@ -4,7 +4,7 @@
 prisma generate --schema=apps/api/prisma/schema.prisma
 
 # 2. Build all @madecreative packages via Turbo
-npx turbo run build --filter=@madecreative/api
+npx turbo run build --filter=@madecreative/api --force
 
 # 3. Convert @madecreative workspace symlinks to real directories
 # so Vercel's nft/includeFiles can copy them into the Lambda bundle
