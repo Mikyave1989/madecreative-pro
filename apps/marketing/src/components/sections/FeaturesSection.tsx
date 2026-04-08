@@ -1,3 +1,5 @@
+"use client";
+
 import type { Translations } from "@/lib/i18n";
 
 interface FeaturesSectionProps {
