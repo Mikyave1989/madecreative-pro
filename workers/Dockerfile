@@ -26,8 +26,9 @@ COPY packages/ai/ packages/ai/
 # Copy workers
 COPY workers/ workers/
 
-# Install all dependencies (including dev for TypeScript)
-RUN npm install --include=dev
+# Install all dependencies (--ignore-scripts skips postinstall which needs
+# prisma CLI before it's fully hoisted — we run prisma generate explicitly below)
+RUN npm install --include=dev --ignore-scripts
 
 # Generate Prisma client for linux-musl (Alpine)
 RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
@@ -62,10 +63,13 @@ COPY packages/agents/ packages/agents/
 COPY packages/ai/ packages/ai/
 COPY workers/ workers/
 
-RUN npm install --omit=dev
+# --ignore-scripts: skip postinstall (prisma generate) since prisma CLI
+# is a devDependency and won't be available with --omit=dev
+RUN npm install --omit=dev --ignore-scripts
 
-# Re-generate Prisma client in production stage (ensures correct binary)
-RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
+# Copy the generated Prisma client binary from build stage (same Alpine image,
+# binary is compatible — no need to regenerate)
+COPY --from=base /app/node_modules/.prisma node_modules/.prisma
 
 # Copy compiled TypeScript output from build stage
 COPY --from=base /app/packages/db/dist packages/db/dist
