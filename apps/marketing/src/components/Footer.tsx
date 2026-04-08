@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import type { Translations } from "@/lib/i18n";
 
