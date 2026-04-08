@@ -251,9 +251,7 @@ export class ChatbotAgent extends BaseAgent {
           chatbot = await prisma.clientChatbot.update({
             where: { id: input.chatbotId },
             data: {
-              name: input.chatbotName,
               knowledgeBase: kb as Parameters<typeof prisma.clientChatbot.update>[0] extends { data: infer D } ? D extends { knowledgeBase?: infer K } ? K : never : never,
-              personality: persona as Parameters<typeof prisma.clientChatbot.update>[0] extends { data: infer D } ? D extends { personality?: infer P } ? P : never : never,
               widgetConfig: wc as Parameters<typeof prisma.clientChatbot.update>[0] extends { data: infer D } ? D extends { widgetConfig?: infer W } ? W : never : never,
               isActive: shouldActivate,
             },
@@ -262,9 +260,7 @@ export class ChatbotAgent extends BaseAgent {
           chatbot = await prisma.clientChatbot.create({
             data: {
               clientId: input.clientId,
-              name: input.chatbotName,
               knowledgeBase: kb as Parameters<typeof prisma.clientChatbot.create>[0] extends { data: infer D } ? D extends { knowledgeBase?: infer K } ? K : never : never,
-              personality: persona as Parameters<typeof prisma.clientChatbot.create>[0] extends { data: infer D } ? D extends { personality?: infer P } ? P : never : never,
               widgetConfig: wc as Parameters<typeof prisma.clientChatbot.create>[0] extends { data: infer D } ? D extends { widgetConfig?: infer W } ? W : never : never,
               isActive: shouldActivate,
             },
@@ -305,7 +301,8 @@ export class ChatbotAgent extends BaseAgent {
       const client = await prisma.client.findUnique({
         where: { id: parsed.data.clientId },
         include: {
-          chatbots: { take: 1, orderBy: { createdAt: "desc" } },
+          chatbot: true,
+          prospect: { select: { aiAnalysis: true } },
         },
       });
 
@@ -319,11 +316,11 @@ export class ChatbotAgent extends BaseAgent {
 
       // Determine chatbot ID — use existing if updating
       const existingChatbotId =
-        parsed.data.chatbotId ?? client.chatbots[0]?.id;
+        parsed.data.chatbotId ?? client.chatbot?.id;
 
-      // Build review sample from stored analysis if available
-      const reviewSample = client.aiAnalysis
-        ? extractReviewSample(client.aiAnalysis)
+      // Build review sample from stored prospect analysis if available
+      const reviewSample = client.prospect?.aiAnalysis
+        ? extractReviewSample(client.prospect.aiAnalysis)
         : null;
 
       const userPrompt = `${buildChatbotSetupPrompt({

@@ -57,7 +57,6 @@ export class QaAgent extends BaseAgent {
             where: { id: targetId },
             data: {
               lighthouseScore: score,
-              status: passed ? "APPROVED" : "REVIEW",
             },
           });
         }

@@ -1019,11 +1019,8 @@ export class BuilderAgent extends BaseAgent {
           website = await prisma.clientWebsite.update({
             where: { id: websiteId },
             data: {
-              name,
               pages: pages as never,
               designTokens,
-              seoConfig: seoConfig as never,
-              status: "REVIEW",
               updatedAt: new Date(),
             },
           });
@@ -1031,16 +1028,14 @@ export class BuilderAgent extends BaseAgent {
           website = await prisma.clientWebsite.create({
             data: {
               clientId,
-              name,
+              domain: name,
               pages: pages as never,
               designTokens,
-              seoConfig: seoConfig as never,
-              status: "REVIEW",
             },
           });
         }
 
-        return { websiteId: website.id, status: website.status };
+        return { websiteId: website.id };
       }
 
       default:
@@ -1124,7 +1119,7 @@ export class BuilderAgent extends BaseAgent {
           description: null,
           googleRating: null,
           reviewCount: null,
-          website: client.website ?? null,
+          website: null,
           phone: client.phone ?? null,
           email: client.email,
           address: null,

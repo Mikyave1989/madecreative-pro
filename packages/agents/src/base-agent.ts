@@ -63,7 +63,6 @@ export abstract class BaseAgent {
       where: { id: this.jobId },
       data: {
         progress: Math.min(100, Math.max(0, progress)),
-        logs: this.logs as Parameters<typeof prisma.agentJob.update>[0] extends { data: infer D } ? D extends { logs?: infer L } ? L : never : never,
       },
     });
   }
@@ -162,9 +161,8 @@ export abstract class BaseAgent {
         status: "COMPLETED",
         completedAt: new Date(),
         progress: 100,
-        output,
+        output: JSON.parse(JSON.stringify(output)),
         apiCost: this.totalCost,
-        logs: this.logs as Parameters<typeof prisma.agentJob.update>[0] extends { data: infer D } ? D extends { logs?: infer L } ? L : never : never,
       },
     });
   }
@@ -177,7 +175,6 @@ export abstract class BaseAgent {
         completedAt: new Date(),
         error,
         apiCost: this.totalCost,
-        logs: this.logs as Parameters<typeof prisma.agentJob.update>[0] extends { data: infer D } ? D extends { logs?: infer L } ? L : never : never,
       },
     });
   }
