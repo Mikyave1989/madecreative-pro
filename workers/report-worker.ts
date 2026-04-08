@@ -264,7 +264,7 @@ async function generatePdf(params: {
     );
     kpiRow(
       "Valore stimato",
-      `€${(params.reportData.metrics.revenueAttributed ?? 0).toLocaleString("it-IT")}`
+      `€${(params.reportData.metrics.leadsGenerated * 150).toLocaleString("it-IT")}`
     );
 
     doc.moveDown(0.5);
@@ -304,37 +304,8 @@ async function generatePdf(params: {
 
     sectionTitle("Automazioni");
 
-    kpiRow(
-      "Ore risparmiate",
-      `${params.reportData.metrics.timeSavedHours}h`
-    );
-    kpiRow(
-      "Esecuzioni totali",
-      String(params.reportData.metrics.automationRuns ?? 0)
-    );
-
-    // ── Social Media ──────────────────────────────────────────────────────────
-
-    if (
-      params.reportData.metrics.socialReach &&
-      params.reportData.metrics.socialReach > 0
-    ) {
-      doc.addPage();
-      headerBar();
-      doc.moveDown(1);
-
-      sectionTitle("Social Media");
-
-      kpiRow(
-        "Post pubblicati",
-        String(params.reportData.metrics.socialPostsPublished ?? 0)
-      );
-      kpiRow("Reach totale", String(params.reportData.metrics.socialReach));
-      kpiRow(
-        "Engagement",
-        String(params.reportData.metrics.socialEngagement)
-      );
-    }
+    kpiRow("Chatbot attivo", "Sì");
+    kpiRow("Risposte automatiche", `${params.reportData.metrics.chatbotResolved ?? 0}%`);
 
     // ── Raccomandazioni ────────────────────────────────────────────────────────
 

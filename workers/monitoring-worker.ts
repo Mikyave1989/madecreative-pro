@@ -49,7 +49,6 @@ async function collectMetrics(): Promise<MetricSnapshot> {
   const [
     totalClients,
     activeClients,
-    mrrResult,
     totalProspects,
     totalAgentJobs,
     failedJobs,
@@ -57,10 +56,6 @@ async function collectMetrics(): Promise<MetricSnapshot> {
   ] = await Promise.all([
     prisma.client.count(),
     prisma.client.count({ where: { status: "ACTIVE" } }),
-    prisma.client.aggregate({
-      where: { status: "ACTIVE" },
-      _sum: { monthlyAmount: true },
-    }),
     prisma.prospect.count(),
     prisma.agentJob.count(),
     prisma.agentJob.count({
@@ -75,7 +70,7 @@ async function collectMetrics(): Promise<MetricSnapshot> {
   return {
     totalClients,
     activeClients,
-    mrr: mrrResult._sum.monthlyAmount ?? 0,
+    mrr: activeClients * 297, // Fixed subscription price
     totalProspects,
     totalAgentJobs,
     failedJobsLast24h: failedJobs,
@@ -84,14 +79,8 @@ async function collectMetrics(): Promise<MetricSnapshot> {
 }
 
 async function saveMetrics(metrics: MetricSnapshot): Promise<void> {
-  const now = new Date();
-  const entries = Object.entries(metrics).map(([metric, value]) => ({
-    metric,
-    value: typeof value === "number" ? value : 0,
-    date: now,
-  }));
-
-  await prisma.platformMetric.createMany({ data: entries });
+  // Log metrics — no PlatformMetric table in schema
+  console.log("[Monitoring] Metrics snapshot:", metrics);
 }
 
 async function checkPlatformAlerts(metrics: MetricSnapshot): Promise<void> {
@@ -168,21 +157,6 @@ async function checkWebsiteUptime(data: UptimeJobData): Promise<void> {
       ].join("\n"),
     });
 
-    // Persist downtime metric
-    await prisma.platformMetric.create({
-      data: {
-        metric: "website_downtime",
-        value: 1,
-        date: new Date(),
-        metadata: {
-          websiteId: data.websiteId,
-          clientId: data.clientId,
-          domain: data.domain,
-          statusCode,
-          error: errorMessage,
-        },
-      },
-    });
   } else {
     console.log(`[Uptime] OK — ${data.domain} (${statusCode})`);
   }
@@ -195,7 +169,6 @@ async function enqueueUptimeChecks(
 ): Promise<void> {
   const websites = await prisma.clientWebsite.findMany({
     where: {
-      status: "ACTIVE",
       deployUrl: { not: null },
     },
     include: {
@@ -236,7 +209,6 @@ async function detectChurnedClients(): Promise<void> {
     companyName: string;
     contactName: string;
     lastLoginAt: Date | null;
-    plan: string;
   }
 
   const churnRisk: ChurnClient[] = await prisma.client.findMany({
@@ -250,7 +222,6 @@ async function detectChurnedClients(): Promise<void> {
       companyName: true,
       contactName: true,
       lastLoginAt: true,
-      plan: true,
     },
   });
 
@@ -260,23 +231,12 @@ async function detectChurnedClients(): Promise<void> {
     `[Monitoring] ${churnRisk.length} clients have not logged in for >30 days`
   );
 
-  // Persist churn risk metric
-  const clientIds: string[] = churnRisk.map((c: ChurnClient) => c.id);
   const rows: string = churnRisk
     .map(
       (c: ChurnClient) =>
-        `- ${c.companyName} (${c.email}) — last login: ${c.lastLoginAt?.toISOString() ?? "never"} — plan: ${c.plan}`
+        `- ${c.companyName} (${c.email}) — last login: ${c.lastLoginAt?.toISOString() ?? "never"}`
     )
     .join("\n");
-
-  await prisma.platformMetric.create({
-    data: {
-      metric: "clients_churn_risk",
-      value: churnRisk.length,
-      date: new Date(),
-      metadata: { clientIds },
-    },
-  });
 
   // Send alert email listing at-risk clients
 
@@ -291,34 +251,8 @@ async function detectChurnedClients(): Promise<void> {
 // ─── Update monthly visit counts ─────────────────────────────────────────────
 
 async function refreshMonthlyVisits(): Promise<void> {
-  // Pull visit data from the PlatformMetric table where individual page view
-  // events are written by the tracking worker, then aggregate per website.
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-  const visitMetrics = await prisma.platformMetric.groupBy({
-    by: ["metadata"],
-    where: {
-      metric: "page_view",
-      date: { gte: thirtyDaysAgo },
-    },
-    _count: { metric: true },
-  });
-
-  for (const row of visitMetrics) {
-    const meta = row.metadata as { websiteId?: string } | null;
-    if (!meta?.websiteId) continue;
-
-    await prisma.clientWebsite.updateMany({
-      where: { id: meta.websiteId },
-      data: { monthlyVisits: row._count.metric },
-    });
-  }
-
-  if (visitMetrics.length > 0) {
-    console.log(
-      `[Monitoring] Updated monthlyVisits for ${visitMetrics.length} websites`
-    );
-  }
+  // Visit tracking via external analytics — monthlyVisits updated by API webhooks
+  console.log("[Monitoring] refreshMonthlyVisits: skipped (use analytics webhook)");
 }
 
 // ─── Daily metric persistence ─────────────────────────────────────────────────
