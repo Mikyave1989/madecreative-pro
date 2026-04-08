@@ -26,12 +26,10 @@ app.get("/", async (c) => {
     where: { clientId },
     select: {
       id: true,
-      name: true,
       isActive: true,
       totalConversations: true,
       resolvedRate: true,
       widgetConfig: true,
-      personality: true,
       createdAt: true,
     },
   });
@@ -84,15 +82,13 @@ app.patch("/:id", async (c) => {
     );
   }
 
-  const { name, isActive, personality, widgetConfig } = parsed.data;
+  const { isActive, widgetConfig } = parsed.data;
 
   const updated = await prisma.clientChatbot.update({
     where: { id },
     data: {
-      ...(name !== undefined ? { name } : {}),
       ...(isActive !== undefined ? { isActive } : {}),
-      ...(personality !== undefined ? { personality } : {}),
-      ...(widgetConfig !== undefined ? { widgetConfig } : {}),
+      ...(widgetConfig !== undefined ? { widgetConfig: JSON.parse(JSON.stringify(widgetConfig)) } : {}),
     },
   });
 
@@ -331,7 +327,7 @@ app.post("/:id/faqs", async (c) => {
     );
   }
 
-  const kb = (chatbot.knowledgeBase as KnowledgeBase) ?? {
+  const kb = (chatbot.knowledgeBase as unknown as KnowledgeBase | null) ?? {
     faqs: [],
     businessInfo: { name: "", description: "" },
     services: [],
@@ -348,7 +344,7 @@ app.post("/:id/faqs", async (c) => {
   const updated = await prisma.clientChatbot.update({
     where: { id },
     data: {
-      knowledgeBase: kb as Parameters<typeof prisma.clientChatbot.update>[0] extends { data: infer D } ? D extends { knowledgeBase?: infer K } ? K : never : never,
+      knowledgeBase: JSON.parse(JSON.stringify(kb)),
     },
   });
 
@@ -381,7 +377,7 @@ app.delete("/:id/faqs/:index", async (c) => {
     return c.json({ success: false, error: "Chatbot not found" }, 404);
   }
 
-  const kb = chatbot.knowledgeBase as KnowledgeBase;
+  const kb = chatbot.knowledgeBase as unknown as KnowledgeBase;
   if (!kb.faqs || index >= kb.faqs.length) {
     return c.json({ success: false, error: "FAQ not found" }, 404);
   }
@@ -391,7 +387,7 @@ app.delete("/:id/faqs/:index", async (c) => {
   await prisma.clientChatbot.update({
     where: { id },
     data: {
-      knowledgeBase: kb as Parameters<typeof prisma.clientChatbot.update>[0] extends { data: infer D } ? D extends { knowledgeBase?: infer K } ? K : never : never,
+      knowledgeBase: JSON.parse(JSON.stringify(kb)),
     },
   });
 
@@ -427,7 +423,7 @@ app.patch("/:id/faqs/:index", async (c) => {
     );
   }
 
-  const kb = chatbot.knowledgeBase as KnowledgeBase;
+  const kb = chatbot.knowledgeBase as unknown as KnowledgeBase;
   if (!kb.faqs || index >= kb.faqs.length) {
     return c.json({ success: false, error: "FAQ not found" }, 404);
   }
@@ -437,7 +433,7 @@ app.patch("/:id/faqs/:index", async (c) => {
   await prisma.clientChatbot.update({
     where: { id },
     data: {
-      knowledgeBase: kb as Parameters<typeof prisma.clientChatbot.update>[0] extends { data: infer D } ? D extends { knowledgeBase?: infer K } ? K : never : never,
+      knowledgeBase: JSON.parse(JSON.stringify(kb)),
     },
   });
 

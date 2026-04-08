@@ -11,15 +11,6 @@ const app = new Hono<{ Variables: Variables }>();
 app.get("/", async (c) => {
   const clientId = c.get("jwtPayload").sub;
 
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { plan: true },
-  });
-
-  if (!client) {
-    return c.json({ success: false, error: "Client not found" }, 404);
-  }
-
   const reports = await prisma.monthlyReport.findMany({
     where: { clientId },
     orderBy: [{ year: "desc" }, { month: "desc" }],
@@ -34,13 +25,7 @@ app.get("/", async (c) => {
     },
   });
 
-  return c.json({
-    success: true,
-    data: {
-      reports,
-      canGenerateNow: client.plan === "ENTERPRISE",
-    },
-  });
+  return c.json({ success: true, data: { reports } });
 });
 
 // ─── GET /portal/reports/:id ──────────────────────────────────────────────────
@@ -58,51 +43,6 @@ app.get("/:id", async (c) => {
   }
 
   return c.json({ success: true, data: report });
-});
-
-// ─── POST /portal/reports/generate ───────────────────────────────────────────
-// Only ENTERPRISE can trigger on-demand
-
-app.post("/generate", async (c) => {
-  const clientId = c.get("jwtPayload").sub;
-
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { plan: true },
-  });
-
-  if (!client) {
-    return c.json({ success: false, error: "Client not found" }, 404);
-  }
-
-  if (client.plan !== "ENTERPRISE") {
-    return c.json(
-      {
-        success: false,
-        error:
-          "La generazione manuale dei report è disponibile solo per il piano ENTERPRISE",
-      },
-      403
-    );
-  }
-
-  // Queue a report generation job — in production this would enqueue to BullMQ
-  // For now we return a 202 Accepted acknowledging the request
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
-
-  return c.json(
-    {
-      success: true,
-      data: {
-        message: `Generazione report per ${month}/${year} avviata. Riceverai un'email quando il PDF è pronto.`,
-        month,
-        year,
-      },
-    },
-    202
-  );
 });
 
 export default app;

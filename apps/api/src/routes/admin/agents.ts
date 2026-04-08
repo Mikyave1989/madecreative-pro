@@ -89,7 +89,7 @@ app.post("/jobs", async (c) => {
     data: {
       agentType,
       status: "QUEUED",
-      input,
+      input: JSON.parse(JSON.stringify(input)),
       prospectId: prospectId ?? null,
       clientId: clientId ?? null,
     },

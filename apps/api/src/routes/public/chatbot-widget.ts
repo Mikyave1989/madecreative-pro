@@ -6,9 +6,14 @@ import { getClaudeClient } from "@madecreative/ai";
 import { getRedisConnection } from "../../lib/queue.js";
 import type {
   KnowledgeBase,
-  ChatbotPersonality,
   WidgetConfig,
 } from "@madecreative/shared";
+
+interface ChatbotPersonality {
+  tone?: string;
+  greeting?: string;
+  fallbackMessage?: string;
+}
 
 const app = new Hono();
 
@@ -118,10 +123,9 @@ app.get("/:chatbotId/config", async (c) => {
     where: { id: chatbotId },
     select: {
       id: true,
-      name: true,
       isActive: true,
       widgetConfig: true,
-      personality: true,
+      knowledgeBase: true,
       client: {
         select: { sector: true, language: true, companyName: true },
       },
@@ -133,21 +137,22 @@ app.get("/:chatbotId/config", async (c) => {
   }
 
   const wc = chatbot.widgetConfig as WidgetConfig | null;
-  const personality = chatbot.personality as ChatbotPersonality | null;
+  const kb = chatbot.knowledgeBase as KnowledgeBase | null;
+  const defaultTitle = `Assistente di ${chatbot.client.companyName}`;
 
   return c.json({
     success: true,
     data: {
       chatbotId: chatbot.id,
-      name: chatbot.name,
+      name: wc?.title ?? defaultTitle,
       widgetConfig: wc ?? {
         position: "bottom-right",
         primaryColor: "#6366f1",
-        title: chatbot.name,
-        subtitle: `Assistente di ${chatbot.client.companyName}`,
+        title: defaultTitle,
+        subtitle: "Online",
       },
       language: chatbot.client.language,
-      greeting: personality?.greeting ?? "Ciao! Come posso aiutarti?",
+      greeting: kb?.faqs?.[0]?.answer ?? "Ciao! Come posso aiutarti?",
       sector: chatbot.client.sector,
     },
   });
@@ -190,7 +195,11 @@ app.post("/:chatbotId/message", async (c) => {
 
   const chatbot = await prisma.clientChatbot.findUnique({
     where: { id: chatbotId },
-    include: {
+    select: {
+      id: true,
+      isActive: true,
+      knowledgeBase: true,
+      widgetConfig: true,
       client: {
         select: {
           sector: true,
@@ -213,17 +222,17 @@ app.post("/:chatbotId/message", async (c) => {
     );
   }
 
-  const knowledgeBase = chatbot.knowledgeBase as KnowledgeBase;
-  const personality = chatbot.personality as ChatbotPersonality | null;
+  const knowledgeBase = chatbot.knowledgeBase as unknown as KnowledgeBase;
+  const wc = chatbot.widgetConfig as WidgetConfig | null;
 
   const systemPrompt = buildChatbotSystemPrompt({
     businessName: chatbot.client.companyName,
     sector: chatbot.client.sector,
     language: chatbot.client.language,
     knowledgeBase,
-    personality: personality ?? {
+    personality: {
       tone: "professional",
-      greeting: "Ciao! Come posso aiutarti?",
+      greeting: wc?.title ? `Ciao! Sono l'assistente di ${chatbot.client.companyName}.` : "Ciao! Come posso aiutarti?",
       fallbackMessage: "Non ho questa informazione. Contattaci direttamente.",
     },
   });
@@ -294,7 +303,6 @@ app.post("/:chatbotId/message", async (c) => {
         success: true,
         data: {
           response:
-            personality?.fallbackMessage ??
             "Mi dispiace, ho un problema tecnico. Riprova o contattaci direttamente.",
           sessionId: parsed.data.sessionId,
         },

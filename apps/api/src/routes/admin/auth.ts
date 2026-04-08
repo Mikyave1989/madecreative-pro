@@ -33,7 +33,7 @@ app.post("/login", async (c) => {
   const tokens = await generateTokens({
     sub: admin.id,
     email: admin.email,
-    role: admin.role,
+    role: "ADMIN",
     type: "admin",
   });
 
@@ -41,12 +41,7 @@ app.post("/login", async (c) => {
     success: true,
     data: {
       ...tokens,
-      user: {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name,
-        role: admin.role,
-      },
+      user: { id: admin.id, email: admin.email, role: "ADMIN" },
     },
   });
 });
@@ -74,7 +69,7 @@ app.post("/refresh", async (c) => {
     const accessToken = await generateAccessToken({
       sub: admin.id,
       email: admin.email,
-      role: admin.role,
+      role: "ADMIN",
       type: "admin",
     });
 

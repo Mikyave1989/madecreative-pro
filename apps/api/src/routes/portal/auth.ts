@@ -33,7 +33,7 @@ app.post("/login", async (c) => {
     return c.json({ success: false, error: "Invalid credentials" }, 401);
   }
 
-  if (client.status === "CHURNED" || client.status === "SUSPENDED") {
+  if (client.status === "CHURNED" || client.status === "REFUNDED") {
     return c.json(
       {
         success: false,
@@ -57,7 +57,7 @@ app.post("/login", async (c) => {
   const tokens = await generateTokens({
     sub: client.id,
     email: client.email,
-    role: client.plan,
+    role: "STANDARD",
     type: "client",
   });
 
@@ -70,7 +70,6 @@ app.post("/login", async (c) => {
         email: client.email,
         companyName: client.companyName,
         contactName: client.contactName,
-        plan: client.plan,
         status: client.status,
         language: client.language,
       },
@@ -102,14 +101,14 @@ app.post("/refresh", async (c) => {
       return c.json({ success: false, error: "User not found" }, 401);
     }
 
-    if (client.status === "CHURNED" || client.status === "SUSPENDED") {
+    if (client.status === "CHURNED" || client.status === "REFUNDED") {
       return c.json({ success: false, error: "Account is not active" }, 403);
     }
 
     const accessToken = await generateAccessToken({
       sub: client.id,
       email: client.email,
-      role: client.plan,
+      role: "STANDARD",
       type: "client",
     });
 

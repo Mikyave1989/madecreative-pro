@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "@madecreative/db";
 import { WebsiteUpdateRequestSchema } from "@madecreative/shared";
 import type { JwtPayload } from "@madecreative/shared";
+import { getQueue } from "../../lib/queue.js";
 
 type Variables = { jwtPayload: JwtPayload };
 
@@ -62,35 +63,40 @@ app.post("/:id/update-request", async (c) => {
     );
   }
 
-  // Create a support ticket for the update request
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { companyName: true },
-  });
-
-  const ticket = await prisma.supportTicket.create({
+  // Queue a BUILDER job to process the update request
+  const job = await prisma.agentJob.create({
     data: {
+      agentType: "BUILDER",
+      status: "QUEUED",
       clientId,
-      subject: `Website Update Request: ${parsed.data.type} - ${website.name}`,
-      message: `Type: ${parsed.data.type}\nPriority: ${parsed.data.priority}\nWebsite: ${website.name} (${website.domain ?? "No domain"})\n\nDescription:\n${parsed.data.description}${
-        parsed.data.attachmentUrls
-          ? `\n\nAttachments:\n${parsed.data.attachmentUrls.join("\n")}`
-          : ""
-      }`,
-      type: "website",
-      priority: parsed.data.priority,
+      input: {
+        websiteId,
+        updateRequest: {
+          type: parsed.data.type,
+          description: parsed.data.description,
+          priority: parsed.data.priority,
+          attachmentUrls: parsed.data.attachmentUrls ?? [],
+        },
+      },
     },
   });
+
+  try {
+    const queue = getQueue("BUILDER");
+    await queue.add("update-request", { jobId: job.id }, { jobId: job.id });
+  } catch {
+    // Queue add is best-effort; job is already in DB
+  }
 
   return c.json(
     {
       success: true,
-      message: `Update request submitted for ${website.name}. Our team will review it shortly.`,
+      message: "Update request submitted. Our AI will process it shortly.",
       data: {
-        ticketId: ticket.id,
+        jobId: job.id,
         websiteId: website.id,
-        websiteName: website.name,
-        companyName: client?.companyName,
+        domain: website.domain,
+        type: parsed.data.type,
       },
     },
     201

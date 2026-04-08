@@ -5,9 +5,6 @@ import {
   PROSPECT_STATUSES,
   CLIENT_STATUSES,
   AGENT_JOB_STATUSES,
-  WEBSITE_STATUSES,
-  TICKET_TYPES,
-  TICKET_PRIORITIES,
 } from "../constants/index.js";
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -59,7 +56,6 @@ export const ClientCreateSchema = z.object({
   city: z.string().optional(),
   sector: z.enum(SECTORS),
   language: z.string().default("de"),
-  plan: z.enum(["STARTER", "GROWTH", "ENTERPRISE"]).default("STARTER"),
 });
 
 export type ClientLoginInput = z.infer<typeof ClientLoginSchema>;
@@ -110,7 +106,6 @@ export type ProspectUpdateInput = z.infer<typeof ProspectUpdateSchema>;
 export const ClientFilterSchema = z.object({
   ...PaginationSchema.shape,
   status: z.enum(CLIENT_STATUSES).optional(),
-  plan: z.enum(["STARTER", "GROWTH", "ENTERPRISE"]).optional(),
   country: z.enum(SUPPORTED_COUNTRIES).optional(),
   sector: z.enum(SECTORS).optional(),
   search: z.string().optional(),
@@ -122,7 +117,6 @@ export const ClientUpdateSchema = z.object({
   phone: z.string().optional(),
   city: z.string().optional(),
   language: z.string().optional(),
-  plan: z.enum(["STARTER", "GROWTH", "ENTERPRISE"]).optional(),
   status: z.enum(CLIENT_STATUSES).optional(),
 });
 
@@ -132,15 +126,7 @@ export type ClientUpdateInput = z.infer<typeof ClientUpdateSchema>;
 // ─── Agent Job ────────────────────────────────────────────────────────────────
 
 export const AgentJobCreateSchema = z.object({
-  agentType: z.enum([
-    "SCRAPER",
-    "ANALYZER",
-    "BUILDER",
-    "OUTREACH",
-    "CHATBOT",
-    "QA",
-    "SOCIAL",
-  ]),
+  agentType: z.enum(["SCRAPER", "ANALYZER", "BUILDER", "OUTREACH", "CHATBOT", "QA"]),
   input: z.record(z.unknown()),
   prospectId: CuidSchema.optional(),
   clientId: CuidSchema.optional(),
@@ -148,9 +134,7 @@ export const AgentJobCreateSchema = z.object({
 
 export const AgentJobFilterSchema = z.object({
   ...PaginationSchema.shape,
-  agentType: z
-    .enum(["SCRAPER", "ANALYZER", "BUILDER", "OUTREACH", "CHATBOT", "QA", "SOCIAL"])
-    .optional(),
+  agentType: z.enum(["SCRAPER", "ANALYZER", "BUILDER", "OUTREACH", "CHATBOT", "QA"]).optional(),
   status: z.enum(AGENT_JOB_STATUSES).optional(),
   prospectId: CuidSchema.optional(),
   clientId: CuidSchema.optional(),
@@ -220,32 +204,6 @@ export const ChatbotMessageSchema = z.object({
 export type ChatbotUpdateInput = z.infer<typeof ChatbotUpdateSchema>;
 export type ChatbotMessageInput = z.infer<typeof ChatbotMessageSchema>;
 
-// ─── Support Ticket ───────────────────────────────────────────────────────────
-
-export const TicketCreateSchema = z.object({
-  subject: z.string().min(5).max(200),
-  message: z.string().min(10).max(5000),
-  type: z.enum(TICKET_TYPES).default("general"),
-  priority: z.enum(TICKET_PRIORITIES).default("normal"),
-});
-
-export const TicketUpdateSchema = z.object({
-  status: z.enum(["open", "in_progress", "resolved", "closed"]).optional(),
-  priority: z.enum(TICKET_PRIORITIES).optional(),
-  aiResponse: z.string().optional(),
-});
-
-export type TicketCreateInput = z.infer<typeof TicketCreateSchema>;
-export type TicketUpdateInput = z.infer<typeof TicketUpdateSchema>;
-
-// ─── Billing ──────────────────────────────────────────────────────────────────
-
-export const PlanUpgradeSchema = z.object({
-  plan: z.enum(["STARTER", "GROWTH", "ENTERPRISE"]),
-});
-
-export type PlanUpgradeInput = z.infer<typeof PlanUpgradeSchema>;
-
 // ─── Scraper Agent Input ──────────────────────────────────────────────────────
 
 export const ScraperAgentInputSchema = z.object({
@@ -300,15 +258,3 @@ export const OutreachAgentInputSchema = z.object({
 });
 
 export type OutreachAgentInput = z.infer<typeof OutreachAgentInputSchema>;
-
-// ─── Social Agent Input ───────────────────────────────────────────────────────
-
-export const SocialAgentInputSchema = z.object({
-  clientId: CuidSchema,
-  platform: z.enum(["INSTAGRAM", "FACEBOOK"]),
-  postType: z.enum(["image", "carousel", "reel", "story"]),
-  topic: z.string().optional(),
-  scheduledFor: z.string().datetime(),
-});
-
-export type SocialAgentInput = z.infer<typeof SocialAgentInputSchema>;

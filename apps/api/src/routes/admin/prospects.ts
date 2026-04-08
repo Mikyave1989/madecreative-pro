@@ -106,7 +106,6 @@ app.get("/:id", async (c) => {
           companyName: true,
           email: true,
           status: true,
-          plan: true,
         },
       },
     },
@@ -252,11 +251,11 @@ app.post("/:id/build-preview", async (c) => {
     data: {
       agentType: "BUILDER",
       status: "QUEUED",
-      input: {
+      input: JSON.parse(JSON.stringify({
         prospectId: id,
         templateSlug,
         ...(customizations ? { customizations } : {}),
-      },
+      })),
       prospectId: id,
     },
   });
@@ -605,14 +604,6 @@ app.get("/pipeline", async (c) => {
 // POST /admin/prospects/:id/generate-payment-link
 app.post("/:id/generate-payment-link", async (c) => {
   const id = c.req.param("id");
-  const body = await c.req.json().catch(() => null) as { plan?: string } | null;
-  const plan = (body?.plan as "STARTER" | "GROWTH" | "ENTERPRISE" | undefined) ?? "STARTER";
-
-  const validPlans = ["STARTER", "GROWTH", "ENTERPRISE"];
-  if (!validPlans.includes(plan)) {
-    return c.json({ success: false, error: "Invalid plan. Must be STARTER, GROWTH, or ENTERPRISE" }, 400);
-  }
-
   const prospect = await prisma.prospect.findUnique({
     where: { id },
     select: { id: true, companyName: true, contactEmail: true, status: true },
@@ -633,7 +624,6 @@ app.post("/:id/generate-payment-link", async (c) => {
   try {
     const { checkoutUrl, expiresAt } = await generatePaymentLink({
       prospectId: id,
-      plan,
       email: prospect.contactEmail,
     });
 

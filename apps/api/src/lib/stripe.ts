@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { prisma } from "@madecreative/db";
-import { PLANS } from "@madecreative/shared";
+import { PLAN_PRICE } from "@madecreative/shared";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 
@@ -12,33 +12,25 @@ export function getStripeClient(): Stripe {
 
 export async function createCheckoutSession(params: {
   email: string;
-  planId: "STARTER" | "GROWTH" | "ENTERPRISE";
   prospectId?: string;
   successUrl: string;
   cancelUrl: string;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripeClient();
-  const plan = PLANS[params.planId];
-  if (!plan) throw new Error(`Invalid plan: ${params.planId}`);
+  const priceId = process.env["STRIPE_PRICE_ID"];
+  if (!priceId) throw new Error("STRIPE_PRICE_ID is not set");
 
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     mode: "subscription",
     customer_email: params.email,
-    line_items: [
-      {
-        price: plan.stripePriceId,
-        quantity: 1,
-      },
-    ],
+    line_items: [{ price: priceId, quantity: 1 }],
     subscription_data: {
       metadata: {
-        planId: params.planId,
         ...(params.prospectId ? { prospectId: params.prospectId } : {}),
       },
     },
     metadata: {
-      planId: params.planId,
       ...(params.prospectId ? { prospectId: params.prospectId } : {}),
     },
     success_url: params.successUrl,
@@ -50,16 +42,14 @@ export async function createCheckoutSession(params: {
 
 export async function generatePaymentLink(params: {
   prospectId: string;
-  plan: "STARTER" | "GROWTH" | "ENTERPRISE";
   email: string;
 }): Promise<{ checkoutUrl: string; expiresAt: Date }> {
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h expiry
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const session = await createCheckoutSession({
     email: params.email,
-    planId: params.plan,
     prospectId: params.prospectId,
     successUrl: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
-    cancelUrl: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/pricing`,
+    cancelUrl: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}`,
   });
 
   return { checkoutUrl: session.url ?? "", expiresAt };
@@ -113,18 +103,12 @@ async function processStripeEvent(event: Stripe.Event): Promise<void> {
       await handlePaymentFailed(invoice);
       break;
     }
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      await handleSubscriptionUpdated(subscription);
-      break;
-    }
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
       await handleSubscriptionDeleted(subscription);
       break;
     }
     default:
-      // Unhandled event type
       break;
   }
 }
@@ -132,15 +116,10 @@ async function processStripeEvent(event: Stripe.Event): Promise<void> {
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session
 ): Promise<void> {
-  const planId = session.metadata?.["planId"] as string | undefined;
   const prospectId = session.metadata?.["prospectId"] as string | undefined;
 
-  if (!planId || !session.customer_email || !session.customer) return;
+  if (!session.customer_email || !session.customer) return;
 
-  const plan = PLANS[planId];
-  if (!plan) return;
-
-  // Check if client already exists
   const existingClient = await prisma.client.findUnique({
     where: { email: session.customer_email },
   });
@@ -151,15 +130,12 @@ async function handleCheckoutCompleted(
       data: {
         stripeCustomerId: session.customer as string,
         stripeSubId: session.subscription as string,
-        plan: planId,
-        monthlyAmount: plan.monthlyAmount,
-        status: "ONBOARDING",
+        status: "ACTIVE",
       },
     });
     return;
   }
 
-  // Fetch prospect data if available
   let prospectData: {
     companyName: string;
     contactName?: string | null;
@@ -170,9 +146,7 @@ async function handleCheckoutCompleted(
   } | null = null;
 
   if (prospectId) {
-    const prospect = await prisma.prospect.findUnique({
-      where: { id: prospectId },
-    });
+    const prospect = await prisma.prospect.findUnique({ where: { id: prospectId } });
     if (prospect) {
       prospectData = {
         companyName: prospect.companyName,
@@ -184,7 +158,6 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // Create new client with cryptographically secure password
   const tempPassword = crypto.randomBytes(12).toString("base64url");
   const passwordHash = await bcrypt.hash(tempPassword, 12);
 
@@ -198,53 +171,43 @@ async function handleCheckoutCompleted(
       city: prospectData?.city ?? null,
       sector: prospectData?.sector ?? "professional",
       language: prospectData?.language ?? "de",
-      plan: planId,
-      monthlyAmount: plan.monthlyAmount,
       stripeCustomerId: session.customer as string,
       stripeSubId: session.subscription as string,
-      status: "ONBOARDING",
+      status: "ACTIVE",
     },
   });
 
-  // Link prospect to client if exists
   if (prospectId) {
     await prisma.prospect.update({
       where: { id: prospectId },
-      data: {
-        clientId: client.id,
-        status: "CONVERTED",
-        convertedAt: new Date(),
-      },
+      data: { clientId: client.id, status: "CONVERTED", convertedAt: new Date() },
     });
   }
 
-  // Record invoice
+  // Record first invoice
   await prisma.clientInvoice.create({
     data: {
       clientId: client.id,
-      amount: plan.setupFee,
-      type: "SETUP_FEE",
+      amount: PLAN_PRICE,
       status: "PAID",
       paidAt: new Date(),
     },
   });
 
-  // Store temp password in Redis (TTL 24h) for welcome email
+  // Store temp password for welcome email
   try {
     const { getRedisConnection } = await import("../lib/queue.js");
     const redis = getRedisConnection();
     await redis.set(`onboarding:temp_password:${client.id}`, tempPassword, "EX", 86400);
   } catch {
-    // Redis not critical here — continue
+    // Non-critical
   }
 
   // Enqueue onboarding job
   try {
     const { Queue } = await import("bullmq");
     const { getRedisConnection } = await import("../lib/queue.js");
-    const onboardingQueue = new Queue("onboarding-queue", {
-      connection: getRedisConnection(),
-    });
+    const onboardingQueue = new Queue("onboarding-queue", { connection: getRedisConnection() });
     await onboardingQueue.add(
       "ONBOARDING",
       { clientId: client.id, prospectId: prospectId ?? null, tempPassword },
@@ -255,7 +218,7 @@ async function handleCheckoutCompleted(
     console.error("[Stripe] Failed to enqueue onboarding job:", err);
   }
 
-  // Send payment confirmation email via Resend
+  // Send payment confirmation email
   try {
     const resendApiKey = process.env["RESEND_API_KEY"];
     if (resendApiKey) {
@@ -269,7 +232,7 @@ async function handleCheckoutCompleted(
           from: `MadeCreative <onboarding@${process.env["EMAIL_DOMAIN"] ?? "madecreative.pro"}>`,
           to: [client.email],
           subject: "Payment confirmed — your site is being prepared",
-          html: `<p>Hi ${client.contactName},</p><p>Thank you for your payment! We are now setting up your website and digital presence. You will receive your login credentials within 15 minutes.</p><p>Plan: <strong>${plan.name}</strong></p><p>The MadeCreative Team</p>`,
+          html: `<p>Hi ${client.contactName},</p><p>Thank you! Your website is being set up. You'll receive your login within 15 minutes.</p><p>€${PLAN_PRICE}/mese — Piano Standard</p><p>The MadeCreative Team</p>`,
         }),
       });
     }
@@ -293,7 +256,6 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
       clientId: client.id,
       stripeInvoiceId: invoice.id,
       amount: invoice.amount_paid / 100,
-      type: "MONTHLY",
       status: "PAID",
       paidAt: new Date(invoice.status_transitions.paid_at! * 1000),
     },
@@ -313,62 +275,26 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
 
   if (!client) return;
 
-  const attemptCount = invoice.attempt_count ?? 0;
-
   await prisma.clientInvoice.upsert({
     where: { stripeInvoiceId: invoice.id },
     create: {
       clientId: client.id,
       stripeInvoiceId: invoice.id,
       amount: invoice.amount_due / 100,
-      type: "MONTHLY",
       status: "FAILED",
     },
-    update: {
-      status: "FAILED",
-    },
+    update: { status: "FAILED" },
   });
 
-  // After 3 failed attempts, suspend client
-  if (attemptCount >= 3) {
+  if ((invoice.attempt_count ?? 0) >= 3) {
     await prisma.client.update({
       where: { id: client.id },
-      data: { status: "SUSPENDED" },
+      data: { status: "CHURNED" },
     });
   }
 }
 
-async function handleSubscriptionUpdated(
-  subscription: Stripe.Subscription
-): Promise<void> {
-  const client = await prisma.client.findUnique({
-    where: { stripeSubId: subscription.id },
-  });
-
-  if (!client) return;
-
-  const planId = subscription.metadata?.["planId"] as string | undefined;
-  const plan = planId ? PLANS[planId] : null;
-
-  await prisma.client.update({
-    where: { id: client.id },
-    data: {
-      ...(plan
-        ? { plan: planId, monthlyAmount: plan.monthlyAmount }
-        : {}),
-      status:
-        subscription.status === "active"
-          ? "ACTIVE"
-          : subscription.status === "paused"
-          ? "PAUSED"
-          : client.status,
-    },
-  });
-}
-
-async function handleSubscriptionDeleted(
-  subscription: Stripe.Subscription
-): Promise<void> {
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
   const client = await prisma.client.findUnique({
     where: { stripeSubId: subscription.id },
   });
