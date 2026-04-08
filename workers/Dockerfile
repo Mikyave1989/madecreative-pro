@@ -1,4 +1,4 @@
-FROM node:22-alpine AS base
+FROM node:20-alpine AS base
 WORKDIR /app
 
 # Install build dependencies
@@ -20,6 +20,9 @@ COPY workers/ workers/
 # Install all dependencies (including dev for TypeScript)
 RUN npm install --include=dev
 
+# Generate Prisma client for linux-musl
+RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
+
 # Build packages
 RUN npm run build --workspace=packages/db || true
 RUN npm run build --workspace=packages/shared || true
@@ -30,7 +33,7 @@ RUN npm run build --workspace=packages/ai || true
 RUN npm run build --workspace=workers
 
 # ─── Production stage ─────────────────────────────────────────────────────────
-FROM node:22-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 COPY package.json package-lock.json ./

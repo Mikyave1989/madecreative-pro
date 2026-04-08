@@ -32,9 +32,6 @@ interface ReportMetrics {
   conversionRate: number;
   revenueAttributed: number;
   timeSavedHours: number;
-  socialReach: number;
-  socialEngagement: number;
-  socialPostsPublished?: number;
   chatbotConversations: number;
   chatbotResolved: number;
   automationRuns?: number;
@@ -193,15 +190,6 @@ function ReportSummary({ report }: { report: MonthlyReport }) {
           sub={m.automationRuns ? `${m.automationRuns} esecuzioni` : undefined}
           color="orange"
         />
-        {(m.socialPostsPublished ?? 0) > 0 && (
-          <MetricCard
-            icon={Share2}
-            label="Post social"
-            value={String(m.socialPostsPublished ?? 0)}
-            sub={`Reach: ${m.socialReach.toLocaleString("it-IT")}`}
-            color="indigo"
-          />
-        )}
         {m.revenueAttributed > 0 && (
           <MetricCard
             icon={DollarSign}
