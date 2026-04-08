@@ -8,4 +8,3 @@ export { OutreachAgent, analyzeReply } from "./outreach/index.js";
 export type { ReplyAnalysisResult } from "./outreach/index.js";
 export { ChatbotAgent } from "./chatbot/index.js";
 export { QaAgent } from "./qa/index.js";
-export { SocialAgent } from "./social/index.js";

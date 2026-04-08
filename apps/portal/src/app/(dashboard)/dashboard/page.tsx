@@ -1,320 +1,390 @@
 "use client";
 
-import { type Metadata } from "next";
-import { useState } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  type TooltipProps,
-} from "recharts";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Globe,
-  Users,
+  TrendingUp,
+  TrendingDown,
+  Minus,
   Bot,
-  Clock,
   Pencil,
-  MessageSquarePlus,
   Download,
-  HeadphonesIcon,
-  Zap,
-  CheckCircle2,
+  FileText,
   CreditCard,
-  FileBarChart2,
+  ExternalLink,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
-import Link from "next/link";
-import { useAuth } from "@/lib/auth";
-import { KpiCard } from "@/components/ui/KpiCard";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import {
-  mockKpis,
-  mockChart30d,
-  mockActivities,
-  type ActivityType,
-} from "@/lib/mockData";
 
-// --- Chart tooltip custom ---
-interface CustomTooltipPayload {
-  value: number;
-  name: string;
-  color: string;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface DashboardData {
+  domain: string;
+  siteStatus: "LIVE" | "BUILDING" | "MAINTENANCE";
+  visitsThisMonth: number;
+  visitsTrend: number; // percent vs last month
+  chatbot: {
+    conversationsThisMonth: number;
+    resolvedRate: number; // 0-100
+  };
+  plan: string;
+  nextChargeDate: string;
+  nextChargeAmount: number;
+  clientSince: string;
 }
 
-function CustomTooltip({
-  active,
-  payload,
-  label,
-}: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
+interface ReportItem {
+  id: string;
+  month: number;
+  year: number;
+  pdfUrl: string | null;
+  createdAt: string;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const API_URL =
+  process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.madecreative.pro";
+
+const MONTH_NAMES = [
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
+];
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("portal_token");
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// ─── Trend badge ──────────────────────────────────────────────────────────────
+
+function TrendBadge({ value }: { value: number }) {
+  if (value > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+        <TrendingUp className="w-3 h-3" />
+        +{value}%
+      </span>
+    );
+  }
+  if (value < 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">
+        <TrendingDown className="w-3 h-3" />
+        {value}%
+      </span>
+    );
+  }
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm">
-      <p className="font-medium text-gray-700 mb-2">{label}</p>
-      {(payload as CustomTooltipPayload[]).map((p) => (
-        <div key={p.name} className="flex items-center gap-2">
-          <span
-            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-            style={{ background: p.color }}
-          />
-          <span className="text-gray-500">
-            {p.name === "visite" ? "Visite" : "Lead"}:
-          </span>
-          <span className="font-semibold tabular-nums text-gray-900">
-            {p.value}
-          </span>
-        </div>
-      ))}
-    </div>
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 bg-slate-400/10 px-2 py-0.5 rounded-full">
+      <Minus className="w-3 h-3" />
+      0%
+    </span>
   );
 }
 
-// --- Activity icons ---
-const activityConfig: Record<
-  ActivityType,
-  { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }
-> = {
-  nuovo_lead: { icon: Users, color: "text-green-600", bg: "bg-green-50" },
-  conversazione_chatbot: { icon: Bot, color: "text-violet-600", bg: "bg-violet-50" },
-  modifica_sito: { icon: Globe, color: "text-blue-600", bg: "bg-blue-50" },
-  fattura_pagata: { icon: CreditCard, color: "text-indigo-600", bg: "bg-indigo-50" },
-  report_disponibile: { icon: FileBarChart2, color: "text-amber-600", bg: "bg-amber-50" },
-};
+// ─── Site status pill ─────────────────────────────────────────────────────────
 
-function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes} min fa`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h fa`;
-  const days = Math.floor(hours / 24);
-  return `${days}g fa`;
+function SiteStatusPill({ status }: { status: DashboardData["siteStatus"] }) {
+  const map = {
+    LIVE: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    BUILDING: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+    MAINTENANCE: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+  };
+  const labels = { LIVE: "Live", BUILDING: "In costruzione", MAINTENANCE: "Manutenzione" };
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${map[status]}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${status === "LIVE" ? "bg-emerald-400 animate-pulse" : status === "BUILDING" ? "bg-amber-400" : "bg-slate-400"}`} />
+      {labels[status]}
+    </span>
+  );
 }
 
-function formatChartDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short" });
-}
-
-// --- Quick actions ---
-const quickActions = [
-  {
-    label: "Richiedi modifica sito",
-    href: "/website",
-    icon: Pencil,
-    description: "Testo, foto, orari",
-  },
-  {
-    label: "Aggiungi FAQ al chatbot",
-    href: "/chatbot",
-    icon: MessageSquarePlus,
-    description: "Migliora le risposte",
-  },
-  {
-    label: "Scarica report",
-    href: "/reports",
-    icon: Download,
-    description: "Ultimo: Marzo 2026",
-  },
-  {
-    label: "Contatta supporto",
-    href: "/support",
-    icon: HeadphonesIcon,
-    description: "Risposta in < 2h",
-  },
-];
-
-// Format x-axis tick to short date
-function tickFormatter(value: string): string {
-  const d = new Date(value);
-  return d.toLocaleDateString("it-IT", { day: "numeric", month: "numeric" });
-}
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [reports, setReports] = useState<ReportItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // KPI icons
-  const kpiIcons = [
-    <Globe key="globe" className="w-5 h-5" />,
-    <Users key="users" className="w-5 h-5" />,
-    <Bot key="bot" className="w-5 h-5" />,
-    <Clock key="clock" className="w-5 h-5" />,
-  ];
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const [dashRes, reportsRes] = await Promise.all([
+        fetch(`${API_URL}/portal/dashboard`, { headers }),
+        fetch(`${API_URL}/portal/reports`, { headers }),
+      ]);
+
+      const dashJson = (await dashRes.json()) as { success: boolean; data?: DashboardData; error?: string };
+      const reportsJson = (await reportsRes.json()) as {
+        success: boolean;
+        data?: { reports: ReportItem[] };
+        error?: string;
+      };
+
+      if (!dashJson.success) throw new Error(dashJson.error ?? "Errore dashboard");
+      setDashboard(dashJson.data!);
+
+      if (reportsJson.success && reportsJson.data) {
+        setReports(reportsJson.data.reports.slice(0, 3));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore di caricamento");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      </div>
+    );
+  }
+
+  if (error || !dashboard) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-64 gap-4">
+        <AlertCircle className="w-10 h-10 text-red-400" />
+        <p className="text-slate-400">{error ?? "Dati non disponibili"}</p>
+        <button
+          onClick={() => void load()}
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          Riprova
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Page title */}
+    <div className="space-y-6">
+      {/* Page header */}
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Panoramica</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Aggiornato ogni ora — dati del mese corrente
-        </p>
+        <h2 className="text-xl font-bold text-white">Il tuo sito</h2>
+        <p className="text-sm text-slate-400 mt-1">Panoramica del mese corrente</p>
       </div>
 
-      {/* KPI grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        {mockKpis.map((kpi, i) => (
-          <KpiCard
-            key={kpi.label}
-            label={kpi.label}
-            value={kpi.value}
-            previousValue={kpi.previousValue}
-            unit={kpi.unit}
-            prefix={kpi.prefix}
-            icon={kpiIcons[i]}
-          />
-        ))}
-      </div>
-
-      {/* Chart + Activity */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Area chart — 2/3 width */}
-        <Card className="xl:col-span-2" padding="md">
-          <CardHeader
-            title="Andamento ultimi 30 giorni"
-            subtitle="Visite e lead giornalieri"
-          />
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={mockChart30d}
-                margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient
-                    id="gradientVisite"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient
-                    id="gradientLead"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#f1f5f9"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={tickFormatter}
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={6}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="visite"
-                  stroke="#6366f1"
-                  strokeWidth={2}
-                  fill="url(#gradientVisite)"
-                  dot={false}
-                  activeDot={{ r: 4, strokeWidth: 0 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="lead"
-                  stroke="#8b5cf6"
-                  strokeWidth={2}
-                  fill="url(#gradientLead)"
-                  dot={false}
-                  activeDot={{ r: 4, strokeWidth: 0 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-100">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-0.5 bg-indigo-500 rounded" />
-              <span className="text-xs text-gray-500">Visite</span>
+      {/* Site card */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-600/20 rounded-xl flex items-center justify-center">
+                <Globe className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Sito live</p>
+                <a
+                  href={`https://${dashboard.domain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-base font-semibold text-white hover:text-indigo-400 transition-colors"
+                >
+                  {dashboard.domain}
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-0.5 bg-violet-500 rounded" />
-              <span className="text-xs text-gray-500">Lead</span>
-            </div>
+            <SiteStatusPill status={dashboard.siteStatus} />
           </div>
-        </Card>
 
-        {/* Activity feed — 1/3 width */}
-        <Card padding="md">
-          <CardHeader title="Ultime attivita" />
-          <div className="space-y-4">
-            {mockActivities.slice(0, 8).map((activity) => {
-              const config = activityConfig[activity.type];
-              const Icon = config.icon;
-              return (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div
-                    className={`p-2 rounded-lg flex-shrink-0 ${config.bg}`}
-                  >
-                    <Icon className={`w-4 h-4 ${config.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-700 leading-snug">
-                      {activity.description}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {formatRelativeTime(activity.timestamp)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
-
-      {/* Quick actions */}
-      <Card padding="md">
-        <CardHeader title="Azioni rapide" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link
-                key={action.href}
-                href={action.href}
-                className="group flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
-              >
-                <div className="p-2 bg-gray-100 group-hover:bg-indigo-100 rounded-lg transition-colors">
-                  <Icon className="w-4 h-4 text-gray-500 group-hover:text-indigo-600 transition-colors" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-800 group-hover:text-indigo-700">
-                    {action.label}
-                  </p>
-                  <p className="text-xs text-gray-400">{action.description}</p>
-                </div>
-              </Link>
-            );
-          })}
+          <Link
+            href="/editor"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 transition-colors self-start"
+          >
+            <Pencil className="w-4 h-4" />
+            Modifica il tuo sito
+          </Link>
         </div>
-      </Card>
+      </div>
+
+      {/* KPI row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Visits */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-violet-600/20 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-violet-400" />
+              </div>
+              <span className="text-sm text-slate-400 font-medium">Visite questo mese</span>
+            </div>
+            <TrendBadge value={dashboard.visitsTrend} />
+          </div>
+          <p className="text-4xl font-bold text-white tabular-nums">
+            {dashboard.visitsThisMonth.toLocaleString("it-IT")}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            {dashboard.visitsTrend > 0
+              ? `+${Math.round(Math.abs(dashboard.visitsTrend) * dashboard.visitsThisMonth / (100 + dashboard.visitsTrend))} rispetto al mese scorso`
+              : dashboard.visitsTrend < 0
+              ? `${Math.round(Math.abs(dashboard.visitsTrend) * dashboard.visitsThisMonth / (100 - Math.abs(dashboard.visitsTrend)))} in meno rispetto al mese scorso`
+              : "In linea con il mese scorso"}
+          </p>
+        </div>
+
+        {/* Chatbot */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-indigo-600/20 rounded-lg flex items-center justify-center">
+              <Bot className="w-4 h-4 text-indigo-400" />
+            </div>
+            <span className="text-sm text-slate-400 font-medium">Chatbot</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-3xl font-bold text-white tabular-nums">
+                {dashboard.chatbot.conversationsThisMonth}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">Conversazioni</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-emerald-400 tabular-nums">
+                {dashboard.chatbot.resolvedRate}%
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">Tasso risoluzione</p>
+            </div>
+          </div>
+          {/* Resolution bar */}
+          <div className="mt-4">
+            <div className="w-full bg-slate-800 rounded-full h-1.5">
+              <div
+                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-700"
+                style={{ width: `${dashboard.chatbot.resolvedRate}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Reports + Account row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Reports */}
+        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center">
+                <FileText className="w-4 h-4 text-slate-300" />
+              </div>
+              <span className="text-sm font-semibold text-white">Report mensili</span>
+            </div>
+            <Link
+              href="/reports"
+              className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+            >
+              Vedi tutti
+            </Link>
+          </div>
+
+          {reports.length === 0 ? (
+            <div className="text-center py-8">
+              <FileText className="w-8 h-8 text-slate-700 mx-auto mb-2" />
+              <p className="text-sm text-slate-500">
+                Nessun report ancora. Il primo arrivera a fine mese.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {reports.map((report) => {
+                const monthName = MONTH_NAMES[(report.month - 1) % 12] ?? String(report.month);
+                return (
+                  <div
+                    key={report.id}
+                    className="flex items-center justify-between p-3 bg-slate-800/60 rounded-xl hover:bg-slate-800 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-indigo-600/20 rounded-lg flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-indigo-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">
+                          {monthName} {report.year}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {new Date(report.createdAt).toLocaleDateString("it-IT")}
+                        </p>
+                      </div>
+                    </div>
+                    {report.pdfUrl ? (
+                      <a
+                        href={report.pdfUrl}
+                        download
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 text-indigo-400 text-xs font-medium rounded-lg hover:bg-indigo-600/40 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        PDF
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-600">In generazione</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Account quick */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center">
+              <CreditCard className="w-4 h-4 text-slate-300" />
+            </div>
+            <span className="text-sm font-semibold text-white">Account</span>
+          </div>
+
+          <div className="space-y-4 flex-1">
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Piano</p>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-1 bg-indigo-600/20 text-indigo-400 text-sm font-bold rounded-lg border border-indigo-600/30">
+                  {dashboard.plan}
+                </span>
+                <span className="text-sm font-bold text-white">€{dashboard.nextChargeAmount}/mese</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Prossimo addebito</p>
+              <p className="text-sm font-semibold text-white">{formatDate(dashboard.nextChargeDate)}</p>
+            </div>
+
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Cliente dal</p>
+              <p className="text-sm font-semibold text-white">{formatDate(dashboard.clientSince)}</p>
+            </div>
+          </div>
+
+          <Link
+            href="/billing"
+            className="mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-700 hover:text-white transition-colors"
+          >
+            <CreditCard className="w-4 h-4" />
+            Gestisci account
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

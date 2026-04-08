@@ -475,61 +475,24 @@ async function generateMonthlyReport(
 
   const [
     client,
-    leadsCount,
-    leadsConverted,
     websiteVisits,
-    socialStats,
     chatbotStats,
-    automationStats,
-    invoices,
   ] = await Promise.all([
     prisma.client.findUnique({
       where: { id: clientId },
       select: {
         companyName: true,
-        plan: true,
+        sector: true,
         email: true,
-        monthlyAmount: true,
       },
     }),
-    prisma.clientLead.count({
-      where: { clientId, createdAt: { gte: startDate, lte: endDate } },
-    }),
-    prisma.clientLead.count({
-      where: {
-        clientId,
-        status: "won",
-        createdAt: { gte: startDate, lte: endDate },
-      },
-    }),
-    prisma.clientWebsite.aggregate({
+    prisma.clientWebsite.findUnique({
       where: { clientId },
-      _sum: { monthlyVisits: true },
+      select: { monthlyVisits: true },
     }),
-    prisma.clientSocialPost.aggregate({
-      where: {
-        clientId,
-        publishedAt: { gte: startDate, lte: endDate },
-      },
-      _sum: { likes: true, comments: true, reach: true },
-      _count: { id: true },
-    }),
-    prisma.clientChatbot.aggregate({
+    prisma.clientChatbot.findUnique({
       where: { clientId },
-      _sum: { totalConversations: true },
-      _avg: { resolvedRate: true },
-    }),
-    prisma.clientAutomation.aggregate({
-      where: { clientId },
-      _sum: { runCount: true, timeSaved: true },
-    }),
-    prisma.clientInvoice.aggregate({
-      where: {
-        clientId,
-        status: "PAID",
-        createdAt: { gte: startDate, lte: endDate },
-      },
-      _sum: { amount: true },
+      select: { totalConversations: true, resolvedRate: true },
     }),
   ]);
 
@@ -538,66 +501,46 @@ async function generateMonthlyReport(
     return;
   }
 
-  const conversionRate =
-    leadsCount > 0
-      ? Math.round((leadsConverted / leadsCount) * 10000) / 100
-      : 0;
-
-  const timeSavedMinutes = automationStats._sum.timeSaved ?? 0;
-  const timeSavedHours = Math.round((timeSavedMinutes / 60) * 10) / 10;
-
-  const monthlyVisits = websiteVisits._sum.monthlyVisits ?? 0;
-  const chatbotConversations = chatbotStats._sum.totalConversations ?? 0;
-  const resolvedRate = Math.round((chatbotStats._avg.resolvedRate ?? 0) * 10) / 10;
+  const monthlyVisits = websiteVisits?.monthlyVisits ?? 0;
+  const chatbotConversations = chatbotStats?.totalConversations ?? 0;
+  const resolvedRate = Math.round((chatbotStats?.resolvedRate ?? 0) * 10) / 10;
 
   const reportData: ReportData = {
     metrics: {
       websiteVisits: monthlyVisits,
-      bounceRate: 38, // TODO: pull from analytics provider
-      leadsGenerated: leadsCount,
-      leadsConverted,
-      conversionRate,
-      revenueAttributed: invoices._sum.amount ?? 0,
-      timeSavedHours,
-      socialReach: socialStats._sum.reach ?? 0,
-      socialEngagement:
-        (socialStats._sum.likes ?? 0) + (socialStats._sum.comments ?? 0),
-      socialPostsPublished: socialStats._count.id,
+      bounceRate: 38,
+      leadsGenerated: 0,
+      leadsConverted: 0,
+      conversionRate: 0,
       chatbotConversations,
       chatbotResolved: resolvedRate,
-      automationRuns: automationStats._sum.runCount ?? 0,
     },
     insights: [
-      `Generati ${leadsCount} lead questo mese${leadsCount > 0 ? `, ${leadsConverted} convertiti` : ""}`,
-      `Il sito ha ricevuto ${monthlyVisits.toLocaleString("it-IT")} visite`,
+      `Il sito ha ricevuto ${monthlyVisits.toLocaleString("it-IT")} visite questo mese`,
       chatbotConversations > 0
         ? `Il chatbot ha gestito ${chatbotConversations} conversazioni (${resolvedRate}% risolte)`
-        : "Chatbot non ancora configurato",
-      socialStats._count.id > 0
-        ? `Pubblicati ${socialStats._count.id} post social — reach totale ${(socialStats._sum.reach ?? 0).toLocaleString("it-IT")}`
-        : "Social media non ancora collegato",
+        : "Chatbot attivo — in attesa delle prime conversazioni",
+      monthlyVisits > 500
+        ? "Traffico in crescita — ottimo segnale per il posizionamento locale"
+        : "Il sito è online — la visibilità aumenterà con l'indicizzazione",
     ],
     recommendations: [
-      leadsCount < 10
-        ? "Ottimizza le CTA del sito per aumentare le conversioni"
-        : "Continua a monitorare le landing page ad alto traffico",
+      "Assicurati che il tuo sito sia verificato su Google Business Profile",
       chatbotConversations < 20
-        ? "Arricchisci la knowledge base del chatbot con più FAQ"
-        : "Analizza le domande senza risposta per migliorare il chatbot",
-      socialStats._count.id < 4
-        ? "Aumenta la frequenza dei post social per crescere su Instagram"
-        : "Testa i Reels per raggiungere un pubblico più giovane",
+        ? "Il chatbot impara ogni giorno — più conversazioni, risposte migliori"
+        : "Il chatbot sta performando bene — considera di aggiungere nuove FAQ",
+      "Condividi il link del tuo sito sui tuoi profili social per aumentare il traffico",
     ],
     nextMonthGoals: [
-      `Obiettivo: ${Math.ceil(leadsCount * 1.2)} lead`,
-      `Obiettivo visite: ${Math.ceil(monthlyVisits * 1.15).toLocaleString("it-IT")}`,
+      `Obiettivo visite: ${Math.ceil(monthlyVisits * 1.2).toLocaleString("it-IT")}`,
+      "Ottieni almeno 5 nuove recensioni Google",
     ],
   };
 
   // Generate PDF
   const pdfPath = await generatePdf({
     clientName: client.companyName,
-    plan: client.plan,
+    plan: "Standard",
     month,
     year,
     reportData,

@@ -17,7 +17,7 @@ app.get("/", async (c) => {
     newClientsLastMonth,
     totalProspects,
     prospectsThisMonth,
-    conversionRate,
+    convertedProspects,
     mrr,
     recentInvoices,
     agentStats,
@@ -32,20 +32,16 @@ app.get("/", async (c) => {
     }),
     prisma.prospect.count(),
     prisma.prospect.count({ where: { createdAt: { gte: startOfMonth } } }),
-    // Conversion rate: prospects that became clients / total prospects
     prisma.prospect.count({ where: { status: "CONVERTED" } }),
-    // MRR from active clients
-    prisma.client.aggregate({
-      where: { status: "ACTIVE" },
-      _sum: { monthlyAmount: true },
-    }),
-    // Recent revenue
+    // MRR: activeClients × €197
+    prisma.client.count({ where: { status: "ACTIVE" } }),
+    // Revenue from paid invoices this month
     prisma.clientInvoice.findMany({
       where: {
         status: "PAID",
         createdAt: { gte: startOfMonth },
       },
-      select: { amount: true, type: true },
+      select: { amount: true },
     }),
     // Agent job stats
     prisma.agentJob.groupBy({
@@ -55,8 +51,8 @@ app.get("/", async (c) => {
     }),
   ]);
 
+  const PLAN_PRICE = 197;
   const monthlyRevenue = recentInvoices.reduce((sum: number, inv: { amount: number }) => sum + inv.amount, 0);
-  const convertedProspects = conversionRate;
   const conversionPct =
     totalProspects > 0
       ? Math.round((convertedProspects / totalProspects) * 100 * 100) / 100
@@ -84,7 +80,7 @@ app.get("/", async (c) => {
             : 0,
       },
       revenue: {
-        mrr: mrr._sum.monthlyAmount ?? 0,
+        mrr: mrr * PLAN_PRICE,
         monthlyRevenue,
       },
       prospects: {
@@ -106,7 +102,7 @@ app.get("/", async (c) => {
 // GET /admin/metrics/revenue-chart
 app.get("/revenue-chart", async (c) => {
   const months = 12;
-  const data: Array<{ month: string; revenue: number }> = [];
+  const data: Array<{ month: string; revenue: number; clients: number }> = [];
 
   for (let i = months - 1; i >= 0; i--) {
     const date = new Date();
@@ -114,17 +110,23 @@ app.get("/revenue-chart", async (c) => {
     const start = new Date(date.getFullYear(), date.getMonth(), 1);
     const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
 
-    const revenue = await prisma.clientInvoice.aggregate({
-      where: {
-        status: "PAID",
-        createdAt: { gte: start, lte: end },
-      },
-      _sum: { amount: true },
-    });
+    const [revenue, newClients] = await Promise.all([
+      prisma.clientInvoice.aggregate({
+        where: {
+          status: "PAID",
+          createdAt: { gte: start, lte: end },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.client.count({
+        where: { createdAt: { gte: start, lte: end } },
+      }),
+    ]);
 
     data.push({
       month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
       revenue: revenue._sum.amount ?? 0,
+      clients: newClients,
     });
   }
 
@@ -135,9 +137,10 @@ app.get("/revenue-chart", async (c) => {
 app.get("/prospects-funnel", async (c) => {
   const statuses = [
     "SCRAPED",
-    "ANALYZED",
-    "PREVIEW_GENERATED",
-    "EMAIL_SENT",
+    "QUALIFIED",
+    "PREVIEW_READY",
+    "CONTACTED",
+    "FOLLOWED_UP",
     "REPLIED",
     "CONVERTED",
   ];

@@ -35,10 +35,6 @@ async function getAgent(agentType: AgentType, context: {
       const { QaAgent } = await import("./qa/index.js");
       return new QaAgent(context);
     }
-    case "SOCIAL": {
-      const { SocialAgent } = await import("./social/index.js");
-      return new SocialAgent(context);
-    }
     default:
       throw new Error(`Unknown agent type: ${agentType as string}`);
   }
@@ -128,7 +124,6 @@ export async function startOrchestrator(): Promise<Worker[]> {
     "OUTREACH",
     "CHATBOT",
     "QA",
-    "SOCIAL",
   ];
 
   const workers = agentTypes.map((type) =>

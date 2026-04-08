@@ -1,57 +1,9 @@
-import type { PlanConfig, AgentType, ServiceType } from "../types/index.js";
+import type { AgentType, ServiceType } from "../types/index.js";
 
-// ─── Plans ────────────────────────────────────────────────────────────────────
+// ─── Plan ─────────────────────────────────────────────────────────────────────
 
-export const PLANS: Record<string, PlanConfig> = {
-  STARTER: {
-    id: "STARTER",
-    name: "Starter",
-    monthlyAmount: 297,
-    setupFee: 497,
-    stripePriceId: process.env["STRIPE_STARTER_PRICE_ID"] ?? "",
-    limits: {
-      maxWebsites: 1,
-      maxAutomations: 3,
-      maxChatbots: 1,
-      maxLeadsPerMonth: 50,
-      maxSocialPostsPerMonth: 12,
-      aiAgentsEnabled: false,
-      prioritySupport: false,
-    },
-  },
-  GROWTH: {
-    id: "GROWTH",
-    name: "Growth",
-    monthlyAmount: 597,
-    setupFee: 997,
-    stripePriceId: process.env["STRIPE_GROWTH_PRICE_ID"] ?? "",
-    limits: {
-      maxWebsites: 3,
-      maxAutomations: 10,
-      maxChatbots: 2,
-      maxLeadsPerMonth: 200,
-      maxSocialPostsPerMonth: 30,
-      aiAgentsEnabled: true,
-      prioritySupport: false,
-    },
-  },
-  ENTERPRISE: {
-    id: "ENTERPRISE",
-    name: "Enterprise",
-    monthlyAmount: 1297,
-    setupFee: 1997,
-    stripePriceId: process.env["STRIPE_ENTERPRISE_PRICE_ID"] ?? "",
-    limits: {
-      maxWebsites: 10,
-      maxAutomations: 50,
-      maxChatbots: 5,
-      maxLeadsPerMonth: 1000,
-      maxSocialPostsPerMonth: 90,
-      aiAgentsEnabled: true,
-      prioritySupport: true,
-    },
-  },
-};
+export const PLAN_PRICE = 197; // €197/mese — unico piano
+export const PLAN_PRICE_ID = process.env["STRIPE_PRICE_ID"] ?? "";
 
 // ─── Agent Types ──────────────────────────────────────────────────────────────
 
@@ -62,7 +14,6 @@ export const AGENT_TYPES: AgentType[] = [
   "OUTREACH",
   "CHATBOT",
   "QA",
-  "SOCIAL",
 ];
 
 export const AGENT_QUEUE_NAMES: Record<AgentType, string> = {
@@ -72,30 +23,26 @@ export const AGENT_QUEUE_NAMES: Record<AgentType, string> = {
   OUTREACH: "outreach-queue",
   CHATBOT: "chatbot-queue",
   QA: "qa-queue",
-  SOCIAL: "social-queue",
 };
 
 // ─── Status Values ────────────────────────────────────────────────────────────
 
 export const PROSPECT_STATUSES = [
   "SCRAPED",
-  "ANALYZED",
-  "PREVIEW_GENERATED",
-  "EMAIL_QUEUED",
-  "EMAIL_SENT",
+  "QUALIFIED",
+  "PREVIEW_READY",
+  "CONTACTED",
+  "FOLLOWED_UP",
   "REPLIED",
-  "CALL_SCHEDULED",
   "CONVERTED",
   "LOST",
   "BLACKLISTED",
 ] as const;
 
 export const CLIENT_STATUSES = [
-  "ONBOARDING",
   "ACTIVE",
-  "PAUSED",
   "CHURNED",
-  "SUSPENDED",
+  "REFUNDED",
 ] as const;
 
 export const AGENT_JOB_STATUSES = [
@@ -106,38 +53,14 @@ export const AGENT_JOB_STATUSES = [
   "CANCELLED",
 ] as const;
 
-export const WEBSITE_STATUSES = [
-  "BUILDING",
-  "REVIEW",
-  "APPROVED",
-  "DEPLOYING",
-  "LIVE",
-  "PAUSED",
-] as const;
-
-export const TICKET_TYPES = [
-  "general",
-  "technical",
-  "billing",
-  "website",
-  "social",
-  "chatbot",
-] as const;
-
-export const TICKET_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
-
 // ─── Service Types ────────────────────────────────────────────────────────────
 
 export const SERVICE_TYPES: ServiceType[] = [
   "WEBSITE",
   "SEO",
-  "SOCIAL_MEDIA",
   "CHATBOT",
-  "EMAIL_MARKETING",
   "AUTOMATION",
   "REPUTATION_MANAGEMENT",
-  "ADS",
-  "CONTENT",
 ];
 
 // ─── Sectors ──────────────────────────────────────────────────────────────────
@@ -225,10 +148,10 @@ export const JWT_CONFIG = {
 // ─── Outreach ─────────────────────────────────────────────────────────────────
 
 export const OUTREACH_CONFIG = {
-  MAX_STEPS: 4,
-  STEP_DELAYS_DAYS: [0, 3, 7, 14],
+  MAX_STEPS: 3,
+  STEP_DELAYS_DAYS: [0, 3, 6],
   DAILY_EMAIL_LIMIT: 200,
-  MIN_LEAD_SCORE_FOR_EMAIL: 40,
+  MIN_LEAD_SCORE_FOR_EMAIL: 60,
 } as const;
 
 // ─── Lead Score Thresholds ────────────────────────────────────────────────────
@@ -237,7 +160,7 @@ export const LEAD_SCORE = {
   MIN: 0,
   MAX: 100,
   HOT: 70,
-  WARM: 40,
+  WARM: 60,
   COLD: 0,
   WEIGHTS: {
     hasWebsite: -10,
@@ -272,7 +195,6 @@ export const REDIS_KEYS = {
   SESSION: (userId: string) => `session:${userId}`,
   REFRESH_TOKEN: (token: string) => `rt:${token}`,
   AGENT_JOB: (jobId: string) => `job:${jobId}`,
-  PLATFORM_METRICS: "platform:metrics",
   CHATBOT_SESSION_MESSAGES: (sessionId: string) => `chatbot:session:${sessionId}:messages`,
   CHATBOT_SESSION_META: (sessionId: string) => `chatbot:session:${sessionId}:meta`,
 } as const;
@@ -290,5 +212,10 @@ export const PAGINATION = {
 export const UPLOAD_CONFIG = {
   MAX_FILE_SIZE_MB: 10,
   ALLOWED_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-  ALLOWED_VIDEO_TYPES: ["video/mp4", "video/mov", "video/avi"],
+} as const;
+
+// ─── Refund Policy ────────────────────────────────────────────────────────────
+
+export const REFUND_POLICY = {
+  DAYS: 14, // Rimborso automatico entro 14 giorni
 } as const;
