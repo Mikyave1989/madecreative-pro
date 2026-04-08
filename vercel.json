@@ -1,14 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "functions": {
-    "apps/api/dist/index.js": {
-      "maxDuration": 30,
-      "memory": 512
-    }
-  },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/apps/api/dist/index.js" }
+    { "source": "/(.*)", "destination": "/api/index" }
   ],
   "headers": [
     {
