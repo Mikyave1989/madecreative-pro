@@ -6,15 +6,21 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "require": "./dist/index.js",
       "import": "./dist/index.js",
+      "default": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
     "./client": {
+      "require": "./dist/client.js",
       "import": "./dist/client.js",
+      "default": "./dist/client.js",
       "types": "./dist/client.d.ts"
     },
     "./prompts": {
+      "require": "./dist/prompts/index.js",
       "import": "./dist/prompts/index.js",
+      "default": "./dist/prompts/index.js",
       "types": "./dist/prompts/index.d.ts"
     }
   },

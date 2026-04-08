@@ -6,19 +6,27 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "require": "./dist/index.js",
       "import": "./dist/index.js",
+      "default": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
     "./types": {
+      "require": "./dist/types/index.js",
       "import": "./dist/types/index.js",
+      "default": "./dist/types/index.js",
       "types": "./dist/types/index.d.ts"
     },
     "./constants": {
+      "require": "./dist/constants/index.js",
       "import": "./dist/constants/index.js",
+      "default": "./dist/constants/index.js",
       "types": "./dist/constants/index.d.ts"
     },
     "./validators": {
+      "require": "./dist/validators/index.js",
       "import": "./dist/validators/index.js",
+      "default": "./dist/validators/index.js",
       "types": "./dist/validators/index.d.ts"
     }
   },
