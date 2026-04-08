@@ -136,12 +136,13 @@ function KpiCard({
 // ─── Pipeline Funnel ───────────────────────────────────────────
 
 const PIPELINE_STAGES: { key: ProspectStatus; label: string; color: string }[] = [
-  { key: "SCRAPED", label: "Scraped", color: "#64748b" },
-  { key: "ANALYZING", label: "Analyzing", color: "#3b82f6" },
-  { key: "QUALIFIED", label: "Qualified", color: "#a855f7" },
-  { key: "CONTACTED", label: "Contacted", color: "#f59e0b" },
-  { key: "REPLIED", label: "Replied", color: "#10b981" },
-  { key: "CONVERTED", label: "Converted", color: "#00f0ff" },
+  { key: "SCRAPED",      label: "Scraped",      color: "#64748b" },
+  { key: "QUALIFIED",    label: "Qualified",    color: "#a855f7" },
+  { key: "PREVIEW_READY", label: "Preview Ready", color: "#00f0ff" },
+  { key: "CONTACTED",    label: "Contacted",    color: "#f59e0b" },
+  { key: "FOLLOWED_UP",  label: "Followed Up",  color: "#3b82f6" },
+  { key: "REPLIED",      label: "Replied",      color: "#10b981" },
+  { key: "CONVERTED",    label: "Converted",    color: "#22c55e" },
 ];
 
 function PipelineFunnel({ pipeline }: { pipeline: Record<ProspectStatus, number> }) {
@@ -206,17 +207,15 @@ function PipelineFunnel({ pipeline }: { pipeline: Record<ProspectStatus, number>
 
 // ─── Agent Color Map ───────────────────────────────────────────
 
-const AGENT_COLOR: Record<AgentType, { color: string; name: "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "pink" }> = {
+const AGENT_COLOR: Record<AgentType, { color: string; name: "cyan" | "violet" | "amber" | "green" | "red" }> = {
   SCRAPER:  { color: "#00f0ff", name: "cyan" },
   ANALYZER: { color: "#a855f7", name: "violet" },
   BUILDER:  { color: "#f59e0b", name: "amber" },
   OUTREACH: { color: "#10b981", name: "green" },
-  CHATBOT:  { color: "#3b82f6", name: "blue" },
   QA:       { color: "#ef4444", name: "red" },
-  SOCIAL:   { color: "#ec4899", name: "pink" },
 };
 
-const JOB_STATUS_COLOR: Record<JobStatus, "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "pink" | "gray"> = {
+const JOB_STATUS_COLOR: Record<JobStatus, "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "gray"> = {
   QUEUED:    "gray",
   RUNNING:   "cyan",
   COMPLETED: "green",

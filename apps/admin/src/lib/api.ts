@@ -100,12 +100,14 @@ export interface LoginResponse {
 
 export type ProspectStatus =
   | "SCRAPED"
-  | "ANALYZING"
   | "QUALIFIED"
+  | "PREVIEW_READY"
   | "CONTACTED"
+  | "FOLLOWED_UP"
   | "REPLIED"
   | "CONVERTED"
-  | "REJECTED";
+  | "LOST"
+  | "BLACKLISTED";
 
 export interface Prospect {
   id: string;
@@ -155,9 +157,7 @@ export type AgentType =
   | "ANALYZER"
   | "BUILDER"
   | "OUTREACH"
-  | "CHATBOT"
-  | "QA"
-  | "SOCIAL";
+  | "QA";
 
 export type JobStatus = "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
 

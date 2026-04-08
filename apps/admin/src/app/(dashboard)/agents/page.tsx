@@ -31,7 +31,7 @@ const AGENT_META: Record<
   {
     label: string;
     color: string;
-    neon: "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "pink";
+    neon: "cyan" | "violet" | "amber" | "green" | "red";
     description: string;
   }
 > = {
@@ -39,14 +39,12 @@ const AGENT_META: Record<
   ANALYZER: { label: "Analyzer", color: "#a855f7", neon: "violet", description: "AI prospect analysis & scoring" },
   BUILDER:  { label: "Builder",  color: "#f59e0b", neon: "amber",  description: "Website & content generation" },
   OUTREACH: { label: "Outreach", color: "#10b981", neon: "green",  description: "Automated email outreach" },
-  CHATBOT:  { label: "Chatbot",  color: "#3b82f6", neon: "blue",   description: "Conversational AI client support" },
   QA:       { label: "QA",       color: "#ef4444", neon: "red",    description: "Quality assurance & testing" },
-  SOCIAL:   { label: "Social",   color: "#ec4899", neon: "pink",   description: "Social media management" },
 };
 
 const JOB_STATUS_COLOR: Record<
   JobStatus,
-  "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "pink" | "gray"
+  "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "gray"
 > = {
   QUEUED:    "gray",
   RUNNING:   "cyan",
@@ -318,12 +316,12 @@ export default function AgentsPage() {
           Agent Monitor
         </h1>
         <p className="mt-1 font-mono-tech text-xs text-slate-500">
-          7 agents — real-time job tracking
+          5 agents — real-time job tracking
         </p>
       </div>
 
       {/* Agent Status Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
         {MOCK_AGENT_STATS.map((stat, i) => (
           <AgentCard key={stat.agentType} stat={stat} delay={i * 0.05} />
         ))}

@@ -286,7 +286,7 @@ function ReplyAnalyzerPanel({
   const [replyText, setReplyText] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [loadingPaymentLink, setLoadingPaymentLink] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"STARTER" | "GROWTH" | "ENTERPRISE">("STARTER");
+  const selectedPlan = "STANDARD";
   const [copied, setCopied] = useState(false);
 
   const selected = prospects.find((p) => p.id === selectedId);
@@ -477,18 +477,12 @@ function ReplyAnalyzerPanel({
               {selected.sentiment === "POSITIVE" && (
                 <div className="space-y-2">
                   <div>
-                    <label className="font-mono-tech text-[9px] uppercase tracking-widest text-slate-600 block mb-1">
-                      Plan
-                    </label>
-                    <select
-                      value={selectedPlan}
-                      onChange={(e) => setSelectedPlan(e.target.value as "STARTER" | "GROWTH" | "ENTERPRISE")}
-                      className="w-full rounded border border-border-subtle bg-bg-elevated px-2 py-1.5 text-xs text-slate-300 focus:outline-none"
-                    >
-                      <option value="STARTER">Starter — €297/mo</option>
-                      <option value="GROWTH">Growth — €597/mo</option>
-                      <option value="ENTERPRISE">Enterprise — €1297/mo</option>
-                    </select>
+                    <p className="font-mono-tech text-[9px] uppercase tracking-widest text-slate-600 mb-1">
+                      Piano
+                    </p>
+                    <p className="font-mono-tech text-xs text-neon-cyan font-bold">
+                      Piano Standard — €197/mese
+                    </p>
                   </div>
 
                   {selected.paymentLink ? (

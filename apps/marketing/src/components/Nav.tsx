@@ -45,7 +45,7 @@ export function Nav({ t, locale }: NavProps) {
   const navLinks = [
     { label: t.nav.howItWorks, href: `/${locale}#how-it-works` },
     { label: t.nav.demo, href: `/${locale}#demo` },
-    { label: "FAQ", href: `/${locale}#faq` },
+    { label: t.nav.faq, href: `/${locale}#faq` },
   ];
 
   return (

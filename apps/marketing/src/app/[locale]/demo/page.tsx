@@ -29,7 +29,7 @@ function TerminalStep({
   active: boolean;
   done: boolean;
 }) {
-  const colors = ["#00f0ff", "#a855f7", "#f59e0b", "#10b981", "#ec4899"];
+  const colors = ["#22d3ee", "#818cf8", "#6366f1", "#34d399", "#f472b6"];
   const color = colors[index % colors.length]!;
 
   return (
@@ -162,11 +162,11 @@ export default function DemoPage({ params }: PageProps) {
   const slug = company.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a]">
+    <main className="min-h-screen bg-[#05070f]">
       <Nav t={t} locale={locale as Locale} />
 
       {/* Hero gradient */}
-      <div className="absolute inset-0 h-[480px] bg-gradient-to-b from-[#0d0d0d] via-[#0a0a0a] to-transparent pointer-events-none" />
+      <div className="absolute inset-0 h-[480px] bg-gradient-to-b from-indigo-950/20 via-[#05070f] to-transparent pointer-events-none" />
 
       <div className="relative pt-32 pb-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
@@ -177,7 +177,7 @@ export default function DemoPage({ params }: PageProps) {
             transition={{ duration: 0.5 }}
             className="flex justify-center mb-8"
           >
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-900/30 text-cyan-400 text-xs font-semibold uppercase tracking-widest border border-cyan-800/40">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-900/30 text-indigo-300 text-xs font-semibold uppercase tracking-widest border border-indigo-700/40">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
               {td.badge}
             </span>
@@ -191,7 +191,7 @@ export default function DemoPage({ params }: PageProps) {
             className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold text-white text-center mb-4 leading-tight"
           >
             {td.title}{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#f59e0b] to-[#fcd34d]">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#6366f1] to-[#22d3ee]">
               {td.titleHighlight}
             </span>
           </motion.h1>
@@ -210,7 +210,7 @@ export default function DemoPage({ params }: PageProps) {
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="rounded-3xl border border-white/10 bg-[#111] shadow-2xl shadow-black/50 overflow-hidden"
+            className="rounded-3xl border border-white/10 bg-[#0d1117] shadow-2xl shadow-black/50 overflow-hidden"
           >
             <AnimatePresence mode="wait">
               {/* ── IDLE: form ── */}
@@ -234,7 +234,7 @@ export default function DemoPage({ params }: PageProps) {
                         value={company}
                         onChange={(e) => setCompany(e.target.value)}
                         placeholder="es. Pizzeria Bella Italia"
-                        className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-[#f59e0b] focus:ring-2 focus:ring-[#f59e0b]/20 outline-none transition-all text-white placeholder:text-white/30 text-sm"
+                        className="w-full px-4 py-3.5 rounded-xl bg-[#0d1117] border border-white/10 focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]/20 outline-none transition-all text-white placeholder:text-white/30 text-sm"
                         required
                       />
                     </div>
@@ -247,15 +247,15 @@ export default function DemoPage({ params }: PageProps) {
                       <select
                         value={sector}
                         onChange={(e) => setSector(e.target.value)}
-                        className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-[#f59e0b] focus:ring-2 focus:ring-[#f59e0b]/20 outline-none transition-all text-white text-sm appearance-none"
+                        className="w-full px-4 py-3.5 rounded-xl bg-[#0d1117] border border-white/10 focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]/20 outline-none transition-all text-white text-sm appearance-none"
                         required
                         style={{ colorScheme: "dark" }}
                       >
-                        <option value="" disabled className="bg-[#111]">
+                        <option value="" disabled className="bg-[#0d1117]">
                           — {td.labelSector} —
                         </option>
                         {td.sectorOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value} className="bg-[#111]">
+                          <option key={opt.value} value={opt.value} className="bg-[#0d1117]">
                             {opt.label}
                           </option>
                         ))}
@@ -273,7 +273,7 @@ export default function DemoPage({ params }: PageProps) {
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
                           placeholder="es. Milano"
-                          className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-[#f59e0b] focus:ring-2 focus:ring-[#f59e0b]/20 outline-none transition-all text-white placeholder:text-white/30 text-sm"
+                          className="w-full px-4 py-3.5 rounded-xl bg-[#0d1117] border border-white/10 focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]/20 outline-none transition-all text-white placeholder:text-white/30 text-sm"
                           required
                         />
                       </div>
@@ -286,7 +286,7 @@ export default function DemoPage({ params }: PageProps) {
                           value={country}
                           onChange={(e) => setCountry(e.target.value)}
                           placeholder={td.countryPlaceholder}
-                          className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-[#f59e0b] focus:ring-2 focus:ring-[#f59e0b]/20 outline-none transition-all text-white placeholder:text-white/30 text-sm"
+                          className="w-full px-4 py-3.5 rounded-xl bg-[#0d1117] border border-white/10 focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]/20 outline-none transition-all text-white placeholder:text-white/30 text-sm"
                         />
                       </div>
                     </div>
@@ -294,7 +294,7 @@ export default function DemoPage({ params }: PageProps) {
                     <button
                       type="submit"
                       disabled={!company.trim() || !sector || !city.trim()}
-                      className="w-full bg-[#f59e0b] text-[#0a0a0a] py-4 rounded-xl font-semibold text-base hover:bg-[#fcd34d] transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-400/40 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
+                      className="w-full gradient-indigo text-white py-4 rounded-xl font-semibold text-base transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-400/40 disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
                     >
                       {td.cta}
                     </button>
@@ -313,9 +313,9 @@ export default function DemoPage({ params }: PageProps) {
                   className="p-8 md:p-10"
                 >
                   {/* Terminal window */}
-                  <div className="rounded-2xl bg-[#0a0a0a] border border-white/10 overflow-hidden">
+                  <div className="rounded-2xl bg-[#05070f] border border-white/10 overflow-hidden">
                     {/* Terminal chrome */}
-                    <div className="bg-[#151515] px-4 py-3 flex items-center gap-3 border-b border-white/5">
+                    <div className="bg-[#0d1117] px-4 py-3 flex items-center gap-3 border-b border-white/5">
                       <div className="flex gap-1.5">
                         <div className="w-3 h-3 rounded-full bg-red-500/70" />
                         <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
@@ -363,7 +363,7 @@ export default function DemoPage({ params }: PageProps) {
                   {/* Mock browser preview */}
                   <div className="rounded-2xl border border-white/10 overflow-hidden mb-6 shadow-2xl shadow-black/40">
                     {/* Browser chrome */}
-                    <div className="bg-[#1a1a1a] px-4 py-3 flex items-center gap-3 border-b border-white/5">
+                    <div className="bg-[#0d1117] px-4 py-3 flex items-center gap-3 border-b border-white/5">
                       <div className="flex gap-1.5">
                         <div className="w-3 h-3 rounded-full bg-red-500/70" />
                         <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
@@ -378,19 +378,19 @@ export default function DemoPage({ params }: PageProps) {
                     </div>
 
                     {/* Mock website content */}
-                    <div className="bg-[#0a0a0a] p-6 min-h-[200px]">
+                    <div className="bg-[#05070f] p-6 min-h-[200px]">
                       {/* Mock hero */}
                       <div className="max-w-sm mx-auto">
                         {/* Fake nav */}
                         <div className="flex justify-between items-center mb-6">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-[#f59e0b] rounded-lg" />
+                            <div className="w-6 h-6 bg-indigo-500 rounded-lg" />
                             <div className="h-3 bg-white/20 rounded w-20" />
                           </div>
                           <div className="flex gap-3">
                             <div className="h-2.5 bg-white/10 rounded w-10" />
                             <div className="h-2.5 bg-white/10 rounded w-10" />
-                            <div className="h-2.5 bg-[#f59e0b]/50 rounded w-14" />
+                            <div className="h-2.5 bg-indigo-500/50 rounded w-14" />
                           </div>
                         </div>
 
@@ -398,10 +398,10 @@ export default function DemoPage({ params }: PageProps) {
                         <div className="text-center py-4">
                           <div className="h-4 bg-white/10 rounded w-1/2 mx-auto mb-2" />
                           <div className="h-7 bg-white/20 rounded-lg w-4/5 mx-auto mb-2" />
-                          <div className="h-7 bg-[#f59e0b]/30 rounded-lg w-3/5 mx-auto mb-3" />
+                          <div className="h-7 bg-indigo-500/30 rounded-lg w-3/5 mx-auto mb-3" />
                           <div className="h-3 bg-white/10 rounded w-full mb-1.5" />
                           <div className="h-3 bg-white/10 rounded w-4/5 mx-auto mb-5" />
-                          <div className="inline-block bg-[#f59e0b] text-[#0a0a0a] text-xs font-bold px-5 py-2 rounded-xl">
+                          <div className="inline-block bg-indigo-500 text-white text-xs font-bold px-5 py-2 rounded-xl">
                             {company}
                           </div>
                         </div>
@@ -413,7 +413,7 @@ export default function DemoPage({ params }: PageProps) {
                               key={n}
                               className="bg-white/5 rounded-xl p-2 text-center"
                             >
-                              <div className="h-5 bg-white/15 rounded mb-1" />
+                              <div className="h-5 bg-indigo-500/20 rounded mb-1" />
                               <div className="h-2.5 bg-white/8 rounded w-3/4 mx-auto" />
                             </div>
                           ))}
@@ -456,8 +456,8 @@ export default function DemoPage({ params }: PageProps) {
                   {/* CTAs */}
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Link
-                      href={`/${locale}/prezzi`}
-                      className="flex-1 text-center bg-[#f59e0b] text-[#0a0a0a] px-6 py-3.5 rounded-xl font-semibold text-sm hover:bg-[#fcd34d] transition-all shadow-lg shadow-amber-500/25 hover:-translate-y-0.5 active:translate-y-0"
+                      href={`/${locale}#features`}
+                      className="flex-1 text-center gradient-indigo text-white px-6 py-3.5 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-indigo-500/25 hover:-translate-y-0.5 active:translate-y-0"
                     >
                       {td.previewCta}
                     </Link>

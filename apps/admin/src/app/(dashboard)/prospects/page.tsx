@@ -35,15 +35,17 @@ import type { Prospect, ProspectStatus } from "@/lib/api";
 
 const STATUS_COLOR: Record<
   ProspectStatus,
-  "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "pink" | "gray"
+  "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "gray"
 > = {
-  SCRAPED: "gray",
-  ANALYZING: "blue",
-  QUALIFIED: "violet",
-  CONTACTED: "amber",
-  REPLIED: "cyan",
-  CONVERTED: "green",
-  REJECTED: "red",
+  SCRAPED:      "gray",
+  QUALIFIED:    "violet",
+  PREVIEW_READY: "cyan",
+  CONTACTED:    "amber",
+  FOLLOWED_UP:  "blue",
+  REPLIED:      "green",
+  CONVERTED:    "green",
+  LOST:         "red",
+  BLACKLISTED:  "red",
 };
 
 function scoreColor(score: number): "red" | "amber" | "green" {
@@ -56,12 +58,14 @@ const UNIQUE_COUNTRIES = [...new Set(MOCK_PROSPECTS.map((p) => p.country))].sort
 const UNIQUE_SECTORS = [...new Set(MOCK_PROSPECTS.map((p) => p.sector))].sort();
 const ALL_STATUSES: ProspectStatus[] = [
   "SCRAPED",
-  "ANALYZING",
   "QUALIFIED",
+  "PREVIEW_READY",
   "CONTACTED",
+  "FOLLOWED_UP",
   "REPLIED",
   "CONVERTED",
-  "REJECTED",
+  "LOST",
+  "BLACKLISTED",
 ];
 
 const PAGE_SIZE = 20;

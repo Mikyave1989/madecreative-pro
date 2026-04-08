@@ -12,19 +12,21 @@ import type {
 
 export const MOCK_METRICS: DashboardMetrics = {
   totalClients: 24,
-  mrr: 18500,
+  mrr: 24 * 197,
   prospectsToday: 47,
   prospectsTrend: 12,
   activeJobs: 3,
   conversionRate: 8.4,
   pipeline: {
     SCRAPED: 312,
-    ANALYZING: 87,
-    QUALIFIED: 54,
+    QUALIFIED: 87,
+    PREVIEW_READY: 54,
     CONTACTED: 31,
+    FOLLOWED_UP: 18,
     REPLIED: 12,
     CONVERTED: 8,
-    REJECTED: 203,
+    LOST: 47,
+    BLACKLISTED: 9,
   },
 };
 
@@ -32,12 +34,14 @@ export const MOCK_METRICS: DashboardMetrics = {
 
 const STATUS_LIST: ProspectStatus[] = [
   "SCRAPED",
-  "ANALYZING",
   "QUALIFIED",
+  "PREVIEW_READY",
   "CONTACTED",
+  "FOLLOWED_UP",
   "REPLIED",
   "CONVERTED",
-  "REJECTED",
+  "LOST",
+  "BLACKLISTED",
 ];
 
 const SECTORS = [
@@ -107,9 +111,7 @@ const AGENT_TYPES: AgentType[] = [
   "ANALYZER",
   "BUILDER",
   "OUTREACH",
-  "CHATBOT",
   "QA",
-  "SOCIAL",
 ];
 
 const JOB_STATUSES: JobStatus[] = [
@@ -172,16 +174,13 @@ export const MOCK_JOBS: AgentJob[] = Array.from({ length: 50 }, (_, i) =>
 
 export const MOCK_AGENT_STATS: AgentStats[] = AGENT_TYPES.map((type, i) => ({
   agentType: type,
-  status: (["IDLE", "RUNNING", "IDLE", "IDLE", "IDLE", "IDLE", "IDLE"] as const)[i],
-  // CHATBOT at index 4 has realistic stats
-  jobsToday: [14, 8, 3, 6, 9, 2, 5][i],
-  costTodayEur: [0.42, 1.87, 0.0, 0.31, 0.12, 0.05, 0.28][i],
+  status: (["IDLE", "RUNNING", "IDLE", "IDLE", "IDLE"] as const)[i],
+  jobsToday: [14, 8, 3, 6, 2][i],
+  costTodayEur: [0.42, 1.87, 0.0, 0.31, 0.05][i],
   lastRunAt:
     i === 1
       ? new Date().toISOString()
-      : i === 4
-        ? new Date(Date.now() - 25 * 60 * 1000).toISOString() // 25 min ago
-        : new Date(Date.now() - (i + 1) * 3_600_000).toISOString(),
+      : new Date(Date.now() - (i + 1) * 3_600_000).toISOString(),
 }));
 
 // ─── Recent Jobs (for live feed) ──────────────────────────────
