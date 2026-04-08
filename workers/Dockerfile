@@ -2,11 +2,14 @@ FROM node:20-alpine AS base
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ openssl
 
 # Copy root workspace files
 COPY package.json package-lock.json ./
 COPY tsconfig.json ./
+
+# Copy Prisma schema (needed for prisma generate)
+COPY apps/api/prisma apps/api/prisma/
 
 # Copy workspace packages
 COPY packages/db/ packages/db/
@@ -20,7 +23,7 @@ COPY workers/ workers/
 # Install all dependencies (including dev for TypeScript)
 RUN npm install --include=dev
 
-# Generate Prisma client for linux-musl
+# Generate Prisma client for linux-musl (Alpine)
 RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
 
 # Build packages
@@ -36,8 +39,11 @@ RUN npm run build --workspace=workers
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+RUN apk add --no-cache openssl
+
 COPY package.json package-lock.json ./
 COPY tsconfig.json ./
+COPY apps/api/prisma apps/api/prisma/
 COPY packages/db/ packages/db/
 COPY packages/shared/ packages/shared/
 COPY packages/agents/ packages/agents/
@@ -46,12 +52,15 @@ COPY workers/ workers/
 
 RUN npm install --omit=dev
 
-# Copy compiled output from build stage
+# Re-generate Prisma client in production stage (ensures correct binary)
+RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+# Copy compiled TypeScript output from build stage
 COPY --from=base /app/packages/db/dist packages/db/dist
 COPY --from=base /app/packages/shared/dist packages/shared/dist
 COPY --from=base /app/packages/agents/dist packages/agents/dist
 COPY --from=base /app/packages/ai/dist packages/ai/dist
 COPY --from=base /app/workers/dist workers/dist
 
-# Default: agent-runner (override via Railway start command)
+# Default: agent-runner (override via Railway start command per service)
 CMD ["node", "workers/dist/agent-runner.js"]
