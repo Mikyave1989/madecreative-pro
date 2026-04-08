@@ -1,6 +1,9 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 
+# Build version — bump this to force a full cache bust
+ARG BUILD_VERSION=4
+
 # Install build dependencies
 RUN apk add --no-cache python3 make g++ openssl
 
