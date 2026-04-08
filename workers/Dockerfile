@@ -35,10 +35,11 @@ RUN npm install --ignore-scripts
 # Generate Prisma client for linux-musl (Alpine)
 RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
 
-# Build shared packages
+# Build shared packages in dependency order
 RUN npm run build --workspace=packages/db || true
 RUN npm run build --workspace=packages/shared || true
 RUN npm run build --workspace=packages/ai || true
+RUN npm run build --workspace=packages/agents || true
 
 # Build API (for the @madecreative/api Railway service)
 RUN npm run build --workspace=@madecreative/api
