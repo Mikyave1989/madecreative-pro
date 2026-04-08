@@ -1,5 +1,7 @@
 // Vercel serverless entry point for the MadeCreative API.
-// After `turbo build --filter=@madecreative/api`, all workspace packages
-// are compiled and available via node_modules symlinks.
-// @vercel/node bundles this file + all imports into a single Lambda.
-export { default } from "../apps/api/dist/index.js";
+// @vercel/node (esbuild) bundles this file + all imports into a single Lambda,
+// tracing through workspace packages (@madecreative/*) from TypeScript source.
+import { handle } from "@hono/node-server/vercel";
+import app from "../apps/api/src/app.js";
+
+export default handle(app);
