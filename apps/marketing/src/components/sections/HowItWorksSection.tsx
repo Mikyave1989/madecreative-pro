@@ -209,6 +209,242 @@ function AgentFloor() {
   );
 }
 
+// ─── Agent Pipeline ────────────────────────────────────────────────────────────
+
+const PIPELINE_AGENTS = [
+  {
+    id: "SCRAPER",
+    color: "#22d3ee",
+    description: "Analizza il tuo sito e le recensioni",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.75" />
+        <path d="M16.5 16.5l3.5 3.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        <path d="M8.5 11h5M11 8.5v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "ANALYZER",
+    color: "#818cf8",
+    description: "Studia settore e competitor",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
+        <path d="M12 3c-1.2 5.4-5 7.8-5 7.8s1 6.2 5 9.2c4-3 5-9.2 5-9.2S13.2 8.4 12 3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M9 13c1 .8 2 1.2 3 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="18" cy="5" r="2" stroke="currentColor" strokeWidth="1.25" />
+        <path d="M17 7l-2 2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "BUILDER",
+    color: "#6366f1",
+    description: "Costruisce il sito + chatbot",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
+        <path d="M8 6l-4 6 4 6M16 6l4 6-4 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M14 4l-4 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "OUTREACH",
+    color: "#f472b6",
+    description: "Sequenza email personalizzata",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
+        <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.75" />
+        <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "QA",
+    color: "#34d399",
+    description: "Verifica qualità e pubblica",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
+        <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+] as const;
+
+/**
+ * AgentPipeline — renders the 5-node horizontal pipeline with animated
+ * data-flow connectors and a sequential glow/pulse cycling through agents.
+ */
+function AgentPipeline() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % PIPELINE_AGENTS.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="w-full">
+      {/* Heading */}
+      <div className="text-center mb-10">
+        <p
+          className="text-xs font-bold uppercase tracking-widest mb-3"
+          style={{ color: "rgba(248,250,252,0.3)" }}
+        >
+          Il nostro sistema AI in azione
+        </p>
+        <p
+          className="text-base max-w-lg mx-auto"
+          style={{ color: "rgba(248,250,252,0.55)" }}
+        >
+          5 agenti AI lavorano in sequenza automatica — da lead a sito live in{" "}
+          <span style={{ color: "#22d3ee" }}>48 ore</span>
+        </p>
+      </div>
+
+      {/*
+        Pipeline layout:
+        - Desktop: flex-row with connector lines between nodes
+        - Mobile: flex-col with connector lines going down
+      */}
+      <div
+        className="relative flex flex-col md:flex-row items-center justify-center gap-0"
+        role="list"
+        aria-label="Pipeline degli agenti AI"
+      >
+        {PIPELINE_AGENTS.map((agent, i) => {
+          const isActive = activeIndex === i;
+          const isLast = i === PIPELINE_AGENTS.length - 1;
+
+          return (
+            <div
+              key={agent.id}
+              className="relative flex flex-col md:flex-row items-center"
+              style={{ flex: isLast ? "0 0 auto" : "1 1 0%" }}
+            >
+              {/* Node */}
+              <div
+                role="listitem"
+                className="relative flex flex-col items-center text-center z-10"
+                style={{ minWidth: 96 }}
+              >
+                {/* Icon circle */}
+                <div
+                  className="relative w-16 h-16 rounded-2xl flex items-center justify-center mb-3 transition-all duration-500"
+                  style={{
+                    background: isActive
+                      ? `${agent.color}20`
+                      : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${isActive ? agent.color + "60" : "rgba(255,255,255,0.08)"}`,
+                    boxShadow: isActive
+                      ? `0 0 24px ${agent.color}40, 0 0 8px ${agent.color}20`
+                      : "none",
+                    color: isActive ? agent.color : "rgba(248,250,252,0.3)",
+                    transform: isActive ? "scale(1.08)" : "scale(1)",
+                  }}
+                  aria-label={agent.id}
+                >
+                  {agent.icon}
+                  {/* Pulse ring when active */}
+                  {isActive && (
+                    <span
+                      className="absolute inset-0 rounded-2xl animate-ping"
+                      style={{
+                        border: `1px solid ${agent.color}`,
+                        opacity: 0.3,
+                      }}
+                    />
+                  )}
+                </div>
+
+                {/* Label */}
+                <span
+                  className="text-xs font-bold font-mono tracking-wider mb-1 transition-colors duration-500"
+                  style={{ color: isActive ? agent.color : "rgba(248,250,252,0.4)" }}
+                >
+                  {agent.id}
+                </span>
+
+                {/* Description */}
+                <span
+                  className="text-xs leading-snug max-w-[90px] transition-colors duration-500"
+                  style={{
+                    color: isActive
+                      ? "rgba(248,250,252,0.75)"
+                      : "rgba(248,250,252,0.3)",
+                  }}
+                >
+                  {agent.description}
+                </span>
+              </div>
+
+              {/* Connector (not on last item) */}
+              {!isLast && (
+                <>
+                  {/* Desktop horizontal connector */}
+                  <div
+                    className="hidden md:block relative flex-1 h-px mx-3"
+                    style={{
+                      background: "rgba(255,255,255,0.07)",
+                      minWidth: 24,
+                    }}
+                    aria-hidden="true"
+                  >
+                    {/* Animated flow dot */}
+                    <span
+                      className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full"
+                      style={{
+                        background: PIPELINE_AGENTS[i].color,
+                        animation: `pipelineFlowH 1.8s linear ${i * 0.36}s infinite`,
+                      }}
+                    />
+                  </div>
+
+                  {/* Mobile vertical connector */}
+                  <div
+                    className="md:hidden relative w-px h-8 my-1"
+                    style={{ background: "rgba(255,255,255,0.07)" }}
+                    aria-hidden="true"
+                  >
+                    <span
+                      className="absolute left-1/2 -translate-x-1/2 w-2 h-2 rounded-full"
+                      style={{
+                        background: PIPELINE_AGENTS[i].color,
+                        animation: `pipelineFlowV 1.8s linear ${i * 0.36}s infinite`,
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* CSS keyframes injected via style tag — no external deps needed */}
+      <style>{`
+        @keyframes pipelineFlowH {
+          0%   { left: 0%;   opacity: 0; }
+          10%  { opacity: 1; }
+          90%  { opacity: 1; }
+          100% { left: 100%; opacity: 0; }
+        }
+        @keyframes pipelineFlowV {
+          0%   { top: 0%;   opacity: 0; }
+          10%  { opacity: 1; }
+          90%  { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 export function HowItWorksSection({ t }: HowItWorksSectionProps) {
   return (
     <section
@@ -244,7 +480,7 @@ export function HowItWorksSection({ t }: HowItWorksSectionProps) {
         </div>
 
         {/* Two-column: Steps + Agent Floor */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-12 items-center mb-20">
           {/* Steps */}
           <div className="space-y-8">
             {t.howItWorks.steps.map((step, i) => {
@@ -300,6 +536,17 @@ export function HowItWorksSection({ t }: HowItWorksSectionProps) {
             </div>
             <AgentFloor />
           </div>
+        </div>
+
+        {/* Agent Pipeline — full width below the two-col grid */}
+        <div
+          className="rounded-2xl p-8 sm:p-10"
+          style={{
+            background: "#0d1117",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
+        >
+          <AgentPipeline />
         </div>
       </div>
     </section>

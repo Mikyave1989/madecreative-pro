@@ -6,6 +6,7 @@ import { HeroSection } from "@/components/sections/HeroSection";
 import { HowItWorksSection } from "@/components/sections/HowItWorksSection";
 import { DemoSection } from "@/components/sections/DemoSection";
 import { FeaturesSection } from "@/components/sections/FeaturesSection";
+import { PricingSection } from "@/components/sections/PricingSection";
 import { FaqSection } from "@/components/sections/FaqSection";
 import { FinalCtaSection } from "@/components/sections/FinalCtaSection";
 
@@ -33,6 +34,7 @@ export default async function LocalePage({ params }: PageProps) {
       <HowItWorksSection t={t} />
       <DemoSection t={t} locale={locale} />
       <FeaturesSection t={t} />
+      <PricingSection t={t} />
       <FaqSection t={t} />
       <FinalCtaSection t={t} locale={locale} />
       <Footer t={t} locale={locale} />
