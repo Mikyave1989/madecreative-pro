@@ -1,7 +1,12 @@
 // Vercel serverless entry point for the MadeCreative API.
-// @vercel/node (esbuild) bundles this file + all imports into a single Lambda,
-// tracing through workspace packages (@madecreative/*) from TypeScript source.
+// Diagnostic: minimal Hono app without workspace deps to isolate Lambda crash.
+import { Hono } from "hono";
 import { handle } from "@hono/node-server/vercel";
-import app from "../apps/api/src/app.js";
+
+const app = new Hono();
+
+app.get("/health", (c) =>
+  c.json({ status: "ok", timestamp: new Date().toISOString() })
+);
 
 export default handle(app);
