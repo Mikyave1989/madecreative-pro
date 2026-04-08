@@ -6,7 +6,6 @@
       "includeFiles": "node_modules/.prisma/**"
     }
   },
-  "nodeVersion": "20.x",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index" }
   ],
