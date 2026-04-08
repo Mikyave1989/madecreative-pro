@@ -42,6 +42,9 @@ RUN npm run build --workspace=packages/shared || true
 RUN npm run build --workspace=packages/agents || true
 RUN npm run build --workspace=packages/ai || true
 
+# Diagnostic: show what commit and file Railway is actually building from
+RUN echo "=== COMMIT ===" && (git -C /app rev-parse HEAD 2>/dev/null || echo "no git") && echo "=== LINE 62 of monitoring-worker ===" && sed -n '60,65p' workers/monitoring-worker.ts
+
 # Build workers
 RUN npm run build --workspace=workers
 
