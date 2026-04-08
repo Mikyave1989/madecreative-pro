@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SUPPORTED_LOCALES, getTranslations, type Locale } from "@/lib/i18n";
+import { CookieBanner } from "@/components/CookieBanner";
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
@@ -55,5 +56,10 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     notFound();
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <CookieBanner />
+    </>
+  );
 }
