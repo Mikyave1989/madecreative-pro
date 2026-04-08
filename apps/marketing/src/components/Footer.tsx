@@ -8,24 +8,46 @@ interface FooterProps {
 
 export function Footer({ t, locale }: FooterProps) {
   return (
-    <footer className="bg-[#0a0a0a] border-t border-white/10 py-16 px-4 sm:px-6 lg:px-8">
+    <footer
+      className="py-16 px-4 sm:px-6 lg:px-8"
+      style={{
+        background: "#0d1117",
+        borderTop: "1px solid rgba(255,255,255,0.07)",
+      }}
+    >
       <div className="max-w-7xl mx-auto">
         <div className="grid md:grid-cols-4 gap-12 mb-12">
           {/* Brand */}
           <div className="md:col-span-2">
             <Link href={`/${locale}`} className="inline-block mb-4">
-              <span className="text-2xl font-bold text-white">
-                made<span className="text-[#f59e0b]">creative</span>
+              <span className="text-2xl font-bold" style={{ color: "#f8fafc" }}>
+                made<span style={{ color: "#6366f1" }}>creative</span>
               </span>
             </Link>
-            <p className="text-white/40 text-sm leading-relaxed max-w-sm">
+            <p
+              className="text-sm leading-relaxed max-w-sm"
+              style={{ color: "rgba(248,250,252,0.35)" }}
+            >
               {t.footer.tagline}
             </p>
             {/* Social icons */}
             <div className="flex gap-4 mt-6">
               <a
                 href="https://twitter.com/madecreativepro"
-                className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-white/30 transition-colors"
+                className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "rgba(248,250,252,0.35)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#f8fafc";
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.2)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,250,252,0.35)";
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.08)";
+                }}
                 aria-label="Twitter"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -34,7 +56,20 @@ export function Footer({ t, locale }: FooterProps) {
               </a>
               <a
                 href="https://linkedin.com/company/madecreative"
-                className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-white/30 transition-colors"
+                className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "rgba(248,250,252,0.35)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#f8fafc";
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.2)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,250,252,0.35)";
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.08)";
+                }}
                 aria-label="LinkedIn"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -43,7 +78,20 @@ export function Footer({ t, locale }: FooterProps) {
               </a>
               <a
                 href="https://instagram.com/madecreativepro"
-                className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-white/30 transition-colors"
+                className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "rgba(248,250,252,0.35)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#f8fafc";
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.2)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,250,252,0.35)";
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.08)";
+                }}
                 aria-label="Instagram"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -55,64 +103,83 @@ export function Footer({ t, locale }: FooterProps) {
 
           {/* Links */}
           <div>
-            <h4 className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-4">Legal</h4>
+            <h4
+              className="text-xs font-semibold uppercase tracking-widest mb-4"
+              style={{ color: "rgba(248,250,252,0.4)" }}
+            >
+              Legal
+            </h4>
             <ul className="space-y-3">
-              <li>
-                <Link href={`/${locale}/privacy`} className="text-white/40 hover:text-white text-sm transition-colors">
-                  {t.footer.links.privacy}
-                </Link>
-              </li>
-              <li>
-                <Link href={`/${locale}/cookies`} className="text-white/40 hover:text-white text-sm transition-colors">
-                  {t.footer.links.cookies}
-                </Link>
-              </li>
-              <li>
-                <Link href={`/${locale}/impressum`} className="text-white/40 hover:text-white text-sm transition-colors">
-                  {t.footer.links.impressum}
-                </Link>
-              </li>
-              <li>
-                <Link href={`/${locale}/terms`} className="text-white/40 hover:text-white text-sm transition-colors">
-                  {t.footer.links.terms}
-                </Link>
-              </li>
+              {[
+                { label: t.footer.links.privacy, href: `/${locale}/privacy` },
+                { label: t.footer.links.cookies, href: `/${locale}/cookies` },
+                { label: t.footer.links.impressum, href: `/${locale}/impressum` },
+                { label: t.footer.links.terms, href: `/${locale}/terms` },
+              ].map((link) => (
+                <li key={link.label}>
+                  <Link
+                    href={link.href}
+                    className="text-sm transition-colors"
+                    style={{ color: "rgba(248,250,252,0.3)" }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#f8fafc")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,250,252,0.3)")}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-4">Product</h4>
+            <h4
+              className="text-xs font-semibold uppercase tracking-widest mb-4"
+              style={{ color: "rgba(248,250,252,0.4)" }}
+            >
+              Product
+            </h4>
             <ul className="space-y-3">
-              <li>
-                <a href={`/${locale}#how-it-works`} className="text-white/40 hover:text-white text-sm transition-colors">
-                  How it works
-                </a>
-              </li>
-              <li>
-                <Link href={`/${locale}/prezzi`} className="text-white/40 hover:text-white text-sm transition-colors">
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link href={`/${locale}/demo`} className="text-white/40 hover:text-white text-sm transition-colors">
-                  Demo
-                </Link>
-              </li>
-              <li>
-                <a href="https://app.madecreative.pro/login" className="text-white/40 hover:text-white text-sm transition-colors">
-                  Login
-                </a>
-              </li>
+              {[
+                { label: "Come funziona", href: `/${locale}#how-it-works` },
+                { label: "Demo", href: `/${locale}#demo` },
+                { label: "FAQ", href: `/${locale}#faq` },
+                { label: "Login", href: "https://app.madecreative.pro/login" },
+              ].map((link) => (
+                <li key={link.label}>
+                  <a
+                    href={link.href}
+                    className="text-sm transition-colors"
+                    style={{ color: "rgba(248,250,252,0.3)" }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#f8fafc")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,250,252,0.3)")}
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-white/25 text-xs font-mono">{t.footer.copyright}</p>
+        <div
+          className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <p
+            className="text-xs font-mono"
+            style={{ color: "rgba(248,250,252,0.2)" }}
+          >
+            {t.footer.copyright}
+          </p>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-white/25 text-xs font-mono">All systems operational</span>
+            <span
+              className="text-xs font-mono"
+              style={{ color: "rgba(248,250,252,0.2)" }}
+            >
+              All systems operational
+            </span>
           </div>
         </div>
       </div>

@@ -1,36 +1,33 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import { Cormorant_Garamond } from "next/font/google";
+import { Inter, Syne } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
-  variable: "--font-cormorant",
+const syne = Syne({
+  variable: "--font-syne",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  weight: ["600", "700", "800"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "MadeCreative — AI-Powered Website in 60 Seconds",
+    default: "MadeCreative — Il tuo sito professionale in 60 secondi",
     template: "%s | MadeCreative",
   },
-  description:
-    "MadeCreative creates your professional website in 60 seconds with AI. Local SEO, social media, chatbot and leads — fully automated.",
+  description: "MadeCreative crea il tuo sito web professionale con AI in 60 secondi. Chatbot 24/7, report mensile, hosting incluso. €197/mese.",
   metadataBase: new URL("https://madecreative.pro"),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html className="scroll-smooth">
-      <body className={`${geistSans.variable} ${cormorant.variable} font-sans antialiased`}>
+    <html lang="it" className="scroll-smooth">
+      <body className={`${inter.variable} ${syne.variable} antialiased`}>
         {children}
       </body>
     </html>

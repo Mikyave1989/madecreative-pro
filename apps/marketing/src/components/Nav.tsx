@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { type Translations, SUPPORTED_LOCALES, LOCALE_NAMES, type Locale } from "@/lib/i18n";
 
 interface NavProps {
@@ -37,7 +37,6 @@ export function Nav({ t, locale }: NavProps) {
 
   function switchLocale(newLocale: Locale) {
     setLangOpen(false);
-    // Replace the locale segment in the current path
     const segments = pathname.split("/");
     segments[1] = newLocale;
     router.push(segments.join("/") || `/${newLocale}`);
@@ -45,28 +44,27 @@ export function Nav({ t, locale }: NavProps) {
 
   const navLinks = [
     { label: t.nav.howItWorks, href: `/${locale}#how-it-works` },
-    { label: t.nav.results, href: `/${locale}#results` },
-    { label: t.nav.pricing, href: `/${locale}/prezzi` },
-    { label: t.nav.demo, href: `/${locale}/demo` },
+    { label: t.nav.demo, href: `/${locale}#demo` },
+    { label: "FAQ", href: `/${locale}#faq` },
   ];
 
   return (
-    <motion.nav
+    <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-[#0a0a0a]/95 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/20"
-          : "bg-transparent"
+        scrolled ? "backdrop-blur-md shadow-lg shadow-black/20" : ""
       }`}
-      initial={{ y: -80 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
+      style={
+        scrolled
+          ? { background: "rgba(13,17,23,0.95)", borderBottom: "1px solid rgba(255,255,255,0.07)" }
+          : { background: "transparent" }
+      }
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link href={`/${locale}`} className="flex items-center">
-            <span className="text-xl md:text-2xl font-bold text-white tracking-tight">
-              made<span className="text-[#f59e0b]">creative</span>
+            <span className="text-xl md:text-2xl font-bold tracking-tight" style={{ color: "#f8fafc" }}>
+              made<span style={{ color: "#6366f1" }}>creative</span>
             </span>
           </Link>
 
@@ -76,7 +74,8 @@ export function Nav({ t, locale }: NavProps) {
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-sm text-white/70 hover:text-white transition-colors duration-200"
+                className="text-sm transition-colors duration-200 hover:text-white"
+                style={{ color: "rgba(248,250,252,0.6)" }}
               >
                 {link.label}
               </Link>
@@ -89,7 +88,10 @@ export function Nav({ t, locale }: NavProps) {
             <div ref={langRef} className="relative">
               <button
                 onClick={() => setLangOpen((o) => !o)}
-                className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/10"
+                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg transition-colors"
+                style={{ color: "rgba(248,250,252,0.6)" }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "transparent")}
               >
                 <span className="uppercase font-medium">{locale}</span>
                 <svg
@@ -107,17 +109,28 @@ export function Nav({ t, locale }: NavProps) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-40 bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-40 rounded-xl shadow-2xl overflow-hidden"
+                    style={{
+                      background: "#0d1117",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
                   >
                     {SUPPORTED_LOCALES.map((loc) => (
                       <button
                         key={loc}
                         onClick={() => switchLocale(loc)}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
-                          loc === locale
-                            ? "text-[#f59e0b] bg-[#f59e0b]/10"
-                            : "text-white/70 hover:text-white hover:bg-white/10"
-                        }`}
+                        className="w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between"
+                        style={{
+                          color: loc === locale ? "#818cf8" : "rgba(248,250,252,0.6)",
+                          background: loc === locale ? "rgba(99,102,241,0.1)" : "transparent",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (loc !== locale) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.background =
+                            loc === locale ? "rgba(99,102,241,0.1)" : "transparent";
+                        }}
                       >
                         <span className="uppercase font-medium mr-2">{loc}</span>
                         <span className="text-xs opacity-60">{LOCALE_NAMES[loc]}</span>
@@ -130,8 +143,8 @@ export function Nav({ t, locale }: NavProps) {
 
             {/* CTA */}
             <Link
-              href={`/${locale}/demo`}
-              className="bg-[#f59e0b] text-[#0a0a0a] px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#fcd34d] transition-colors shadow-lg shadow-amber-500/25"
+              href={`/${locale}#demo`}
+              className="gradient-indigo text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-all glow-indigo"
             >
               {t.nav.startFree}
             </Link>
@@ -140,7 +153,8 @@ export function Nav({ t, locale }: NavProps) {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen((o) => !o)}
-            className="md:hidden p-2 text-white/80 hover:text-white"
+            className="md:hidden p-2"
+            style={{ color: "rgba(248,250,252,0.8)" }}
             aria-label="Menu"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -162,7 +176,8 @@ export function Nav({ t, locale }: NavProps) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden bg-[#0a0a0a] border-t border-white/10 overflow-hidden"
+            className="md:hidden overflow-hidden"
+            style={{ background: "#0d1117", borderTop: "1px solid rgba(255,255,255,0.07)" }}
           >
             <div className="px-4 py-4 space-y-2">
               {navLinks.map((link) => (
@@ -170,31 +185,32 @@ export function Nav({ t, locale }: NavProps) {
                   key={link.label}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="block py-3 px-4 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-sm"
+                  className="block py-3 px-4 rounded-lg text-sm transition-colors"
+                  style={{ color: "rgba(248,250,252,0.6)" }}
                 >
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-2 border-t border-white/10">
+              <div className="pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
                 <div className="grid grid-cols-4 gap-1 mb-3">
                   {SUPPORTED_LOCALES.map((loc) => (
                     <button
                       key={loc}
                       onClick={() => { switchLocale(loc); setMobileOpen(false); }}
-                      className={`py-2 rounded-lg text-xs font-medium uppercase transition-colors ${
-                        loc === locale
-                          ? "bg-[#f59e0b]/20 text-[#f59e0b]"
-                          : "text-white/50 hover:text-white hover:bg-white/10"
-                      }`}
+                      className="py-2 rounded-lg text-xs font-medium uppercase transition-colors"
+                      style={{
+                        background: loc === locale ? "rgba(99,102,241,0.15)" : "transparent",
+                        color: loc === locale ? "#818cf8" : "rgba(248,250,252,0.4)",
+                      }}
                     >
                       {loc}
                     </button>
                   ))}
                 </div>
                 <Link
-                  href={`/${locale}/demo`}
+                  href={`/${locale}#demo`}
                   onClick={() => setMobileOpen(false)}
-                  className="block w-full text-center bg-[#f59e0b] text-[#0a0a0a] px-5 py-3 rounded-xl text-sm font-semibold"
+                  className="block w-full text-center gradient-indigo text-white px-5 py-3 rounded-xl text-sm font-semibold"
                 >
                   {t.nav.startFree}
                 </Link>
@@ -203,6 +219,6 @@ export function Nav({ t, locale }: NavProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.nav>
+    </nav>
   );
 }

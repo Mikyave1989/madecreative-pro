@@ -1,95 +1,133 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import type { Translations } from "@/lib/i18n";
 
 interface FaqSectionProps {
   t: Translations;
 }
 
-function FaqItem({ question, answer, index }: { question: string; answer: string; index: number }) {
+const HARDCODED_FAQS = [
+  {
+    q: "Devo fare qualcosa per configurarlo?",
+    a: "No. Il nostro sistema trova la tua attività, crea il sito, lo mette online. Tu non tocchi nulla.",
+  },
+  {
+    q: "Posso modificare il sito?",
+    a: "Sì. Dal tuo portale cliente hai un editor self-service. Cambi testi, foto, orari, telefono. In 2 minuti il sito si aggiorna.",
+  },
+  {
+    q: "Come cancello?",
+    a: "Un click dal portale. Il sito va offline entro 24 ore. Nessun preavviso, nessuna penale.",
+  },
+  {
+    q: "E se non mi piace?",
+    a: "Rimborso automatico entro 14 giorni dalla sottoscrizione. Nessun ticket, nessuna chiamata. Un click.",
+  },
+  {
+    q: "Funziona per il mio settore?",
+    a: "Sì: ristoranti, dentisti, studi legali, palestre, centri estetici, hotel, negozi, professionisti.",
+  },
+];
+
+function FaqItem({
+  question,
+  answer,
+}: {
+  question: string;
+  answer: string;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.06 }}
-      className={`border rounded-2xl overflow-hidden transition-colors ${
-        open ? "border-[#f59e0b]/40 bg-amber-50/5" : "border-gray-200 bg-white"
-      }`}
+    <div
+      className="rounded-xl overflow-hidden transition-all duration-200"
+      style={{
+        background: open ? "#161b27" : "#0d1117",
+        border: `1px solid ${open ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.07)"}`,
+      }}
     >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full text-left px-6 py-5 flex items-center justify-between gap-4 group"
+        className="w-full text-left px-6 py-5 flex items-center justify-between gap-4"
+        aria-expanded={open}
       >
-        <span className={`text-sm font-semibold transition-colors ${open ? "text-[#f59e0b]" : "text-gray-900"}`}>
+        <span
+          className="text-sm font-semibold transition-colors"
+          style={{ color: open ? "#818cf8" : "#f8fafc" }}
+        >
           {question}
         </span>
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-            open ? "bg-[#f59e0b] text-[#0a0a0a] rotate-180" : "bg-gray-100 text-gray-500 group-hover:bg-gray-200"
-          }`}
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200"
+          style={{
+            background: open ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.05)",
+            color: open ? "#818cf8" : "rgba(248,250,252,0.4)",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+          }}
         >
           <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none">
-            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M4 6l4 4 4-4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
       </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-          >
-            <div className="px-6 pb-5 text-sm text-gray-500 leading-relaxed border-t border-gray-100 pt-4">
-              {answer}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+
+      {open && (
+        <div
+          className="px-6 pb-5 text-sm leading-relaxed"
+          style={{
+            color: "rgba(248,250,252,0.55)",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            paddingTop: "1rem",
+          }}
+        >
+          {answer}
+        </div>
+      )}
+    </div>
   );
 }
 
 export function FaqSection({ t }: FaqSectionProps) {
-  const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  // Use i18n FAQ items if present, otherwise fall back to hardcoded Italian
+  const faqItems =
+    t.faq?.items?.length > 0 ? t.faq.items : HARDCODED_FAQS;
 
   return (
-    <section ref={ref} className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50">
+    <section
+      id="faq"
+      className="py-24 px-4 sm:px-6 lg:px-8"
+      style={{ background: "#05070f" }}
+    >
       <div className="max-w-3xl mx-auto">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5 }}
-          className="flex justify-center mb-6"
-        >
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-200 text-gray-600 text-xs font-semibold uppercase tracking-widest">
-            {t.faq.sectionLabel}
+        <div className="text-center mb-12">
+          <span
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-6"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(248,250,252,0.5)",
+            }}
+          >
+            {t.faq?.sectionLabel ?? "FAQ"}
           </span>
-        </motion.div>
+          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "#f8fafc" }}>
+            {t.faq?.title ?? "Domande frequenti"}
+          </h2>
+        </div>
 
-        <motion.h2
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="font-heading text-4xl sm:text-5xl font-bold text-gray-900 text-center mb-12"
-        >
-          {t.faq.title}
-        </motion.h2>
-
-        {inView && (
-          <div className="space-y-3">
-            {t.faq.items.map((item, i) => (
-              <FaqItem key={i} question={item.q} answer={item.a} index={i} />
-            ))}
-          </div>
-        )}
+        <div className="space-y-3">
+          {faqItems.map((item, i) => (
+            <FaqItem key={i} question={item.q} answer={item.a} />
+          ))}
+        </div>
       </div>
     </section>
   );
