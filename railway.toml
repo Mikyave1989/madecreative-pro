@@ -1,18 +1,12 @@
 # railway.toml — MadeCreative Worker Services
-#
-# Deploys background workers to Railway EU (Frankfurt region).
-# Each service runs independently. Docker build compiles TypeScript to dist/.
-# Set env vars in Railway dashboard (shared environment group).
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "workers/Dockerfile"
 
-# ─── Agent Runner ─────────────────────────────────────────────────────────────
-# Central dispatcher: polls AgentJob table and routes to the correct agent.
 [[services]]
 name = "agent-runner"
-startCommand = "node workers/dist/agent-runner.js"
+startCommand = "npx tsx workers/agent-runner.ts"
 
 [services.deploy]
 region = "europe-west1"
@@ -20,11 +14,9 @@ numReplicas = 1
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 
-# ─── Scraper Cron ─────────────────────────────────────────────────────────────
-# Runs nightly at 02:00-05:00 CET. Reads ScrapeConfig and enqueues jobs.
 [[services]]
 name = "scraper-cron"
-startCommand = "node workers/dist/scraper-cron.js"
+startCommand = "npx tsx workers/scraper-cron.ts"
 
 [services.deploy]
 region = "europe-west1"
@@ -32,11 +24,9 @@ numReplicas = 1
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 
-# ─── Outreach Worker ──────────────────────────────────────────────────────────
-# Processes follow-up email sequences via BullMQ queue.
 [[services]]
 name = "outreach-worker"
-startCommand = "node workers/dist/outreach-worker.js"
+startCommand = "npx tsx workers/outreach-worker.ts"
 
 [services.deploy]
 region = "europe-west1"
@@ -44,11 +34,9 @@ numReplicas = 1
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 
-# ─── Report Worker ────────────────────────────────────────────────────────────
-# Generates monthly PDF reports and emails them to clients.
 [[services]]
 name = "report-worker"
-startCommand = "node workers/dist/report-worker.js"
+startCommand = "npx tsx workers/report-worker.ts"
 
 [services.deploy]
 region = "europe-west1"
@@ -56,11 +44,9 @@ numReplicas = 1
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 
-# ─── Monitoring Worker ────────────────────────────────────────────────────────
-# Watches platform health, sends alerts to admin on anomalies.
 [[services]]
 name = "monitoring-worker"
-startCommand = "node workers/dist/monitoring-worker.js"
+startCommand = "npx tsx workers/monitoring-worker.ts"
 
 [services.deploy]
 region = "europe-west1"
