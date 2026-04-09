@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SUPPORTED_LOCALES, getTranslations, type Locale } from "@/lib/i18n";
 import { CookieBanner } from "@/components/CookieBanner";
+import { WhatsAppButton } from "@/components/WhatsAppButton";
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
@@ -59,6 +60,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   return (
     <>
       {children}
+      <WhatsAppButton locale={locale} />
       <CookieBanner />
     </>
   );
