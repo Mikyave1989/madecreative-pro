@@ -1,8 +1,26 @@
-# railway.toml — MadeCreative Worker Services
+# railway.toml — MadeCreative Services
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "workers/Dockerfile"
+
+# ─── Portal (Next.js) ────────────────────────────────────────────────────────
+
+[[services]]
+name = "portal"
+startCommand = "npm run start --workspace=@madecreative/portal"
+
+[services.build]
+dockerfilePath = "apps/portal/Dockerfile"
+buildCommand = "npm run build --workspace=@madecreative/portal"
+
+[services.deploy]
+region = "europe-west1"
+numReplicas = 1
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# ─── Workers ──────────────────────────────────────────────────────────────────
 
 [[services]]
 name = "agent-runner"
