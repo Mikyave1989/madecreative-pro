@@ -21,10 +21,12 @@ import {
 interface BillingInfo {
   plan: string;
   status: "ACTIVE" | "AT_RISK" | "PAUSED";
-  nextChargeDate: string;
+  nextChargeDate: string | null;
   nextChargeAmount: number;
   clientSince: string;
   isEligibleForRefund: boolean;
+  daysSinceCreation: number;
+  refundDeadlineDays: number;
   paymentMethod: {
     brand: string;
     last4: string;
@@ -40,6 +42,14 @@ interface Invoice {
   amount: number;
   status: "PAID" | "PENDING" | "FAILED" | "REFUNDED";
   pdfUrl: string | null;
+}
+
+interface InvoicesResponse {
+  data: Invoice[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -287,15 +297,15 @@ export default function BillingPage() {
       };
       const invoicesJson = (await invoicesRes.json()) as {
         success: boolean;
-        data?: Invoice[];
+        data?: InvoicesResponse;
         error?: string;
       };
 
       if (!billingJson.success) throw new Error(billingJson.error ?? "Errore fatturazione");
       setBilling(billingJson.data!);
 
-      if (invoicesJson.success && invoicesJson.data) {
-        setInvoices(invoicesJson.data);
+      if (invoicesJson.success && invoicesJson.data?.data) {
+        setInvoices(invoicesJson.data.data);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore di caricamento");
@@ -455,7 +465,9 @@ export default function BillingPage() {
               <div className="bg-slate-800 rounded-xl p-4 text-center sm:min-w-[160px]">
                 <p className="text-xs text-slate-500 mb-1">Prossimo addebito</p>
                 <p className="text-2xl font-bold text-white tabular-nums">€{billing.nextChargeAmount}</p>
-                <p className="text-xs text-slate-400 mt-1">{formatShortDate(billing.nextChargeDate)}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {billing.nextChargeDate ? formatShortDate(billing.nextChargeDate) : "—"}
+                </p>
               </div>
             </div>
           </div>
@@ -626,7 +638,9 @@ export default function BillingPage() {
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-0.5">Prossima scadenza</p>
-                <p className="text-sm text-white">{formatDate(billing.nextChargeDate)}</p>
+                <p className="text-sm text-white">
+                  {billing.nextChargeDate ? formatDate(billing.nextChargeDate) : "—"}
+                </p>
               </div>
             </div>
           </div>

@@ -40,16 +40,53 @@ app.get("/", async (c) => {
   const isEligibleForRefund =
     client.status === "ACTIVE" && daysSinceCreation <= REFUND_POLICY.DAYS;
 
-  let nextBillingDate: string | null = null;
-  if (client.stripeSubId) {
-    try {
-      const stripe = getStripe();
-      const sub = await stripe.subscriptions.retrieve(client.stripeSubId);
-      nextBillingDate = new Date(
-        sub.current_period_end * 1000
-      ).toISOString();
-    } catch {
-      // Ignore
+  // Map internal status to portal status
+  const portalStatus: "ACTIVE" | "AT_RISK" | "PAUSED" =
+    client.status === "ACTIVE" ? "ACTIVE"
+    : client.status === "AT_RISK" ? "AT_RISK"
+    : "PAUSED";
+
+  let nextChargeDate: string | null = null;
+  let paymentMethod: {
+    brand: string;
+    last4: string;
+    expiryMonth: number;
+    expiryYear: number;
+  } | null = null;
+
+  if (client.stripeSubId || client.stripeCustomerId) {
+    const stripe = getStripe();
+
+    // Fetch next billing date from subscription
+    if (client.stripeSubId) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(client.stripeSubId);
+        nextChargeDate = new Date(sub.current_period_end * 1000).toISOString();
+      } catch {
+        // Ignore
+      }
+    }
+
+    // Fetch default payment method
+    if (client.stripeCustomerId) {
+      try {
+        const customer = await stripe.customers.retrieve(client.stripeCustomerId);
+        if (!("deleted" in customer) && customer.invoice_settings?.default_payment_method) {
+          const pm = await stripe.paymentMethods.retrieve(
+            customer.invoice_settings.default_payment_method as string
+          );
+          if (pm.card) {
+            paymentMethod = {
+              brand: pm.card.brand,
+              last4: pm.card.last4,
+              expiryMonth: pm.card.exp_month,
+              expiryYear: pm.card.exp_year,
+            };
+          }
+        }
+      } catch {
+        // Non-critical — just show "no payment method"
+      }
     }
   }
 
@@ -57,12 +94,14 @@ app.get("/", async (c) => {
     success: true,
     data: {
       plan: "Standard",
-      monthlyAmount: PLAN_PRICE,
-      status: client.status,
-      nextBillingDate,
+      nextChargeAmount: PLAN_PRICE,
+      status: portalStatus,
+      nextChargeDate,
+      clientSince: client.createdAt.toISOString(),
       isEligibleForRefund,
       daysSinceCreation,
       refundDeadlineDays: REFUND_POLICY.DAYS,
+      paymentMethod,
     },
   });
 });
@@ -78,7 +117,7 @@ app.get("/invoices", async (c) => {
   );
   const skip = (page - 1) * limit;
 
-  const [data, total] = await Promise.all([
+  const [raw, total] = await Promise.all([
     prisma.clientInvoice.findMany({
       where: { clientId },
       skip,
@@ -87,6 +126,15 @@ app.get("/invoices", async (c) => {
     }),
     prisma.clientInvoice.count({ where: { clientId } }),
   ]);
+
+  const data = raw.map((inv) => ({
+    id: inv.id,
+    date: (inv.paidAt ?? inv.createdAt).toISOString(),
+    description: "Piano Standard — MadeCreative",
+    amount: inv.amount,
+    status: inv.status as "PAID" | "PENDING" | "FAILED" | "REFUNDED",
+    pdfUrl: null,
+  }));
 
   return c.json({
     success: true,
