@@ -1,28 +1,35 @@
 import type { Context, Next } from "hono";
-import { getRedisConnection } from "../lib/queue.js";
-import { RATE_LIMITS, REDIS_KEYS } from "@madecreative/shared";
+import { RATE_LIMITS } from "@madecreative/shared";
 
 type RateLimitConfig = {
   requests: number;
   windowMs: number;
 };
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+  ]);
+}
+
 async function checkRateLimit(
   key: string,
   config: RateLimitConfig
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  const { getRedisConnection } = await import("../lib/queue.js");
   const redis = getRedisConnection();
   const windowSeconds = Math.floor(config.windowMs / 1000);
   const now = Date.now();
   const windowStart = Math.floor(now / config.windowMs) * config.windowMs;
   const resetAt = windowStart + config.windowMs;
 
-  const redisKey = `${key}:${windowStart}`;
+  const redisKey = `rl:${key}:${windowStart}`;
 
   const pipeline = redis.pipeline();
   pipeline.incr(redisKey);
   pipeline.expire(redisKey, windowSeconds + 1);
-  const results = await pipeline.exec();
+  const results = await withTimeout(pipeline.exec(), 3000);
 
   const count = (results?.[0]?.[1] as number) ?? 1;
   const remaining = Math.max(0, config.requests - count);
@@ -42,10 +49,11 @@ export function rateLimiter(
       c.req.header("x-real-ip") ??
       "unknown";
 
-    const key = REDIS_KEYS.RATE_LIMIT(ip, routeName);
-
     try {
-      const { allowed, remaining, resetAt } = await checkRateLimit(key, config);
+      const { allowed, remaining, resetAt } = await checkRateLimit(
+        `${routeName}:${ip}`,
+        config
+      );
 
       c.header("X-RateLimit-Limit", config.requests.toString());
       c.header("X-RateLimit-Remaining", remaining.toString());
@@ -53,16 +61,12 @@ export function rateLimiter(
 
       if (!allowed) {
         return c.json(
-          {
-            success: false,
-            error: "Too many requests, please try again later",
-          },
+          { success: false, error: "Too many requests, please try again later" },
           429
         );
       }
-    } catch (err) {
-      // If Redis is unavailable, allow the request
-      console.warn("Rate limit check failed (Redis unavailable):", err);
+    } catch {
+      // Redis unavailable or timeout — allow request through
     }
 
     await next();
