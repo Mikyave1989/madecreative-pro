@@ -2,7 +2,11 @@
 cmds = ["npm install --ignore-scripts"]
 
 [phases.build]
-cmds = ["cd apps/portal && npx next build"]
+cmds = [
+  "cd apps/portal && npx next build",
+  "cp -r apps/portal/public apps/portal/.next/standalone/apps/portal/public",
+  "cp -r apps/portal/.next/static apps/portal/.next/standalone/apps/portal/.next/static"
+]
 
 [start]
-cmd = "cd apps/portal && npx next start -p $PORT"
+cmd = "PORT=$PORT node apps/portal/.next/standalone/apps/portal/server.js"
