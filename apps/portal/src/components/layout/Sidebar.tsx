@@ -9,6 +9,7 @@ import {
   FileText,
   CreditCard,
   Settings,
+  Sparkles,
   X,
   Menu,
   LogOut,
@@ -26,7 +27,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Il tuo sito", icon: LayoutDashboard },
-  { href: "/editor", label: "Editor", icon: Pencil },
+  { href: "/editor", label: "AI Editor", icon: Pencil },
+  { href: "/templates", label: "Template", icon: Sparkles },
   { href: "/reports", label: "Report", icon: FileText },
   { href: "/billing", label: "Account", icon: CreditCard },
   { href: "/settings", label: "Impostazioni", icon: Settings },
