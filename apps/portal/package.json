@@ -5,35 +5,36 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --port 3002",
-    "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
+    "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@madecreative/shared": "*",
     "@tailwindcss/postcss": "^4.2.2",
     "@tanstack/react-query": "^5.96.2",
-    "@types/node": "^22.19.17",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.468.0",
     "next": "^16.2.2",
-    "postcss": "^8.4.49",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.4",
     "sonner": "^1.7.4",
     "swr": "^2.3.0",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss": "^4.2.2",
-    "typescript": "^5.7.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/node": "^22.19.17",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.20",
     "eslint": "^9.17.0",
-    "eslint-config-next": "15.1.3"
+    "eslint-config-next": "15.1.3",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.7.2"
   }
 }
