@@ -154,28 +154,54 @@ const EDITOR_TOOLS: Tool[] = [
       required: [],
     },
   },
+  {
+    name: "generate_with_opus",
+    description: "Delegate complex content generation to Claude Opus (powerful model). Use this for: writing full menus with many items, creating professional descriptions, generating marketing copy, bulk content creation. Returns generated content that you should then apply using the other tools.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        task: {
+          type: "string",
+          description: "What to generate (e.g. 'Create a full Italian restaurant menu with 20 dishes across 4 categories with descriptions and prices')",
+        },
+        context: {
+          type: "string",
+          description: "Business context: name, sector, city, style, any preferences the user mentioned",
+        },
+        outputFormat: {
+          type: "string",
+          enum: ["menu_items", "text", "hero_content"],
+          description: "Expected output format",
+        },
+      },
+      required: ["task", "context", "outputFormat"],
+    },
+  },
 ];
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(businessName: string, sector: string, language: string): string {
+  const lang = language === "de" ? "German" : language === "it" ? "Italian" : language === "fr" ? "French" : language === "es" ? "Spanish" : language === "nl" ? "Dutch" : language === "pt" ? "Portuguese" : "English";
   return `You are the AI website editor for "${businessName}" (sector: ${sector}).
 You help the business owner modify their website through natural conversation.
-Always respond in ${language === "de" ? "German" : language === "it" ? "Italian" : language === "fr" ? "French" : language === "es" ? "Spanish" : language === "nl" ? "Dutch" : language === "pt" ? "Portuguese" : "English"}.
+Always respond in ${lang}.
+
+IMPORTANT: You are the conversation layer (fast). When the user requests complex content generation (writing full menus, creating descriptions, generating multiple items), use the generate_with_opus tool to delegate heavy content creation to the powerful Opus model. For simple edits (changing a phone number, toggling hours), use the direct tools.
 
 Your capabilities:
-- Update hero text and description
-- Add/remove menu items with prices
+- Update hero text and description (direct or via Opus for quality copy)
+- Add/remove menu items with prices (use generate_with_opus for bulk menu creation)
 - Update contact info (phone, email, address)
 - Set up WhatsApp button
 - Update opening hours
 - Update about section
+- Generate premium content via Opus (for complex requests)
 
 When the user asks to make changes, use the appropriate tools immediately.
-When they ask to see the current content, use get_current_content.
+When they ask for high-quality content generation (write me a menu, create descriptions, make it more professional), use generate_with_opus.
 Be proactive: suggest improvements based on best practices for their sector.
-Keep responses concise — max 2-3 sentences after making changes.
-After using a tool, confirm what you changed briefly.`;
+Keep responses concise — max 2-3 sentences after making changes.`;
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -254,6 +280,56 @@ app.post("/", async (c) => {
         switch (toolName) {
           case "get_current_content":
             return currentContent;
+
+          case "generate_with_opus": {
+            const input = toolInput as { task: string; context: string; outputFormat: string };
+            // Call Opus for heavy content generation
+            const opusResult = await claude.callWithText(
+              [{ role: "user", content: `${input.task}\n\nContext: ${input.context}\n\nOutput format: Return ONLY valid JSON. For menu_items: {"items":[{"name":"...","description":"...","price":"€...","category":"..."}]}. For text: {"text":"..."}. For hero_content: {"heroText":"...","heroDescription":"..."}` }],
+              {
+                system: "You are a premium content generator for business websites. Generate high-quality, professional content. Always return valid JSON only, no markdown or explanation.",
+                model: "claude-opus-4-5" as const,
+                maxTokens: 4096,
+              }
+            );
+
+            // Parse Opus response and auto-apply content
+            try {
+              const jsonMatch = opusResult.text.match(/\{[\s\S]*\}/);
+              if (!jsonMatch) return { error: "Failed to parse Opus output" };
+              const generated = JSON.parse(jsonMatch[0]);
+
+              if (input.outputFormat === "menu_items" && generated.items) {
+                const items = (generated.items as Array<{ name: string; description?: string; price: string; category?: string }>).map((item) => ({
+                  id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+                  name: item.name,
+                  description: item.description ?? "",
+                  price: item.price,
+                  category: item.category ?? "",
+                  imageUrl: null,
+                }));
+                const existing = (currentContent.menuItems as Array<Record<string, unknown>>) ?? [];
+                contentUpdates.menuItems = [...existing, ...items];
+                currentContent.menuItems = contentUpdates.menuItems;
+                return { success: true, generatedItems: items.length, items: items.map((i) => `${i.name} - ${i.price}`) };
+              }
+
+              if (input.outputFormat === "hero_content" && generated.heroText) {
+                contentUpdates.heroText = generated.heroText;
+                contentUpdates.heroDescription = generated.heroDescription;
+                return { success: true, heroText: generated.heroText, heroDescription: generated.heroDescription };
+              }
+
+              if (input.outputFormat === "text" && generated.text) {
+                contentUpdates.heroDescription = generated.text;
+                return { success: true, text: generated.text };
+              }
+
+              return { success: true, raw: generated };
+            } catch {
+              return { error: "Failed to parse generated content", raw: opusResult.text.substring(0, 500) };
+            }
+          }
 
           case "update_hero": {
             const input = toolInput as { heroText: string; heroDescription: string };
