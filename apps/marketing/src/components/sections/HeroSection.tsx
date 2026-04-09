@@ -62,12 +62,16 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
           <rect width="100%" height="100%" fill="url(#hero-grid)" />
         </svg>
         <div
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] rounded-full opacity-[0.12]"
-          style={{ background: "radial-gradient(ellipse, #6366f1 0%, transparent 70%)" }}
+          className="orb-float absolute top-[18%] left-1/2 w-[760px] h-[520px] rounded-full"
+          style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.18) 0%, transparent 68%)" }}
         />
         <div
-          className="absolute bottom-1/4 right-1/4 w-[400px] h-[300px] rounded-full opacity-[0.06]"
-          style={{ background: "radial-gradient(ellipse, #22d3ee 0%, transparent 70%)" }}
+          className="orb-float-slow absolute top-[35%] left-[58%] w-[480px] h-[360px] rounded-full"
+          style={{ background: "radial-gradient(ellipse, rgba(34,211,238,0.10) 0%, transparent 65%)", animationDelay: "2.5s" }}
+        />
+        <div
+          className="orb-float absolute bottom-[12%] left-[8%] w-[360px] h-[280px] rounded-full"
+          style={{ background: "radial-gradient(ellipse, rgba(139,92,246,0.08) 0%, transparent 65%)", animationDelay: "4.5s" }}
         />
       </div>
 

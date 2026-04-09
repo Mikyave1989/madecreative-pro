@@ -75,3 +75,19 @@
   50% { opacity: 1; }
   100% { opacity: 0; transform: translateX(var(--dx, 40px)) translateY(var(--dy, -20px)); }
 }
+
+/* Orb float animations */
+@keyframes orbFloat {
+  0%, 100% { transform: translateX(-50%) translateY(0px); }
+  50% { transform: translateX(-50%) translateY(-18px); }
+}
+@keyframes orbFloatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-24px); }
+}
+.orb-float { animation: orbFloat 12s ease-in-out infinite; }
+.orb-float-slow { animation: orbFloatSlow 18s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-float, .orb-float-slow { animation: none; }
+}
