@@ -5,7 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --port 3002",
-    "start": "exec 1>&2; echo CWD:; pwd; echo FILES:; ls; echo SRC:; ls src 2>&1; echo PARENT:; ls ..; exit 1",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
