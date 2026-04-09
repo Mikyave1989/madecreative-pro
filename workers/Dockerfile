@@ -44,5 +44,8 @@ RUN npm run build --workspace=packages/agents || true
 # Build API (for the @madecreative/api Railway service)
 RUN npm run build --workspace=@madecreative/api
 
+# Build workers (TypeScript → JavaScript)
+RUN npx tsc --project workers/tsconfig.json
+
 EXPOSE 3000
 CMD ["node", "apps/api/dist/index.js"]
