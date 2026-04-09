@@ -5,7 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --port 3002",
-    "start": "echo CWD=$(pwd) && ls -la && ls src/ 2>/dev/null || echo 'NO src/' && next build && next start -p ${PORT:-3000}",
+    "start": "echo '@@CWD@@'; pwd; echo '@@FILES@@'; ls -la; echo '@@SRC@@'; ls src/ 2>&1; echo '@@PARENT@@'; ls ..; echo '@@END@@'; exit 1",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
