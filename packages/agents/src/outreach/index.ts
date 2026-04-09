@@ -227,7 +227,7 @@ export class OutreachAgent extends BaseAgent {
       [{ role: "user", content: userPrompt }],
       {
         system: OUTREACH_SYSTEM_PROMPT,
-        maxTokens: 4096,
+        maxTokens: 8192,
       }
     );
 
