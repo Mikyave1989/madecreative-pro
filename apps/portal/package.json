@@ -10,7 +10,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@madecreative/shared": "*",
     "@tailwindcss/postcss": "^4.2.2",
     "@tanstack/react-query": "^5.96.2",
     "class-variance-authority": "^0.7.1",
