@@ -7,7 +7,8 @@ import { secureHeaders } from "hono/secure-headers";
 
 // Middleware
 import { adminAuthMiddleware, clientAuthMiddleware } from "./middleware/auth.js";
-import { rateLimiter } from "./middleware/rate-limit.js";
+// Rate limiting disabled — Redis unavailable on Vercel serverless.
+// Re-enable when API moves to a persistent server (Railway).
 
 // Admin Routes
 import adminAuthRoutes from "./routes/admin/auth.js";
@@ -81,14 +82,12 @@ app.route("/public/chatbot", chatbotWidgetRoutes);
 app.route("/public/unsubscribe", unsubscribeRoutes);
 app.route("/track", trackRoutes);
 
-// ─── Admin Auth Routes (rate limited) ────────────────────────────────────────
+// ─── Admin Auth Routes ───────────────────────────────────────────────────────
 
-app.use("/admin/auth/*", rateLimiter("AUTH"));
 app.route("/admin/auth", adminAuthRoutes);
 
 // ─── Admin Protected Routes ───────────────────────────────────────────────────
 
-app.use("/admin/*", rateLimiter("API_GENERAL"));
 app.use("/admin/prospects/*", adminAuthMiddleware);
 app.use("/admin/clients/*", adminAuthMiddleware);
 app.use("/admin/agents/*", adminAuthMiddleware);
@@ -101,12 +100,10 @@ app.route("/admin/metrics", adminMetricsRoutes);
 
 // ─── Portal Auth Routes (rate limited) ───────────────────────────────────────
 
-app.use("/portal/auth/*", rateLimiter("AUTH"));
 app.route("/portal/auth", portalAuthRoutes);
 
 // ─── Portal Protected Routes ──────────────────────────────────────────────────
 
-app.use("/portal/*", rateLimiter("API_GENERAL"));
 app.use("/portal/dashboard/*", clientAuthMiddleware);
 app.use("/portal/website/*", clientAuthMiddleware);
 app.use("/portal/chatbot/*", clientAuthMiddleware);
