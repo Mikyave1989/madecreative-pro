@@ -5,49 +5,88 @@ interface HeroSectionProps {
   locale: string;
 }
 
+const SOCIAL_PROOF: Record<string, Array<{ value: string; label: string }>> = {
+  de: [
+    { value: "60s", label: "Website generiert" },
+    { value: "€197", label: "alles inklusive / Monat" },
+    { value: "14", label: "Tage Geld-zurück" },
+  ],
+  it: [
+    { value: "60s", label: "per generare il sito" },
+    { value: "€197", label: "tutto incluso / mese" },
+    { value: "14", label: "giorni rimborso garantito" },
+  ],
+  en: [
+    { value: "60s", label: "to generate your site" },
+    { value: "€197", label: "all-inclusive / month" },
+    { value: "14", label: "day money-back guarantee" },
+  ],
+  es: [
+    { value: "60s", label: "para generar tu web" },
+    { value: "€197", label: "todo incluido / mes" },
+    { value: "14", label: "días garantía devolución" },
+  ],
+  fr: [
+    { value: "60s", label: "pour générer votre site" },
+    { value: "€197", label: "tout inclus / mois" },
+    { value: "14", label: "jours satisfait ou remboursé" },
+  ],
+  nl: [
+    { value: "60s", label: "om je site te genereren" },
+    { value: "€197", label: "alles inbegrepen / maand" },
+    { value: "14", label: "dagen geld-terug-garantie" },
+  ],
+  pt: [
+    { value: "60s", label: "para gerar seu site" },
+    { value: "€197", label: "tudo incluído / mês" },
+    { value: "14", label: "dias garantia reembolso" },
+  ],
+};
+
 export function HeroSection({ t, locale }: HeroSectionProps) {
+  const proof = SOCIAL_PROOF[locale] ?? SOCIAL_PROOF["en"]!;
+
   return (
     <section
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
       style={{ background: "#05070f" }}
     >
-      {/* Static background — no animated blur */}
+      {/* Background */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        {/* Subtle grid */}
-        <svg
-          className="absolute inset-0 w-full h-full opacity-[0.04]"
-          xmlns="http://www.w3.org/2000/svg"
-        >
+        <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+            <pattern id="hero-grid" width="64" height="64" patternUnits="userSpaceOnUse">
               <path d="M 64 0 L 0 0 0 64" fill="none" stroke="white" strokeWidth="0.5" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
+          <rect width="100%" height="100%" fill="url(#hero-grid)" />
         </svg>
-        {/* Static indigo glow — no animation */}
         <div
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[400px] rounded-full opacity-[0.12]"
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] rounded-full opacity-[0.12]"
           style={{ background: "radial-gradient(ellipse, #6366f1 0%, transparent 70%)" }}
+        />
+        <div
+          className="absolute bottom-1/4 right-1/4 w-[400px] h-[300px] rounded-full opacity-[0.06]"
+          style={{ background: "radial-gradient(ellipse, #22d3ee 0%, transparent 70%)" }}
         />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-24 pb-16">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-28 pb-20">
         {/* Badge */}
         <div
-          className="animate-fade-up inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-8"
+          className="animate-fade-up inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold mb-8 tracking-wide"
           style={{
             background: "rgba(99,102,241,0.12)",
             border: "1px solid rgba(99,102,241,0.25)",
             color: "#818cf8",
           }}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           {t.hero.badge}
         </div>
 
-        {/* Title — CSS animation, NOT per-character */}
+        {/* Title */}
         <h1 className="animate-fade-up delay-100 text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.05] tracking-tight mb-6">
           <span style={{ color: "#f8fafc" }}>{t.hero.title}</span>
           <br />
@@ -62,72 +101,42 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
           {t.hero.subtitle}
         </p>
 
-        {/* CTA */}
+        {/* CTAs */}
         <div className="animate-fade-up delay-300 flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
           <a
-            href={`/${locale}#demo`}
+            href={`/${locale}#pricing`}
             className="glow-indigo inline-flex items-center gap-2 gradient-indigo text-white px-8 py-4 rounded-xl text-base font-semibold hover:opacity-90 transition-all duration-200 hover:-translate-y-0.5"
           >
             {t.hero.cta}
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
-              />
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
           </a>
           <a
             href={`/${locale}#how-it-works`}
             className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-sm transition-colors"
-            style={{
-              color: "rgba(248,250,252,0.5)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
+            style={{ color: "rgba(248,250,252,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
           >
             {t.hero.ctaSecondary}
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"
-              />
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
             </svg>
           </a>
         </div>
 
         {/* Trust note */}
-        <p
-          className="animate-fade-up delay-400 text-xs"
-          style={{ color: "rgba(248,250,252,0.3)" }}
-        >
+        <p className="animate-fade-up delay-400 text-xs" style={{ color: "rgba(248,250,252,0.3)" }}>
           {t.hero.trustNote}
         </p>
 
-        {/* Social proof numbers */}
-        <div className="animate-fade-up delay-400 mt-12 grid grid-cols-3 gap-6 max-w-lg mx-auto">
-          {[
-            { value: "60s", label: "per generare il sito" },
-            { value: "€197", label: "tutto incluso / mese" },
-            { value: "14gg", label: "rimborso garantito" },
-          ].map((item) => (
+        {/* Social proof */}
+        <div className="animate-fade-up delay-400 mt-14 grid grid-cols-3 gap-8 max-w-md mx-auto">
+          {proof.map((item) => (
             <div key={item.label} className="text-center">
-              <div className="text-2xl font-bold" style={{ color: "#818cf8" }}>
+              <div className="text-3xl font-bold" style={{ color: "#818cf8" }}>
                 {item.value}
               </div>
-              <div className="text-xs mt-1" style={{ color: "rgba(248,250,252,0.35)" }}>
+              <div className="text-xs mt-1.5" style={{ color: "rgba(248,250,252,0.35)" }}>
                 {item.label}
               </div>
             </div>
@@ -137,14 +146,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
 
       {/* Scroll indicator */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce opacity-40">
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          style={{ color: "white" }}
-        >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} style={{ color: "white" }}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
         </svg>
       </div>

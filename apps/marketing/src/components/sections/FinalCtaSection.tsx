@@ -11,16 +11,12 @@ export function FinalCtaSection({ t, locale }: FinalCtaSectionProps) {
       className="py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
       style={{ background: "#05070f" }}
     >
-      {/* Static background — no animation */}
+      {/* Background */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        {/* Indigo glow center */}
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full"
-          style={{
-            background: "radial-gradient(ellipse, rgba(99,102,241,0.18) 0%, transparent 70%)",
-          }}
+          style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.18) 0%, transparent 70%)" }}
         />
-        {/* Grid */}
         <svg className="absolute inset-0 w-full h-full opacity-[0.035]" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern id="cta-grid" width="60" height="60" patternUnits="userSpaceOnUse">
@@ -50,24 +46,31 @@ export function FinalCtaSection({ t, locale }: FinalCtaSectionProps) {
           className="text-5xl sm:text-6xl md:text-7xl font-bold leading-tight mb-6"
           style={{ color: "#f8fafc" }}
         >
-          Il tuo sito è a{" "}
-          <span className="text-gradient">60 secondi</span>
-          {" "}di distanza.
+          {t.finalCta.title.split("60").map((part, i, arr) =>
+            i < arr.length - 1 ? (
+              <span key={i}>
+                {part}
+                <span className="text-gradient">60</span>
+              </span>
+            ) : (
+              <span key={i}>{part}</span>
+            )
+          )}
         </h2>
 
         <p
           className="text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
           style={{ color: "rgba(248,250,252,0.5)" }}
         >
-          Nessun impegno. Nessun tecnico. Solo risultati.
+          {t.finalCta.subtitle}
         </p>
 
         {/* CTA */}
         <a
-          href={`/${locale}#demo`}
+          href={`/${locale}#pricing`}
           className="inline-flex items-center gap-3 gradient-indigo text-white px-10 py-5 rounded-2xl text-lg font-bold hover:opacity-90 transition-all duration-200 hover:-translate-y-1 glow-indigo"
         >
-          Genera il mio sito gratis
+          {t.finalCta.cta}
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24">
             <path
               d="M5 12h14M12 5l7 7-7 7"
@@ -79,11 +82,8 @@ export function FinalCtaSection({ t, locale }: FinalCtaSectionProps) {
           </svg>
         </a>
 
-        <p
-          className="text-sm mt-4"
-          style={{ color: "rgba(248,250,252,0.25)" }}
-        >
-          €197/mese dopo la prova · Rimborso 14 giorni · Cancella quando vuoi
+        <p className="text-sm mt-4" style={{ color: "rgba(248,250,252,0.25)" }}>
+          {t.finalCta.trustNote}
         </p>
 
         {/* Agent badges */}
