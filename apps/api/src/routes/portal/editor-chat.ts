@@ -412,11 +412,34 @@ app.post("/", async (c) => {
 
     // Save content updates to DB if any changes were made
     if (Object.keys(contentUpdates).length > 0 && client.website) {
+      // Snapshot current state for rollback
+      const previousContent = JSON.parse(JSON.stringify(currentContent));
+      const snapshots = ((client.website.designTokens as { _snapshots?: Array<{ ts: string; data: object }> })?._snapshots ?? []).slice(-19);
+      snapshots.push({ ts: new Date().toISOString(), data: previousContent });
+
       const mergedContent = { ...currentContent, ...contentUpdates };
       await prisma.clientWebsite.update({
         where: { id: client.website.id },
-        data: { pages: mergedContent as object },
+        data: {
+          pages: mergedContent as object,
+          designTokens: { ...(client.website.designTokens as object ?? {}), _snapshots: snapshots },
+        },
       });
+
+      // Auto-deploy: queue a rebuild job
+      try {
+        const rebuildJob = await prisma.agentJob.create({
+          data: {
+            agentType: "BUILDER",
+            status: "QUEUED",
+            clientId,
+            input: { clientId, trigger: "ai-editor-auto-deploy" },
+          },
+        });
+        console.log(`[EditorChat] Auto-deploy queued: ${rebuildJob.id}`);
+      } catch (rebuildErr) {
+        console.warn("[EditorChat] Auto-deploy queue failed:", rebuildErr);
+      }
     }
 
     // Deduct credit
@@ -454,6 +477,68 @@ app.post("/", async (c) => {
     console.error("[EditorChat] Error:", message);
     return c.json({ success: false, error: "AI editor error. Please try again." }, 500);
   }
+});
+
+// GET /portal/editor/chat/history — get version history (snapshots)
+app.get("/history", async (c) => {
+  const clientId = c.get("jwtPayload").sub;
+  const website = await prisma.clientWebsite.findUnique({
+    where: { clientId },
+    select: { designTokens: true },
+  });
+  const snapshots = ((website?.designTokens as { _snapshots?: Array<{ ts: string }> })?._snapshots ?? [])
+    .map((s, i) => ({ index: i, timestamp: s.ts }))
+    .reverse();
+  return c.json({ success: true, data: { versions: snapshots, count: snapshots.length } });
+});
+
+// POST /portal/editor/chat/rollback — restore a previous version
+app.post("/rollback", async (c) => {
+  const clientId = c.get("jwtPayload").sub;
+  const body = await c.req.json().catch(() => null);
+  const index = body?.index as number | undefined;
+
+  const website = await prisma.clientWebsite.findUnique({
+    where: { clientId },
+    select: { id: true, designTokens: true },
+  });
+
+  if (!website) return c.json({ success: false, error: "Website not found" }, 404);
+
+  const snapshots = (website.designTokens as { _snapshots?: Array<{ ts: string; data: object }> })?._snapshots ?? [];
+
+  // Default: rollback to most recent snapshot
+  const targetIndex = index ?? snapshots.length - 1;
+  const snapshot = snapshots[targetIndex];
+
+  if (!snapshot) return c.json({ success: false, error: "No version to restore" }, 404);
+
+  // Restore content
+  await prisma.clientWebsite.update({
+    where: { id: website.id },
+    data: { pages: snapshot.data },
+  });
+
+  // Queue rebuild
+  try {
+    await prisma.agentJob.create({
+      data: {
+        agentType: "BUILDER",
+        status: "QUEUED",
+        clientId,
+        input: { clientId, trigger: "rollback" },
+      },
+    });
+  } catch { /* non-critical */ }
+
+  return c.json({
+    success: true,
+    data: {
+      restoredTo: snapshot.ts,
+      content: snapshot.data,
+      message: "Versione ripristinata. Il sito si aggiornera in circa 2 minuti.",
+    },
+  });
 });
 
 export default app;

@@ -8,6 +8,7 @@ import {
   Pencil,
   FileText,
   CreditCard,
+  Settings,
   X,
   Menu,
   LogOut,
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { href: "/editor", label: "Editor", icon: Pencil },
   { href: "/reports", label: "Report", icon: FileText },
   { href: "/billing", label: "Account", icon: CreditCard },
+  { href: "/settings", label: "Impostazioni", icon: Settings },
 ];
 
 function NavLink({
