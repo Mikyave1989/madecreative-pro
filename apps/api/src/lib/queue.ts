@@ -14,6 +14,8 @@ export function getRedisConnection(): InstanceType<typeof IORedis> {
       maxRetriesPerRequest: null,
       enableReadyCheck: false,
       lazyConnect: true,
+      connectTimeout: 5000,
+      commandTimeout: 5000,
     });
 
     _redisConnection.on("error", (err: Error) => {

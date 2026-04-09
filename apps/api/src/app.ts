@@ -57,11 +57,20 @@ app.use("*", prettyJSON());
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 
-app.get("/health", (c) => {
+app.get("/health", async (c) => {
+  let db = "unknown";
+  try {
+    const { prisma } = await import("@madecreative/db");
+    await prisma.$queryRawUnsafe("SELECT 1");
+    db = "ok";
+  } catch (e) {
+    db = `error: ${e instanceof Error ? e.message.substring(0, 100) : String(e)}`;
+  }
   return c.json({
     status: "ok",
     timestamp: new Date().toISOString(),
     version: process.env["npm_package_version"] ?? "1.0.0",
+    db,
   });
 });
 
