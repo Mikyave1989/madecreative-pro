@@ -1,0 +1,8 @@
+[phases.install]
+cmds = ["npm install --ignore-scripts"]
+
+[phases.build]
+cmds = ["cd apps/portal && npx next build"]
+
+[start]
+cmd = "cd apps/portal && npx next start -p $PORT"
