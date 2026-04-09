@@ -231,8 +231,8 @@ async function handleCheckoutCompleted(
         body: JSON.stringify({
           from: `MadeCreative <onboarding@${process.env["EMAIL_DOMAIN"] ?? "madecreative.pro"}>`,
           to: [client.email],
-          subject: "Payment confirmed — your site is being prepared",
-          html: `<p>Hi ${client.contactName},</p><p>Thank you! Your website is being set up. You'll receive your login within 15 minutes.</p><p>€${PLAN_PRICE}/mese — Piano Standard</p><p>The MadeCreative Team</p>`,
+          subject: "Payment confirmed \u2014 your site is being prepared",
+          html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><p>Hi ${client.contactName},</p><p>Thank you! Your website is being set up. You\u2019ll receive your login within 15 minutes.</p><p>\u20AC${PLAN_PRICE}/mese \u2014 Piano Standard</p><p>The MadeCreative Team</p></body></html>`,
         }),
       });
     }

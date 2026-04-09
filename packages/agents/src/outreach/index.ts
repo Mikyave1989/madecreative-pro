@@ -88,7 +88,7 @@ async function sendViaResend(params: {
       reply_to: params.replyTo,
       to: [params.to],
       subject: params.subject,
-      html: params.html,
+      html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${params.html}</body></html>`,
       text: params.text,
       headers: params.headers ?? {},
     }),
