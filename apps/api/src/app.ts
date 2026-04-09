@@ -25,6 +25,7 @@ import portalChatbotRoutes from "./routes/portal/chatbot.js";
 import portalBillingRoutes from "./routes/portal/billing.js";
 import portalReportsRoutes from "./routes/portal/reports.js";
 import portalEditorRoutes from "./routes/portal/editor.js";
+import portalEditorChatRoutes from "./routes/portal/editor-chat.js";
 
 // Public Routes
 import webhookRoutes from "./routes/public/webhook.js";
@@ -117,6 +118,7 @@ app.route("/portal/chatbot", portalChatbotRoutes);
 app.route("/portal/billing", portalBillingRoutes);
 app.route("/portal/reports", portalReportsRoutes);
 app.route("/portal/editor", portalEditorRoutes);
+app.route("/portal/editor/chat", portalEditorChatRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 
