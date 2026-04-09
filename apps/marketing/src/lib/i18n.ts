@@ -175,7 +175,7 @@ export const translations: Record<Locale, Translations> = {
     meta: {
       title: "MadeCreative — KI-gestützte Website in 60 Sekunden",
       description:
-        "MadeCreative erstellt Ihre professionelle Website in 60 Sekunden mit KI. Lokales SEO, Social Media, Chatbot und Leads — vollständig automatisiert. Ab €297/Monat.",
+        "MadeCreative erstellt Ihre professionelle Website in 60 Sekunden mit KI. AI-Editor, Chatbot, WhatsApp, SEO — alles automatisiert. Ab €25/Monat.",
     },
     nav: {
       howItWorks: "So funktioniert's",
@@ -188,8 +188,8 @@ export const translations: Record<Locale, Translations> = {
       title: "Deine Website",
       titleHighlight: "in 60 Sekunden",
       subtitle:
-        "MadeCreative erstellt deine professionelle Website, optimiert dein SEO, managed Social Media und generiert Leads — alles vollautomatisch durch KI.",
-      cta: "Generiere deine Website gratis in 60 Sekunden",
+        "MadeCreative erstellt deine Website mit KI, inklusive AI-Editor, Chatbot, WhatsApp-Widget, Menü-Editor und automatischer SEO — ab €25/Monat.",
+      cta: "Starte ab €25/Monat",
       ctaSecondary: "So funktioniert's",
       trustNote: "Keine Kreditkarte erforderlich. Jederzeit kündbar.",
     },
@@ -221,37 +221,37 @@ export const translations: Record<Locale, Translations> = {
     features: {
       sectionLabel: "Was enthalten ist",
       title: "Alles, was dein Unternehmen braucht",
-      subtitle: "Eine Plattform. Vollständige digitale Präsenz.",
+      subtitle: "Eine Plattform. Vollständige digitale Präsenz. Ab €25/Monat.",
       items: [
         {
-          title: "Professionelle Website",
+          title: "AI-Editor (wie Lovable)",
           description:
-            "KI-generierte Website zugeschnitten auf deinen Sektor, in 60 Sekunden deployed mit eingebautem SEO.",
+            "Bearbeite deine Website per Chat mit KI. Sag was du willst — die KI ändert es sofort. Inklusive Live-Preview.",
         },
         {
-          title: "Lokales SEO",
+          title: "WhatsApp-Widget",
           description:
-            "Höhere Rankings in lokalen Suchen. Wir optimieren dein Google-Unternehmensprofil und bauen lokale Zitierungen.",
+            "Ein Klick und deine Kunden erreichen dich per WhatsApp. Automatisch auf deiner Website eingebettet.",
         },
         {
-          title: "Social Media",
+          title: "Menü & Preisliste",
           description:
-            "KI-erstellte Posts für Instagram und Facebook, automatisch geplant und wöchentlich veröffentlicht.",
+            "Füge Produkte, Gerichte oder Dienstleistungen mit Preisen und Fotos hinzu. Wird als eigene Seite generiert.",
         },
         {
-          title: "KI-Chatbot",
+          title: "KI-Chatbot 24/7",
           description:
-            "24/7-Kundensupport-Chatbot trainiert auf deine Unternehmensdaten, eingebettet auf deiner Website.",
+            "Beantwortet Kundenfragen, bucht Termine und sammelt Leads — rund um die Uhr, trainiert auf dein Business.",
         },
         {
-          title: "Automation",
+          title: "Eigene Domain + SSL",
           description:
-            "E-Mail-Sequenzen, Lead-Benachrichtigungen, Bewertungsanfragen — alles automatisiert.",
+            "Verbinde deinen eigenen Domainnamen. SSL-Zertifikat, CDN und Hosting sind inklusive.",
         },
         {
-          title: "Monatliche Reports",
+          title: "Rollback & Versionen",
           description:
-            "Detaillierte monatliche Performance-Reports mit Website-Traffic, Leads und Umsatzwirkung.",
+            "Jede Änderung wird gespeichert. Nicht zufrieden? Ein Klick und du gehst zur vorherigen Version zurück.",
         },
       ],
     },
@@ -355,7 +355,7 @@ export const translations: Record<Locale, Translations> = {
     },
     prezziPage: {
       metaTitle: "Preise — MadeCreative",
-      metaDescription: "Transparente Preise ohne versteckte Gebühren. Starter ab €297/Monat. 30-Tage Geld-zurück-Garantie.",
+      metaDescription: "Transparente Preise ohne versteckte Gebühren. Starter ab €25/Monat. 30-Tage Geld-zurück-Garantie.",
       badge: "Transparente Preise",
       title: "Preise",
       subtitle: "Einmalige Setup-Gebühr + monatliches Abo. Jederzeit kündbar.",
@@ -456,7 +456,7 @@ export const translations: Record<Locale, Translations> = {
     meta: {
       title: "MadeCreative — Sito web AI in 60 secondi",
       description:
-        "MadeCreative crea il tuo sito professionale in 60 secondi con l'AI. SEO locale, social media, chatbot e lead — completamente automatizzato. Da €297/mese.",
+        "MadeCreative crea il tuo sito con l'AI in 60 secondi. AI Editor, chatbot, WhatsApp, menu editor, SEO — tutto automatizzato. Da €25/mese.",
     },
     nav: {
       howItWorks: "Come funziona",
@@ -502,37 +502,37 @@ export const translations: Record<Locale, Translations> = {
     features: {
       sectionLabel: "Cosa Include",
       title: "Tutto ciò che serve alla tua azienda",
-      subtitle: "Una piattaforma. Presenza digitale completa.",
+      subtitle: "Una piattaforma. Presenza digitale completa. Da €25/mese.",
       items: [
         {
-          title: "Sito Web Professionale",
+          title: "AI Editor (stile Lovable)",
           description:
-            "Sito generato dall'AI su misura per il tuo settore, deployato in 60 secondi con SEO integrato.",
+            "Modifica il tuo sito parlando con l'AI. Dì cosa vuoi — l'AI lo fa subito. Preview live in tempo reale.",
         },
         {
-          title: "SEO Locale",
+          title: "Widget WhatsApp",
           description:
-            "Posizionamento più alto nelle ricerche locali. Ottimizziamo il tuo Google Business Profile.",
+            "Un click e i tuoi clienti ti contattano su WhatsApp. Inserisci il numero e appare automaticamente sul sito.",
         },
         {
-          title: "Social Media",
+          title: "Menu e Listino Prezzi",
           description:
-            "Post creati dall'AI per Instagram e Facebook, pianificati e pubblicati automaticamente ogni settimana.",
+            "Aggiungi prodotti, piatti o servizi con prezzi e foto. Viene creata una pagina dedicata sul tuo sito.",
         },
         {
-          title: "Chatbot AI",
+          title: "Chatbot AI 24/7",
           description:
-            "Chatbot di supporto 24/7 addestrato sui dati della tua azienda, incorporato nel tuo sito.",
+            "Risponde alle domande, prenota appuntamenti e cattura lead — sempre attivo, addestrato sul tuo business.",
         },
         {
-          title: "Automazione",
+          title: "Dominio + SSL Custom",
           description:
-            "Sequenze email, notifiche lead, richieste di recensioni — tutto automatizzato.",
+            "Collega il tuo dominio personalizzato. Certificato SSL, CDN e hosting inclusi nel prezzo.",
         },
         {
-          title: "Report Mensili",
+          title: "Rollback e Versioni",
           description:
-            "Report mensili dettagliati su traffico, lead e impatto sul fatturato.",
+            "Ogni modifica viene salvata. Non ti piace? Un click e torni alla versione precedente.",
         },
       ],
     },
@@ -637,7 +637,7 @@ export const translations: Record<Locale, Translations> = {
     },
     prezziPage: {
       metaTitle: "Prezzi — MadeCreative",
-      metaDescription: "Prezzi trasparenti senza costi nascosti. Starter da €297/mese. Garanzia 30 giorni soddisfatti o rimborsati.",
+      metaDescription: "Prezzi trasparenti senza costi nascosti. Starter da €25/mese. Garanzia 30 giorni soddisfatti o rimborsati.",
       badge: "Prezzi Trasparenti",
       title: "Prezzi",
       subtitle: "Costo di setup una tantum + abbonamento mensile. Cancella quando vuoi.",
@@ -738,7 +738,7 @@ export const translations: Record<Locale, Translations> = {
     meta: {
       title: "MadeCreative — Sitio web con IA en 60 segundos",
       description:
-        "MadeCreative crea tu sitio profesional en 60 segundos con IA. SEO local, redes sociales, chatbot y leads — completamente automatizado. Desde €297/mes.",
+        "MadeCreative crea tu sitio profesional en 60 segundos con IA. SEO local, redes sociales, chatbot y leads — completamente automatizado. Desde €25/mes.",
     },
     nav: {
       howItWorks: "Cómo funciona",
@@ -918,7 +918,7 @@ export const translations: Record<Locale, Translations> = {
     },
     prezziPage: {
       metaTitle: "Precios — MadeCreative",
-      metaDescription: "Precios transparentes sin costes ocultos. Starter desde €297/mes. Garantía 30 días.",
+      metaDescription: "Precios transparentes sin costes ocultos. Starter desde €25/mes. Garantía 30 días.",
       badge: "Precios Transparentes",
       title: "Precios",
       subtitle: "Coste de setup único + suscripción mensual. Cancela cuando quieras.",
@@ -1019,7 +1019,7 @@ export const translations: Record<Locale, Translations> = {
     meta: {
       title: "MadeCreative — Site web IA en 60 secondes",
       description:
-        "MadeCreative crée votre site professionnel en 60 secondes avec l'IA. SEO local, réseaux sociaux, chatbot et leads — entièrement automatisé. À partir de €297/mois.",
+        "MadeCreative crée votre site professionnel en 60 secondes avec l'IA. SEO local, réseaux sociaux, chatbot et leads — entièrement automatisé. À partir de €25/mois.",
     },
     nav: {
       howItWorks: "Comment ça marche",
@@ -1200,7 +1200,7 @@ export const translations: Record<Locale, Translations> = {
     },
     prezziPage: {
       metaTitle: "Tarifs — MadeCreative",
-      metaDescription: "Tarifs transparents sans frais cachés. Starter à partir de €297/mois. Garantie 30 jours.",
+      metaDescription: "Tarifs transparents sans frais cachés. Starter à partir de €25/mois. Garantie 30 jours.",
       badge: "Tarifs Transparents",
       title: "Tarifs",
       subtitle: "Frais de setup unique + abonnement mensuel. Annulez quand vous voulez.",
@@ -1301,7 +1301,7 @@ export const translations: Record<Locale, Translations> = {
     meta: {
       title: "MadeCreative — AI-website in 60 seconden",
       description:
-        "MadeCreative maakt uw professionele website in 60 seconden met AI. Lokale SEO, social media, chatbot en leads — volledig geautomatiseerd. Vanaf €297/maand.",
+        "MadeCreative maakt uw professionele website in 60 seconden met AI. Lokale SEO, social media, chatbot en leads — volledig geautomatiseerd. Vanaf €25/maand.",
     },
     nav: {
       howItWorks: "Hoe het werkt",
@@ -1482,7 +1482,7 @@ export const translations: Record<Locale, Translations> = {
     },
     prezziPage: {
       metaTitle: "Prijzen — MadeCreative",
-      metaDescription: "Transparante prijzen zonder verborgen kosten. Starter vanaf €297/maand. 30 dagen geld-terug-garantie.",
+      metaDescription: "Transparante prijzen zonder verborgen kosten. Starter vanaf €25/maand. 30 dagen geld-terug-garantie.",
       badge: "Transparante Prijzen",
       title: "Prijzen",
       subtitle: "Eenmalige setup + maandelijks abonnement. Op elk moment opzegbaar.",
@@ -1583,7 +1583,7 @@ export const translations: Record<Locale, Translations> = {
     meta: {
       title: "MadeCreative — Site web com IA em 60 segundos",
       description:
-        "MadeCreative cria o seu site profissional em 60 segundos com IA. SEO local, redes sociais, chatbot e leads — completamente automatizado. A partir de €297/mês.",
+        "MadeCreative cria o seu site profissional em 60 segundos com IA. SEO local, redes sociais, chatbot e leads — completamente automatizado. A partir de €25/mês.",
     },
     nav: {
       howItWorks: "Como funciona",
@@ -1764,7 +1764,7 @@ export const translations: Record<Locale, Translations> = {
     },
     prezziPage: {
       metaTitle: "Preços — MadeCreative",
-      metaDescription: "Preços transparentes sem custos ocultos. Starter a partir de €297/mês. Garantia 30 dias.",
+      metaDescription: "Preços transparentes sem custos ocultos. Starter a partir de €25/mês. Garantia 30 dias.",
       badge: "Preços Transparentes",
       title: "Preços",
       subtitle: "Custo de setup único + subscrição mensal. Cancele quando quiser.",
@@ -1865,7 +1865,7 @@ export const translations: Record<Locale, Translations> = {
     meta: {
       title: "MadeCreative — AI-powered website in 60 seconds",
       description:
-        "MadeCreative creates your professional website in 60 seconds with AI. Local SEO, social media, chatbot and leads — fully automated. From €297/month.",
+        "MadeCreative creates your professional website in 60 seconds with AI. Local SEO, social media, chatbot and leads — fully automated. From €25/month.",
     },
     nav: {
       howItWorks: "How it works",
@@ -2045,7 +2045,7 @@ export const translations: Record<Locale, Translations> = {
     },
     prezziPage: {
       metaTitle: "Pricing — MadeCreative",
-      metaDescription: "Transparent pricing with no hidden fees. Starter from €297/month. 30-day money-back guarantee.",
+      metaDescription: "Transparent pricing with no hidden fees. Starter from €25/month. 30-day money-back guarantee.",
       badge: "Transparent Pricing",
       title: "Pricing",
       subtitle: "One-time setup fee + monthly subscription. Cancel anytime.",
