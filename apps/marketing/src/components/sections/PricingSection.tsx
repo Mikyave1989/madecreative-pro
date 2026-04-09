@@ -155,6 +155,7 @@ function getTiers(locale: string): Tier[] {
         featured: false,
         features: [
           "Website mit 5 Seiten",
+          "100 KI-Editor-Credits/Monat",
           "KI-Chatbot 24/7",
           "3 Automationen",
           "Monatlicher Report",
@@ -172,6 +173,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Alles von Starter, plus:",
           "Bis zu 10 Seiten",
+          "250 KI-Editor-Credits/Monat",
           "Chatbot mit Terminbuchung",
           "10 Automationen",
           "Wöchentlicher Report + Analytics",
@@ -189,6 +191,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Alles von Growth, plus:",
           "Bis zu 3 Standorte / Websites",
+          "500 KI-Editor-Credits/Monat",
           "Mehrsprachiger Chatbot",
           "Unbegrenzte Automationen",
           "E-Mail-Marketing-Kampagnen",
@@ -207,6 +210,7 @@ function getTiers(locale: string): Tier[] {
         featured: false,
         features: [
           "Sito web 5 pagine",
+          "100 crediti AI editor/mese",
           "Chatbot AI 24/7",
           "3 automazioni",
           "Report mensile PDF",
@@ -224,6 +228,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Tutto di Starter, più:",
           "Fino a 10 pagine personalizzate",
+          "250 crediti AI editor/mese",
           "Chatbot con prenotazione appuntamenti",
           "10 automazioni personalizzate",
           "Report settimanale + analytics",
@@ -241,6 +246,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Tutto di Growth, più:",
           "Fino a 3 sedi / siti distinti",
+          "500 crediti AI editor/mese",
           "Chatbot multilingua",
           "Automazioni illimitate",
           "Campagne email marketing",
@@ -259,6 +265,7 @@ function getTiers(locale: string): Tier[] {
         featured: false,
         features: [
           "5-page website",
+          "100 AI editor credits/month",
           "AI chatbot 24/7",
           "3 automations",
           "Monthly PDF report",
@@ -276,6 +283,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Everything in Starter, plus:",
           "Up to 10 custom pages",
+          "250 AI editor credits/month",
           "Chatbot with appointment booking",
           "10 custom automations",
           "Weekly report + analytics",
@@ -293,6 +301,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Everything in Growth, plus:",
           "Up to 3 locations / websites",
+          "500 AI editor credits/month",
           "Multilingual chatbot",
           "Unlimited automations",
           "Email marketing campaigns",
@@ -311,6 +320,7 @@ function getTiers(locale: string): Tier[] {
         featured: false,
         features: [
           "Sitio web de 5 páginas",
+          "100 créditos AI editor/mes",
           "Chatbot IA 24/7",
           "3 automatizaciones",
           "Informe mensual PDF",
@@ -328,6 +338,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Todo de Starter, más:",
           "Hasta 10 páginas",
+          "250 créditos AI editor/mes",
           "Chatbot con reservas",
           "10 automatizaciones",
           "Informe semanal + analytics",
@@ -345,6 +356,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Todo de Growth, más:",
           "Hasta 3 ubicaciones / sitios",
+          "500 créditos AI editor/mes",
           "Chatbot multilingüe",
           "Automatizaciones ilimitadas",
           "Campañas de email marketing",
@@ -363,6 +375,7 @@ function getTiers(locale: string): Tier[] {
         featured: false,
         features: [
           "Site web 5 pages",
+          "100 crédits AI éditeur/mois",
           "Chatbot IA 24/7",
           "3 automatisations",
           "Rapport mensuel PDF",
@@ -380,6 +393,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Tout de Starter, plus :",
           "Jusqu'à 10 pages",
+          "250 crédits AI éditeur/mois",
           "Chatbot avec prise de RDV",
           "10 automatisations",
           "Rapport hebdo + analytics",
@@ -397,6 +411,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Tout de Growth, plus :",
           "Jusqu'à 3 sites / emplacements",
+          "500 crédits AI éditeur/mois",
           "Chatbot multilingue",
           "Automatisations illimitées",
           "Campagnes email marketing",
@@ -415,6 +430,7 @@ function getTiers(locale: string): Tier[] {
         featured: false,
         features: [
           "Website met 5 pagina's",
+          "100 AI-editor-credits/maand",
           "AI-chatbot 24/7",
           "3 automatiseringen",
           "Maandelijks PDF-rapport",
@@ -432,6 +448,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Alles van Starter, plus:",
           "Tot 10 pagina's",
+          "250 AI-editor-credits/maand",
           "Chatbot met afspraken",
           "10 automatiseringen",
           "Wekelijks rapport + analytics",
@@ -449,6 +466,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Alles van Growth, plus:",
           "Tot 3 locaties / websites",
+          "500 AI-editor-credits/maand",
           "Meertalige chatbot",
           "Onbeperkte automatiseringen",
           "E-mailmarketingcampagnes",
@@ -467,6 +485,7 @@ function getTiers(locale: string): Tier[] {
         featured: false,
         features: [
           "Site com 5 páginas",
+          "100 créditos AI editor/mês",
           "Chatbot IA 24/7",
           "3 automações",
           "Relatório mensal PDF",
@@ -484,6 +503,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Tudo do Starter, mais:",
           "Até 10 páginas",
+          "250 créditos AI editor/mês",
           "Chatbot com agendamento",
           "10 automações",
           "Relatório semanal + analytics",
@@ -501,6 +521,7 @@ function getTiers(locale: string): Tier[] {
         features: [
           "Tudo do Growth, mais:",
           "Até 3 locais / sites",
+          "500 créditos AI editor/mês",
           "Chatbot multilíngue",
           "Automações ilimitadas",
           "Campanhas de email marketing",

@@ -9,16 +9,27 @@ type Variables = { jwtPayload: JwtPayload };
 
 const app = new Hono<{ Variables: Variables }>();
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Credit system (Lovable-style variable cost) ─────────────────────────────
 
-const FREE_CREDITS_PER_MONTH = 100;
-const CREDIT_COST_PER_MESSAGE = 1;
+const PLAN_CREDITS: Record<string, number> = {
+  starter: 100,   // €197/mo — 100 crediti inclusi
+  growth: 250,    // €347/mo — 250 crediti inclusi
+  pro: 500,       // €597/mo — 500 crediti inclusi
+};
 
-// ─── Credit helpers (in-memory for now, Redis in production) ──────────────────
+// Variable credit cost based on complexity (like Lovable.dev)
+function estimateCreditCost(toolCalls: string[]): number {
+  if (toolCalls.length === 0) return 0.5; // Simple chat
+  if (toolCalls.includes("generate_with_opus")) return 2.0; // Opus generation
+  if (toolCalls.length >= 3) return 1.5; // Complex multi-tool
+  return 1.0; // Standard edit
+}
 
-const creditStore = new Map<string, { used: number; resetAt: number }>();
+// ─── Credit helpers (in-memory, Redis in production) ──────────────────────────
 
-function getCredits(clientId: string): { remaining: number; used: number; total: number } {
+const creditStore = new Map<string, { used: number; purchased: number; resetAt: number }>();
+
+function getCredits(clientId: string, plan = "starter"): { remaining: number; used: number; total: number; purchased: number } {
   const now = Date.now();
   let entry = creditStore.get(clientId);
 
@@ -27,23 +38,39 @@ function getCredits(clientId: string): { remaining: number; used: number; total:
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
     nextMonth.setHours(0, 0, 0, 0);
-    entry = { used: 0, resetAt: nextMonth.getTime() };
+    const purchased = entry?.purchased ?? 0;
+    entry = { used: 0, purchased, resetAt: nextMonth.getTime() };
     creditStore.set(clientId, entry);
   }
 
+  const planCredits = PLAN_CREDITS[plan] ?? 100;
+  const total = planCredits + entry.purchased;
+
   return {
-    remaining: Math.max(0, FREE_CREDITS_PER_MONTH - entry.used),
+    remaining: Math.max(0, total - entry.used),
     used: entry.used,
-    total: FREE_CREDITS_PER_MONTH,
+    total,
+    purchased: entry.purchased,
   };
 }
 
-function deductCredit(clientId: string): boolean {
+function deductCredits(clientId: string, amount: number): boolean {
   const credits = getCredits(clientId);
-  if (credits.remaining <= 0) return false;
+  if (credits.remaining < amount) return false;
   const entry = creditStore.get(clientId)!;
-  entry.used += CREDIT_COST_PER_MESSAGE;
+  entry.used += amount;
   return true;
+}
+
+function addPurchasedCredits(clientId: string, amount: number): void {
+  const entry = creditStore.get(clientId);
+  if (entry) {
+    entry.purchased += amount;
+  } else {
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
+    creditStore.set(clientId, { used: 0, purchased: amount, resetAt: nextMonth.getTime() });
+  }
 }
 
 // ─── Editor tools for Claude ──────────────────────────────────────────────────
@@ -210,7 +237,88 @@ Keep responses concise — max 2-3 sentences after making changes.`;
 app.get("/credits", async (c) => {
   const clientId = c.get("jwtPayload").sub;
   const credits = getCredits(clientId);
-  return c.json({ success: true, data: credits });
+  return c.json({
+    success: true,
+    data: {
+      ...credits,
+      costInfo: {
+        chat: 0.5,
+        simpleEdit: 1.0,
+        complexEdit: 1.5,
+        opusGeneration: 2.0,
+      },
+      topUpOptions: [
+        { credits: 50, price: "€9.90", priceId: "price_topup_50" },
+        { credits: 150, price: "€24.90", priceId: "price_topup_150" },
+        { credits: 500, price: "€69.90", priceId: "price_topup_500" },
+      ],
+    },
+  });
+});
+
+// POST /portal/editor/chat/buy-credits — purchase additional credits
+app.post("/buy-credits", async (c) => {
+  const clientId = c.get("jwtPayload").sub;
+  const body = await c.req.json().catch(() => null);
+  const pack = body?.pack as string;
+
+  const PACKS: Record<string, { credits: number; amount: number }> = {
+    "50": { credits: 50, amount: 990 },
+    "150": { credits: 150, amount: 2490 },
+    "500": { credits: 500, amount: 6990 },
+  };
+
+  const selected = PACKS[pack];
+  if (!selected) {
+    return c.json({ success: false, error: "Invalid credit pack" }, 400);
+  }
+
+  // Create Stripe checkout for credit purchase
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { stripeCustomerId: true, email: true },
+  });
+
+  if (!client) return c.json({ success: false, error: "Client not found" }, 404);
+
+  const stripeKey = process.env["STRIPE_SECRET_KEY"];
+  if (!stripeKey) {
+    // Fallback: add credits directly (dev mode)
+    addPurchasedCredits(clientId, selected.credits);
+    return c.json({
+      success: true,
+      data: { credits: getCredits(clientId), added: selected.credits },
+    });
+  }
+
+  try {
+    const { default: Stripe } = await import("stripe");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" });
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      customer: client.stripeCustomerId ?? undefined,
+      customer_email: !client.stripeCustomerId ? client.email : undefined,
+      line_items: [{
+        price_data: {
+          currency: "eur",
+          product_data: { name: `${selected.credits} Crediti AI — MadeCreative` },
+          unit_amount: selected.amount,
+        },
+        quantity: 1,
+      }],
+      metadata: { clientId, creditPack: pack, credits: String(selected.credits) },
+      success_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/editor?credits=purchased`,
+      cancel_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/editor`,
+    });
+
+    return c.json({
+      success: true,
+      data: { checkoutUrl: session.url, credits: selected.credits },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: "Payment error" }, 500);
+  }
 });
 
 // POST /portal/editor/chat — send a message to the AI editor
@@ -219,11 +327,12 @@ app.post("/", async (c) => {
 
   // Check credits
   const credits = getCredits(clientId);
-  if (credits.remaining <= 0) {
+  if (credits.remaining < 0.5) {
     return c.json({
       success: false,
-      error: "No credits remaining. Purchase more credits to continue editing.",
+      error: "Crediti esauriti. Acquista crediti aggiuntivi per continuare.",
       credits,
+      buyCreditsUrl: `https://buy.stripe.com/credits`, // TODO: create Stripe link
     }, 402);
   }
 
@@ -442,8 +551,19 @@ app.post("/", async (c) => {
       }
     }
 
-    // Deduct credit
-    deductCredit(clientId);
+    // Deduct credits (variable cost like Lovable.dev)
+    const toolNames: string[] = [];
+    for (const m of result.messages) {
+      if (m.role === "assistant" && Array.isArray(m.content)) {
+        for (const b of m.content) {
+          if (typeof b === "object" && "type" in b && b.type === "tool_use" && "name" in b) {
+            toolNames.push(b.name as string);
+          }
+        }
+      }
+    }
+    const creditCost = estimateCreditCost(toolNames);
+    deductCredits(clientId, creditCost);
 
     // Extract assistant text
     const assistantText = result.finalContent
