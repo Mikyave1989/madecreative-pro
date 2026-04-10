@@ -86,6 +86,59 @@ app.get("/health", async (c) => {
   });
 });
 
+// ─── Debug login endpoint ─────────────────────────────────────────────────────
+
+app.post("/debug/login", async (c) => {
+  const steps: string[] = [];
+  try {
+    steps.push("1:start");
+    const body = await c.req.json().catch(() => null);
+    steps.push(`2:body=${JSON.stringify(body)?.substring(0, 50)}`);
+
+    const { prisma } = await import("@madecreative/db");
+    steps.push("3:prisma-ok");
+
+    const { AdminLoginSchema } = await import("@madecreative/shared");
+    steps.push("4:schema-ok");
+
+    const parsed = AdminLoginSchema.safeParse(body);
+    steps.push(`5:parsed=${parsed.success}`);
+
+    if (!parsed.success) {
+      return c.json({ steps, error: parsed.error.flatten() });
+    }
+
+    const admin = await prisma.adminUser.findUnique({ where: { email: parsed.data.email } });
+    steps.push(`6:admin=${admin ? "found" : "null"}`);
+
+    if (!admin) {
+      return c.json({ steps, error: "not found" });
+    }
+
+    const bcrypt = await import("bcryptjs");
+    steps.push("7:bcrypt-ok");
+
+    const isValid = await bcrypt.compare(parsed.data.password, admin.passwordHash);
+    steps.push(`8:valid=${isValid}`);
+
+    const { generateTokens } = await import("./lib/auth.js");
+    steps.push("9:auth-import-ok");
+
+    const tokens = await generateTokens({
+      sub: admin.id,
+      email: admin.email,
+      role: "ADMIN",
+      type: "admin",
+    });
+    steps.push("10:tokens-ok");
+
+    return c.json({ steps, success: true, tokens: { expiresIn: tokens.expiresIn } });
+  } catch (e) {
+    steps.push(`ERR:${e instanceof Error ? e.message.substring(0, 200) : String(e)}`);
+    return c.json({ steps, error: true }, 500);
+  }
+});
+
 // ─── Public Routes (no auth) ──────────────────────────────────────────────────
 
 app.route("/public/webhook", webhookRoutes);
