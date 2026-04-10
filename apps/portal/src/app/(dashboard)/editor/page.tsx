@@ -713,7 +713,7 @@ export default function EditorPage() {
             contentUpdates: Record<string, unknown> | null;
             currentContent: WebsiteContent;
             credits: Credits;
-            cost?: number;
+            cost?: { inputTokens: number; outputTokens: number; totalCost: number };
           };
           error?: string;
         };
@@ -730,12 +730,13 @@ export default function EditorPage() {
         }
 
         if (json.data) {
+          const creditCost = credits.remaining - (json.data.credits?.remaining ?? credits.remaining);
           setMessages((prev) => [
             ...prev,
             {
               role: "assistant",
               content: json.data!.response,
-              cost: json.data!.cost,
+              cost: creditCost > 0 ? creditCost : undefined,
             },
           ]);
           if (json.data.currentContent) {
