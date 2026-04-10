@@ -208,25 +208,26 @@ const EDITOR_TOOLS: Tool[] = [
 
 function buildSystemPrompt(businessName: string, sector: string, language: string): string {
   const lang = language === "de" ? "German" : language === "it" ? "Italian" : language === "fr" ? "French" : language === "es" ? "Spanish" : language === "nl" ? "Dutch" : language === "pt" ? "Portuguese" : "English";
-  return `You are the AI website editor for "${businessName}" (sector: ${sector}).
-You help the business owner modify their website through natural conversation.
-Always respond in ${lang}.
+  return `You are an AI website builder for "${businessName}" (sector: ${sector}).
+You BUILD websites immediately using tools. Always respond in ${lang}.
 
-IMPORTANT: You are the conversation layer (fast). When the user requests complex content generation (writing full menus, creating descriptions, generating multiple items), use the generate_with_opus tool to delegate heavy content creation to the powerful Opus model. For simple edits (changing a phone number, toggling hours), use the direct tools.
+CRITICAL RULES:
+1. NEVER ask for information — USE what the user provides and INVENT the rest based on the sector.
+2. When the user says "build my site" or "create my site" — immediately call ALL tools to create a complete site:
+   - update_hero with a professional title and description
+   - update_contact with any info provided (invent realistic placeholders for missing info)
+   - update_hours with typical hours for the sector
+   - set_whatsapp if a number is given
+   - update_about with a professional description
+   - add_menu_item multiple times to create a realistic menu/service list (at least 8-10 items)
+3. For images: use placeholder URLs from unsplash. Example: https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800 for pizza.
+4. ALWAYS use tools. Never just talk — ACT.
+5. Generate ALL content yourself — realistic names, descriptions, prices for the sector.
+6. After building, respond with a SHORT summary of what was created (2-3 lines max).
 
-Your capabilities:
-- Update hero text and description (direct or via Opus for quality copy)
-- Add/remove menu items with prices (use generate_with_opus for bulk menu creation)
-- Update contact info (phone, email, address)
-- Set up WhatsApp button
-- Update opening hours
-- Update about section
-- Generate premium content via Opus (for complex requests)
-
-When the user asks to make changes, use the appropriate tools immediately.
-When they ask for high-quality content generation (write me a menu, create descriptions, make it more professional), use generate_with_opus.
-Be proactive: suggest improvements based on best practices for their sector.
-Keep responses concise — max 2-3 sentences after making changes.`;
+You are like Lovable.dev — the user describes what they want, you BUILD it instantly.
+Do NOT delegate to generate_with_opus for simple site creation — do it yourself with the direct tools.
+Only use generate_with_opus for truly massive content (50+ menu items, full marketing copy).`;
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -516,7 +517,7 @@ app.post("/", async (c) => {
         system: systemPrompt,
         tools: EDITOR_TOOLS,
         model: "claude-haiku-4-5" as const,
-        maxTokens: 2048,
+        maxTokens: 4096,
       }
     );
 

@@ -118,25 +118,27 @@ const SUGGESTIONS = [
 // ─── Typing indicator ─────────────────────────────────────────────────────────
 
 function TypingIndicator() {
+  const [step, setStep] = useState(0);
+  const steps = [
+    "Analizzo la richiesta...",
+    "Creo la struttura del sito...",
+    "Genero i contenuti...",
+    "Applico le modifiche...",
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStep((s) => (s + 1) % steps.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="flex items-end gap-2.5">
-      <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
-        <Bot className="w-3.5 h-3.5 text-indigo-400" />
-      </div>
-      <div className="bg-zinc-800 border border-zinc-700 rounded-2xl rounded-bl-sm px-4 py-3">
-        <div className="flex gap-1 items-center h-4">
-          <span
-            className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"
-            style={{ animationDelay: "0ms", animationDuration: "1s" }}
-          />
-          <span
-            className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"
-            style={{ animationDelay: "200ms", animationDuration: "1s" }}
-          />
-          <span
-            className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"
-            style={{ animationDelay: "400ms", animationDuration: "1s" }}
-          />
+    <div className="max-w-[90%]">
+      <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl rounded-bl-sm px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          <span className="text-sm text-indigo-300 font-medium">{steps[step]}</span>
         </div>
       </div>
     </div>
@@ -187,17 +189,14 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-end gap-2.5 max-w-[85%]">
-        <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
-          <Bot className="w-3.5 h-3.5 text-indigo-400" />
-        </div>
-        <div className="bg-zinc-800 border border-zinc-700 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-zinc-200 leading-relaxed">
+      <div className="max-w-[90%]">
+        <div className="bg-zinc-800/60 border border-zinc-700/50 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-zinc-200 leading-relaxed">
           {renderMessageContent(msg.content)}
         </div>
       </div>
-      {msg.cost !== undefined && (
-        <p className="text-[10px] text-zinc-600 pl-10">
-          {msg.cost.toFixed(1)} crediti usati
+      {msg.cost !== undefined && msg.cost > 0 && (
+        <p className="text-[10px] text-zinc-600 pl-1">
+          {msg.cost.toFixed(1)} crediti
         </p>
       )}
     </div>
@@ -367,9 +366,11 @@ function SitePreview({ content }: { content: WebsiteContent }) {
 function PreviewPanel({
   content,
   onRefresh,
+  building = false,
 }: {
   content: WebsiteContent;
   onRefresh: () => void;
+  building?: boolean;
 }) {
   const [device, setDevice] = useState<DeviceMode>("desktop");
 
@@ -438,13 +439,24 @@ function PreviewPanel({
       </div>
 
       {/* Preview frame */}
-      <div className="flex-1 overflow-auto bg-zinc-950 flex justify-center">
+      <div className="flex-1 overflow-auto bg-zinc-950 flex justify-center relative">
         <div
           className={`${frameWidths[device]} h-full overflow-auto bg-white transition-all duration-300`}
           style={{ maxHeight: "100%" }}
         >
           <SitePreview content={content} />
         </div>
+
+        {/* Building overlay */}
+        {building && (
+          <div className="absolute inset-0 bg-zinc-950/70 backdrop-blur-sm flex items-center justify-center z-10">
+            <div className="text-center">
+              <div className="w-12 h-12 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-base font-semibold text-white mb-1">Costruendo il tuo sito...</p>
+              <p className="text-xs text-zinc-400">L&apos;AI sta generando contenuti e struttura</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -928,7 +940,7 @@ export default function EditorPage() {
           `}
           key={refreshKey}
         >
-          <PreviewPanel content={content} onRefresh={handleRefresh} />
+          <PreviewPanel content={content} onRefresh={handleRefresh} building={loading} />
         </div>
       </div>
     </div>
