@@ -1075,7 +1075,10 @@ export async function deploySite(params: {
       {
         method: "PATCH",
         headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ vercelAuthentication: { deploymentType: "none" } }),
+        body: JSON.stringify({
+          vercelAuthentication: { deploymentType: "none" },
+          ssoProtection: null,
+        }),
       }
     );
   } catch {
