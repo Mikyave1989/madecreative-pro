@@ -63,17 +63,10 @@ app.use("*", prettyJSON());
 
 app.get("/health", async (c) => {
   let db = "unknown";
-  let adminCount = "unknown";
   try {
     const { prisma } = await import("@madecreative/db");
     await prisma.$queryRawUnsafe("SELECT 1");
     db = "ok";
-    try {
-      const count = await prisma.adminUser.count();
-      adminCount = String(count);
-    } catch (ae) {
-      adminCount = `error: ${ae instanceof Error ? ae.message.substring(0, 100) : String(ae)}`;
-    }
   } catch (e) {
     db = `error: ${e instanceof Error ? e.message.substring(0, 100) : String(e)}`;
   }
@@ -82,7 +75,6 @@ app.get("/health", async (c) => {
     timestamp: new Date().toISOString(),
     version: process.env["npm_package_version"] ?? "1.0.0",
     db,
-    adminCount,
   });
 });
 
