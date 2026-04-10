@@ -31,10 +31,10 @@ export default function LoginPage() {
       const user: AuthUser = {
         id: data.user.id ?? "",
         email: data.user.email ?? email,
-        companyName: data.user.companyName,
-        contactName: data.user.contactName ?? data.user.companyName,
-        plan: data.user.plan as AuthUser["plan"],
-        status: data.user.status as AuthUser["status"],
+        companyName: data.user.companyName ?? "Business",
+        contactName: data.user.contactName ?? data.user.companyName ?? "User",
+        plan: (data.user.plan ?? "STARTER") as AuthUser["plan"],
+        status: (data.user.status ?? "ACTIVE") as AuthUser["status"],
       };
 
       setAuth(data.accessToken, data.refreshToken, user);

@@ -70,6 +70,7 @@ app.post("/login", async (c) => {
         email: client.email,
         companyName: client.companyName,
         contactName: client.contactName,
+        plan: client.plan,
         status: client.status,
         language: client.language,
       },

@@ -4,45 +4,59 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Globe,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   Bot,
   Pencil,
-  Download,
   FileText,
   CreditCard,
   ExternalLink,
   Loader2,
   AlertCircle,
+  BarChart3,
+  Gauge,
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types matching real API response ────────────────────────────────────────
 
-interface DashboardData {
-  domain: string;
-  siteStatus: "LIVE" | "BUILDING" | "MAINTENANCE";
-  visitsThisMonth: number;
-  visitsTrend: number; // percent vs last month
-  chatbot: {
-    conversationsThisMonth: number;
-    resolvedRate: number; // 0-100
+interface ApiDashboard {
+  client: {
+    id: string;
+    companyName: string;
+    contactName: string | null;
+    status: string;
+    language: string;
+    sector: string;
+    createdAt: string;
   };
-  plan: string;
-  nextChargeDate: string;
-  nextChargeAmount: number;
-  clientSince: string;
+  stats: {
+    totalRevenue: number;
+    chatbotConversations: number;
+    chatbotResolvedRate: number;
+    monthlyVisits: number;
+    lighthouseScore: number | null;
+  };
+  website: {
+    id: string;
+    domain: string;
+    monthlyVisits: number;
+    lighthouseScore: number | null;
+    deployUrl: string | null;
+  } | null;
+  chatbot: {
+    id: string;
+    isActive: boolean;
+    totalConversations: number;
+    resolvedRate: number;
+  } | null;
+  lastReport: {
+    id: string;
+    month: number;
+    year: number;
+    pdfUrl: string | null;
+    sentAt: string | null;
+  } | null;
 }
 
-interface ReportItem {
-  id: string;
-  month: number;
-  year: number;
-  pdfUrl: string | null;
-  createdAt: string;
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const API_URL =
   process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.madecreative.pro";
@@ -65,55 +79,10 @@ function formatDate(iso: string): string {
   });
 }
 
-// ─── Trend badge ──────────────────────────────────────────────────────────────
-
-function TrendBadge({ value }: { value: number }) {
-  if (value > 0) {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
-        <TrendingUp className="w-3 h-3" />
-        +{value}%
-      </span>
-    );
-  }
-  if (value < 0) {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">
-        <TrendingDown className="w-3 h-3" />
-        {value}%
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 bg-slate-400/10 px-2 py-0.5 rounded-full">
-      <Minus className="w-3 h-3" />
-      0%
-    </span>
-  );
-}
-
-// ─── Site status pill ─────────────────────────────────────────────────────────
-
-function SiteStatusPill({ status }: { status: DashboardData["siteStatus"] }) {
-  const map = {
-    LIVE: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-    BUILDING: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-    MAINTENANCE: "bg-slate-500/20 text-slate-400 border-slate-500/30",
-  };
-  const labels = { LIVE: "Live", BUILDING: "In costruzione", MAINTENANCE: "Manutenzione" };
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${map[status]}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${status === "LIVE" ? "bg-emerald-400 animate-pulse" : status === "BUILDING" ? "bg-amber-400" : "bg-slate-400"}`} />
-      {labels[status]}
-    </span>
-  );
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [reports, setReports] = useState<ReportItem[]>([]);
+  const [data, setData] = useState<ApiDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -129,24 +98,11 @@ export default function DashboardPage() {
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const [dashRes, reportsRes] = await Promise.all([
-        fetch(`${API_URL}/portal/dashboard`, { headers }),
-        fetch(`${API_URL}/portal/reports`, { headers }),
-      ]);
+      const res = await fetch(`${API_URL}/portal/dashboard`, { headers });
+      const json = (await res.json()) as { success: boolean; data?: ApiDashboard; error?: string };
 
-      const dashJson = (await dashRes.json()) as { success: boolean; data?: DashboardData; error?: string };
-      const reportsJson = (await reportsRes.json()) as {
-        success: boolean;
-        data?: { reports: ReportItem[] };
-        error?: string;
-      };
-
-      if (!dashJson.success) throw new Error(dashJson.error ?? "Errore dashboard");
-      setDashboard(dashJson.data!);
-
-      if (reportsJson.success && reportsJson.data) {
-        setReports(reportsJson.data.reports.slice(0, 3));
-      }
+      if (!json.success) throw new Error(json.error ?? "Errore dashboard");
+      setData(json.data!);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore di caricamento");
     } finally {
@@ -162,7 +118,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (error || !dashboard) {
+  if (error || !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-64 gap-4">
         <AlertCircle className="w-10 h-10 text-red-400" />
@@ -177,16 +133,22 @@ export default function DashboardPage() {
     );
   }
 
+  const { client, stats, website, chatbot, lastReport } = data;
+
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h2 className="text-xl font-bold text-white">Il tuo sito</h2>
-        <p className="text-sm text-slate-400 mt-1">Panoramica del mese corrente</p>
+        <h2 className="text-xl font-bold text-white">
+          Ciao, {client.contactName ?? client.companyName}
+        </h2>
+        <p className="text-sm text-slate-400 mt-1">
+          Panoramica di {client.companyName}
+        </p>
       </div>
 
       {/* Site card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
@@ -194,19 +156,32 @@ export default function DashboardPage() {
                 <Globe className="w-5 h-5 text-indigo-400" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Sito live</p>
-                <a
-                  href={`https://${dashboard.domain}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-base font-semibold text-white hover:text-indigo-400 transition-colors"
-                >
-                  {dashboard.domain}
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">
+                  Il tuo sito
+                </p>
+                {website ? (
+                  <a
+                    href={website.deployUrl ?? `https://${website.domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-base font-semibold text-white hover:text-indigo-400 transition-colors"
+                  >
+                    {website.domain}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : (
+                  <p className="text-sm text-slate-500">Sito non ancora generato</p>
+                )}
               </div>
             </div>
-            <SiteStatusPill status={dashboard.siteStatus} />
+            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+              website
+                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${website ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+              {website ? "Live" : "In preparazione"}
+            </span>
           </div>
 
           <Link
@@ -220,68 +195,72 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Visits */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-violet-600/20 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-violet-400" />
-              </div>
-              <span className="text-sm text-slate-400 font-medium">Visite questo mese</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Monthly visits */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-violet-600/20 rounded-lg flex items-center justify-center">
+              <BarChart3 className="w-4 h-4 text-violet-400" />
             </div>
-            <TrendBadge value={dashboard.visitsTrend} />
+            <span className="text-xs text-slate-400 font-medium">Visite / mese</span>
           </div>
-          <p className="text-4xl font-bold text-white tabular-nums">
-            {dashboard.visitsThisMonth.toLocaleString("it-IT")}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">
-            {dashboard.visitsTrend > 0
-              ? `+${Math.round(Math.abs(dashboard.visitsTrend) * dashboard.visitsThisMonth / (100 + dashboard.visitsTrend))} rispetto al mese scorso`
-              : dashboard.visitsTrend < 0
-              ? `${Math.round(Math.abs(dashboard.visitsTrend) * dashboard.visitsThisMonth / (100 - Math.abs(dashboard.visitsTrend)))} in meno rispetto al mese scorso`
-              : "In linea con il mese scorso"}
+          <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
+            {stats.monthlyVisits.toLocaleString("it-IT")}
           </p>
         </div>
 
-        {/* Chatbot */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-4">
+        {/* Lighthouse */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-emerald-600/20 rounded-lg flex items-center justify-center">
+              <Gauge className="w-4 h-4 text-emerald-400" />
+            </div>
+            <span className="text-xs text-slate-400 font-medium">Lighthouse</span>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
+            {stats.lighthouseScore != null ? `${stats.lighthouseScore}/100` : "—"}
+          </p>
+        </div>
+
+        {/* Chatbot conversations */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 bg-indigo-600/20 rounded-lg flex items-center justify-center">
               <Bot className="w-4 h-4 text-indigo-400" />
             </div>
-            <span className="text-sm text-slate-400 font-medium">Chatbot</span>
+            <span className="text-xs text-slate-400 font-medium">Conversazioni</span>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-3xl font-bold text-white tabular-nums">
-                {dashboard.chatbot.conversationsThisMonth}
-              </p>
-              <p className="text-xs text-slate-500 mt-0.5">Conversazioni</p>
+          <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
+            {chatbot?.totalConversations ?? stats.chatbotConversations}
+          </p>
+        </div>
+
+        {/* Chatbot resolved rate */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-emerald-600/20 rounded-lg flex items-center justify-center">
+              <Bot className="w-4 h-4 text-emerald-400" />
             </div>
-            <div>
-              <p className="text-3xl font-bold text-emerald-400 tabular-nums">
-                {dashboard.chatbot.resolvedRate}%
-              </p>
-              <p className="text-xs text-slate-500 mt-0.5">Tasso risoluzione</p>
-            </div>
+            <span className="text-xs text-slate-400 font-medium">Tasso risoluzione</span>
           </div>
-          {/* Resolution bar */}
-          <div className="mt-4">
+          <p className="text-2xl sm:text-3xl font-bold text-emerald-400 tabular-nums">
+            {chatbot?.resolvedRate ?? stats.chatbotResolvedRate}%
+          </p>
+          <div className="mt-2">
             <div className="w-full bg-slate-800 rounded-full h-1.5">
               <div
                 className="bg-emerald-500 h-1.5 rounded-full transition-all duration-700"
-                style={{ width: `${dashboard.chatbot.resolvedRate}%` }}
+                style={{ width: `${chatbot?.resolvedRate ?? stats.chatbotResolvedRate}%` }}
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Reports + Account row */}
+      {/* Reports + Account */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Reports */}
-        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center">
@@ -297,7 +276,7 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {reports.length === 0 ? (
+          {!lastReport ? (
             <div className="text-center py-8">
               <FileText className="w-8 h-8 text-slate-700 mx-auto mb-2" />
               <p className="text-sm text-slate-500">
@@ -305,48 +284,35 @@ export default function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {reports.map((report) => {
-                const monthName = MONTH_NAMES[(report.month - 1) % 12] ?? String(report.month);
-                return (
-                  <div
-                    key={report.id}
-                    className="flex items-center justify-between p-3 bg-slate-800/60 rounded-xl hover:bg-slate-800 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-indigo-600/20 rounded-lg flex items-center justify-center">
-                        <FileText className="w-4 h-4 text-indigo-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {monthName} {report.year}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {new Date(report.createdAt).toLocaleDateString("it-IT")}
-                        </p>
-                      </div>
-                    </div>
-                    {report.pdfUrl ? (
-                      <a
-                        href={report.pdfUrl}
-                        download
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 text-indigo-400 text-xs font-medium rounded-lg hover:bg-indigo-600/40 transition-colors"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        PDF
-                      </a>
-                    ) : (
-                      <span className="text-xs text-slate-600">In generazione</span>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="flex items-center justify-between p-3 bg-slate-800/60 rounded-xl hover:bg-slate-800 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-indigo-600/20 rounded-lg flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    {MONTH_NAMES[(lastReport.month - 1) % 12]} {lastReport.year}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {lastReport.sentAt ? formatDate(lastReport.sentAt) : "In preparazione"}
+                  </p>
+                </div>
+              </div>
+              {lastReport.pdfUrl && (
+                <a
+                  href={lastReport.pdfUrl}
+                  download
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 text-indigo-400 text-xs font-medium rounded-lg hover:bg-indigo-600/40 transition-colors"
+                >
+                  PDF
+                </a>
+              )}
             </div>
           )}
         </div>
 
-        {/* Account quick */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
+        {/* Account */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center">
               <CreditCard className="w-4 h-4 text-slate-300" />
@@ -356,23 +322,24 @@ export default function DashboardPage() {
 
           <div className="space-y-4 flex-1">
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Piano</p>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-2.5 py-1 bg-indigo-600/20 text-indigo-400 text-sm font-bold rounded-lg border border-indigo-600/30">
-                  {dashboard.plan}
-                </span>
-                <span className="text-sm font-bold text-white">€{dashboard.nextChargeAmount}/mese</span>
-              </div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Stato</p>
+              <span className={`inline-flex items-center px-2.5 py-1 text-sm font-bold rounded-lg border ${
+                client.status === "ACTIVE"
+                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                  : "bg-red-500/20 text-red-400 border-red-500/30"
+              }`}>
+                {client.status === "ACTIVE" ? "Attivo" : client.status}
+              </span>
             </div>
 
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Prossimo addebito</p>
-              <p className="text-sm font-semibold text-white">{formatDate(dashboard.nextChargeDate)}</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Settore</p>
+              <p className="text-sm font-semibold text-white capitalize">{client.sector}</p>
             </div>
 
             <div>
               <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Cliente dal</p>
-              <p className="text-sm font-semibold text-white">{formatDate(dashboard.clientSince)}</p>
+              <p className="text-sm font-semibold text-white">{formatDate(client.createdAt)}</p>
             </div>
           </div>
 
