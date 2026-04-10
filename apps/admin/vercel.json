@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "cd ../.. && npm cache clean --force && npm install",
-  "buildCommand": "cd ../.. && npx turbo run build --filter=@madecreative/admin",
-  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "buildCommand": "npx turbo run build --filter=@madecreative/admin",
+  "outputDirectory": "apps/admin/.next",
   "env": {
     "NEXT_PUBLIC_API_URL": "https://api.madecreative.pro"
   },

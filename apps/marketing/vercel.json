@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "cd ../.. && npm run build --workspace=@madecreative/marketing",
-  "outputDirectory": ".next",
-  "installCommand": "cd ../.. && npm cache clean --force && npm install",
+  "buildCommand": "npx turbo run build --filter=@madecreative/marketing",
+  "outputDirectory": "apps/marketing/.next",
+  "installCommand": "npm install",
   "headers": [
     {
       "source": "/(.*)",
