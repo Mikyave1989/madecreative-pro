@@ -726,10 +726,26 @@ app.post("/", async (c) => {
       // Auto-deploy: push directly to Vercel
       try {
         const { deploySite, slugify } = await import("../../lib/deploy-site.js");
+        const { generateProjectFiles } = await import("../../lib/generate-project.js");
 
         const subdomain =
           (client.website.subdomain as string | null | undefined) ??
           (slugify(client.companyName) || clientId.slice(0, 12));
+
+        // Generate real Next.js project from content
+        const projectBundle = generateProjectFiles({
+          companyName: client.companyName,
+          sector: client.sector,
+          content: mergedContent,
+          subdomain,
+          primaryColor: (mergedContent.primaryColor as string) ?? undefined,
+        });
+
+        // Store project files in DB
+        await prisma.clientWebsite.update({
+          where: { id: client.website.id },
+          data: { files: projectBundle as unknown as object },
+        });
 
         const result = await deploySite({
           clientId,
@@ -737,6 +753,7 @@ app.post("/", async (c) => {
           sector: client.sector,
           content: mergedContent,
           subdomain,
+          projectFiles: projectBundle,
         });
 
         deployUrl = result.deployUrl;
@@ -939,15 +956,34 @@ app.post("/stream", async (c) => {
 
             try {
               const { deploySite, slugify } = await import("../../lib/deploy-site.js");
+              const { generateProjectFiles } = await import("../../lib/generate-project.js");
+
               const subdomain =
                 (client.website.subdomain as string | null | undefined) ??
                 (slugify(client.companyName) || clientId.slice(0, 12));
+
+              // Generate real Next.js project from content
+              const projectBundle = generateProjectFiles({
+                companyName: client.companyName,
+                sector: client.sector,
+                content: mergedContent,
+                subdomain,
+                primaryColor: (mergedContent.primaryColor as string) ?? undefined,
+              });
+
+              // Store project files in DB
+              await prisma.clientWebsite.update({
+                where: { id: client.website.id },
+                data: { files: projectBundle as unknown as object },
+              });
+
               const deployResult = await deploySite({
                 clientId,
                 companyName: client.companyName,
                 sector: client.sector,
                 content: mergedContent,
                 subdomain,
+                projectFiles: projectBundle,
               });
               deployUrl = deployResult.deployUrl;
               await prisma.clientWebsite.update({

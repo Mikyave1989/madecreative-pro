@@ -971,14 +971,21 @@ interface VercelDomainResponse {
   error?: { code: string; message: string };
 }
 
+// Minimal shape we need from ProjectFilesBundle (avoid circular import)
+interface ProjectFilesBundleRef {
+  framework: "nextjs";
+  files: Record<string, string>;
+}
+
 export async function deploySite(params: {
   clientId: string;
   companyName: string;
   sector: string;
   content: Record<string, unknown>;
   subdomain: string;
+  projectFiles?: ProjectFilesBundleRef; // NEW: deploy a real Next.js project
 }): Promise<{ deployUrl: string; vercelProjectId: string }> {
-  const { companyName, sector, content, subdomain } = params;
+  const { companyName, sector, content, subdomain, projectFiles } = params;
 
   const VERCEL_TOKEN = process.env["VERCEL_TOKEN"];
   const VERCEL_TEAM_ID = process.env["VERCEL_TEAM_ID"];
@@ -989,19 +996,45 @@ export async function deploySite(params: {
 
   const projectName = `mc-${subdomain}`;
 
-  // Generate HTML
-  const htmlContent = generateHTML({
-    companyName,
-    sector,
-    subdomain,
-    content: content as WebsiteContent,
-  });
-
-  const vercelJson = JSON.stringify({ cleanUrls: true, trailingSlash: false });
-
   // Build URL with optional team ID
   const teamQuery = VERCEL_TEAM_ID ? `?teamId=${VERCEL_TEAM_ID}` : "";
   const teamQueryAmp = VERCEL_TEAM_ID ? `&teamId=${VERCEL_TEAM_ID}` : "";
+
+  // ── Choose between Next.js project and static HTML ────────────────────────
+  let deployFiles: Array<{ file: string; data: string; encoding: "base64" }>;
+  let framework: string | null;
+
+  if (projectFiles) {
+    // Next.js project deploy
+    deployFiles = Object.entries(projectFiles.files).map(([path, fileContent]) => ({
+      file: path,
+      data: Buffer.from(fileContent).toString("base64"),
+      encoding: "base64" as const,
+    }));
+    framework = "nextjs";
+  } else {
+    // Fallback: static HTML page (original behavior)
+    const htmlContent = generateHTML({
+      companyName,
+      sector,
+      subdomain,
+      content: content as WebsiteContent,
+    });
+    const vercelJson = JSON.stringify({ cleanUrls: true, trailingSlash: false });
+    deployFiles = [
+      {
+        file: "index.html",
+        data: Buffer.from(htmlContent).toString("base64"),
+        encoding: "base64" as const,
+      },
+      {
+        file: "vercel.json",
+        data: Buffer.from(vercelJson).toString("base64"),
+        encoding: "base64" as const,
+      },
+    ];
+    framework = null;
+  }
 
   // ── Step 1: Create deployment ──────────────────────────────────────────────
   const deployRes = await fetch(`https://api.vercel.com/v13/deployments${teamQuery}`, {
@@ -1013,20 +1046,9 @@ export async function deploySite(params: {
     body: JSON.stringify({
       name: projectName,
       target: "production",
-      files: [
-        {
-          file: "index.html",
-          data: Buffer.from(htmlContent).toString("base64"),
-          encoding: "base64",
-        },
-        {
-          file: "vercel.json",
-          data: Buffer.from(vercelJson).toString("base64"),
-          encoding: "base64",
-        },
-      ],
+      files: deployFiles,
       projectSettings: {
-        framework: null,
+        framework,
       },
     }),
   });
