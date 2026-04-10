@@ -79,7 +79,6 @@ export function Badge({
 // Badge per piano
 export function PlanBadge({ plan, size = "sm" }: { plan: Plan; size?: "sm" | "md" }) {
   const map: Record<Plan, { label: string; variant: BadgeVariant }> = {
-    FREE: { label: "Free", variant: "gray" },
     STARTER: { label: "Starter", variant: "indigo" },
     GROWTH: { label: "Growth", variant: "violet" },
     PRO: { label: "Pro", variant: "amber" },

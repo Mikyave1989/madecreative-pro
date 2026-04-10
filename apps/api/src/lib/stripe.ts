@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { prisma } from "@madecreative/db";
-import { PLAN_PRICE } from "@madecreative/shared";
+import { PLANS } from "@madecreative/shared";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 
@@ -192,16 +192,17 @@ async function handleCheckoutCompleted(
   }
 
   // Record first invoice
+  const planPrice = PLANS[plan as keyof typeof PLANS]?.price ?? 25;
   await prisma.clientInvoice.create({
     data: {
       clientId: client.id,
-      amount: PLAN_PRICE,
+      amount: planPrice,
       status: "PAID",
       paidAt: new Date(),
     },
   });
 
-  // Store temp password for welcome email
+  // Store temp password in Redis for onboarding
   try {
     const { getRedisConnection } = await import("../lib/queue.js");
     const redis = getRedisConnection();
@@ -210,10 +211,36 @@ async function handleCheckoutCompleted(
     // Non-critical
   }
 
-  // Enqueue onboarding job
+  // Auto-trigger website builder if client provided a website URL
   try {
     const { Queue } = await import("bullmq");
     const { getRedisConnection } = await import("../lib/queue.js");
+
+    if (websiteUrl) {
+      const builderQueue = new Queue("builder-queue", { connection: getRedisConnection() });
+      await builderQueue.add(
+        "BUILDER",
+        {
+          clientId: client.id,
+          websiteUrl,
+          templateSlug: prospectData?.sector ?? "professional",
+          rebuild: false,
+        },
+        { jobId: `builder-${client.id}`, delay: 5000 }
+      );
+      await builderQueue.close();
+
+      await prisma.agentJob.create({
+        data: {
+          agentType: "BUILDER",
+          status: "QUEUED",
+          input: { clientId: client.id, websiteUrl, templateSlug: prospectData?.sector ?? "professional" },
+          clientId: client.id,
+        },
+      });
+    }
+
+    // Enqueue onboarding email job
     const onboardingQueue = new Queue("onboarding-queue", { connection: getRedisConnection() });
     await onboardingQueue.add(
       "ONBOARDING",
@@ -222,10 +249,11 @@ async function handleCheckoutCompleted(
     );
     await onboardingQueue.close();
   } catch (err) {
-    console.error("[Stripe] Failed to enqueue onboarding job:", err);
+    console.error("[Stripe] Failed to enqueue jobs:", err);
   }
 
-  // Send payment confirmation email
+  // Send payment confirmation email with credentials
+  const portalUrl = process.env["PORTAL_URL"] ?? "https://app.madecreative.pro";
   try {
     const resendApiKey = process.env["RESEND_API_KEY"];
     if (resendApiKey) {
@@ -238,8 +266,20 @@ async function handleCheckoutCompleted(
         body: JSON.stringify({
           from: `MadeCreative <onboarding@${process.env["EMAIL_DOMAIN"] ?? "madecreative.pro"}>`,
           to: [client.email],
-          subject: "Payment confirmed \u2014 your site is being prepared",
-          html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><p>Hi ${client.contactName},</p><p>Thank you! Your website is being set up. You\u2019ll receive your login within 15 minutes.</p><p>\u20AC${PLAN_PRICE}/mese \u2014 Piano Standard</p><p>The MadeCreative Team</p></body></html>`,
+          subject: "Benvenuto in MadeCreative — ecco le tue credenziali",
+          html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:sans-serif;color:#1e293b;max-width:520px;margin:0 auto;padding:24px">
+<h2 style="color:#6366f1">Benvenuto in MadeCreative!</h2>
+<p>Ciao ${client.contactName},</p>
+<p>Il tuo account è pronto. ${websiteUrl ? "Stiamo già ricostruendo il tuo sito — riceverai il link appena sarà pronto." : ""}</p>
+<p><strong>Le tue credenziali:</strong></p>
+<table style="border-collapse:collapse;margin:16px 0">
+<tr><td style="padding:8px 16px;background:#f1f5f9;border-radius:6px 0 0 0"><strong>Email</strong></td><td style="padding:8px 16px;background:#f1f5f9;border-radius:0 6px 0 0">${client.email}</td></tr>
+<tr><td style="padding:8px 16px;background:#f8fafc;border-radius:0 0 0 6px"><strong>Password</strong></td><td style="padding:8px 16px;background:#f8fafc;border-radius:0 0 6px 0"><code>${tempPassword}</code></td></tr>
+</table>
+<p><a href="${portalUrl}/login" style="display:inline-block;background:#6366f1;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Accedi alla dashboard</a></p>
+<p style="color:#94a3b8;font-size:13px">Piano ${plan} — €${planPrice}/mese<br>Ti consigliamo di cambiare la password dopo il primo accesso.</p>
+<p>Il team MadeCreative</p>
+</body></html>`,
         }),
       });
     }
