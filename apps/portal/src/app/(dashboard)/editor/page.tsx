@@ -1,44 +1,58 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import {
-  Send,
-  Loader2,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
   Bot,
-  User,
-  Sparkles,
-  Eye,
-  MessageSquare,
-  Coins,
   ChevronDown,
-  ChevronUp,
-  Plus,
-  Trash2,
-  Phone,
+  Clock,
+  Coins,
   Mail,
   MapPin,
-  Clock,
-  ImageIcon,
-  Upload,
-  Check,
-  X,
-  Pencil,
-  Info,
-  Rocket,
-  MessageCircle,
+  MessageSquare,
+  Monitor,
+  Phone,
+  RefreshCw,
+  Send,
+  Smartphone,
+  Sparkles,
+  Tablet,
+  Undo2,
+  User,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  cost?: number;
 }
 
 interface Credits {
   remaining: number;
   used: number;
   total: number;
+  purchased?: number;
+}
+
+interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  category: string;
+}
+
+interface HourEntry {
+  open: string;
+  close: string;
+  closed: boolean;
 }
 
 interface WebsiteContent {
@@ -48,14 +62,18 @@ interface WebsiteContent {
   email?: string;
   address?: string;
   whatsappNumber?: string;
-  menuItems?: Array<{ id: string; name: string; description: string; price: string; category: string }>;
-  hours?: Record<string, { open: string; close: string; closed: boolean }>;
+  menuItems?: MenuItem[];
+  hours?: Record<string, HourEntry>;
   [key: string]: unknown;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+type DeviceMode = "desktop" | "tablet" | "mobile";
+type MobileTab = "chat" | "preview";
 
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.madecreative.pro";
+// ─── API helpers ──────────────────────────────────────────────────────────────
+
+const API_URL =
+  process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.madecreative.pro";
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -69,227 +87,683 @@ function authHeaders(): Record<string, string> {
   return h;
 }
 
-// ─── Chat bubble ──────────────────────────────────────────────────────────────
+// ─── Suggestion chips ─────────────────────────────────────────────────────────
 
-function ChatBubble({ msg }: { msg: ChatMessage }) {
-  const isUser = msg.role === "user";
+const SUGGESTIONS = [
+  "Crea il mio sito",
+  "Cambia il titolo",
+  "Aggiungi menu",
+  "Modifica orari",
+  "Aggiungi WhatsApp",
+];
+
+// ─── Typing indicator ─────────────────────────────────────────────────────────
+
+function TypingIndicator() {
   return (
-    <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isUser ? "bg-indigo-600" : "bg-slate-700"}`}>
-        {isUser ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-indigo-400" />}
+    <div className="flex items-end gap-2.5">
+      <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
+        <Bot className="w-3.5 h-3.5 text-indigo-400" />
       </div>
-      <div className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-        isUser
-          ? "bg-indigo-600 text-white rounded-tr-md"
-          : "bg-slate-800 border border-slate-700 text-slate-200 rounded-tl-md"
-      }`}>
-        {msg.content.split("\n").map((line, i) => (
-          <p key={i} className={i > 0 ? "mt-2" : ""}>{line}</p>
-        ))}
+      <div className="bg-zinc-800 border border-zinc-700 rounded-2xl rounded-bl-sm px-4 py-3">
+        <div className="flex gap-1 items-center h-4">
+          <span
+            className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"
+            style={{ animationDelay: "0ms", animationDuration: "1s" }}
+          />
+          <span
+            className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"
+            style={{ animationDelay: "200ms", animationDuration: "1s" }}
+          />
+          <span
+            className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"
+            style={{ animationDelay: "400ms", animationDuration: "1s" }}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Preview panel ────────────────────────────────────────────────────────────
+// ─── Chat bubble ──────────────────────────────────────────────────────────────
 
-function PreviewPanel({ content }: { content: WebsiteContent }) {
-  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+function renderMessageContent(content: string) {
+  // Support **bold** and line breaks
+  const lines = content.split("\n");
+  return lines.map((line, lineIdx) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    return (
+      <p key={lineIdx} className={lineIdx > 0 ? "mt-1.5" : ""}>
+        {parts.map((part, partIdx) => {
+          if (part.startsWith("**") && part.endsWith("**")) {
+            return (
+              <strong key={partIdx} className="font-semibold">
+                {part.slice(2, -2)}
+              </strong>
+            );
+          }
+          return <span key={partIdx}>{part}</span>;
+        })}
+      </p>
+    );
+  });
+}
 
-  return (
-    <div className="bg-white rounded-xl overflow-hidden text-gray-900 text-sm h-full flex flex-col">
-      {/* Mini browser bar with device toggle */}
-      <div className="bg-slate-100 px-4 py-2 flex items-center gap-2 border-b flex-shrink-0">
-        <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-400" />
-          <div className="w-3 h-3 rounded-full bg-yellow-400" />
-          <div className="w-3 h-3 rounded-full bg-green-400" />
-        </div>
-        <div className="flex-1 bg-white rounded px-3 py-1 text-xs text-gray-400 font-mono">
-          tuosito.madecreative.pro
-        </div>
-        {/* Device toggle */}
-        <div className="flex bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <button onClick={() => setDevice("desktop")} className={`px-2 py-1 text-[10px] font-medium ${device === "desktop" ? "bg-indigo-100 text-indigo-600" : "text-gray-400"}`}>
-            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5"><rect x="1" y="2" width="14" height="9" rx="1" stroke="currentColor" fill="none" strokeWidth="1.2"/><path d="M5 13h6M8 11v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-          </button>
-          <button onClick={() => setDevice("mobile")} className={`px-2 py-1 text-[10px] font-medium ${device === "mobile" ? "bg-indigo-100 text-indigo-600" : "text-gray-400"}`}>
-            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5"><rect x="4" y="1" width="8" height="14" rx="1.5" stroke="currentColor" fill="none" strokeWidth="1.2"/><circle cx="8" cy="13" r="0.8" fill="currentColor"/></svg>
-          </button>
+function ChatBubble({ msg }: { msg: ChatMessage }) {
+  const isUser = msg.role === "user";
+
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className="flex items-end gap-2 max-w-[80%]">
+          <div className="bg-indigo-600 text-white rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed">
+            {renderMessageContent(msg.content)}
+          </div>
+          <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0 mb-0.5">
+            <User className="w-3.5 h-3.5 text-white" />
+          </div>
         </div>
       </div>
+    );
+  }
 
-      {/* Preview content */}
-      <div className={`overflow-y-auto flex-1 ${device === "mobile" ? "max-w-full sm:max-w-[390px] mx-auto border-x border-gray-200" : ""}`}>
-      <div className="p-6 space-y-6">
-        {/* Hero */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-8 text-white">
-          <h1 className="text-2xl font-bold mb-2">{content.heroText || "Il tuo titolo"}</h1>
-          <p className="text-sm text-gray-300">{content.heroDescription || "La tua descrizione"}</p>
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-end gap-2.5 max-w-[85%]">
+        <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
+          <Bot className="w-3.5 h-3.5 text-indigo-400" />
         </div>
+        <div className="bg-zinc-800 border border-zinc-700 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-zinc-200 leading-relaxed">
+          {renderMessageContent(msg.content)}
+        </div>
+      </div>
+      {msg.cost !== undefined && (
+        <p className="text-[10px] text-zinc-600 pl-10">
+          {msg.cost.toFixed(1)} crediti usati
+        </p>
+      )}
+    </div>
+  );
+}
 
+// ─── Preview site renderer ────────────────────────────────────────────────────
+
+function SitePreview({ content }: { content: WebsiteContent }) {
+  const hasContent =
+    content.heroText ||
+    content.heroDescription ||
+    content.phone ||
+    content.email ||
+    content.address ||
+    content.whatsappNumber ||
+    (content.menuItems && content.menuItems.length > 0) ||
+    content.hours;
+
+  if (!hasContent) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center px-6 py-16 bg-white">
+        <div className="w-16 h-16 bg-zinc-100 rounded-2xl flex items-center justify-center mb-4">
+          <Sparkles className="w-8 h-8 text-zinc-300" />
+        </div>
+        <p className="text-sm font-medium text-zinc-400 mb-1">
+          Nessun contenuto ancora
+        </p>
+        <p className="text-xs text-zinc-300">
+          Inizia a chattare per creare il tuo sito
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white text-gray-900 text-sm min-h-full">
+      {/* Hero */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-8 py-12 text-white">
+        <h1 className="text-2xl font-bold mb-2 leading-tight">
+          {content.heroText || "Il tuo sito"}
+        </h1>
+        {content.heroDescription && (
+          <p className="text-sm text-slate-300 leading-relaxed max-w-sm">
+            {content.heroDescription}
+          </p>
+        )}
+      </div>
+
+      <div className="px-6 py-6 space-y-6">
         {/* Contact */}
         {(content.phone || content.email || content.address) && (
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wide">Contatti</h3>
-            {content.phone && <p className="text-sm flex items-center gap-2"><Phone className="w-3 h-3 text-gray-400" /> {content.phone}</p>}
-            {content.email && <p className="text-sm flex items-center gap-2"><Mail className="w-3 h-3 text-gray-400" /> {content.email}</p>}
-            {content.address && <p className="text-sm flex items-center gap-2"><MapPin className="w-3 h-3 text-gray-400" /> {content.address}</p>}
+          <section>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3">
+              Contatti
+            </h2>
+            <div className="space-y-2">
+              {content.phone && (
+                <div className="flex items-center gap-2.5 text-sm text-zinc-700">
+                  <Phone className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                  {content.phone}
+                </div>
+              )}
+              {content.email && (
+                <div className="flex items-center gap-2.5 text-sm text-zinc-700">
+                  <Mail className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                  {content.email}
+                </div>
+              )}
+              {content.address && (
+                <div className="flex items-center gap-2.5 text-sm text-zinc-700">
+                  <MapPin className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                  {content.address}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* WhatsApp */}
+        {content.whatsappNumber && (
+          <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-100 rounded-xl">
+            <div className="w-8 h-8 bg-[#25D366] rounded-full flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-green-800">
+                WhatsApp attivo
+              </p>
+              <p className="text-[11px] text-green-600">
+                {content.whatsappNumber}
+              </p>
+            </div>
           </div>
         )}
 
         {/* Menu */}
         {content.menuItems && content.menuItems.length > 0 && (
-          <div>
-            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wide mb-3">Menu / Listino</h3>
-            <div className="space-y-2">
+          <section>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3">
+              Menu / Listino
+            </h2>
+            <div className="space-y-1.5">
               {content.menuItems.map((item) => (
-                <div key={item.id} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-semibold text-sm">{item.name}</p>
-                    {item.description && <p className="text-xs text-gray-500">{item.description}</p>}
-                    {item.category && <span className="text-[10px] text-gray-400 uppercase">{item.category}</span>}
+                <div
+                  key={item.id}
+                  className="flex items-start justify-between p-3 bg-zinc-50 rounded-lg"
+                >
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="font-semibold text-sm text-zinc-900 leading-tight">
+                      {item.name}
+                    </p>
+                    {item.description && (
+                      <p className="text-xs text-zinc-500 mt-0.5 leading-snug">
+                        {item.description}
+                      </p>
+                    )}
+                    {item.category && (
+                      <span className="inline-block mt-1 text-[9px] font-semibold uppercase tracking-wide text-zinc-400">
+                        {item.category}
+                      </span>
+                    )}
                   </div>
-                  <span className="font-bold text-sm text-indigo-600">{item.price}</span>
+                  <span className="text-sm font-bold text-indigo-600 whitespace-nowrap">
+                    {item.price}
+                  </span>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {/* Hours */}
         {content.hours && (
-          <div>
-            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wide mb-2">Orari</h3>
-            <div className="grid grid-cols-2 gap-1 text-xs">
+          <section>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3 flex items-center gap-1.5">
+              <Clock className="w-3 h-3" /> Orari
+            </h2>
+            <div className="space-y-1">
               {Object.entries(content.hours).map(([day, h]) => (
-                <div key={day} className="flex justify-between px-2 py-1 bg-gray-50 rounded">
-                  <span className="font-medium uppercase">{day}</span>
-                  <span className="text-gray-500">{(h as { closed: boolean; open: string; close: string }).closed ? "Chiuso" : `${(h as { open: string }).open}-${(h as { close: string }).close}`}</span>
+                <div
+                  key={day}
+                  className="flex items-center justify-between px-3 py-1.5 bg-zinc-50 rounded-lg text-xs"
+                >
+                  <span className="font-semibold uppercase text-zinc-700">
+                    {day}
+                  </span>
+                  <span
+                    className={
+                      h.closed ? "text-zinc-400" : "text-zinc-700"
+                    }
+                  >
+                    {h.closed ? "Chiuso" : `${h.open} – ${h.close}`}
+                  </span>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
-
-        {/* WhatsApp indicator */}
-        {content.whatsappNumber && (
-          <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-            <div className="w-8 h-8 bg-[#25D366] rounded-full flex items-center justify-center">
-              <MessageCircle className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-green-700">WhatsApp attivo</p>
-              <p className="text-[10px] text-green-600">{content.whatsappNumber}</p>
-            </div>
-          </div>
-        )}
-      </div>
       </div>
     </div>
   );
 }
 
-// ─── Suggestions ──────────────────────────────────────────────────────────────
+// ─── Preview panel (toolbar + frame) ─────────────────────────────────────────
 
-const SUGGESTIONS = [
-  "Cambia il titolo del sito",
-  "Aggiungi 5 piatti al menu",
-  "Imposta il numero WhatsApp",
-  "Aggiorna gli orari di apertura",
-  "Migliora la descrizione del sito",
-  "Aggiungi i contatti",
-];
+function PreviewPanel({
+  content,
+  onRefresh,
+}: {
+  content: WebsiteContent;
+  onRefresh: () => void;
+}) {
+  const [device, setDevice] = useState<DeviceMode>("desktop");
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+  const frameWidths: Record<DeviceMode, string> = {
+    desktop: "w-full",
+    tablet: "w-[768px]",
+    mobile: "w-[375px]",
+  };
+
+  const deviceButtons: Array<{
+    mode: DeviceMode;
+    Icon: React.ComponentType<{ className?: string }>;
+    label: string;
+  }> = [
+    { mode: "desktop", Icon: Monitor, label: "Desktop" },
+    { mode: "tablet", Icon: Tablet, label: "Tablet" },
+    { mode: "mobile", Icon: Smartphone, label: "Mobile" },
+  ];
+
+  return (
+    <div className="flex flex-col h-full bg-zinc-900">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 flex-shrink-0">
+        {/* macOS-style dots */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="w-3 h-3 rounded-full bg-red-500/70" />
+          <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
+          <div className="w-3 h-3 rounded-full bg-green-500/70" />
+        </div>
+
+        {/* URL bar */}
+        <div className="flex-1 flex items-center bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1 min-w-0">
+          <span className="text-[11px] text-zinc-500 font-mono truncate select-none">
+            tuosito.madecreative.pro
+          </span>
+        </div>
+
+        {/* Device toggle */}
+        <div className="flex items-center bg-zinc-800 border border-zinc-700 rounded-md overflow-hidden flex-shrink-0">
+          {deviceButtons.map(({ mode, Icon, label }) => (
+            <button
+              key={mode}
+              onClick={() => setDevice(mode)}
+              title={label}
+              aria-label={label}
+              className={`px-2.5 py-1.5 transition-colors ${
+                device === mode
+                  ? "bg-indigo-600 text-white"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+        </div>
+
+        {/* Refresh */}
+        <button
+          onClick={onRefresh}
+          title="Aggiorna"
+          aria-label="Aggiorna anteprima"
+          className="p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-md transition-colors flex-shrink-0"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Preview frame */}
+      <div className="flex-1 overflow-auto bg-zinc-950 flex justify-center">
+        <div
+          className={`${frameWidths[device]} h-full overflow-auto bg-white transition-all duration-300`}
+          style={{ maxHeight: "100%" }}
+        >
+          <SitePreview content={content} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Chat panel ───────────────────────────────────────────────────────────────
+
+function ChatPanel({
+  messages,
+  loading,
+  credits,
+  input,
+  onInputChange,
+  onSend,
+  onSuggestion,
+  onUndo,
+  undoing,
+  projectName,
+  textareaRef,
+}: {
+  messages: ChatMessage[];
+  loading: boolean;
+  credits: Credits;
+  input: string;
+  onInputChange: (v: string) => void;
+  onSend: () => void;
+  onSuggestion: (s: string) => void;
+  onUndo: () => void;
+  undoing: boolean;
+  projectName: string;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+}) {
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const showSuggestions = messages.length === 0;
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onSend();
+    }
+  }
+
+  // Auto-resize textarea up to 4 rows
+  function handleTextareaChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const el = e.target;
+    el.style.height = "auto";
+    const lineHeight = 20;
+    const maxHeight = lineHeight * 4 + 24; // 4 rows + padding
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    onInputChange(el.value);
+  }
+
+  const creditsPercent =
+    credits.total > 0
+      ? Math.round((credits.remaining / credits.total) * 100)
+      : 0;
+  const creditsLow = credits.remaining <= Math.ceil(credits.total * 0.15);
+
+  return (
+    <div className="flex flex-col h-full bg-zinc-900">
+      {/* Panel header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-6 h-6 rounded-md bg-indigo-600/20 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+          </div>
+          <span className="text-sm font-semibold text-zinc-100 truncate">
+            {projectName}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Undo button */}
+          <button
+            onClick={onUndo}
+            disabled={undoing || messages.length === 0}
+            title="Annulla ultima modifica"
+            aria-label="Annulla ultima modifica"
+            className="p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Undo2 className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Credits badge */}
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${
+              creditsLow
+                ? "bg-amber-950/40 border-amber-800/50 text-amber-400"
+                : "bg-zinc-800 border-zinc-700 text-zinc-300"
+            }`}
+          >
+            <Coins
+              className={`w-3 h-3 ${creditsLow ? "text-amber-400" : "text-zinc-500"}`}
+            />
+            <span>{credits.remaining}</span>
+            <span className="text-zinc-600 font-normal">/ {credits.total}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Credits progress bar */}
+      <div className="h-0.5 bg-zinc-800 flex-shrink-0">
+        <div
+          className={`h-full transition-all duration-500 ${creditsLow ? "bg-amber-500" : "bg-indigo-500"}`}
+          style={{ width: `${creditsPercent}%` }}
+        />
+      </div>
+
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {showSuggestions && (
+          <div className="flex flex-col h-full min-h-[300px] justify-center">
+            {/* Greeting */}
+            <div className="flex items-end gap-2.5 mb-6">
+              <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
+                <Bot className="w-3.5 h-3.5 text-indigo-400" />
+              </div>
+              <div className="bg-zinc-800 border border-zinc-700 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-zinc-200 leading-relaxed">
+                <p>
+                  Ciao! Sono il tuo assistente AI.{" "}
+                  <strong className="font-semibold">
+                    Cosa vuoi fare con il tuo sito oggi?
+                  </strong>
+                </p>
+              </div>
+            </div>
+
+            {/* Suggestion chips */}
+            <div className="flex flex-wrap gap-2 pl-9">
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => onSuggestion(s)}
+                  disabled={loading || credits.remaining <= 0}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-full text-xs text-zinc-300 hover:border-indigo-500 hover:text-indigo-300 hover:bg-indigo-950/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronDown className="w-3 h-3 rotate-[-90deg] text-zinc-600" />
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <ChatBubble key={i} msg={msg} />
+        ))}
+
+        {loading && <TypingIndicator />}
+
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input area */}
+      <div className="flex-shrink-0 px-3 pb-3 pt-2 border-t border-zinc-800">
+        {credits.remaining <= 0 ? (
+          <div className="flex items-center gap-2 p-3 bg-amber-950/30 border border-amber-800/40 rounded-xl text-xs text-amber-400">
+            <Coins className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>
+              Crediti esauriti. Vai su{" "}
+              <a href="/billing" className="underline font-semibold">
+                Account
+              </a>{" "}
+              per ricaricare.
+            </span>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-end gap-2 bg-zinc-800 border border-zinc-700 rounded-xl p-2 focus-within:border-indigo-500/70 transition-colors">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleTextareaChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Scrivi cosa vuoi cambiare..."
+                disabled={loading}
+                rows={1}
+                aria-label="Messaggio per l'AI"
+                className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-600 resize-none focus:outline-none leading-5 py-1 px-1 disabled:opacity-50"
+                style={{ minHeight: "28px", maxHeight: "104px" }}
+              />
+              <button
+                onClick={onSend}
+                disabled={!input.trim() || loading}
+                aria-label="Invia messaggio"
+                className="flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="text-[10px] text-zinc-700 mt-1.5 text-center">
+              Haiku risponde in secondi · Opus genera qualita professionale &nbsp;·&nbsp; Invio per inviare
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function EditorPage() {
+  const { user } = useAuth();
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [credits, setCredits] = useState<Credits>({ remaining: 100, used: 0, total: 100 });
+  const [credits, setCredits] = useState<Credits>({
+    remaining: 100,
+    used: 0,
+    total: 100,
+  });
   const [content, setContent] = useState<WebsiteContent>({});
-  const [view, setView] = useState<"chat" | "preview" | "split">("split");
   const [undoing, setUndoing] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const projectName = user?.companyName ?? "Il tuo sito";
+
+  // Load credits + existing content on mount
   useEffect(() => {
-    // Load credits
-    fetch(`${API_URL}/portal/editor/chat/credits`, { headers: authHeaders() })
+    fetch(`${API_URL}/portal/editor/chat/credits`, {
+      headers: authHeaders(),
+    })
       .then((r) => r.json())
       .then((j: { success: boolean; data?: Credits }) => {
         if (j.success && j.data) setCredits(j.data);
       })
       .catch(() => {});
 
-    // Load current website content (may not exist yet)
     fetch(`${API_URL}/portal/editor`, { headers: authHeaders() })
       .then((r) => r.json())
-      .then((j: { success: boolean; data?: { pages?: WebsiteContent } }) => {
-        if (j.success && j.data?.pages) setContent(j.data.pages as WebsiteContent);
-      })
+      .then(
+        (j: {
+          success: boolean;
+          data?: { pages?: WebsiteContent };
+          error?: string;
+        }) => {
+          if (j.success && j.data?.pages) {
+            setContent(j.data.pages as WebsiteContent);
+          }
+        }
+      )
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const sendMessage = useCallback(
+    async (text?: string) => {
+      const msg = (text ?? input).trim();
+      if (!msg || loading) return;
 
-  async function sendMessage(text?: string) {
-    const msg = text ?? input.trim();
-    if (!msg || loading) return;
-    setInput("");
+      setInput("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
 
-    const userMsg: ChatMessage = { role: "user", content: msg };
-    setMessages((prev) => [...prev, userMsg]);
-    setLoading(true);
+      setMessages((prev) => [...prev, { role: "user", content: msg }]);
+      setLoading(true);
 
-    try {
-      const res = await fetch(`${API_URL}/portal/editor/chat`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({
-          message: msg,
-          history: messages.map((m) => ({ role: m.role, content: m.content })),
-        }),
-      });
+      try {
+        const res = await fetch(`${API_URL}/portal/editor/chat`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            message: msg,
+            history: messages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          }),
+        });
 
-      const json = await res.json() as {
-        success: boolean;
-        data?: {
-          response: string;
-          contentUpdates: Record<string, unknown> | null;
-          currentContent: WebsiteContent;
-          credits: Credits;
+        const json = (await res.json()) as {
+          success: boolean;
+          data?: {
+            response: string;
+            contentUpdates: Record<string, unknown> | null;
+            currentContent: WebsiteContent;
+            credits: Credits;
+            cost?: number;
+          };
+          error?: string;
         };
-        error?: string;
-      };
 
-      if (!res.ok) {
-        const errText = json.error ?? `Errore HTTP ${res.status}`;
-        setMessages((prev) => [...prev, { role: "assistant", content: `Errore: ${errText}` }]);
-        return;
+        if (!res.ok || !json.success) {
+          const errText =
+            json.error ??
+            `Errore del server (${res.status}). Riprova tra qualche secondo.`;
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: errText },
+          ]);
+          return;
+        }
+
+        if (json.data) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: json.data!.response,
+              cost: json.data!.cost,
+            },
+          ]);
+          if (json.data.currentContent) {
+            setContent(json.data.currentContent);
+          }
+          if (json.data.credits) {
+            setCredits(json.data.credits);
+          }
+        }
+      } catch (err) {
+        const errMsg =
+          err instanceof Error ? err.message : "Errore di connessione";
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `Errore di rete: ${errMsg}. Controlla la connessione e riprova.`,
+          },
+        ]);
+      } finally {
+        setLoading(false);
+        textareaRef.current?.focus();
       }
+    },
+    [input, loading, messages]
+  );
 
-      if (json.success && json.data) {
-        setMessages((prev) => [...prev, { role: "assistant", content: json.data!.response }]);
-        if (json.data.currentContent) setContent(json.data.currentContent);
-        if (json.data.credits) setCredits(json.data.credits);
-      } else {
-        setMessages((prev) => [...prev, { role: "assistant", content: json.error ?? "Errore. Riprova." }]);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Errore di connessione";
-      setMessages((prev) => [...prev, { role: "assistant", content: `Errore: ${msg}. Riprova.` }]);
-    } finally {
-      setLoading(false);
-      inputRef.current?.focus();
-    }
-  }
-
-  async function handleUndo() {
+  const handleUndo = useCallback(async () => {
     if (undoing) return;
     setUndoing(true);
     try {
@@ -298,165 +772,135 @@ export default function EditorPage() {
         headers: authHeaders(),
         body: JSON.stringify({}),
       });
-      const json = await res.json() as { success: boolean; data?: { content: WebsiteContent; restoredTo: string } };
+      const json = (await res.json()) as {
+        success: boolean;
+        data?: { content: WebsiteContent; restoredTo: string };
+        error?: string;
+      };
       if (json.success && json.data?.content) {
         setContent(json.data.content);
-        setMessages((prev) => [...prev, { role: "assistant", content: `Versione ripristinata (${new Date(json.data!.restoredTo).toLocaleString("it-IT")}). Il sito si aggiornera in ~2 minuti.` }]);
+        const dateStr = new Date(json.data.restoredTo).toLocaleString("it-IT");
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `Versione ripristinata al ${dateStr}. Le modifiche si aggiornano in \~2 minuti.`,
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content:
+              json.error ?? "Impossibile annullare. Nessuna versione precedente trovata.",
+          },
+        ]);
       }
-    } catch { /* */ }
-    finally { setUndoing(false); }
-  }
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Errore durante il ripristino. Riprova.",
+        },
+      ]);
+    } finally {
+      setUndoing(false);
+    }
+  }, [undoing]);
 
-  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    void sendMessage(`Ho caricato un'immagine: ${file.name} (${(file.size / 1024).toFixed(0)}KB). Usala come foto hero del sito.`);
+  function handleRefresh() {
+    setRefreshKey((k) => k + 1);
   }
-
-  const showChat = view === "chat" || view === "split";
-  const showPreview = view === "preview" || view === "split";
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col">
-      {/* Top bar */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-indigo-400" />
-            AI Editor
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Parla con l&apos;AI per modificare il tuo sito in tempo reale</p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Undo */}
-          <button
-            onClick={() => void handleUndo()}
-            disabled={undoing || messages.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-full text-xs font-medium text-slate-300 hover:text-white hover:border-slate-600 disabled:opacity-40 transition-colors"
-          >
-            {undoing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5"><path d="M3 8h10M3 8l3-3M3 8l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            Annulla
-          </button>
-
-          {/* Credits */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-full">
-            <Coins className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-xs font-semibold text-white">{credits.remaining}</span>
-            <span className="text-xs text-slate-500">/ {credits.total}</span>
-          </div>
-
-          {/* View toggle */}
-          <div className="flex bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
-            <button onClick={() => setView("chat")} className={`px-3 py-1.5 text-xs font-medium ${view === "chat" ? "bg-indigo-600 text-white" : "text-slate-400"}`}>
-              <MessageSquare className="w-3.5 h-3.5" />
-            </button>
-            <button onClick={() => setView("split")} className={`px-3 py-1.5 text-xs font-medium ${view === "split" ? "bg-indigo-600 text-white" : "text-slate-400"}`}>
-              Split
-            </button>
-            <button onClick={() => setView("preview")} className={`px-3 py-1.5 text-xs font-medium ${view === "preview" ? "bg-indigo-600 text-white" : "text-slate-400"}`}>
-              <Eye className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+    /*
+     * Break out of the dashboard's padding using negative margins.
+     * The dashboard <main> applies p-3 sm:p-4 md:p-6 lg:p-8 and max-w-7xl.
+     * We undo that here so the editor stretches edge-to-edge.
+     * Height: 100vh minus 64px for the sticky header.
+     */
+    <div
+      className="
+        -mx-3 -my-3
+        sm:-mx-4 sm:-my-4
+        md:-mx-6 md:-my-6
+        lg:-mx-8 lg:-my-8
+        bg-zinc-950
+      "
+      style={{ height: "calc(100vh - 64px)" }}
+    >
+      {/* ── Mobile tab bar (visible <md) ── */}
+      <div className="md:hidden flex items-stretch h-10 border-b border-zinc-800 bg-zinc-900 flex-shrink-0">
+        <button
+          onClick={() => setMobileTab("chat")}
+          className={`flex-1 flex items-center justify-center gap-2 text-xs font-medium transition-colors ${
+            mobileTab === "chat"
+              ? "text-indigo-400 border-b-2 border-indigo-500"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          Chat AI
+        </button>
+        <button
+          onClick={() => setMobileTab("preview")}
+          className={`flex-1 flex items-center justify-center gap-2 text-xs font-medium transition-colors ${
+            mobileTab === "preview"
+              ? "text-indigo-400 border-b-2 border-indigo-500"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <Monitor className="w-3.5 h-3.5" />
+          Anteprima
+        </button>
       </div>
 
-      {/* Main split area */}
-      <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0">
-        {/* Chat panel */}
-        {showChat && (
-          <div className={`flex flex-col bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden ${showPreview ? "w-full md:w-1/2" : "w-full"}`}>
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                  <div className="w-16 h-16 bg-indigo-600/20 rounded-2xl flex items-center justify-center mb-4">
-                    <Sparkles className="w-8 h-8 text-indigo-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Benvenuto nell&apos;AI Editor</h3>
-                  <p className="text-sm text-slate-400 mb-6 max-w-sm">
-                    Dimmi cosa vuoi cambiare sul tuo sito. Posso aggiornare testi, menu, contatti, orari e altro in tempo reale.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
-                    {SUGGESTIONS.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => void sendMessage(s)}
-                        className="text-left px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-300 hover:border-indigo-500 hover:text-indigo-300 transition-colors"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+      {/* ── Main split layout ── */}
+      <div
+        className="flex overflow-hidden"
+        style={{ height: "calc(100% - 0px)" }}
+      >
+        {/* Left: Chat */}
+        <div
+          className={`
+            ${mobileTab === "preview" ? "hidden" : "flex"}
+            md:flex flex-col
+            w-full md:w-[40%]
+            border-r border-zinc-800
+          `}
+        >
+          <ChatPanel
+            messages={messages}
+            loading={loading}
+            credits={credits}
+            input={input}
+            onInputChange={setInput}
+            onSend={() => void sendMessage()}
+            onSuggestion={(s) => void sendMessage(s)}
+            onUndo={() => void handleUndo()}
+            undoing={undoing}
+            projectName={projectName}
+            textareaRef={textareaRef}
+          />
+        </div>
 
-              {messages.map((msg, i) => (
-                <ChatBubble key={i} msg={msg} />
-              ))}
+        {/* Divider visual (desktop only) */}
+        <div className="hidden md:flex items-center justify-center w-0.5 bg-zinc-800 flex-shrink-0">
+          <div className="w-0.5 h-12 bg-zinc-700 rounded-full" />
+        </div>
 
-              {loading && (
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-indigo-400" />
-                  </div>
-                  <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-tl-md px-4 py-3">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Input */}
-            <div className="p-3 border-t border-slate-800">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => imageInputRef.current?.click()}
-                  disabled={loading || credits.remaining <= 0}
-                  className="px-3 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 hover:text-white hover:border-slate-600 transition-colors disabled:opacity-50"
-                  title="Carica immagine"
-                >
-                  <ImageIcon className="w-4 h-4" />
-                </button>
-                <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }}
-                  placeholder="Scrivi cosa vuoi cambiare..."
-                  disabled={loading || credits.remaining <= 0}
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
-                />
-                <button
-                  onClick={() => void sendMessage()}
-                  disabled={!input.trim() || loading || credits.remaining <= 0}
-                  className="px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
-              {credits.remaining <= 0 && (
-                <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
-                  <Coins className="w-3 h-3" /> Crediti esauriti — acquista altri crediti per continuare.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Preview panel */}
-        {showPreview && (
-          <div className={`${showChat ? "w-full md:w-1/2" : "w-full"}`}>
-            <PreviewPanel content={content} />
-          </div>
-        )}
+        {/* Right: Preview */}
+        <div
+          className={`
+            ${mobileTab === "chat" ? "hidden" : "flex"}
+            md:flex flex-col flex-1 min-w-0
+          `}
+          key={refreshKey}
+        >
+          <PreviewPanel content={content} onRefresh={handleRefresh} />
+        </div>
       </div>
     </div>
   );
