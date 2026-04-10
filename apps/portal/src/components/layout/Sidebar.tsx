@@ -160,7 +160,7 @@ export function Sidebar() {
       {/* Mobile sidebar */}
       <aside
         className={clsx(
-          "lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 shadow-2xl transition-transform duration-300",
+          "lg:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-slate-900 shadow-2xl transition-transform duration-300",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

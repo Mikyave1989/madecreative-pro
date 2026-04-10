@@ -46,7 +46,7 @@ export function Header() {
   return (
     <header className="flex h-14 items-center justify-between border-b border-border-subtle bg-bg-sidebar/80 px-6 backdrop-blur-sm">
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb">
+      <nav aria-label="Breadcrumb" className="hidden sm:block">
         <ol className="flex items-center gap-1 font-mono-tech text-[10px] uppercase tracking-widest">
           <li className="text-slate-600">Admin</li>
           {breadcrumbs.map((crumb, i) => (
@@ -65,9 +65,11 @@ export function Header() {
       </nav>
 
       {/* Right side */}
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-2 sm:gap-4">
         {/* Live clock */}
-        <LiveClock />
+        <span className="hidden sm:inline">
+          <LiveClock />
+        </span>
 
         {/* System status */}
         <div className="flex items-center gap-2">
@@ -75,7 +77,7 @@ export function Header() {
             className="h-1.5 w-1.5 rounded-full bg-neon-green system-online"
             aria-hidden="true"
           />
-          <span className="font-mono-tech text-[10px] uppercase tracking-widest text-neon-green/80">
+          <span className="hidden sm:inline font-mono-tech text-[10px] uppercase tracking-widest text-neon-green/80">
             System Online
           </span>
         </div>

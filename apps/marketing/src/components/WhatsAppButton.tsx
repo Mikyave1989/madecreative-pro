@@ -22,7 +22,7 @@ export function WhatsAppButton({ locale }: { locale: string }) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="WhatsApp"
-      className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-transform duration-200 hover:scale-110 active:scale-95"
+      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-transform duration-200 hover:scale-110 active:scale-95"
       style={{
         background: "#25D366",
         boxShadow: "0 4px 20px rgba(37,211,102,0.4)",

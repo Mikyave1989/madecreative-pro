@@ -65,7 +65,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
           <rect width="100%" height="100%" fill="url(#hero-grid)" />
         </svg>
         <div
-          className="orb-float absolute top-[18%] left-1/2 w-[760px] h-[520px] rounded-full"
+          className="orb-float hidden sm:block absolute top-[18%] left-1/2 w-[760px] h-[520px] rounded-full"
           style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.18) 0%, transparent 68%)" }}
         />
         <div
@@ -94,7 +94,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         </div>
 
         {/* Title */}
-        <h1 className="animate-fade-up delay-100 text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.05] tracking-tight mb-6">
+        <h1 className="animate-fade-up delay-100 text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.05] tracking-tight mb-6">
           <span style={{ color: "#f8fafc" }}>{t.hero.title}</span>
           <br />
           <span className="text-gradient">{t.hero.titleHighlight}</span>
@@ -181,7 +181,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         </div>
 
         {/* Social proof */}
-        <div className="animate-fade-up delay-400 mt-14 grid grid-cols-2 gap-8 max-w-md mx-auto">
+        <div className="animate-fade-up delay-400 mt-14 grid grid-cols-2 gap-4 sm:gap-8 max-w-md mx-auto">
           {proof.map((item) => (
             <div key={item.label} className="text-center">
               <div className="text-3xl font-bold" style={{ color: "#818cf8" }}>

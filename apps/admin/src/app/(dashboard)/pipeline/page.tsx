@@ -426,7 +426,7 @@ function SummaryStats({ counts }: { counts: Record<string, number> }) {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-3 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
       {stats.map(({ label, value, icon: Icon, color }) => (
         <Card key={label} neon="subtle" className="p-4">
           <div className="flex items-center gap-3">
@@ -561,7 +561,7 @@ export default function PipelinePage() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1
-            className="font-orbitron text-2xl font-bold text-neon-green"
+            className="font-orbitron text-lg sm:text-xl md:text-2xl font-bold text-neon-green"
             style={{ textShadow: "0 0 12px rgba(34,197,94,0.35)" }}
           >
             <TrendingUp className="inline h-6 w-6 mr-2 -mt-1" aria-hidden="true" />
@@ -600,7 +600,7 @@ export default function PipelinePage() {
       {loading && !data && (
         <>
           {/* Summary stats skeleton */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             {[1, 2, 3].map((i) => (
               <StatSkeleton key={i} />
             ))}
@@ -630,6 +630,9 @@ export default function PipelinePage() {
           <ColumnCountBar data={data} />
 
           {/* Kanban board */}
+          <div className="relative">
+            {/* Mobile scroll hint gradient */}
+            <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 bg-gradient-to-l from-bg-base/80 to-transparent md:hidden" aria-hidden="true" />
           <div
             className="overflow-x-auto pb-4"
             role="list"
@@ -656,6 +659,7 @@ export default function PipelinePage() {
                 );
               })}
             </div>
+          </div>
           </div>
         </>
       )}

@@ -352,10 +352,10 @@ function ConversationsTable() {
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">
                 Prima domanda
               </th>
-              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">
+              <th className="hidden sm:table-cell text-center text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">
                 Messaggi
               </th>
-              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">
+              <th className="hidden sm:table-cell text-center text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">
                 Durata
               </th>
               <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">
@@ -383,12 +383,12 @@ function ConversationsTable() {
                   <td className="px-4 py-4 max-w-xs">
                     <p className="text-sm text-gray-700 truncate">{conv.firstMessage}</p>
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="hidden sm:table-cell px-4 py-4 text-center">
                     <span className="text-sm font-medium text-gray-900">
                       {conv.messageCount}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="hidden sm:table-cell px-4 py-4 text-center">
                     <span className="text-sm text-gray-600">{conv.durationMin}m</span>
                   </td>
                   <td className="px-4 py-4 text-center">

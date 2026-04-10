@@ -311,7 +311,7 @@ function AgentPipeline() {
         - Mobile: flex-col with connector lines going down
       */}
       <div
-        className="relative flex flex-col md:flex-row items-center justify-center gap-0"
+        className="relative flex flex-col md:flex-row items-center justify-center gap-6 sm:gap-8 lg:gap-12 md:gap-0"
         role="list"
         aria-label="Pipeline degli agenti AI"
       >
@@ -333,7 +333,7 @@ function AgentPipeline() {
               >
                 {/* Icon circle */}
                 <div
-                  className="relative w-16 h-16 rounded-2xl flex items-center justify-center mb-3 transition-all duration-500"
+                  className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mb-3 transition-all duration-500"
                   style={{
                     background: isActive
                       ? `${agent.color}20`
@@ -370,7 +370,7 @@ function AgentPipeline() {
 
                 {/* Description */}
                 <span
-                  className="text-xs leading-snug max-w-[90px] transition-colors duration-500"
+                  className="text-xs leading-snug max-w-full sm:max-w-[90px] transition-colors duration-500"
                   style={{
                     color: isActive
                       ? "rgba(248,250,252,0.75)"

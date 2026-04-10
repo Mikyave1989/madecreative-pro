@@ -88,7 +88,7 @@ function ClientDrawer({
           </div>
 
           {/* Contact */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="font-mono-tech text-[10px] uppercase tracking-widest text-slate-600 mb-1 flex items-center gap-1">
                 <Mail className="h-3 w-3" /> Email
@@ -111,7 +111,7 @@ function ClientDrawer({
           </div>
 
           {/* Location + Sector */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="font-mono-tech text-[10px] uppercase tracking-widest text-slate-600 mb-1 flex items-center gap-1">
                 <MapPin className="h-3 w-3" /> Location
@@ -171,7 +171,7 @@ function ClientDrawer({
           </div>
 
           {/* Meta */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="font-mono-tech text-[10px] uppercase tracking-widest text-slate-600 mb-1 flex items-center gap-1">
                 <Calendar className="h-3 w-3" /> Created
@@ -279,7 +279,7 @@ export default function ClientsPage() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1
-            className="font-orbitron text-2xl font-bold text-neon-green"
+            className="font-orbitron text-lg sm:text-xl md:text-2xl font-bold text-neon-green"
             style={{ textShadow: "0 0 12px #10b98140" }}
           >
             Clients
@@ -359,11 +359,11 @@ export default function ClientsPage() {
         <Thead>
           <tr>
             <Th>Company</Th>
-            <Th>Email</Th>
+            <Th className="hidden md:table-cell">Email</Th>
             <Th>Plan</Th>
             <Th>Status</Th>
-            <Th>Country</Th>
-            <Th>Created</Th>
+            <Th className="hidden md:table-cell">Country</Th>
+            <Th className="hidden md:table-cell">Created</Th>
           </tr>
         </Thead>
         <Tbody>
@@ -398,7 +398,7 @@ export default function ClientsPage() {
                     </div>
                   </div>
                 </Td>
-                <Td>
+                <Td className="hidden md:table-cell">
                   <span className="font-mono-tech text-xs text-slate-400">
                     {client.email}
                   </span>
@@ -413,7 +413,7 @@ export default function ClientsPage() {
                     {client.status}
                   </Badge>
                 </Td>
-                <Td>
+                <Td className="hidden md:table-cell">
                   <span className="font-mono-tech text-[11px] text-slate-400">
                     {client.country}
                     {client.city && (
@@ -421,7 +421,7 @@ export default function ClientsPage() {
                     )}
                   </span>
                 </Td>
-                <Td>
+                <Td className="hidden md:table-cell">
                   <span className="font-mono-tech text-[10px] text-slate-600">
                     {new Date(client.createdAt).toLocaleDateString("it-IT")}
                   </span>

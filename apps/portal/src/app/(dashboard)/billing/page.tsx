@@ -493,7 +493,7 @@ export default function BillingPage() {
                         <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Data
                         </th>
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        <th className="hidden sm:table-cell text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Descrizione
                         </th>
                         <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
@@ -511,7 +511,7 @@ export default function BillingPage() {
                           <td className="px-6 py-4 text-slate-400 whitespace-nowrap tabular-nums">
                             {formatShortDate(invoice.date)}
                           </td>
-                          <td className="px-6 py-4 text-white">{invoice.description}</td>
+                          <td className="hidden sm:table-cell px-6 py-4 text-white">{invoice.description}</td>
                           <td className="px-6 py-4 text-right font-semibold text-white tabular-nums whitespace-nowrap">
                             €{invoice.amount.toFixed(2)}
                           </td>

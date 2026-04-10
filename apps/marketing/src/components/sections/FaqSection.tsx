@@ -49,7 +49,7 @@ function FaqItem({
     >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full text-left px-6 py-5 flex items-center justify-between gap-4"
+        className="w-full text-left px-4 py-3 sm:px-6 sm:py-5 flex items-center justify-between gap-4"
         aria-expanded={open}
       >
         <span

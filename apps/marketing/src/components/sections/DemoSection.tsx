@@ -36,7 +36,7 @@ export function DemoSection({ t, locale }: DemoSectionProps) {
   }
 
   const inputClass =
-    "w-full px-4 py-3.5 rounded-xl text-sm outline-none transition-all placeholder:text-[rgba(248,250,252,0.25)]";
+    "w-full px-4 py-3 sm:py-3.5 rounded-xl text-sm outline-none transition-all placeholder:text-[rgba(248,250,252,0.25)]";
   const inputStyle = {
     background: "#0d1117",
     border: "1px solid rgba(255,255,255,0.1)",
@@ -203,7 +203,7 @@ export function DemoSection({ t, locale }: DemoSectionProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="p-8 md:p-12 flex flex-col items-center justify-center min-h-[320px]"
+                className="p-8 md:p-12 flex flex-col items-center justify-center min-h-[200px] sm:min-h-[320px]"
               >
                 <div
                   className="w-full max-w-md font-mono text-sm rounded-2xl p-6 space-y-2"

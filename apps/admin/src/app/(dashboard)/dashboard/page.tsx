@@ -400,7 +400,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="mb-6">
         <h1
-          className="font-orbitron text-2xl font-bold text-neon-cyan"
+          className="font-orbitron text-lg sm:text-xl md:text-2xl font-bold text-neon-cyan"
           style={{ textShadow: "0 0 12px #00f0ff40" }}
         >
           Dashboard
@@ -465,7 +465,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Funnel + Activity */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {loading || !data ? (
             <FunnelSkeleton />

@@ -249,7 +249,7 @@ function ProspectDrawer({
 
           {/* Meta */}
           <div className="rounded border border-border-subtle bg-bg-elevated/50 p-3">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
               <dt className="font-mono-tech text-[10px] uppercase tracking-widest text-slate-600">
                 Created
               </dt>
@@ -405,7 +405,7 @@ export default function ProspectsPage() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1
-            className="font-orbitron text-2xl font-bold text-neon-violet"
+            className="font-orbitron text-lg sm:text-xl md:text-2xl font-bold text-neon-violet"
             style={{ textShadow: "0 0 12px #a855f740" }}
           >
             Prospects
@@ -430,7 +430,7 @@ export default function ProspectsPage() {
               label="Search"
             />
           </div>
-          <div className="w-32">
+          <div className="w-full sm:w-32">
             <Select
               label="Country"
               value={country}
@@ -441,7 +441,7 @@ export default function ProspectsPage() {
               {country && <option value={country}>{country}</option>}
             </Select>
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-40">
             <Select
               label="Sector"
               value={sector}
@@ -451,7 +451,7 @@ export default function ProspectsPage() {
               {sector && <option value={sector}>{sector}</option>}
             </Select>
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-40">
             <Select
               label="Status"
               value={status}
@@ -465,7 +465,7 @@ export default function ProspectsPage() {
               ))}
             </Select>
           </div>
-          <div className="w-36">
+          <div className="w-full sm:w-36">
             <Select
               label="Sort By"
               value={sortBy}
@@ -534,12 +534,12 @@ export default function ProspectsPage() {
         <Thead>
           <tr>
             <Th>Company</Th>
-            <Th>Contact</Th>
-            <Th>Country</Th>
+            <Th className="hidden md:table-cell">Contact</Th>
+            <Th className="hidden md:table-cell">Country</Th>
             <Th>Sector</Th>
             <Th>Score</Th>
             <Th>Status</Th>
-            <Th>Created</Th>
+            <Th className="hidden md:table-cell">Created</Th>
           </tr>
         </Thead>
         <Tbody>
@@ -576,7 +576,7 @@ export default function ProspectsPage() {
                     )}
                   </div>
                 </Td>
-                <Td>
+                <Td className="hidden md:table-cell">
                   {prospect.contactName ? (
                     <div>
                       <p className="text-xs text-slate-300">
@@ -594,7 +594,7 @@ export default function ProspectsPage() {
                     </span>
                   )}
                 </Td>
-                <Td>
+                <Td className="hidden md:table-cell">
                   <span className="font-mono-tech text-[11px] text-slate-400">
                     {prospect.country}
                     {prospect.city ? (
@@ -617,7 +617,7 @@ export default function ProspectsPage() {
                     {STATUS_LABEL[prospect.status]}
                   </Badge>
                 </Td>
-                <Td>
+                <Td className="hidden md:table-cell">
                   <span
                     className="font-mono-tech text-[10px] text-slate-600"
                     title={new Date(prospect.createdAt).toLocaleString("it-IT")}

@@ -56,7 +56,7 @@ export function FeaturesSection({ t }: FeaturesSectionProps) {
           >
             {t.features.sectionLabel}
           </span>
-          <h2 className="text-4xl sm:text-5xl font-bold mb-4" style={{ color: "#f8fafc" }}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4" style={{ color: "#f8fafc" }}>
             {t.features.title}
           </h2>
           <p className="text-lg max-w-xl mx-auto" style={{ color: "rgba(248,250,252,0.5)" }}>
@@ -65,14 +65,14 @@ export function FeaturesSection({ t }: FeaturesSectionProps) {
         </div>
 
         {/* Feature grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {t.features.items.map((item, i) => {
             const color = COLORS[i % COLORS.length]!;
             const icon = ICONS[i % ICONS.length];
             return (
               <div
                 key={i}
-                className="group relative p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1"
+                className="group relative p-4 sm:p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1"
                 style={{
                   background: "#161b27",
                   border: "1px solid rgba(255,255,255,0.07)",

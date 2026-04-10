@@ -78,7 +78,7 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isUser ? "bg-indigo-600" : "bg-slate-700"}`}>
         {isUser ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-indigo-400" />}
       </div>
-      <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+      <div className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
         isUser
           ? "bg-indigo-600 text-white rounded-tr-md"
           : "bg-slate-800 border border-slate-700 text-slate-200 rounded-tl-md"
@@ -120,7 +120,7 @@ function PreviewPanel({ content }: { content: WebsiteContent }) {
       </div>
 
       {/* Preview content */}
-      <div className={`overflow-y-auto flex-1 ${device === "mobile" ? "max-w-[390px] mx-auto border-x border-gray-200" : ""}`}>
+      <div className={`overflow-y-auto flex-1 ${device === "mobile" ? "max-w-full sm:max-w-[390px] mx-auto border-x border-gray-200" : ""}`}>
       <div className="p-6 space-y-6">
         {/* Hero */}
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-8 text-white">
@@ -355,10 +355,10 @@ export default function EditorPage() {
       </div>
 
       {/* Main split area */}
-      <div className="flex-1 flex gap-4 min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
         {/* Chat panel */}
         {showChat && (
-          <div className={`flex flex-col bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden ${showPreview ? "w-1/2" : "w-full"}`}>
+          <div className={`flex flex-col bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden ${showPreview ? "w-full lg:w-1/2" : "w-full"}`}>
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 && (
@@ -446,7 +446,7 @@ export default function EditorPage() {
 
         {/* Preview panel */}
         {showPreview && (
-          <div className={`${showChat ? "w-1/2" : "w-full"}`}>
+          <div className={`${showChat ? "w-full lg:w-1/2" : "w-full"}`}>
             <PreviewPanel content={content} />
           </div>
         )}

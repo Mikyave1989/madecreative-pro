@@ -446,7 +446,7 @@ export default function MetricsPage() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1
-            className="font-orbitron text-2xl font-bold text-neon-blue"
+            className="font-orbitron text-lg sm:text-xl md:text-2xl font-bold text-neon-blue"
             style={{ textShadow: "0 0 12px #3b82f640" }}
           >
             Metrics

@@ -18,11 +18,11 @@ export function Footer({ t, locale }: FooterProps) {
       }}
     >
       <div className="max-w-7xl mx-auto">
-        <div className="grid md:grid-cols-4 gap-12 mb-12">
+        <div className="grid md:grid-cols-4 gap-6 sm:gap-8 lg:gap-12 mb-12">
           {/* Brand */}
           <div className="md:col-span-2">
             <Link href={`/${locale}`} className="inline-block mb-4">
-              <span className="text-2xl font-bold" style={{ color: "#f8fafc" }}>
+              <span className="text-xl sm:text-2xl font-bold" style={{ color: "#f8fafc" }}>
                 made<span style={{ color: "#6366f1" }}>creative</span>
               </span>
             </Link>
@@ -33,7 +33,7 @@ export function Footer({ t, locale }: FooterProps) {
               {t.footer.tagline}
             </p>
             {/* Social icons */}
-            <div className="flex gap-4 mt-6">
+            <div className="flex gap-3 sm:gap-4 mt-6">
               <a
                 href="https://twitter.com/madecreativepro"
                 className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"

@@ -109,7 +109,7 @@ export function Nav({ t, locale }: NavProps) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-40 rounded-xl shadow-2xl overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-40 max-w-[90vw] rounded-xl shadow-2xl overflow-hidden"
                     style={{
                       background: "#0d1117",
                       border: "1px solid rgba(255,255,255,0.08)",
@@ -192,7 +192,7 @@ export function Nav({ t, locale }: NavProps) {
                 </Link>
               ))}
               <div className="pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-                <div className="grid grid-cols-4 gap-1 mb-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 mb-3">
                   {SUPPORTED_LOCALES.map((loc) => (
                     <button
                       key={loc}

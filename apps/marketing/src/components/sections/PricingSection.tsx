@@ -136,7 +136,7 @@ export function PricingSection({ t: _t, locale }: PricingSectionProps) {
         </div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-3 gap-6 items-stretch">
+        <div className="grid md:grid-cols-3 gap-4 sm:gap-6 items-stretch">
           {tiers.map((tier) => {
             const price = billing === "monthly" ? tier.monthlyPrice : tier.annualPrice;
             const link = getSignupUrl(tier.key, billing);
@@ -144,7 +144,7 @@ export function PricingSection({ t: _t, locale }: PricingSectionProps) {
             const isSectionHeader = (s: string) => s.includes("Starter") || s.includes("Growth") || s.startsWith("Alles") || s.startsWith("Tutto") || s.startsWith("Everything") || s.startsWith("Todo") || s.startsWith("Tout") || s.startsWith("Tudo");
 
             return (
-              <div key={tier.key} className="relative flex flex-col rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1" style={{
+              <div key={tier.key} className="relative flex flex-col rounded-2xl p-4 sm:p-6 lg:p-7 transition-all duration-300 hover:-translate-y-1" style={{
                 background: tier.featured ? "linear-gradient(180deg, rgba(99,102,241,0.08) 0%, rgba(13,17,23,1) 100%)" : "#0d1117",
                 border: `1px solid ${tier.featured ? "rgba(99,102,241,0.35)" : "rgba(255,255,255,0.07)"}`,
                 boxShadow: tier.featured ? "0 0 60px rgba(99,102,241,0.1)" : undefined,
@@ -163,7 +163,7 @@ export function PricingSection({ t: _t, locale }: PricingSectionProps) {
                 </div>
 
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="text-4xl font-bold leading-none tabular-nums" style={{ color: "#f8fafc" }}>
+                  <span className="text-3xl sm:text-4xl font-bold leading-none tabular-nums" style={{ color: "#f8fafc" }}>
                     €{price}
                   </span>
                   <span className="text-sm mb-1" style={{ color: "rgba(248,250,252,0.4)" }}>

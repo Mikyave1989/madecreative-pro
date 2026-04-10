@@ -246,7 +246,7 @@ export default function WebsitePage() {
               title="Lighthouse Score"
               subtitle="Misurato su Google PageSpeed — dati aggiornati ogni settimana"
             />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               <LighthouseCircle
                 score={website.lighthouse.performance}
                 label="Performance"

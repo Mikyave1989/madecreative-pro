@@ -112,7 +112,7 @@ export function Sidebar() {
           // Desktop
           collapsed ? "md:w-16" : "md:w-60",
           // Mobile
-          mobileOpen ? "w-60 translate-x-0" : "w-60 -translate-x-full md:translate-x-0"
+          mobileOpen ? "w-60 max-w-[85vw] translate-x-0" : "w-60 max-w-[85vw] -translate-x-full md:translate-x-0"
         )}
       >
         {/* Logo */}

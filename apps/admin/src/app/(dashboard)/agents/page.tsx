@@ -322,7 +322,7 @@ export default function AgentsPage() {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1
-            className="font-orbitron text-2xl font-bold text-neon-amber"
+            className="font-orbitron text-lg sm:text-xl md:text-2xl font-bold text-neon-amber"
             style={{ textShadow: "0 0 12px #f59e0b40" }}
           >
             Agent Monitor
@@ -411,13 +411,13 @@ export default function AgentsPage() {
       <Table>
         <Thead>
           <tr>
-            <Th>ID</Th>
+            <Th className="hidden md:table-cell">ID</Th>
             <Th>Agent</Th>
             <Th>Status</Th>
             <Th>Progress</Th>
-            <Th>Duration</Th>
-            <Th>Cost</Th>
-            <Th>Created</Th>
+            <Th className="hidden md:table-cell">Duration</Th>
+            <Th className="hidden md:table-cell">Cost</Th>
+            <Th className="hidden md:table-cell">Created</Th>
             <Th>Actions</Th>
           </tr>
         </Thead>
@@ -447,7 +447,7 @@ export default function AgentsPage() {
                   onClick={() => setActiveJob(job)}
                   selected={activeJob?.id === job.id}
                 >
-                  <Td>
+                  <Td className="hidden md:table-cell">
                     <span className="font-mono-tech text-[10px] text-slate-500">
                       {truncateId(job.id)}
                     </span>
@@ -492,17 +492,17 @@ export default function AgentsPage() {
                       </span>
                     )}
                   </Td>
-                  <Td>
+                  <Td className="hidden md:table-cell">
                     <span className="font-mono-tech text-[10px] text-slate-500">
                       {job.durationMs !== null ? formatDuration(job.durationMs) : "—"}
                     </span>
                   </Td>
-                  <Td>
+                  <Td className="hidden md:table-cell">
                     <span className="font-mono-tech text-[10px] text-slate-500">
                       {job.costEur !== null ? formatCurrency(job.costEur) : "—"}
                     </span>
                   </Td>
-                  <Td>
+                  <Td className="hidden md:table-cell">
                     <span className="font-mono-tech text-[10px] text-slate-500">
                       {timeAgo(job.createdAt)}
                     </span>

@@ -1504,7 +1504,7 @@ export default function CampaignsPage() {
             <Rocket className="h-4 w-4 text-neon-cyan" />
           </div>
           <h1
-            className="font-orbitron text-2xl font-bold text-neon-cyan"
+            className="font-orbitron text-lg sm:text-xl md:text-2xl font-bold text-neon-cyan"
             style={{ textShadow: "0 0 14px #00f0ff40" }}
           >
             Campaign Control
@@ -1518,7 +1518,7 @@ export default function CampaignsPage() {
 
       {/* ── Tab Navigation ── */}
       <div
-        className="mb-6 flex border-b border-border-subtle"
+        className="mb-6 flex flex-wrap border-b border-border-subtle"
         role="tablist"
         aria-label="Campaign management tabs"
       >

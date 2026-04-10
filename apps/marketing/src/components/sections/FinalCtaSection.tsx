@@ -43,7 +43,7 @@ export function FinalCtaSection({ t, locale }: FinalCtaSectionProps) {
 
         {/* Title */}
         <h2
-          className="text-5xl sm:text-6xl md:text-7xl font-bold leading-tight mb-6"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight mb-6"
           style={{ color: "#f8fafc" }}
         >
           {t.finalCta.title.split("60").map((part, i, arr) =>
@@ -68,7 +68,7 @@ export function FinalCtaSection({ t, locale }: FinalCtaSectionProps) {
         {/* CTA */}
         <a
           href={`/${locale}#pricing`}
-          className="inline-flex items-center gap-3 gradient-indigo text-white px-10 py-5 rounded-2xl text-lg font-bold hover:opacity-90 transition-all duration-200 hover:-translate-y-1 glow-indigo"
+          className="inline-flex items-center gap-3 gradient-indigo text-white px-6 py-3 sm:px-8 sm:py-4 md:px-10 md:py-5 rounded-2xl text-base sm:text-lg font-bold hover:opacity-90 transition-all duration-200 hover:-translate-y-1 glow-indigo"
         >
           {t.finalCta.cta}
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24">
