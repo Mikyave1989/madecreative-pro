@@ -224,11 +224,11 @@ export default function EditorPage() {
       })
       .catch(() => {});
 
-    // Load current content
-    fetch(`${API_URL}/portal/website/content`, { headers: authHeaders() })
+    // Load current website content (may not exist yet)
+    fetch(`${API_URL}/portal/editor`, { headers: authHeaders() })
       .then((r) => r.json())
-      .then((j: { success: boolean; data?: WebsiteContent }) => {
-        if (j.success && j.data) setContent(j.data);
+      .then((j: { success: boolean; data?: { pages?: WebsiteContent } }) => {
+        if (j.success && j.data?.pages) setContent(j.data.pages as WebsiteContent);
       })
       .catch(() => {});
   }, []);
@@ -267,6 +267,12 @@ export default function EditorPage() {
         error?: string;
       };
 
+      if (!res.ok) {
+        const errText = json.error ?? `Errore HTTP ${res.status}`;
+        setMessages((prev) => [...prev, { role: "assistant", content: `Errore: ${errText}` }]);
+        return;
+      }
+
       if (json.success && json.data) {
         setMessages((prev) => [...prev, { role: "assistant", content: json.data!.response }]);
         if (json.data.currentContent) setContent(json.data.currentContent);
@@ -274,8 +280,9 @@ export default function EditorPage() {
       } else {
         setMessages((prev) => [...prev, { role: "assistant", content: json.error ?? "Errore. Riprova." }]);
       }
-    } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Errore di connessione. Riprova." }]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Errore di connessione";
+      setMessages((prev) => [...prev, { role: "assistant", content: `Errore: ${msg}. Riprova.` }]);
     } finally {
       setLoading(false);
       inputRef.current?.focus();
