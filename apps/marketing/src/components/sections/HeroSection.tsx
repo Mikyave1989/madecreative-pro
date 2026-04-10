@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { Translations } from "@/lib/i18n";
 
 interface HeroSectionProps {
@@ -45,6 +48,13 @@ const SOCIAL_PROOF: Record<string, Array<{ value: string; label: string }>> = {
 
 export function HeroSection({ t, locale }: HeroSectionProps) {
   const proof = SOCIAL_PROOF[locale] ?? SOCIAL_PROOF["en"]!;
+  const [url, setUrl] = useState("");
+
+  function handleAnalyze(e: React.FormEvent) {
+    e.preventDefault();
+    if (!url.trim()) return;
+    window.location.href = `/${locale}#pricing?url=${encodeURIComponent(url.trim())}`;
+  }
 
   return (
     <section
@@ -105,21 +115,52 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
           {t.hero.subtitle}
         </p>
 
-        {/* CTAs */}
-        <div className="animate-fade-up delay-300 flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
-          <a
-            href={`/${locale}#pricing`}
-            className="glow-indigo inline-flex items-center gap-2 gradient-indigo text-white px-8 py-4 rounded-xl text-base font-semibold hover:opacity-90 transition-all duration-200 hover:-translate-y-0.5"
+        {/* URL input bar */}
+        <form
+          onSubmit={handleAnalyze}
+          className="animate-fade-up delay-300 flex flex-col sm:flex-row gap-3 justify-center items-center max-w-2xl mx-auto mb-6"
+        >
+          <div className="relative flex-1 w-full">
+            <svg
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              style={{ color: "rgba(248,250,252,0.35)" }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+            </svg>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder={t.hero.urlPlaceholder}
+              className="w-full pl-12 pr-4 py-4 rounded-xl text-base outline-none transition-all duration-200 focus:ring-2 focus:ring-indigo-500/40"
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                color: "#f8fafc",
+              }}
+            />
+          </div>
+          <button
+            type="submit"
+            className="glow-indigo inline-flex items-center gap-2 gradient-indigo text-white px-8 py-4 rounded-xl text-base font-semibold hover:opacity-90 transition-all duration-200 hover:-translate-y-0.5 whitespace-nowrap"
           >
-            {t.hero.cta}
+            {t.hero.urlCta}
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
-          </a>
+          </button>
+        </form>
+
+        {/* Secondary CTA */}
+        <div className="animate-fade-up delay-300 flex justify-center items-center mb-10">
           <a
             href={`/${locale}#how-it-works`}
-            className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-sm transition-colors"
-            style={{ color: "rgba(248,250,252,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm transition-colors"
+            style={{ color: "rgba(248,250,252,0.5)" }}
           >
             {t.hero.ctaSecondary}
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

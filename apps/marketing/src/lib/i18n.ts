@@ -33,6 +33,8 @@ export interface Translations {
     cta: string;
     ctaSecondary: string;
     trustNote: string;
+    urlPlaceholder: string;
+    urlCta: string;
   };
   howItWorks: {
     sectionLabel: string;
@@ -181,7 +183,7 @@ export const translations: Record<Locale, Translations> = {
       howItWorks: "So funktioniert's",
       demo: "Demo",
       faq: "FAQ",
-      startFree: "Kostenlos starten",
+      startFree: "Jetzt starten",
     },
     hero: {
       badge: "KI-gestütztes digitales Marketing",
@@ -192,6 +194,8 @@ export const translations: Record<Locale, Translations> = {
       cta: "Starte ab €25/Monat",
       ctaSecondary: "So funktioniert's",
       trustNote: "Keine Kreditkarte erforderlich. Jederzeit kündbar.",
+      urlPlaceholder: "Gib deine Website-URL ein...",
+      urlCta: "Jetzt analysieren",
     },
     howItWorks: {
       sectionLabel: "So funktioniert's",
@@ -300,7 +304,7 @@ export const translations: Record<Locale, Translations> = {
       title: "Deine Website ist 60 Sekunden entfernt",
       subtitle:
         "Tritt den 127+ Unternehmen bei, die bereits mit MadeCreative online sind und täglich neue Kunden gewinnen.",
-      cta: "Jetzt kostenlos starten",
+      cta: "Jetzt starten",
       trustNote: "Keine Kreditkarte. Kein Vertrag. Sofortiger Start.",
     },
     footer: {
@@ -462,7 +466,7 @@ export const translations: Record<Locale, Translations> = {
       howItWorks: "Come funziona",
       demo: "Demo",
       faq: "FAQ",
-      startFree: "Inizia gratis",
+      startFree: "Inizia ora",
     },
     hero: {
       badge: "Marketing digitale alimentato dall'AI",
@@ -470,9 +474,11 @@ export const translations: Record<Locale, Translations> = {
       titleHighlight: "in 60 secondi",
       subtitle:
         "MadeCreative costruisce il tuo sito professionale, AI Editor, chatbot, WhatsApp e menu editor — tutto automatizzato dall'AI.",
-      cta: "Genera il tuo sito gratis in 60 secondi",
+      cta: "Genera il tuo sito in 60 secondi",
       ctaSecondary: "Come funziona",
       trustNote: "Nessuna carta di credito. Cancella quando vuoi.",
+      urlPlaceholder: "Inserisci il link del tuo sito...",
+      urlCta: "Analizza e ricostruisci",
     },
     howItWorks: {
       sectionLabel: "Come Funziona",
@@ -582,7 +588,7 @@ export const translations: Record<Locale, Translations> = {
       title: "Il tuo sito è a 60 secondi di distanza",
       subtitle:
         "Unisciti alle 127+ aziende già online con MadeCreative che ogni giorno acquisiscono nuovi clienti.",
-      cta: "Inizia gratis ora",
+      cta: "Inizia ora",
       trustNote: "Nessuna carta di credito. Nessun contratto. Inizio immediato.",
     },
     footer: {
@@ -744,7 +750,7 @@ export const translations: Record<Locale, Translations> = {
       howItWorks: "Cómo funciona",
       demo: "Demo",
       faq: "FAQ",
-      startFree: "Empieza gratis",
+      startFree: "Empieza ahora",
     },
     hero: {
       badge: "Marketing digital impulsado por IA",
@@ -752,9 +758,11 @@ export const translations: Record<Locale, Translations> = {
       titleHighlight: "en 60 segundos",
       subtitle:
         "MadeCreative construye tu sitio profesional, gestiona el SEO, las redes sociales y genera leads — todo automatizado por IA.",
-      cta: "Genera tu sitio gratis en 60 segundos",
+      cta: "Genera tu sitio en 60 segundos",
       ctaSecondary: "Cómo funciona",
       trustNote: "Sin tarjeta de crédito. Cancela cuando quieras.",
+      urlPlaceholder: "Ingresa la URL de tu sitio...",
+      urlCta: "Analizar y reconstruir",
     },
     howItWorks: {
       sectionLabel: "Cómo Funciona",
@@ -863,7 +871,7 @@ export const translations: Record<Locale, Translations> = {
       title: "Tu sitio web está a 60 segundos",
       subtitle:
         "Únete a las 127+ empresas ya online con MadeCreative que cada día consiguen nuevos clientes.",
-      cta: "Empezar gratis ahora",
+      cta: "Empezar ahora",
       trustNote: "Sin tarjeta de crédito. Sin contrato. Inicio inmediato.",
     },
     footer: {
@@ -1025,7 +1033,7 @@ export const translations: Record<Locale, Translations> = {
       howItWorks: "Comment ça marche",
       demo: "Démo",
       faq: "FAQ",
-      startFree: "Commencer gratuitement",
+      startFree: "Commencer",
     },
     hero: {
       badge: "Marketing digital propulsé par l'IA",
@@ -1033,9 +1041,11 @@ export const translations: Record<Locale, Translations> = {
       titleHighlight: "en 60 secondes",
       subtitle:
         "MadeCreative construit votre site professionnel, gère le SEO, les réseaux sociaux et génère des leads — le tout automatisé par l'IA.",
-      cta: "Générez votre site gratuitement en 60 secondes",
+      cta: "Générez votre site en 60 secondes",
       ctaSecondary: "Comment ça marche",
       trustNote: "Sans carte bancaire. Annulez quand vous voulez.",
+      urlPlaceholder: "Entrez l'URL de votre site...",
+      urlCta: "Analyser et reconstruire",
     },
     howItWorks: {
       sectionLabel: "Comment Ça Marche",
@@ -1145,7 +1155,7 @@ export const translations: Record<Locale, Translations> = {
       title: "Votre site est à 60 secondes",
       subtitle:
         "Rejoignez les 127+ entreprises déjà en ligne avec MadeCreative qui acquièrent chaque jour de nouveaux clients.",
-      cta: "Commencer gratuitement",
+      cta: "Commencer maintenant",
       trustNote: "Sans carte bancaire. Sans contrat. Démarrage immédiat.",
     },
     footer: {
@@ -1307,7 +1317,7 @@ export const translations: Record<Locale, Translations> = {
       howItWorks: "Hoe het werkt",
       demo: "Demo",
       faq: "FAQ",
-      startFree: "Gratis starten",
+      startFree: "Nu starten",
     },
     hero: {
       badge: "AI-aangedreven digitale marketing",
@@ -1315,9 +1325,11 @@ export const translations: Record<Locale, Translations> = {
       titleHighlight: "in 60 seconden",
       subtitle:
         "MadeCreative bouwt uw website met AI, inclusief AI-editor, chatbot, WhatsApp-widget, menu-editor en automatische SEO — vanaf €25/maand.",
-      cta: "Genereer uw website gratis in 60 seconden",
+      cta: "Genereer uw website in 60 seconden",
       ctaSecondary: "Hoe het werkt",
       trustNote: "Geen creditcard nodig. Op elk moment opzegbaar.",
+      urlPlaceholder: "Voer uw website-URL in...",
+      urlCta: "Analyseren & herbouwen",
     },
     howItWorks: {
       sectionLabel: "Hoe Het Werkt",
@@ -1427,7 +1439,7 @@ export const translations: Record<Locale, Translations> = {
       title: "Uw website is 60 seconden weg",
       subtitle:
         "Sluit u aan bij de 127+ bedrijven die al online zijn met MadeCreative en elke dag nieuwe klanten winnen.",
-      cta: "Nu gratis beginnen",
+      cta: "Nu beginnen",
       trustNote: "Geen creditcard. Geen contract. Direct starten.",
     },
     footer: {
@@ -1589,7 +1601,7 @@ export const translations: Record<Locale, Translations> = {
       howItWorks: "Como funciona",
       demo: "Demo",
       faq: "FAQ",
-      startFree: "Começar grátis",
+      startFree: "Começar agora",
     },
     hero: {
       badge: "Marketing digital impulsionado por IA",
@@ -1597,9 +1609,11 @@ export const translations: Record<Locale, Translations> = {
       titleHighlight: "em 60 segundos",
       subtitle:
         "MadeCreative constrói o seu site profissional, gere o SEO, as redes sociais e gera leads — tudo automatizado pela IA.",
-      cta: "Gere o seu site grátis em 60 segundos",
+      cta: "Gere o seu site em 60 segundos",
       ctaSecondary: "Como funciona",
       trustNote: "Sem cartão de crédito. Cancele quando quiser.",
+      urlPlaceholder: "Insira a URL do seu site...",
+      urlCta: "Analisar e reconstruir",
     },
     howItWorks: {
       sectionLabel: "Como Funciona",
@@ -1709,7 +1723,7 @@ export const translations: Record<Locale, Translations> = {
       title: "O seu site está a 60 segundos",
       subtitle:
         "Junte-se às 127+ empresas já online com MadeCreative que ganham novos clientes todos os dias.",
-      cta: "Começar grátis agora",
+      cta: "Começar agora",
       trustNote: "Sem cartão de crédito. Sem contrato. Início imediato.",
     },
     footer: {
@@ -1871,7 +1885,7 @@ export const translations: Record<Locale, Translations> = {
       howItWorks: "How it works",
       demo: "Demo",
       faq: "FAQ",
-      startFree: "Start free",
+      startFree: "Get started",
     },
     hero: {
       badge: "AI-powered digital marketing",
@@ -1879,9 +1893,11 @@ export const translations: Record<Locale, Translations> = {
       titleHighlight: "in 60 seconds",
       subtitle:
         "MadeCreative builds your professional website, AI editor, chatbot, WhatsApp and menu editor — all automated by AI.",
-      cta: "Generate your website free in 60 seconds",
+      cta: "Generate your website in 60 seconds",
       ctaSecondary: "How it works",
       trustNote: "No credit card required. Cancel anytime.",
+      urlPlaceholder: "Enter your website URL...",
+      urlCta: "Analyze & rebuild",
     },
     howItWorks: {
       sectionLabel: "How It Works",
@@ -1990,7 +2006,7 @@ export const translations: Record<Locale, Translations> = {
       title: "Your website is 60 seconds away",
       subtitle:
         "Join the 127+ businesses already online with MadeCreative winning new customers every day.",
-      cta: "Start free now",
+      cta: "Start now",
       trustNote: "No credit card. No contract. Instant start.",
     },
     footer: {
