@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import bcrypt from "bcryptjs";
 import { prisma } from "@madecreative/db";
 import { generateTokens } from "../../lib/auth.js";
 import { getStripeClient } from "../../lib/stripe.js";
@@ -33,88 +32,6 @@ function clientPayload(client: {
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-// ─── POST /free — Free plan signup ───────────────────────────────────────────
-
-app.post("/free", async (c) => {
-  const body = await c.req.json().catch(() => null);
-
-  if (!body) {
-    return c.json({ success: false, error: "Invalid JSON body" }, 400);
-  }
-
-  const {
-    email,
-    password,
-    companyName,
-    contactName,
-    websiteUrl,
-    locale,
-  } = body as {
-    email?: string;
-    password?: string;
-    companyName?: string;
-    contactName?: string;
-    websiteUrl?: string;
-    locale?: string;
-  };
-
-  // Validate required fields
-  if (!email || !EMAIL_RE.test(email)) {
-    return c.json({ success: false, error: "A valid email is required" }, 400);
-  }
-
-  if (!password || password.length < 8) {
-    return c.json(
-      { success: false, error: "Password must be at least 8 characters" },
-      400
-    );
-  }
-
-  if (!companyName) {
-    return c.json({ success: false, error: "Company name is required" }, 400);
-  }
-
-  // Check for existing email
-  const existing = await prisma.client.findUnique({
-    where: { email: email.toLowerCase() },
-  });
-
-  if (existing) {
-    return c.json({ success: false, error: "Email already registered" }, 409);
-  }
-
-  // Create client
-  const passwordHash = await bcrypt.hash(password, 12);
-
-  const client = await prisma.client.create({
-    data: {
-      email: email.toLowerCase(),
-      passwordHash,
-      companyName,
-      contactName: contactName ?? companyName,
-      websiteUrl: websiteUrl ?? null,
-      language: locale ?? "de",
-      plan: "FREE",
-      status: "ACTIVE",
-    },
-  });
-
-  const tokens = await generateTokens({
-    sub: client.id,
-    email: client.email,
-    role: "STANDARD",
-    type: "client",
-  });
-
-  return c.json({
-    success: true,
-    data: {
-      ...tokens,
-      user: clientPayload(client),
-    },
-  });
-});
 
 // ─── POST /checkout — Create Stripe Checkout Session for paid plans ──────────
 

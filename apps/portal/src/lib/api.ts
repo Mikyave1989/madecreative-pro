@@ -187,32 +187,6 @@ export async function login(
   return data.data!;
 }
 
-export async function signupFree(data: {
-  email: string;
-  password: string;
-  companyName: string;
-  contactName?: string;
-  websiteUrl?: string;
-}): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/public/signup/free`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-
-  const json = (await res.json()) as {
-    success: boolean;
-    data?: AuthResponse;
-    error?: string;
-  };
-
-  if (!res.ok || !json.success) {
-    throw new Error(json.error ?? "Registrazione fallita");
-  }
-
-  return json.data!;
-}
-
 export async function createCheckout(data: {
   plan: string;
   billing: string;

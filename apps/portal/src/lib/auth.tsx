@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
-export type Plan = "FREE" | "STARTER" | "GROWTH" | "PRO";
+export type Plan = "STARTER" | "GROWTH" | "PRO";
 export type ClientStatus = "ACTIVE" | "CHURNED" | "REFUNDED";
 
 export interface AuthUser {

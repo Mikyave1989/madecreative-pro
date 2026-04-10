@@ -96,8 +96,8 @@ model Client {
   city             String?
   sector           String         @default("professional")
   language         String         @default("de")
-  plan             String         @default("FREE")
-  // FREE, STARTER, GROWTH, PRO
+  plan             String         @default("STARTER")
+  // STARTER, GROWTH, PRO
   websiteUrl       String?
   status           String         @default("ACTIVE")
   // ACTIVE, CHURNED, REFUNDED

@@ -31,7 +31,13 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "STRIPE_PRICE_STARTER_MONTHLY": "price_1TKbKOPpUruzeNQ3h2PjWeBx",
+    "STRIPE_PRICE_STARTER_ANNUAL": "price_1TKbKOPpUruzeNQ3cXCwEUan",
+    "STRIPE_PRICE_GROWTH_MONTHLY": "price_1TKbKPPpUruzeNQ3wiHDTux5",
+    "STRIPE_PRICE_GROWTH_ANNUAL": "price_1TKbKPPpUruzeNQ3Kml52RBH",
+    "STRIPE_PRICE_PRO_MONTHLY": "price_1TKbKQPpUruzeNQ3Gv7pFtoC",
+    "STRIPE_PRICE_PRO_ANNUAL": "price_1TKbKQPpUruzeNQ309SbijxP"
   },
   "buildCommand": "cd ../.. && npm run build --workspace=@madecreative/api",
   "installCommand": "cd ../.. && npm install"

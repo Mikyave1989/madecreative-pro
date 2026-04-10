@@ -1,39 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
-import { signupFree, createCheckout } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
-import type { AuthUser } from "@/lib/auth";
+import { useSearchParams } from "next/navigation";
+import { ArrowRight } from "lucide-react";
+import { createCheckout } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Suspense } from "react";
 
 const PLAN_LABELS: Record<string, string> = {
-  free: "Free",
   starter: "Starter",
   growth: "Growth",
   pro: "Pro",
 };
 
 function SignupForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const { setAuth } = useAuth();
 
-  const plan = searchParams.get("plan") ?? "free";
+  const plan = searchParams.get("plan") ?? "starter";
   const billing = searchParams.get("billing") ?? "monthly";
   const prefillUrl = searchParams.get("url") ?? "";
 
-  const isFree = plan === "free" || !PLAN_LABELS[plan];
-  const planLabel = PLAN_LABELS[plan] ?? "Free";
+  const planLabel = PLAN_LABELS[plan] ?? "Starter";
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState(prefillUrl);
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -43,37 +34,15 @@ function SignupForm() {
     setLoading(true);
 
     try {
-      if (isFree) {
-        const data = await signupFree({
-          email,
-          password,
-          companyName,
-          websiteUrl: websiteUrl || undefined,
-        });
+      const data = await createCheckout({
+        plan: PLAN_LABELS[plan] ? plan : "starter",
+        billing,
+        email,
+        companyName: companyName || undefined,
+        websiteUrl: websiteUrl || undefined,
+      });
 
-        const user: AuthUser = {
-          id: data.user.id ?? "",
-          email: data.user.email ?? email,
-          companyName: data.user.companyName,
-          contactName: data.user.contactName ?? data.user.companyName,
-          plan: data.user.plan as AuthUser["plan"],
-          status: data.user.status as AuthUser["status"],
-        };
-
-        setAuth(data.accessToken, data.refreshToken, user);
-        toast.success("Account creato! Benvenuto.");
-        router.push("/dashboard");
-      } else {
-        const data = await createCheckout({
-          plan,
-          billing,
-          email,
-          companyName: companyName || undefined,
-          websiteUrl: websiteUrl || undefined,
-        });
-
-        window.location.href = data.checkoutUrl;
-      }
+      window.location.href = data.checkoutUrl;
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Errore durante la registrazione";
@@ -106,8 +75,7 @@ function SignupForm() {
             <span className="text-indigo-200">60 secondi</span>
           </h2>
           <p className="text-indigo-200 text-lg max-w-sm mx-auto">
-            Nessuna carta di credito richiesta per il piano Free.
-            Aggiorna quando vuoi.
+            Completa la registrazione per attivare il tuo piano.
           </p>
 
           <div className="mt-12 grid grid-cols-2 gap-4 max-w-xs mx-auto">
@@ -142,12 +110,10 @@ function SignupForm() {
 
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">
-              {isFree ? "Crea il tuo account" : `Registrati — Piano ${planLabel}`}
+              Registrati — Piano {planLabel}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              {isFree
-                ? "Inizia gratuitamente, nessuna carta richiesta"
-                : "Completa la registrazione per procedere al pagamento"}
+              Completa la registrazione per procedere al pagamento
             </p>
           </div>
 
@@ -171,45 +137,6 @@ function SignupForm() {
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
               />
             </div>
-
-            {/* Password (only for free signup) */}
-            {isFree && (
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 mb-1.5"
-                >
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    placeholder="Minimo 8 caratteri"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    aria-label={
-                      showPassword ? "Nascondi password" : "Mostra password"
-                    }
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Company name */}
             <div>
@@ -265,7 +192,7 @@ function SignupForm() {
               icon={<ArrowRight className="w-4 h-4" />}
               iconPosition="right"
             >
-              {isFree ? "Crea account" : "Procedi al pagamento"}
+              Procedi al pagamento
             </Button>
           </form>
 

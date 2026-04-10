@@ -1,6 +1,6 @@
 // Mock data realistici per sviluppo del portale cliente
 
-export type Plan = "FREE" | "STARTER" | "GROWTH" | "PRO";
+export type Plan = "STARTER" | "GROWTH" | "PRO";
 export type ClientStatus = "ACTIVE" | "CHURNED" | "REFUNDED";
 export type WebsiteStatus = "BUILDING" | "LIVE" | "MAINTENANCE";
 export type InvoiceStatus = "PAID" | "PENDING" | "FAILED" | "REFUNDED";
@@ -333,17 +333,6 @@ export const mockBilling: BillingInfo = {
 };
 
 export const PLANS = {
-  FREE: {
-    name: "Free",
-    price: 0,
-    color: "gray",
-    features: [
-      "1 sito web",
-      "Sottodominio madecreative",
-      "Chatbot base",
-      "Report mensile",
-    ],
-  },
   STARTER: {
     name: "Starter",
     price: 25,
