@@ -1,5 +1,4 @@
 import type { Context, Next } from "hono";
-import { RATE_LIMITS } from "@madecreative/shared";
 
 type RateLimitConfig = {
   requests: number;
@@ -39,11 +38,11 @@ async function checkRateLimit(
 }
 
 export function rateLimiter(
-  routeName: keyof typeof RATE_LIMITS = "API_GENERAL"
+  routeName: string = "API_GENERAL"
 ) {
-  const config = RATE_LIMITS[routeName];
-
   return async (c: Context, next: Next): Promise<Response | void> => {
+    const { RATE_LIMITS } = await import("@madecreative/shared");
+    const config = RATE_LIMITS[routeName as keyof typeof RATE_LIMITS];
     const ip =
       c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
       c.req.header("x-real-ip") ??

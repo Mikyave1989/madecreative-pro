@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
 import type { JwtPayload } from "@madecreative/shared";
 
 type Variables = { jwtPayload: JwtPayload };
@@ -9,6 +8,7 @@ const app = new Hono<{ Variables: Variables }>();
 // ─── POST /portal/settings/domain — add custom domain ────────────────────────
 
 app.post("/domain", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const body = await c.req.json().catch(() => null);
   const domain = (body?.domain as string)?.trim().toLowerCase();
@@ -80,6 +80,7 @@ app.post("/domain", async (c) => {
 // ─── GET /portal/settings/domain — check domain status ──────────────────────
 
 app.get("/domain", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const website = await prisma.clientWebsite.findUnique({
     where: { clientId },
@@ -122,6 +123,7 @@ app.get("/domain", async (c) => {
 // ─── POST /portal/settings/connectors — save a connector config ──────────────
 
 app.post("/connectors", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const body = await c.req.json().catch(() => null);
   const key = body?.key as string;
@@ -165,6 +167,7 @@ app.post("/connectors", async (c) => {
 // ─── GET /portal/settings/connectors — get all connectors ────────────────────
 
 app.get("/connectors", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const website = await prisma.clientWebsite.findUnique({
     where: { clientId },

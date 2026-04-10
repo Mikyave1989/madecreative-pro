@@ -1,6 +1,4 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
-import { PAGINATION, PLAN_PRICE, REFUND_POLICY } from "@madecreative/shared";
 import { createBillingPortalSession } from "../../lib/stripe.js";
 import Stripe from "stripe";
 import type { JwtPayload } from "@madecreative/shared";
@@ -17,6 +15,8 @@ function getStripe(): Stripe {
 
 // GET /portal/billing — summary
 app.get("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { PLAN_PRICE, REFUND_POLICY } = await import("@madecreative/shared");
   const clientId = c.get("jwtPayload").sub;
 
   const client = await prisma.client.findUnique({
@@ -108,6 +108,8 @@ app.get("/", async (c) => {
 
 // GET /portal/billing/invoices
 app.get("/invoices", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { PAGINATION } = await import("@madecreative/shared");
   const clientId = c.get("jwtPayload").sub;
   const query = c.req.query();
   const page = Math.max(1, parseInt(query["page"] ?? "1", 10));
@@ -150,6 +152,7 @@ app.get("/invoices", async (c) => {
 
 // POST /portal/billing/portal — Stripe Customer Portal
 app.post("/portal", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const client = await prisma.client.findUnique({
@@ -173,6 +176,7 @@ app.post("/portal", async (c) => {
 
 // POST /portal/billing/cancel — cancel subscription
 app.post("/cancel", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const client = await prisma.client.findUnique({
@@ -205,6 +209,8 @@ app.post("/cancel", async (c) => {
 
 // POST /portal/billing/refund — automatic 14-day refund
 app.post("/refund", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { REFUND_POLICY } = await import("@madecreative/shared");
   const clientId = c.get("jwtPayload").sub;
 
   const client = await prisma.client.findUnique({

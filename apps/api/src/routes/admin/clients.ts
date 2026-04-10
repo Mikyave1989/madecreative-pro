@@ -1,11 +1,11 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
-import { ClientFilterSchema, ClientUpdateSchema, PAGINATION } from "@madecreative/shared";
 
 const app = new Hono();
 
 // GET /admin/clients
 app.get("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ClientFilterSchema, PAGINATION } = await import("@madecreative/shared");
   const query = c.req.query();
   const parsed = ClientFilterSchema.safeParse(query);
 
@@ -73,6 +73,7 @@ app.get("/", async (c) => {
 
 // GET /admin/clients/:id
 app.get("/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
 
   const client = await prisma.client.findUnique({
@@ -100,6 +101,8 @@ app.get("/:id", async (c) => {
 
 // PATCH /admin/clients/:id
 app.patch("/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ClientUpdateSchema } = await import("@madecreative/shared");
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => null);
   const parsed = ClientUpdateSchema.safeParse(body);
@@ -126,6 +129,7 @@ app.patch("/:id", async (c) => {
 
 // GET /admin/clients/:id/metrics
 app.get("/:id/metrics", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
 
   const client = await prisma.client.findUnique({

@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { prisma } from "@madecreative/db";
 import type { JwtPayload } from "@madecreative/shared";
 import { Queue } from "bullmq";
 import { Redis as IORedis } from "ioredis";
@@ -11,6 +10,7 @@ const app = new Hono<{ Variables: Variables }>();
 // ─── GET /portal/editor — load current page content ──────────────────────────
 
 app.get("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const website = await prisma.clientWebsite.findUnique({
@@ -39,6 +39,7 @@ const UpdatePagesSchema = z.object({
 });
 
 app.patch("/pages", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const body = await c.req.json().catch(() => null);
@@ -102,6 +103,7 @@ app.patch("/pages", async (c) => {
 // ─── POST /portal/editor/rebuild — trigger site rebuild ──────────────────────
 
 app.post("/rebuild", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const website = await prisma.clientWebsite.findUnique({
@@ -146,6 +148,7 @@ app.post("/rebuild", async (c) => {
 // ─── POST /portal/editor/upload — upload a photo ─────────────────────────────
 
 app.post("/upload", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const client = await prisma.client.findUnique({

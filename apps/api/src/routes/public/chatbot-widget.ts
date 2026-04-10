@@ -1,8 +1,4 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
-import { ChatbotMessageSchema } from "@madecreative/shared";
-import { buildChatbotSystemPrompt } from "@madecreative/ai";
-import { getClaudeClient } from "@madecreative/ai";
 import { getRedisConnection } from "../../lib/queue.js";
 import type {
   KnowledgeBase,
@@ -117,6 +113,7 @@ async function updateSessionMeta(
 // ─── GET /public/chatbot/:chatbotId/config ────────────────────────────────────
 
 app.get("/:chatbotId/config", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const chatbotId = c.req.param("chatbotId");
 
   const chatbot = await prisma.clientChatbot.findUnique({
@@ -161,6 +158,9 @@ app.get("/:chatbotId/config", async (c) => {
 // ─── POST /public/chatbot/:chatbotId/message ──────────────────────────────────
 
 app.post("/:chatbotId/message", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ChatbotMessageSchema } = await import("@madecreative/shared");
+  const { buildChatbotSystemPrompt, getClaudeClient } = await import("@madecreative/ai");
   // Rate limiting per IP
   const ip =
     c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??

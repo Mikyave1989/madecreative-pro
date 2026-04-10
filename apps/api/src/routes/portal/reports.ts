@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
 import type { JwtPayload } from "@madecreative/shared";
 
 type Variables = { jwtPayload: JwtPayload };
@@ -9,6 +8,7 @@ const app = new Hono<{ Variables: Variables }>();
 // ─── GET /portal/reports ──────────────────────────────────────────────────────
 
 app.get("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const reports = await prisma.monthlyReport.findMany({
@@ -31,6 +31,7 @@ app.get("/", async (c) => {
 // ─── GET /portal/reports/:id ──────────────────────────────────────────────────
 
 app.get("/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
 

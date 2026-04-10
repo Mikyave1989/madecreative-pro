@@ -1,6 +1,4 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
-import { WebsiteUpdateRequestSchema } from "@madecreative/shared";
 import type { JwtPayload } from "@madecreative/shared";
 import { getQueue } from "../../lib/queue.js";
 
@@ -10,6 +8,7 @@ const app = new Hono<{ Variables: Variables }>();
 
 // GET /portal/websites
 app.get("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const websites = await prisma.clientWebsite.findMany({
@@ -22,6 +21,7 @@ app.get("/", async (c) => {
 
 // GET /portal/websites/:id
 app.get("/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
 
@@ -38,6 +38,8 @@ app.get("/:id", async (c) => {
 
 // POST /portal/websites/:id/update-request
 app.post("/:id/update-request", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { WebsiteUpdateRequestSchema } = await import("@madecreative/shared");
   const clientId = c.get("jwtPayload").sub;
   const websiteId = c.req.param("id");
 
@@ -82,7 +84,7 @@ app.post("/:id/update-request", async (c) => {
   });
 
   try {
-    const queue = getQueue("BUILDER");
+    const queue = await getQueue("BUILDER");
     await queue.add("update-request", { jobId: job.id }, { jobId: job.id });
   } catch {
     // Queue add is best-effort; job is already in DB

@@ -1,6 +1,5 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import type { JwtPayload, TokenPair } from "@madecreative/shared";
-import { JWT_CONFIG } from "@madecreative/shared";
 
 function getAccessSecret(): Uint8Array {
   const secret = process.env["JWT_SECRET"];
@@ -16,6 +15,7 @@ function getRefreshSecret(): Uint8Array {
 }
 
 export async function generateTokens(payload: Omit<JwtPayload, "iat" | "exp">): Promise<TokenPair> {
+  const { JWT_CONFIG } = await import("@madecreative/shared");
   const now = Math.floor(Date.now() / 1000);
 
   const accessToken = await new SignJWT({ ...payload } as JWTPayload)
@@ -60,6 +60,7 @@ export async function verifyRefreshToken(
 export async function generateAccessToken(
   payload: Omit<JwtPayload, "iat" | "exp">
 ): Promise<string> {
+  const { JWT_CONFIG } = await import("@madecreative/shared");
   const now = Math.floor(Date.now() / 1000);
   return new SignJWT({ ...payload } as JWTPayload)
     .setProtectedHeader({ alg: "HS256" })

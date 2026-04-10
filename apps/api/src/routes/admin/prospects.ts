@@ -1,18 +1,12 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
-import {
-  ProspectFilterSchema,
-  ProspectCreateSchema,
-  ProspectUpdateSchema,
-  ScrapeConfigCreateSchema,
-} from "@madecreative/shared";
-import { PAGINATION } from "@madecreative/shared";
 import { generatePaymentLink } from "../../lib/stripe.js";
 
 const app = new Hono();
 
 // GET /admin/prospects
 app.get("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ProspectFilterSchema, PAGINATION } = await import("@madecreative/shared");
   const query = c.req.query();
   const parsed = ProspectFilterSchema.safeParse(query);
 
@@ -94,6 +88,7 @@ app.get("/", async (c) => {
 
 // GET /admin/prospects/:id
 app.get("/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
 
   const prospect = await prisma.prospect.findUnique({
@@ -120,6 +115,8 @@ app.get("/:id", async (c) => {
 
 // POST /admin/prospects
 app.post("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ProspectCreateSchema } = await import("@madecreative/shared");
   const body = await c.req.json().catch(() => null);
   const parsed = ProspectCreateSchema.safeParse(body);
 
@@ -137,6 +134,8 @@ app.post("/", async (c) => {
 
 // PATCH /admin/prospects/:id
 app.patch("/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ProspectUpdateSchema } = await import("@madecreative/shared");
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => null);
   const parsed = ProspectUpdateSchema.safeParse(body);
@@ -163,6 +162,7 @@ app.patch("/:id", async (c) => {
 
 // DELETE /admin/prospects/:id
 app.delete("/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
 
   const existing = await prisma.prospect.findUnique({ where: { id } });
@@ -177,6 +177,7 @@ app.delete("/:id", async (c) => {
 
 // GET /admin/prospects/stats — must be registered BEFORE /:id to avoid param conflict
 app.get("/stats", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const [byStatus, avgScore, topSectors, topCountries] = await Promise.all([
     prisma.prospect.groupBy({
       by: ["status"],
@@ -224,6 +225,7 @@ app.get("/stats", async (c) => {
 
 // POST /admin/prospects/:id/build-preview — Avvia Builder Agent per un prospect
 app.post("/:id/build-preview", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
   const { enqueueAgentJob } = await import("../../lib/queue.js");
 
@@ -285,6 +287,7 @@ app.post("/:id/build-preview", async (c) => {
 
 // POST /admin/prospects/:id/send-outreach — Avvia sequenza email manualmente
 app.post("/:id/send-outreach", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
   const { enqueueAgentJob } = await import("../../lib/queue.js");
 
@@ -381,6 +384,7 @@ app.post("/:id/send-outreach", async (c) => {
 // NOTE: registered as /outreach/stats on the sub-router (mounted at /admin/prospects)
 // Full path: GET /admin/prospects/outreach/stats
 app.get("/outreach/stats", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const now = new Date();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
@@ -503,6 +507,7 @@ app.get("/outreach/stats", async (c) => {
 
 // POST /admin/prospects/:id/analyze
 app.post("/:id/analyze", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
   const { enqueueAgentJob } = await import("../../lib/queue.js");
 
@@ -531,6 +536,7 @@ app.post("/:id/analyze", async (c) => {
 
 // GET /admin/pipeline — Prospects grouped by status with counters
 app.get("/pipeline", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const PIPELINE_STATUSES = [
     "PREVIEW_GENERATED",
     "EMAIL_SENT",
@@ -603,6 +609,7 @@ app.get("/pipeline", async (c) => {
 
 // POST /admin/prospects/:id/generate-payment-link
 app.post("/:id/generate-payment-link", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
   const prospect = await prisma.prospect.findUnique({
     where: { id },
@@ -636,6 +643,7 @@ app.post("/:id/generate-payment-link", async (c) => {
 
 // POST /admin/prospects/:id/analyze-reply
 app.post("/:id/analyze-reply", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => null) as { replyText?: string } | null;
 
@@ -721,6 +729,7 @@ app.post("/:id/analyze-reply", async (c) => {
 
 // POST /admin/prospects/:id/mark-lost
 app.post("/:id/mark-lost", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
   const existing = await prisma.prospect.findUnique({ where: { id } });
   if (!existing) return c.json({ success: false, error: "Prospect not found" }, 404);
@@ -734,6 +743,7 @@ app.post("/:id/mark-lost", async (c) => {
 
 // POST /admin/prospects/:id/blacklist
 app.post("/:id/blacklist", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
   const prospect = await prisma.prospect.findUnique({
     where: { id },
@@ -760,6 +770,8 @@ app.post("/:id/blacklist", async (c) => {
 
 // POST /admin/scrape/start — ad-hoc scrape run
 app.post("/scrape/start", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ScrapeConfigCreateSchema } = await import("@madecreative/shared");
   const body = await c.req.json().catch(() => null);
   const parsed = ScrapeConfigCreateSchema.safeParse(body);
 
@@ -823,6 +835,7 @@ app.post("/scrape/start", async (c) => {
 
 // GET /admin/scrape/configs — list all ScrapeConfig entries
 app.get("/scrape/configs", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const configs = await prisma.scrapeConfig.findMany({
     orderBy: { createdAt: "desc" },
   });
@@ -831,6 +844,8 @@ app.get("/scrape/configs", async (c) => {
 
 // POST /admin/scrape/configs — create a new ScrapeConfig
 app.post("/scrape/configs", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ScrapeConfigCreateSchema } = await import("@madecreative/shared");
   const body = await c.req.json().catch(() => null);
   const parsed = ScrapeConfigCreateSchema.safeParse(body);
 
@@ -865,6 +880,8 @@ app.post("/scrape/configs", async (c) => {
 
 // PATCH /admin/scrape/configs/:id — update a ScrapeConfig
 app.patch("/scrape/configs/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ScrapeConfigCreateSchema } = await import("@madecreative/shared");
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => null);
   const parsed = ScrapeConfigCreateSchema.partial()
@@ -922,6 +939,7 @@ app.patch("/scrape/configs/:id", async (c) => {
 
 // DELETE /admin/scrape/configs/:id — delete a ScrapeConfig
 app.delete("/scrape/configs/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
 
   const existing = await prisma.scrapeConfig.findUnique({ where: { id } });

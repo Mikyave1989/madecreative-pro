@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
 import type { JwtPayload } from "@madecreative/shared";
 
 type Variables = { jwtPayload: JwtPayload };
@@ -8,6 +7,7 @@ const app = new Hono<{ Variables: Variables }>();
 
 // GET /portal/dashboard
 app.get("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const [client, lastReport] = await Promise.all([

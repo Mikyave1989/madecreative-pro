@@ -1,6 +1,4 @@
 import Stripe from "stripe";
-import { prisma } from "@madecreative/db";
-import { PLANS } from "@madecreative/shared";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 
@@ -116,6 +114,8 @@ async function processStripeEvent(event: Stripe.Event): Promise<void> {
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session
 ): Promise<void> {
+  const { prisma } = await import("@madecreative/db");
+  const { PLANS } = await import("@madecreative/shared");
   const prospectId = session.metadata?.["prospectId"] as string | undefined;
   const plan = (session.metadata?.["plan"] as string) ?? "STARTER";
   const websiteUrl = (session.metadata?.["websiteUrl"] as string) || null;
@@ -289,6 +289,7 @@ async function handleCheckoutCompleted(
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+  const { prisma } = await import("@madecreative/db");
   if (!invoice.customer) return;
 
   const client = await prisma.client.findUnique({
@@ -314,6 +315,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+  const { prisma } = await import("@madecreative/db");
   if (!invoice.customer) return;
 
   const client = await prisma.client.findUnique({
@@ -342,6 +344,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
+  const { prisma } = await import("@madecreative/db");
   const client = await prisma.client.findUnique({
     where: { stripeSubId: subscription.id },
   });

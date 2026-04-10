@@ -1,7 +1,5 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { prisma } from "@madecreative/db";
-import { ChatbotUpdateSchema } from "@madecreative/shared";
 import { getRedisConnection } from "../../lib/queue.js";
 import type { JwtPayload, KnowledgeBase } from "@madecreative/shared";
 
@@ -20,6 +18,7 @@ const AddFAQSchema = z.object({
 // ─── GET /portal/chatbots ────────────────────────────────────────────────────
 
 app.get("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
   const chatbots = await prisma.clientChatbot.findMany({
@@ -40,6 +39,7 @@ app.get("/", async (c) => {
 // ─── GET /portal/chatbots/:id ────────────────────────────────────────────────
 
 app.get("/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
 
@@ -57,6 +57,8 @@ app.get("/:id", async (c) => {
 // ─── PATCH /portal/chatbots/:id ──────────────────────────────────────────────
 
 app.patch("/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { ChatbotUpdateSchema } = await import("@madecreative/shared");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
 
@@ -98,6 +100,7 @@ app.patch("/:id", async (c) => {
 // ─── GET /portal/chatbots/:id/embed-code ─────────────────────────────────────
 
 app.get("/:id/embed-code", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
 
@@ -125,6 +128,7 @@ app.get("/:id/embed-code", async (c) => {
 // ─── GET /portal/chatbots/:id/stats ──────────────────────────────────────────
 
 app.get("/:id/stats", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
 
@@ -192,6 +196,7 @@ app.get("/:id/stats", async (c) => {
 // ─── GET /portal/chatbots/:id/conversations ───────────────────────────────────
 
 app.get("/:id/conversations", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
 
@@ -302,6 +307,7 @@ app.get("/:id/conversations", async (c) => {
 // ─── POST /portal/chatbots/:id/faqs ──────────────────────────────────────────
 
 app.post("/:id/faqs", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
 
@@ -361,6 +367,7 @@ app.post("/:id/faqs", async (c) => {
 // ─── DELETE /portal/chatbots/:id/faqs/:index ─────────────────────────────────
 
 app.delete("/:id/faqs/:index", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
   const index = parseInt(c.req.param("index"), 10);
@@ -397,6 +404,7 @@ app.delete("/:id/faqs/:index", async (c) => {
 // ─── PATCH /portal/chatbots/:id/faqs/:index ──────────────────────────────────
 
 app.patch("/:id/faqs/:index", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
   const index = parseInt(c.req.param("index"), 10);

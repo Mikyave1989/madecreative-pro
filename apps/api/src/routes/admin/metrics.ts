@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
 
 const app = new Hono();
 
 // GET /admin/metrics — Platform KPIs
 app.get("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -101,6 +101,7 @@ app.get("/", async (c) => {
 
 // GET /admin/metrics/revenue-chart
 app.get("/revenue-chart", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const months = 12;
   const data: Array<{ month: string; revenue: number; clients: number }> = [];
 
@@ -135,6 +136,7 @@ app.get("/revenue-chart", async (c) => {
 
 // GET /admin/metrics/prospects-funnel
 app.get("/prospects-funnel", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const statuses = [
     "SCRAPED",
     "QUALIFIED",

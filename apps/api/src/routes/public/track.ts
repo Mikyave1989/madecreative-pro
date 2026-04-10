@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
 
 const app = new Hono();
 
@@ -70,6 +69,7 @@ app.get("/click/:emailId", async (c) => {
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
 async function recordOpen(emailId: string): Promise<void> {
+  const { prisma } = await import("@madecreative/db");
   // Find email and skip if already opened
   const existing = await prisma.outreachEmail.findUnique({
     where: { id: emailId },
@@ -92,6 +92,7 @@ async function recordOpen(emailId: string): Promise<void> {
 }
 
 async function recordClick(emailId: string): Promise<void> {
+  const { prisma } = await import("@madecreative/db");
   const existing = await prisma.outreachEmail.findUnique({
     where: { id: emailId },
     select: { clickedAt: true, openedAt: true, status: true },

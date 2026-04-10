@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { jwtVerify } from "jose";
-import { prisma } from "@madecreative/db";
 import { getRedisConnection } from "../../lib/queue.js";
 
 const app = new Hono();
@@ -45,6 +44,7 @@ app.get("/", async (c) => {
   }
 
   try {
+    const { prisma } = await import("@madecreative/db");
     // Check if already blacklisted
     const prospect = await prisma.prospect.findUnique({
       where: { id: prospectId },

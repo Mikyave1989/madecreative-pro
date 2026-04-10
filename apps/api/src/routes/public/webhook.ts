@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { handleStripeWebhook } from "../../lib/stripe.js";
-import { prisma } from "@madecreative/db";
 import { getRedisConnection } from "../../lib/queue.js";
 
 const app = new Hono();
@@ -55,6 +54,7 @@ interface ResendWebhookEvent {
 
 // POST /public/webhook/resend
 app.post("/resend", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   // Optional: verify Resend webhook signature
   const webhookSecret = process.env["RESEND_WEBHOOK_SECRET"];
   if (webhookSecret) {

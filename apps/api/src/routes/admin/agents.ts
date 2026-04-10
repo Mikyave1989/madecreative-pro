@@ -1,12 +1,11 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
-import { AgentJobCreateSchema, AgentJobFilterSchema, PAGINATION } from "@madecreative/shared";
-import { enqueueAgentJob } from "../../lib/queue.js";
 
 const app = new Hono();
 
 // GET /admin/agents/jobs
 app.get("/jobs", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { AgentJobFilterSchema, PAGINATION } = await import("@madecreative/shared");
   const query = c.req.query();
   const parsed = AgentJobFilterSchema.safeParse(query);
 
@@ -61,6 +60,7 @@ app.get("/jobs", async (c) => {
 
 // GET /admin/agents/jobs/:id
 app.get("/jobs/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
 
   const job = await prisma.agentJob.findUnique({ where: { id } });
@@ -73,6 +73,9 @@ app.get("/jobs/:id", async (c) => {
 
 // POST /admin/agents/jobs
 app.post("/jobs", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { AgentJobCreateSchema } = await import("@madecreative/shared");
+  const { enqueueAgentJob } = await import("../../lib/queue.js");
   const body = await c.req.json().catch(() => null);
   const parsed = AgentJobCreateSchema.safeParse(body);
 
@@ -106,6 +109,7 @@ app.post("/jobs", async (c) => {
 
 // DELETE /admin/agents/jobs/:id (cancel)
 app.delete("/jobs/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const id = c.req.param("id");
 
   const job = await prisma.agentJob.findUnique({ where: { id } });
@@ -130,6 +134,8 @@ app.delete("/jobs/:id", async (c) => {
 
 // POST /admin/agents/bulk-analyze — queue ANALYZER jobs for all SCRAPED prospects without a score
 app.post("/bulk-analyze", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { enqueueAgentJob } = await import("../../lib/queue.js");
   const BULK_LIMIT = 50;
 
   const prospects = await prisma.prospect.findMany({
@@ -178,6 +184,7 @@ app.post("/bulk-analyze", async (c) => {
 
 // GET /admin/agents/stats
 app.get("/stats", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const [byStatus, byType, recentCost] = await Promise.all([
     prisma.agentJob.groupBy({
       by: ["status"],

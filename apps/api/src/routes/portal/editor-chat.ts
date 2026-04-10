@@ -1,6 +1,4 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
-import { getClaudeClient } from "@madecreative/ai";
 import type { JwtPayload } from "@madecreative/shared";
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages/index";
@@ -258,6 +256,7 @@ app.get("/credits", async (c) => {
 
 // POST /portal/editor/chat/buy-credits — purchase additional credits
 app.post("/buy-credits", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const body = await c.req.json().catch(() => null);
   const pack = body?.pack as string;
@@ -323,6 +322,8 @@ app.post("/buy-credits", async (c) => {
 
 // POST /portal/editor/chat — send a message to the AI editor
 app.post("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { getClaudeClient } = await import("@madecreative/ai");
   const clientId = c.get("jwtPayload").sub;
 
   // Check credits
@@ -601,6 +602,7 @@ app.post("/", async (c) => {
 
 // GET /portal/editor/chat/history — get version history (snapshots)
 app.get("/history", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const website = await prisma.clientWebsite.findUnique({
     where: { clientId },
@@ -614,6 +616,7 @@ app.get("/history", async (c) => {
 
 // POST /portal/editor/chat/rollback — restore a previous version
 app.post("/rollback", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const body = await c.req.json().catch(() => null);
   const index = body?.index as number | undefined;

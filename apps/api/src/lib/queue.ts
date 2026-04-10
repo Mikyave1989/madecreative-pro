@@ -1,7 +1,6 @@
 import { Queue } from "bullmq";
 import { Redis as IORedis } from "ioredis";
 import type { AgentType } from "@madecreative/shared";
-import { AGENT_QUEUE_NAMES } from "@madecreative/shared";
 
 let _redisConnection: InstanceType<typeof IORedis> | null = null;
 
@@ -28,8 +27,9 @@ export function getRedisConnection(): InstanceType<typeof IORedis> {
 
 const _queues: Partial<Record<AgentType, Queue>> = {};
 
-export function getQueue(agentType: AgentType): Queue {
+export async function getQueue(agentType: AgentType): Promise<Queue> {
   if (!_queues[agentType]) {
+    const { AGENT_QUEUE_NAMES } = await import("@madecreative/shared");
     const queueName = AGENT_QUEUE_NAMES[agentType];
     _queues[agentType] = new Queue(queueName, {
       connection: getRedisConnection(),
@@ -54,7 +54,7 @@ export async function enqueueAgentJob(params: {
   priority?: number;
   delay?: number;
 }): Promise<void> {
-  const queue = getQueue(params.agentType);
+  const queue = await getQueue(params.agentType);
   await queue.add(
     params.agentType,
     { jobId: params.jobId, input: params.input },

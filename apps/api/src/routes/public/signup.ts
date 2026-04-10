@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { prisma } from "@madecreative/db";
 import { generateTokens } from "../../lib/auth.js";
 import { getStripeClient } from "../../lib/stripe.js";
 
@@ -114,6 +113,7 @@ app.post("/checkout", async (c) => {
 // ─── POST /verify-session — Verify Stripe session & auto-login ──────────────
 
 app.post("/verify-session", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const body = await c.req.json().catch(() => null);
 
   if (!body) {

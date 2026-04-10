@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import bcrypt from "bcryptjs";
-import { prisma } from "@madecreative/db";
 import { generateTokens, verifyRefreshToken, generateAccessToken } from "../../lib/auth.js";
-import { AdminLoginSchema } from "@madecreative/shared";
 
 const app = new Hono();
 
 // POST /admin/auth/login
 app.post("/login", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { AdminLoginSchema } = await import("@madecreative/shared");
   const body = await c.req.json().catch(() => null);
   const parsed = AdminLoginSchema.safeParse(body);
 
@@ -48,6 +48,7 @@ app.post("/login", async (c) => {
 
 // POST /admin/auth/refresh
 app.post("/refresh", async (c) => {
+  const { prisma } = await import("@madecreative/db");
   const body = await c.req.json().catch(() => null);
   const refreshToken = body?.refreshToken as string | undefined;
 
