@@ -233,11 +233,14 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
               </div>
 
               <a
-                href={`/${locale}/signup?url=${encodeURIComponent(result.url)}`}
+                href={`/${locale}#pricing`}
                 className="block w-full text-center gradient-indigo text-white px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-all"
               >
-                Ricostruisci il tuo sito con l&apos;AI — da €197/mese
+                Ricostruisci il tuo sito con l&apos;AI — da €25/mese
               </a>
+              <p className="text-center mt-2" style={{ color: "rgba(248,250,252,0.3)", fontSize: "11px" }}>
+                Prova gratuita • Nessuna carta richiesta • Cancella quando vuoi
+              </p>
             </div>
           </div>
         )}

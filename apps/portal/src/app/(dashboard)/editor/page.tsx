@@ -1593,9 +1593,9 @@ function PreviewPanel({
       </div>
 
       {/* Preview frame */}
-      <div className="flex-1 overflow-hidden bg-zinc-950 flex justify-center relative">
+      <div className="flex-1 overflow-auto bg-zinc-950 flex justify-center relative">
         <div
-          className={`${frameWidths[device]} h-full transition-all duration-300 overflow-hidden`}
+          className={`${frameWidths[device]} h-full transition-all duration-300 overflow-y-auto`}
         >
           <SandpackLivePreview
             files={projectFiles ?? null}
