@@ -124,6 +124,25 @@ function getToken(): string | null {
   return localStorage.getItem("mc_token");
 }
 
+async function tryRefreshToken(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const refreshToken = localStorage.getItem("mc_refresh");
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch(`${API_BASE}/portal/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const json = (await res.json()) as { success: boolean; data?: { accessToken: string } };
+    if (json.success && json.data?.accessToken) {
+      localStorage.setItem("mc_token", json.data.accessToken);
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
@@ -143,7 +162,19 @@ async function apiFetch<T>(
   });
 
   if (res.status === 401) {
-    // Token expired — redirect to login
+    // Try to refresh token
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      // Retry the original request with the new token
+      const newToken = localStorage.getItem("mc_token");
+      if (newToken) headers["Authorization"] = `Bearer ${newToken}`;
+      const retry = await fetch(`${API_BASE}${path}`, { ...options, headers });
+      if (retry.ok) {
+        const retryData = (await retry.json()) as { success: boolean; data?: T; error?: string };
+        if (retryData.success) return retryData.data as T;
+      }
+    }
+    // Refresh failed — redirect to login
     if (typeof window !== "undefined") {
       localStorage.removeItem("mc_token");
       localStorage.removeItem("mc_refresh");

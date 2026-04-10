@@ -7,13 +7,14 @@ import {
   ExternalLink,
   CheckCircle2,
   AlertTriangle,
-  PauseCircle,
-  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   X,
   Loader2,
   AlertCircle,
+  Coins,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,9 +25,6 @@ interface BillingInfo {
   nextChargeDate: string | null;
   nextChargeAmount: number;
   clientSince: string;
-  isEligibleForRefund: boolean;
-  daysSinceCreation: number;
-  refundDeadlineDays: number;
   paymentMethod: {
     brand: string;
     last4: string;
@@ -40,16 +38,16 @@ interface Invoice {
   date: string;
   description: string;
   amount: number;
-  status: "PAID" | "PENDING" | "FAILED" | "REFUNDED";
+  status: "PAID" | "PENDING" | "FAILED";
   pdfUrl: string | null;
 }
 
-interface InvoicesResponse {
-  data: Invoice[];
+interface Credits {
+  remaining: number;
+  used: number;
   total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  purchased: number;
+  topUpOptions: { credits: number; price: string; priceId: string }[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -86,195 +84,28 @@ function formatShortDate(iso: string): string {
   });
 }
 
-function daysSince(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
-}
-
-// ─── Status config ────────────────────────────────────────────────────────────
-
-const STATUS_CONFIG = {
-  ACTIVE: {
-    icon: CheckCircle2,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10 border-emerald-500/20",
-    label: "Abbonamento attivo",
-    description: "Il tuo abbonamento e attivo e tutti i servizi sono operativi.",
-  },
-  CHURNED: {
-    icon: AlertTriangle,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10 border-amber-500/20",
-    label: "Abbonamento cancellato",
-    description: "Il tuo abbonamento e stato cancellato.",
-  },
-  REFUNDED: {
-    icon: PauseCircle,
-    color: "text-red-400",
-    bg: "bg-red-500/10 border-red-500/20",
-    label: "Rimborsato",
-    description: "Il tuo abbonamento e stato rimborsato.",
-  },
-};
-
 const INVOICE_STATUS_COLORS: Record<string, string> = {
   PAID: "bg-emerald-500/15 text-emerald-400",
   PENDING: "bg-amber-500/15 text-amber-400",
   FAILED: "bg-red-500/15 text-red-400",
-  REFUNDED: "bg-slate-500/15 text-slate-400",
 };
 
 const INVOICE_STATUS_LABELS: Record<string, string> = {
   PAID: "Pagata",
   PENDING: "In attesa",
   FAILED: "Fallita",
-  REFUNDED: "Rimborsata",
 };
-
-// ─── Cancel modal ─────────────────────────────────────────────────────────────
-
-function CancelModal({
-  onClose,
-  onConfirm,
-  loading,
-}: {
-  onClose: () => void;
-  onConfirm: () => void;
-  loading: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div
-        className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-6 z-10">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
-          aria-label="Chiudi"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="text-center mb-6">
-          <div className="inline-flex p-3 bg-red-500/10 rounded-full mb-4">
-            <AlertTriangle className="w-6 h-6 text-red-400" />
-          </div>
-          <h3 className="text-lg font-bold text-white">Vuoi davvero annullare?</h3>
-          <p className="text-sm text-slate-400 mt-2">Perderesti immediatamente accesso a:</p>
-        </div>
-
-        <ul className="space-y-2 mb-6">
-          {[
-            "Il tuo sito web professionale",
-            "Il chatbot che gestisce i lead",
-            "I report mensili automatici",
-            "Il supporto del team madecreative",
-          ].map((item) => (
-            <li key={item} className="flex items-center gap-2 text-sm text-slate-400">
-              <X className="w-4 h-4 text-red-400 flex-shrink-0" />
-              {item}
-            </li>
-          ))}
-        </ul>
-
-        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 mb-6">
-          <p className="text-sm font-semibold text-indigo-400 mb-1">Offerta speciale per te</p>
-          <p className="text-sm text-indigo-300">
-            Rimani e ottieni <strong>1 mese gratuito</strong> sul tuo piano. Contatta il supporto.
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 bg-slate-700 text-white text-sm font-semibold rounded-xl hover:bg-slate-600 transition-colors"
-          >
-            Rimani abbonato
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-xl hover:bg-red-500 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
-          >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Annullamento..." : "Annulla abbonamento"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Refund modal ─────────────────────────────────────────────────────────────
-
-function RefundModal({
-  onClose,
-  onConfirm,
-  loading,
-}: {
-  onClose: () => void;
-  onConfirm: () => void;
-  loading: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div
-        className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-6 z-10">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
-          aria-label="Chiudi"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="text-center mb-6">
-          <div className="inline-flex p-3 bg-emerald-500/10 rounded-full mb-4">
-            <ShieldCheck className="w-6 h-6 text-emerald-400" />
-          </div>
-          <h3 className="text-lg font-bold text-white">Richiesta rimborso</h3>
-          <p className="text-sm text-slate-400 mt-2">
-            Sei nel periodo di garanzia. Il rimborso sara elaborato entro 5-10 giorni lavorativi.
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 bg-slate-700 text-white text-sm font-semibold rounded-xl hover:bg-slate-600 transition-colors"
-          >
-            Annulla
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-500 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
-          >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Elaborazione..." : "Conferma rimborso"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
   const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [credits, setCredits] = useState<Credits | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const [showCancel, setShowCancel] = useState(false);
-  const [showRefund, setShowRefund] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [refunding, setRefunding] = useState(false);
+  const [buyingPack, setBuyingPack] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -285,27 +116,25 @@ export default function BillingPage() {
     setLoading(true);
     setError(null);
     try {
-      const [billingRes, invoicesRes] = await Promise.all([
+      const [billingRes, invoicesRes, creditsRes] = await Promise.all([
         fetch(`${API_URL}/portal/billing`, { headers: authHeaders() }),
         fetch(`${API_URL}/portal/billing/invoices`, { headers: authHeaders() }),
+        fetch(`${API_URL}/portal/editor/chat/credits`, { headers: authHeaders() }),
       ]);
 
-      const billingJson = (await billingRes.json()) as {
-        success: boolean;
-        data?: BillingInfo;
-        error?: string;
-      };
-      const invoicesJson = (await invoicesRes.json()) as {
-        success: boolean;
-        data?: InvoicesResponse;
-        error?: string;
-      };
+      const billingJson = (await billingRes.json()) as { success: boolean; data?: BillingInfo; error?: string };
+      const invoicesJson = (await invoicesRes.json()) as { success: boolean; data?: { data: Invoice[]; total: number }; error?: string };
+      const creditsJson = (await creditsRes.json()) as { success: boolean; data?: Credits; error?: string };
 
       if (!billingJson.success) throw new Error(billingJson.error ?? "Errore fatturazione");
       setBilling(billingJson.data!);
 
       if (invoicesJson.success && invoicesJson.data?.data) {
         setInvoices(invoicesJson.data.data);
+      }
+
+      if (creditsJson.success && creditsJson.data) {
+        setCredits(creditsJson.data);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore di caricamento");
@@ -314,54 +143,41 @@ export default function BillingPage() {
     }
   }
 
+  async function handleBuyCredits(pack: string) {
+    setBuyingPack(pack);
+    try {
+      const res = await fetch(`${API_URL}/portal/editor/chat/buy-credits`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ pack }),
+      });
+      const json = (await res.json()) as { success: boolean; data?: { checkoutUrl?: string; credits?: Credits; added?: number }; error?: string };
+      if (json.success && json.data) {
+        if (json.data.checkoutUrl) {
+          window.open(json.data.checkoutUrl, "_blank");
+        } else if (json.data.credits) {
+          setCredits(json.data.credits);
+          setActionStatus(`${json.data.added ?? 0} crediti aggiunti con successo!`);
+        }
+      }
+    } catch {
+      setActionStatus("Errore nell'acquisto dei crediti");
+    } finally {
+      setBuyingPack(null);
+    }
+  }
+
   async function handleBillingPortal() {
     try {
-      const res = await fetch(`${API_URL}/portal/billing/portal`, { headers: authHeaders() });
-      const json = (await res.json()) as { success: boolean; data?: { url: string }; error?: string };
+      const res = await fetch(`${API_URL}/portal/billing/portal`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      const json = (await res.json()) as { success: boolean; data?: { url: string } };
       if (json.success && json.data?.url) {
         window.open(json.data.url, "_blank");
       }
-    } catch {
-      // silently fail
-    }
-  }
-
-  async function handleCancel() {
-    setCancelling(true);
-    try {
-      const res = await fetch(`${API_URL}/portal/billing/cancel`, {
-        method: "POST",
-        headers: authHeaders(),
-      });
-      const json = (await res.json()) as { success: boolean; error?: string };
-      if (!json.success) throw new Error(json.error);
-      setShowCancel(false);
-      setActionStatus("Abbonamento annullato. Rimarrai attivo fino alla fine del periodo.");
-      void loadData();
-    } catch (err) {
-      setActionStatus(err instanceof Error ? err.message : "Errore nell'annullamento");
-    } finally {
-      setCancelling(false);
-    }
-  }
-
-  async function handleRefund() {
-    setRefunding(true);
-    try {
-      const res = await fetch(`${API_URL}/portal/billing/refund`, {
-        method: "POST",
-        headers: authHeaders(),
-      });
-      const json = (await res.json()) as { success: boolean; error?: string };
-      if (!json.success) throw new Error(json.error);
-      setShowRefund(false);
-      setActionStatus("Rimborso confermato. Riceverai il pagamento entro 5-10 giorni lavorativi.");
-      void loadData();
-    } catch (err) {
-      setActionStatus(err instanceof Error ? err.message : "Errore nel rimborso");
-    } finally {
-      setRefunding(false);
-    }
+    } catch {}
   }
 
   if (loading) {
@@ -387,63 +203,125 @@ export default function BillingPage() {
     );
   }
 
-  const statusInfo = STATUS_CONFIG[billing.status];
-  const StatusIcon = statusInfo.icon;
-  const clientDays = daysSince(billing.clientSince);
-  const isNew = clientDays <= 30;
-
   const totalPages = Math.ceil(invoices.length / INVOICES_PER_PAGE);
-  const pageInvoices = invoices.slice(
-    page * INVOICES_PER_PAGE,
-    (page + 1) * INVOICES_PER_PAGE
-  );
+  const pageInvoices = invoices.slice(page * INVOICES_PER_PAGE, (page + 1) * INVOICES_PER_PAGE);
+  const creditPercent = credits ? Math.round((credits.remaining / credits.total) * 100) : 0;
+  const creditLow = credits ? credits.remaining < credits.total * 0.15 : false;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-white">Account</h2>
-        <p className="text-sm text-slate-400 mt-1">Gestisci il tuo piano e le fatture</p>
+        <h2 className="text-xl font-bold text-white">Account & Crediti</h2>
+        <p className="text-sm text-slate-400 mt-1">Gestisci piano, crediti AI e fatture</p>
       </div>
 
-      {/* Action status banner */}
+      {/* Action status */}
       {actionStatus && (
         <div className="flex items-start gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-5 py-4">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm text-emerald-300">{actionStatus}</p>
-          </div>
+          <p className="text-sm text-emerald-300 flex-1">{actionStatus}</p>
           <button onClick={() => setActionStatus(null)} className="text-slate-500 hover:text-slate-300">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* 14-day guarantee */}
-      {isNew && billing.isEligibleForRefund && (
-        <div className="flex items-center gap-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-5 py-4">
-          <div className="p-2 bg-emerald-500/20 rounded-full flex-shrink-0">
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+      {/* ─── Credits section ─── */}
+      {credits && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Coins className="w-5 h-5 text-indigo-400" />
+            <h3 className="text-base font-semibold text-white">Crediti AI</h3>
           </div>
-          <div className="flex-1">
-            <p className="font-semibold text-emerald-400">Garanzia soddisfatti o rimborsati 14 giorni</p>
-            <p className="text-sm text-emerald-300/80 mt-0.5">
-              Sei cliente da {clientDays} giorni — sei ancora nel periodo di garanzia.
+
+          {/* Credits bar */}
+          <div className="mb-4">
+            <div className="flex items-baseline justify-between mb-2">
+              <p className={`text-3xl font-bold tabular-nums ${creditLow ? "text-amber-400" : "text-white"}`}>
+                {credits.remaining.toFixed(0)}
+                <span className="text-base font-normal text-slate-500 ml-1">/ {credits.total}</span>
+              </p>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                creditLow ? "bg-amber-500/20 text-amber-400" : "bg-indigo-500/20 text-indigo-400"
+              }`}>
+                {creditPercent}% rimanente
+              </span>
+            </div>
+            <div className="w-full bg-slate-800 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full transition-all duration-500 ${creditLow ? "bg-amber-500" : "bg-indigo-500"}`}
+                style={{ width: `${Math.max(2, creditPercent)}%` }}
+              />
+            </div>
+            {credits.purchased > 0 && (
+              <p className="text-xs text-slate-500 mt-2">
+                Include {credits.purchased} crediti extra acquistati
+              </p>
+            )}
+          </div>
+
+          {/* Cost info */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            {[
+              { label: "Chat", cost: "0.5", icon: "💬" },
+              { label: "Edit semplice", cost: "1.0", icon: "✏️" },
+              { label: "Edit complesso", cost: "1.5", icon: "🔧" },
+              { label: "Opus (premium)", cost: "2.0", icon: "🚀" },
+            ].map((item) => (
+              <div key={item.label} className="bg-slate-800 rounded-lg px-3 py-2 text-center">
+                <p className="text-lg mb-0.5">{item.icon}</p>
+                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="text-sm font-semibold text-white">{item.cost} crediti</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Buy credits */}
+          <div>
+            <p className="text-sm font-semibold text-white mb-3">
+              <Sparkles className="w-4 h-4 inline text-indigo-400 mr-1" />
+              Acquista crediti extra
             </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {(credits.topUpOptions ?? [
+                { credits: 50, price: "€9.90", priceId: "50" },
+                { credits: 150, price: "€24.90", priceId: "150" },
+                { credits: 500, price: "€69.90", priceId: "500" },
+              ]).map((opt) => (
+                <button
+                  key={opt.priceId}
+                  onClick={() => void handleBuyCredits(String(opt.credits))}
+                  disabled={buyingPack === String(opt.credits)}
+                  className="flex items-center justify-between p-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-indigo-500/50 hover:bg-slate-800/80 transition-all disabled:opacity-50 group"
+                >
+                  <div className="text-left">
+                    <p className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">
+                      {opt.credits} crediti
+                    </p>
+                    <p className="text-xs text-slate-500">{opt.price}</p>
+                  </div>
+                  {buyingPack === String(opt.credits) ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                  ) : (
+                    <Zap className="w-5 h-5 text-slate-600 group-hover:text-indigo-400 transition-colors" />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left: plan + invoices */}
-        <div className="lg:col-span-2 space-y-5">
+        {/* Plan + Invoices */}
+        <div className="md:col-span-2 space-y-5">
           {/* Plan card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6">
             <h3 className="text-sm font-semibold text-slate-300 mb-4">Piano attuale</h3>
-
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-3 mb-3">
                   <span className="inline-flex items-center px-3 py-1 bg-indigo-600/20 text-indigo-400 text-base font-bold rounded-lg border border-indigo-600/30">
                     {billing.plan}
                   </span>
@@ -451,20 +329,20 @@ export default function BillingPage() {
                     €{billing.nextChargeAmount}/mese
                   </span>
                 </div>
-
-                <div className={`flex items-start gap-3 rounded-xl p-4 border ${statusInfo.bg}`}>
-                  <StatusIcon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${statusInfo.color}`} />
-                  <div>
-                    <p className={`font-semibold text-sm ${statusInfo.color}`}>{statusInfo.label}</p>
-                    <p className={`text-sm mt-0.5 ${statusInfo.color} opacity-80`}>{statusInfo.description}</p>
-                  </div>
+                <div className={`flex items-center gap-2 rounded-lg p-3 ${
+                  billing.status === "ACTIVE"
+                    ? "bg-emerald-500/10 border border-emerald-500/20"
+                    : "bg-red-500/10 border border-red-500/20"
+                }`}>
+                  <CheckCircle2 className={`w-4 h-4 ${billing.status === "ACTIVE" ? "text-emerald-400" : "text-red-400"}`} />
+                  <p className={`text-sm font-medium ${billing.status === "ACTIVE" ? "text-emerald-400" : "text-red-400"}`}>
+                    {billing.status === "ACTIVE" ? "Abbonamento attivo" : billing.status}
+                  </p>
                 </div>
               </div>
-
-              {/* Next charge */}
-              <div className="bg-slate-800 rounded-xl p-4 text-center sm:min-w-[160px]">
+              <div className="bg-slate-800 rounded-xl p-4 text-center sm:min-w-[140px]">
                 <p className="text-xs text-slate-500 mb-1">Prossimo addebito</p>
-                <p className="text-2xl font-bold text-white tabular-nums">€{billing.nextChargeAmount}</p>
+                <p className="text-xl font-bold text-white tabular-nums">€{billing.nextChargeAmount}</p>
                 <p className="text-xs text-slate-400 mt-1">
                   {billing.nextChargeDate ? formatShortDate(billing.nextChargeDate) : "—"}
                 </p>
@@ -474,11 +352,9 @@ export default function BillingPage() {
 
           {/* Invoices */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-800">
+            <div className="px-5 py-4 border-b border-slate-800">
               <h3 className="text-base font-semibold text-white">Storico fatture</h3>
-              <p className="text-sm text-slate-500 mt-0.5">{invoices.length} fatture totali</p>
             </div>
-
             {invoices.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <CreditCard className="w-8 h-8 text-slate-700 mx-auto mb-3" />
@@ -490,76 +366,40 @@ export default function BillingPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-800">
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                          Data
-                        </th>
-                        <th className="hidden md:table-cell text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                          Descrizione
-                        </th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                          Importo
-                        </th>
-                        <th className="text-center px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                          Status
-                        </th>
-                        <th className="px-6 py-3" />
+                        <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Data</th>
+                        <th className="hidden sm:table-cell text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Descrizione</th>
+                        <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Importo</th>
+                        <th className="text-center px-5 py-3 text-xs font-semibold text-slate-500 uppercase">Stato</th>
+                        <th className="px-5 py-3" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {pageInvoices.map((invoice) => (
-                        <tr key={invoice.id} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="px-6 py-4 text-slate-400 whitespace-nowrap tabular-nums">
-                            {formatShortDate(invoice.date)}
-                          </td>
-                          <td className="hidden md:table-cell px-6 py-4 text-white">{invoice.description}</td>
-                          <td className="px-6 py-4 text-right font-semibold text-white tabular-nums whitespace-nowrap">
-                            €{invoice.amount.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${INVOICE_STATUS_COLORS[invoice.status] ?? "bg-slate-700 text-slate-300"}`}>
-                              {INVOICE_STATUS_LABELS[invoice.status] ?? invoice.status}
+                      {pageInvoices.map((inv) => (
+                        <tr key={inv.id} className="hover:bg-slate-800/40">
+                          <td className="px-5 py-3 text-slate-400 tabular-nums">{formatShortDate(inv.date)}</td>
+                          <td className="hidden sm:table-cell px-5 py-3 text-white">{inv.description}</td>
+                          <td className="px-5 py-3 text-right font-semibold text-white tabular-nums">€{inv.amount.toFixed(2)}</td>
+                          <td className="px-5 py-3 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${INVOICE_STATUS_COLORS[inv.status] ?? "bg-slate-700 text-slate-300"}`}>
+                              {INVOICE_STATUS_LABELS[inv.status] ?? inv.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-right">
-                            {invoice.pdfUrl ? (
-                              <a
-                                href={invoice.pdfUrl}
-                                download
-                                className="inline-flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-                                aria-label="Scarica PDF"
-                              >
-                                <Download className="w-4 h-4" />
-                              </a>
-                            ) : (
-                              <span className="text-slate-700">—</span>
-                            )}
+                          <td className="px-5 py-3 text-right">
+                            {inv.pdfUrl ? (
+                              <a href={inv.pdfUrl} download className="text-indigo-400 hover:text-indigo-300"><Download className="w-4 h-4" /></a>
+                            ) : <span className="text-slate-700">—</span>}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-
                 {totalPages > 1 && (
-                  <div className="px-6 py-4 border-t border-slate-800 flex items-center justify-between">
+                  <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between">
                     <p className="text-xs text-slate-500">Pagina {page + 1} di {totalPages}</p>
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => setPage((p) => Math.max(0, p - 1))}
-                        disabled={page === 0}
-                        className="p-1.5 rounded-lg border border-slate-700 text-slate-400 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
-                        aria-label="Pagina precedente"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                        disabled={page === totalPages - 1}
-                        className="p-1.5 rounded-lg border border-slate-700 text-slate-400 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
-                        aria-label="Pagina successiva"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
+                      <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="p-1.5 rounded border border-slate-700 text-slate-400 hover:bg-slate-800 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
+                      <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1} className="p-1.5 rounded border border-slate-700 text-slate-400 hover:bg-slate-800 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
                     </div>
                   </div>
                 )}
@@ -568,100 +408,48 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Right: payment + actions */}
+        {/* Right: payment + info */}
         <div className="space-y-5">
-          {/* Payment method */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <h3 className="text-sm font-semibold text-slate-300 mb-4">Metodo di pagamento</h3>
-
             {billing.paymentMethod ? (
-              <div className="flex items-center gap-3 p-4 bg-slate-800 rounded-xl mb-4">
-                <div className="p-2 bg-slate-700 rounded-lg">
-                  <CreditCard className="w-5 h-5 text-slate-300" />
-                </div>
+              <div className="flex items-center gap-3 p-3 bg-slate-800 rounded-xl mb-4">
+                <CreditCard className="w-5 h-5 text-slate-300" />
                 <div>
-                  <p className="text-sm font-medium text-white">
-                    {billing.paymentMethod.brand} •••• {billing.paymentMethod.last4}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Scadenza {billing.paymentMethod.expiryMonth}/{billing.paymentMethod.expiryYear}
-                  </p>
+                  <p className="text-sm font-medium text-white">{billing.paymentMethod.brand} •••• {billing.paymentMethod.last4}</p>
+                  <p className="text-xs text-slate-500">Scade {billing.paymentMethod.expiryMonth}/{billing.paymentMethod.expiryYear}</p>
                 </div>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                Nessun metodo di pagamento
+                Nessun metodo
               </div>
             )}
-
             <button
               onClick={() => void handleBillingPortal()}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 text-white text-sm font-semibold rounded-xl hover:bg-slate-600 transition-colors"
             >
               <ExternalLink className="w-4 h-4" />
-              Gestisci abbonamento
+              Gestisci su Stripe
             </button>
           </div>
 
-          {/* Danger zone */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-slate-300 mb-4">Azioni account</h3>
-            <div className="space-y-3">
-              {/* Refund — only if eligible */}
-              {billing.isEligibleForRefund && (
-                <button
-                  onClick={() => setShowRefund(true)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 text-sm font-semibold rounded-xl hover:bg-emerald-600/30 transition-colors"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  Richiedi rimborso
-                </button>
-              )}
-
-              <button
-                onClick={() => setShowCancel(true)}
-                className="w-full text-sm text-slate-500 hover:text-red-400 transition-colors text-center py-2"
-              >
-                Cancella abbonamento
-              </button>
-            </div>
-          </div>
-
-          {/* Account info */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Dettagli account</h3>
+            <h3 className="text-sm font-semibold text-slate-300 mb-3">Info account</h3>
             <div className="space-y-3">
               <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-0.5">Cliente dal</p>
+                <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5">Cliente dal</p>
                 <p className="text-sm text-white">{formatDate(billing.clientSince)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-0.5">Prossima scadenza</p>
-                <p className="text-sm text-white">
-                  {billing.nextChargeDate ? formatDate(billing.nextChargeDate) : "—"}
-                </p>
+                <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5">Piano</p>
+                <p className="text-sm text-white">{billing.plan} — €{billing.nextChargeAmount}/mese</p>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Modals */}
-      {showCancel && (
-        <CancelModal
-          onClose={() => setShowCancel(false)}
-          onConfirm={() => void handleCancel()}
-          loading={cancelling}
-        />
-      )}
-      {showRefund && (
-        <RefundModal
-          onClose={() => setShowRefund(false)}
-          onConfirm={() => void handleRefund()}
-          loading={refunding}
-        />
-      )}
     </div>
   );
 }
