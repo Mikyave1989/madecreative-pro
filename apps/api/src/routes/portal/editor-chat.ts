@@ -685,6 +685,8 @@ app.post("/", async (c) => {
     );
 
     // Save content updates to DB if any changes were made
+    let deployUrl: string | null = client.website?.deployUrl ?? null;
+
     if (Object.keys(contentUpdates).length > 0 && client.website) {
       // Snapshot current state for rollback
       const previousContent = JSON.parse(JSON.stringify(currentContent));
@@ -697,22 +699,46 @@ app.post("/", async (c) => {
         data: {
           pages: mergedContent as object,
           designTokens: { ...(client.website.designTokens as object ?? {}), _snapshots: snapshots },
+          deployStatus: "DEPLOYING",
         },
       });
 
-      // Auto-deploy: queue a rebuild job
+      // Auto-deploy: push directly to Vercel
       try {
-        const rebuildJob = await prisma.agentJob.create({
+        const { deploySite, slugify } = await import("../../lib/deploy-site.js");
+
+        const subdomain =
+          (client.website.subdomain as string | null | undefined) ??
+          (slugify(client.companyName) || clientId.slice(0, 12));
+
+        const result = await deploySite({
+          clientId,
+          companyName: client.companyName,
+          sector: client.sector,
+          content: mergedContent,
+          subdomain,
+        });
+
+        deployUrl = result.deployUrl;
+
+        await prisma.clientWebsite.update({
+          where: { id: client.website.id },
           data: {
-            agentType: "BUILDER",
-            status: "QUEUED",
-            clientId,
-            input: { clientId, trigger: "ai-editor-auto-deploy" },
+            deployUrl: result.deployUrl,
+            vercelProjectId: result.vercelProjectId,
+            deployStatus: "DEPLOYED",
+            lastDeployedAt: new Date(),
           },
         });
-        console.log(`[EditorChat] Auto-deploy queued: ${rebuildJob.id}`);
-      } catch (rebuildErr) {
-        console.warn("[EditorChat] Auto-deploy queue failed:", rebuildErr);
+
+        console.log(`[EditorChat] Deployed: ${result.deployUrl}`);
+      } catch (deployErr) {
+        const errMsg = deployErr instanceof Error ? deployErr.message : String(deployErr);
+        console.warn("[EditorChat] Deploy failed (non-fatal):", errMsg);
+        await prisma.clientWebsite.update({
+          where: { id: client.website.id },
+          data: { deployStatus: "FAILED" },
+        }).catch(() => {});
       }
     }
 
@@ -748,6 +774,7 @@ app.post("/", async (c) => {
         response: assistantText,
         contentUpdates: Object.keys(contentUpdates).length > 0 ? contentUpdates : null,
         currentContent: { ...currentContent, ...contentUpdates },
+        deployUrl,
         newMessages,
         credits: getCredits(clientId),
         cost: {

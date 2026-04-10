@@ -770,10 +770,12 @@ function PreviewPanel({
   content,
   onRefresh,
   building = false,
+  deployUrl,
 }: {
   content: WebsiteContent;
   onRefresh: () => void;
   building?: boolean;
+  deployUrl?: string | null;
 }) {
   const [device, setDevice] = useState<DeviceMode>("desktop");
 
@@ -805,11 +807,29 @@ function PreviewPanel({
         </div>
 
         {/* URL bar */}
-        <div className="flex-1 flex items-center bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1 min-w-0">
-          <span className="text-[11px] text-zinc-500 font-mono truncate select-none">
-            tuosito.madecreative.pro
-          </span>
-        </div>
+        {deployUrl ? (
+          <a
+            href={deployUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center gap-2 bg-zinc-800 border border-zinc-700 hover:border-zinc-600 rounded-md px-3 py-1 min-w-0 group"
+            title="Apri sito live"
+          >
+            <span className="text-[11px] text-zinc-300 font-mono truncate select-none group-hover:text-white transition-colors">
+              {deployUrl.replace(/^https?:\/\//, "")}
+            </span>
+            <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Live
+            </span>
+          </a>
+        ) : (
+          <div className="flex-1 flex items-center bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1 min-w-0">
+            <span className="text-[11px] text-zinc-500 font-mono truncate select-none">
+              tuosito.madecreative.pro
+            </span>
+          </div>
+        )}
 
         {/* Device toggle */}
         <div className="flex items-center bg-zinc-800 border border-zinc-700 rounded-md overflow-hidden flex-shrink-0">
@@ -1078,6 +1098,7 @@ export default function EditorPage() {
     total: 100,
   });
   const [content, setContent] = useState<WebsiteContent>({});
+  const [deployUrl, setDeployUrl] = useState<string | null>(null);
   const [undoing, setUndoing] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1102,11 +1123,14 @@ export default function EditorPage() {
       .then(
         (j: {
           success: boolean;
-          data?: { pages?: WebsiteContent };
+          data?: { pages?: WebsiteContent; deployUrl?: string | null };
           error?: string;
         }) => {
           if (j.success && j.data?.pages) {
             setContent(j.data.pages as WebsiteContent);
+          }
+          if (j.success && j.data?.deployUrl) {
+            setDeployUrl(j.data.deployUrl);
           }
         }
       )
@@ -1145,6 +1169,7 @@ export default function EditorPage() {
             response: string;
             contentUpdates: Record<string, unknown> | null;
             currentContent: WebsiteContent;
+            deployUrl?: string | null;
             credits: Credits;
             cost?: { inputTokens: number; outputTokens: number; totalCost: number };
           };
@@ -1165,6 +1190,7 @@ export default function EditorPage() {
               const creditCost = credits.remaining - (retryJson.data.credits?.remaining ?? credits.remaining);
               setMessages((prev) => [...prev, { role: "assistant", content: retryJson.data!.response, cost: creditCost > 0 ? creditCost : undefined }]);
               if (retryJson.data.currentContent) setContent(retryJson.data.currentContent);
+              if (retryJson.data.deployUrl) setDeployUrl(retryJson.data.deployUrl);
               if (retryJson.data.credits) setCredits(retryJson.data.credits);
               return;
             }
@@ -1196,6 +1222,9 @@ export default function EditorPage() {
           ]);
           if (json.data.currentContent) {
             setContent(json.data.currentContent);
+          }
+          if (json.data.deployUrl) {
+            setDeployUrl(json.data.deployUrl);
           }
           if (json.data.credits) {
             setCredits(json.data.credits);
@@ -1342,7 +1371,7 @@ export default function EditorPage() {
           `}
           key={refreshKey}
         >
-          <PreviewPanel content={content} onRefresh={handleRefresh} building={loading} />
+          <PreviewPanel content={content} onRefresh={handleRefresh} building={loading} deployUrl={deployUrl} />
         </div>
       </div>
     </div>

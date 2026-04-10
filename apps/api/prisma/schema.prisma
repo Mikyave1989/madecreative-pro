@@ -114,17 +114,22 @@ model Client {
 }
 
 model ClientWebsite {
-  id              String   @id @default(cuid())
-  clientId        String   @unique
-  client          Client   @relation(fields: [clientId], references: [id])
-  domain          String
-  designTokens    Json?
-  pages           Json
-  deployUrl       String?
-  lighthouseScore Int?
-  monthlyVisits   Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String    @id @default(cuid())
+  clientId         String    @unique
+  client           Client    @relation(fields: [clientId], references: [id])
+  domain           String
+  subdomain        String?
+  designTokens     Json?
+  pages            Json
+  files            Json?
+  deployUrl        String?
+  vercelProjectId  String?
+  deployStatus     String    @default("NONE")
+  lastDeployedAt   DateTime?
+  lighthouseScore  Int?
+  monthlyVisits    Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model ClientChatbot {
