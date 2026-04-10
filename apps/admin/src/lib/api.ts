@@ -515,3 +515,125 @@ export async function generatePaymentLink(prospectId: string): Promise<{ checkou
   });
   return res.data;
 }
+
+// ─── Launch Operations ───────────────────────────────────────
+
+export interface WarmingStatus {
+  warmingDay: number;
+  phase: number;
+  currentLimit: number;
+  sentToday: number;
+  remaining: number;
+  daysUntilNextPhase: number;
+  nextPhaseLimit: number;
+  warmingSchedule: Array<{
+    phase: number;
+    days: string;
+    dailyLimit: number;
+    active: boolean;
+  }>;
+}
+
+export interface LaunchStatus {
+  funnel: {
+    totalProspects: number;
+    scraped: number;
+    analyzed: number;
+    previewGenerated: number;
+    emailSent: number;
+    replied: number;
+    converted: number;
+    lost: number;
+    blacklisted: number;
+  };
+  readiness: {
+    withPreview: number;
+    withEmail: number;
+    readyForOutreach: number;
+  };
+  warming: {
+    day: number;
+    limit: number;
+    sentToday: number;
+    initialized: boolean;
+  };
+  activeJobs: number;
+  emailsLast7Days: number;
+}
+
+export interface BulkResult {
+  enqueued: number;
+  jobIds?: string[];
+  message: string;
+  warmingStatus?: {
+    day: number;
+    limit: number;
+    sentToday: number;
+    remaining: number;
+  };
+}
+
+export async function getLaunchStatus(): Promise<LaunchStatus> {
+  const res = await apiFetch<ApiResponse<LaunchStatus>>("/admin/launch/status");
+  return res.data;
+}
+
+export async function getWarmingStatus(): Promise<WarmingStatus> {
+  const res = await apiFetch<ApiResponse<WarmingStatus>>("/admin/launch/warming/status");
+  return res.data;
+}
+
+export async function initWarming(startDay?: number): Promise<{ warmingDay: number; currentLimit: number; message: string }> {
+  const res = await apiFetch<ApiResponse<{ warmingDay: number; currentLimit: number; message: string }>>("/admin/launch/warming/init", {
+    method: "POST",
+    body: JSON.stringify(startDay !== undefined ? { startDay } : {}),
+  });
+  return res.data;
+}
+
+export async function bulkBuild(opts?: { limit?: number; sector?: string; country?: string }): Promise<BulkResult> {
+  const res = await apiFetch<ApiResponse<BulkResult>>("/admin/launch/bulk-build", {
+    method: "POST",
+    body: JSON.stringify(opts ?? {}),
+  });
+  return res.data;
+}
+
+export async function bulkOutreach(opts?: { limit?: number; sector?: string; country?: string }): Promise<BulkResult> {
+  const res = await apiFetch<ApiResponse<BulkResult>>("/admin/launch/bulk-outreach", {
+    method: "POST",
+    body: JSON.stringify(opts ?? {}),
+  });
+  return res.data;
+}
+
+export async function launchMunich(opts?: { maxResults?: number; minRating?: number }): Promise<{
+  scrapeConfigId: string;
+  jobId: string;
+  message: string;
+  nextSteps: string[];
+}> {
+  const res = await apiFetch<ApiResponse<{
+    scrapeConfigId: string;
+    jobId: string;
+    message: string;
+    nextSteps: string[];
+  }>>("/admin/launch/munich", {
+    method: "POST",
+    body: JSON.stringify(opts ?? {}),
+  });
+  return res.data;
+}
+
+export async function getDnsGuide(): Promise<{
+  domain: string;
+  records: Array<{ type: string; name: string; value: string; purpose: string; priority: string }>;
+  verification: Record<string, string>;
+}> {
+  const res = await apiFetch<ApiResponse<{
+    domain: string;
+    records: Array<{ type: string; name: string; value: string; purpose: string; priority: string }>;
+    verification: Record<string, string>;
+  }>>("/admin/launch/dns-guide");
+  return res.data;
+}

@@ -95,6 +95,11 @@ export function createOrchestratorWorker(
     console.log(`[Orchestrator] ${agentType} job completed: ${job.id}`, {
       cost: (result as { apiCost?: number })?.apiCost,
     });
+
+    // Auto-pipeline: chain agents after completion
+    void chainNextAgent(agentType, job.data as { jobId: string; input: Record<string, unknown> }, result).catch((err) => {
+      console.error(`[Orchestrator] Auto-chain error for ${agentType}:`, err);
+    });
   });
 
   worker.on("failed", (job, err) => {
@@ -106,6 +111,97 @@ export function createOrchestratorWorker(
   });
 
   return worker;
+}
+
+// ─── Auto-pipeline: chain agents after completion ────────────────────────────
+// SCRAPER → ANALYZER (for each new prospect)
+// ANALYZER → BUILDER (if leadScore >= 50)
+
+async function chainNextAgent(
+  completedType: AgentType,
+  jobData: { jobId: string; input: Record<string, unknown> },
+  result: unknown,
+): Promise<void> {
+  const { Queue } = await import("bullmq");
+  const url = process.env["REDIS_URL"];
+  if (!url) return;
+
+  const redis = new (await import("ioredis")).default(url, {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+  });
+
+  try {
+    if (completedType === "SCRAPER") {
+      // After scraping, queue ANALYZER for all new SCRAPED prospects without a score
+      const prospects = await prisma.prospect.findMany({
+        where: { status: "SCRAPED", leadScore: 0 },
+        take: 50,
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+
+      if (prospects.length === 0) return;
+
+      const analyzerQueue = new Queue(AGENT_QUEUE_NAMES["ANALYZER"], { connection: redis });
+
+      for (let i = 0; i < prospects.length; i++) {
+        const prospect = prospects[i]!;
+        const job = await prisma.agentJob.create({
+          data: {
+            agentType: "ANALYZER",
+            status: "QUEUED",
+            input: { prospectId: prospect.id },
+            prospectId: prospect.id,
+          },
+        });
+
+        await analyzerQueue.add(
+          "ANALYZER",
+          { jobId: job.id, input: { prospectId: prospect.id } },
+          { jobId: job.id, delay: i * 10_000 }, // stagger 10s apart
+        );
+      }
+
+      await analyzerQueue.close();
+      console.log(`[Orchestrator] Auto-chained ${prospects.length} ANALYZER jobs after SCRAPER`);
+    }
+
+    if (completedType === "ANALYZER") {
+      // After analyzing, queue BUILDER for high-score prospects without preview
+      const prospectId = jobData.input["prospectId"] as string | undefined;
+      if (!prospectId) return;
+
+      const prospect = await prisma.prospect.findUnique({
+        where: { id: prospectId },
+        select: { id: true, leadScore: true, previewSiteUrl: true, sector: true },
+      });
+
+      if (!prospect || prospect.leadScore < 50 || prospect.previewSiteUrl) return;
+
+      const builderQueue = new Queue(AGENT_QUEUE_NAMES["BUILDER"], { connection: redis });
+
+      const job = await prisma.agentJob.create({
+        data: {
+          agentType: "BUILDER",
+          status: "QUEUED",
+          input: { prospectId: prospect.id, templateSlug: prospect.sector },
+          prospectId: prospect.id,
+        },
+      });
+
+      await builderQueue.add(
+        "BUILDER",
+        { jobId: job.id, input: { prospectId: prospect.id, templateSlug: prospect.sector } },
+        { jobId: job.id, delay: 5_000 },
+      );
+
+      await builderQueue.close();
+      console.log(`[Orchestrator] Auto-chained BUILDER for prospect ${prospectId} (score: ${prospect.leadScore})`);
+    }
+  } finally {
+    await redis.quit();
+  }
 }
 
 export async function startOrchestrator(): Promise<Worker[]> {

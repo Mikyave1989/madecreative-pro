@@ -16,6 +16,7 @@ import adminProspectsRoutes from "./routes/admin/prospects.js";
 import adminClientsRoutes from "./routes/admin/clients.js";
 import adminAgentsRoutes from "./routes/admin/agents.js";
 import adminMetricsRoutes from "./routes/admin/metrics.js";
+import adminLaunchRoutes from "./routes/admin/launch.js";
 
 // Portal Routes
 import portalAuthRoutes from "./routes/portal/auth.js";
@@ -96,11 +97,13 @@ app.use("/admin/prospects/*", adminAuthMiddleware);
 app.use("/admin/clients/*", adminAuthMiddleware);
 app.use("/admin/agents/*", adminAuthMiddleware);
 app.use("/admin/metrics/*", adminAuthMiddleware);
+app.use("/admin/launch/*", adminAuthMiddleware);
 
 app.route("/admin/prospects", adminProspectsRoutes);
 app.route("/admin/clients", adminClientsRoutes);
 app.route("/admin/agents", adminAgentsRoutes);
 app.route("/admin/metrics", adminMetricsRoutes);
+app.route("/admin/launch", adminLaunchRoutes);
 
 // ─── Portal Auth Routes (rate limited) ───────────────────────────────────────
 

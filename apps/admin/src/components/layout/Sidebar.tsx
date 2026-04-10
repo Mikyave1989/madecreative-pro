@@ -16,6 +16,7 @@ import {
   X,
   TrendingUp,
   Rocket,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/campaigns",
     icon: Rocket,
     color: "#00f0ff",
+  },
+  {
+    label: "Launch",
+    href: "/launch",
+    icon: Zap,
+    color: "#ef4444",
   },
   {
     label: "Pipeline",
