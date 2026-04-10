@@ -87,6 +87,24 @@ function authHeaders(): Record<string, string> {
   return h;
 }
 
+async function refreshTokenIfNeeded(): Promise<boolean> {
+  const refresh = typeof window !== "undefined" ? localStorage.getItem("mc_refresh") : null;
+  if (!refresh) return false;
+  try {
+    const res = await fetch(`${API_URL}/portal/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: refresh }),
+    });
+    const json = (await res.json()) as { success: boolean; data?: { accessToken: string } };
+    if (json.success && json.data?.accessToken) {
+      localStorage.setItem("mc_token", json.data.accessToken);
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 // ─── Suggestion chips ─────────────────────────────────────────────────────────
 
 const SUGGESTIONS = [
@@ -717,6 +735,28 @@ export default function EditorPage() {
           };
           error?: string;
         };
+
+        if (res.status === 401) {
+          const refreshed = await refreshTokenIfNeeded();
+          if (refreshed) {
+            // Retry with new token
+            const retry = await fetch(`${API_URL}/portal/editor/chat`, {
+              method: "POST",
+              headers: authHeaders(),
+              body: JSON.stringify({ message: msg, history: messages.map((m) => ({ role: m.role, content: m.content })) }),
+            });
+            const retryJson = (await retry.json()) as typeof json;
+            if (retryJson.success && retryJson.data) {
+              const creditCost = credits.remaining - (retryJson.data.credits?.remaining ?? credits.remaining);
+              setMessages((prev) => [...prev, { role: "assistant", content: retryJson.data!.response, cost: creditCost > 0 ? creditCost : undefined }]);
+              if (retryJson.data.currentContent) setContent(retryJson.data.currentContent);
+              if (retryJson.data.credits) setCredits(retryJson.data.credits);
+              return;
+            }
+          }
+          setMessages((prev) => [...prev, { role: "assistant", content: "Sessione scaduta. Effettua il login di nuovo." }]);
+          return;
+        }
 
         if (!res.ok || !json.success) {
           const errText =

@@ -146,9 +146,9 @@ export const RATE_LIMITS = {
 // ─── JWT ──────────────────────────────────────────────────────────────────────
 
 export const JWT_CONFIG = {
-  ACCESS_TOKEN_TTL: "15m",
+  ACCESS_TOKEN_TTL: "2h",
   REFRESH_TOKEN_TTL: "7d",
-  ACCESS_TOKEN_TTL_SECONDS: 15 * 60,
+  ACCESS_TOKEN_TTL_SECONDS: 2 * 60 * 60,
   REFRESH_TOKEN_TTL_SECONDS: 7 * 24 * 60 * 60,
 } as const;
 
