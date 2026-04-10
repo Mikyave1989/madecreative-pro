@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "buildCommand": "cd ../.. && npm run build --workspace=@madecreative/marketing",
   "outputDirectory": ".next",
-  "installCommand": "cd ../.. && npm install",
+  "installCommand": "cd ../.. && npm cache clean --force && npm install",
   "headers": [
     {
       "source": "/(.*)",
