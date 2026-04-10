@@ -400,23 +400,26 @@ function PipelineColumn({
 
 // ─── Summary Stats Bar ─────────────────────────────────────────────────────────
 
-function SummaryStats({ totals }: { totals: PipelineData["totals"] }) {
+function SummaryStats({ counts }: { counts: Record<string, number> }) {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const converted = counts["CONVERTED"] ?? 0;
+  const conversionRate = total > 0 ? (converted / total) * 100 : 0;
   const stats = [
     {
       label: "Total in Pipeline",
-      value: totals.total,
+      value: total,
       icon: Users,
       color: "text-neon-cyan" as const,
     },
     {
       label: "Converted",
-      value: totals.converted,
+      value: converted,
       icon: ArrowRightLeft,
       color: "text-neon-green" as const,
     },
     {
       label: "Conversion Rate",
-      value: `${totals.conversionRate.toFixed(1)}%`,
+      value: `${conversionRate.toFixed(1)}%`,
       icon: Percent,
       color: "text-neon-violet" as const,
     },
@@ -446,15 +449,15 @@ function SummaryStats({ totals }: { totals: PipelineData["totals"] }) {
 // ─── Per-Column Count Bar ──────────────────────────────────────────────────────
 
 function ColumnCountBar({
-  columns,
+  data,
 }: {
-  columns: Record<string, { prospects: PipelineProspect[]; count: number }>;
+  data: PipelineData;
 }) {
   return (
     <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-6">
       {PIPELINE_COLUMNS.map((status) => {
         const config = COLUMN_CONFIG[status];
-        const count = columns[status]?.count ?? 0;
+        const count = data.counts[status] ?? (data.columns[status]?.length ?? 0);
         return (
           <Card key={status} neon="subtle" className="p-3 text-center">
             <div
@@ -566,7 +569,7 @@ export default function PipelinePage() {
           </h1>
           <p className="mt-1 font-mono-tech text-xs text-slate-500">
             {data
-              ? `${data.totals.total} prospects tracked`
+              ? `${Object.values(data.counts).reduce((a, b) => a + b, 0)} prospects tracked`
               : "Loading pipeline..."}
             {lastFetched && (
               <span className="ml-2 text-slate-700">
@@ -621,10 +624,10 @@ export default function PipelinePage() {
       {data && !error && (
         <>
           {/* Summary stats */}
-          <SummaryStats totals={data.totals} />
+          <SummaryStats counts={data.counts} />
 
           {/* Per-column count strip */}
-          <ColumnCountBar columns={data.columns} />
+          <ColumnCountBar data={data} />
 
           {/* Kanban board */}
           <div
@@ -637,16 +640,14 @@ export default function PipelinePage() {
               style={{ minWidth: `${PIPELINE_COLUMNS.length * 230}px` }}
             >
               {PIPELINE_COLUMNS.map((status) => {
-                const col = data.columns[status] ?? {
-                  prospects: [],
-                  count: 0,
-                };
+                const prospects = data.columns[status] ?? [];
+                const count = data.counts[status] ?? prospects.length;
                 return (
                   <PipelineColumn
                     key={status}
                     status={status}
-                    prospects={col.prospects}
-                    count={col.count}
+                    prospects={prospects}
+                    count={count}
                     paymentLinks={paymentLinks}
                     onSendOutreach={handleSendOutreach}
                     onGeneratePaymentLink={handleGeneratePaymentLink}
@@ -670,12 +671,9 @@ function moveProspect(
   targetStatus: PipelineStatus
 ): PipelineData {
   const next: PipelineData = {
-    totals: { ...data.totals },
+    counts: { ...data.counts },
     columns: Object.fromEntries(
-      Object.entries(data.columns).map(([k, v]) => [
-        k,
-        { count: v.count, prospects: [...v.prospects] },
-      ])
+      Object.entries(data.columns).map(([k, v]) => [k, [...v]])
     ),
   };
 
@@ -684,23 +682,19 @@ function moveProspect(
   for (const status of PIPELINE_COLUMNS) {
     const col = next.columns[status];
     if (!col) continue;
-    const idx = col.prospects.findIndex((p) => p.id === id);
+    const idx = col.findIndex((p) => p.id === id);
     if (idx !== -1) {
-      moved = col.prospects[idx];
-      col.prospects.splice(idx, 1);
-      col.count = Math.max(0, col.count - 1);
+      moved = col[idx];
+      col.splice(idx, 1);
+      next.counts[status] = Math.max(0, (next.counts[status] ?? 0) - 1);
       break;
     }
   }
 
   if (moved) {
-    const targetCol = next.columns[targetStatus] ?? {
-      prospects: [],
-      count: 0,
-    };
-    targetCol.prospects = [{ ...moved, status: targetStatus }, ...targetCol.prospects];
-    targetCol.count = targetCol.count + 1;
-    next.columns[targetStatus] = targetCol;
+    if (!next.columns[targetStatus]) next.columns[targetStatus] = [];
+    next.columns[targetStatus] = [{ ...moved, status: targetStatus }, ...next.columns[targetStatus]];
+    next.counts[targetStatus] = (next.counts[targetStatus] ?? 0) + 1;
   }
 
   return next;

@@ -250,8 +250,8 @@ export interface PipelineProspect {
 }
 
 export interface PipelineData {
-  columns: Record<string, { prospects: PipelineProspect[]; count: number }>;
-  totals: { total: number; converted: number; conversionRate: number };
+  columns: Record<string, PipelineProspect[]>;
+  counts: Record<string, number>;
 }
 
 // ─── Client (GET /admin/clients) ──────────────────────────────
