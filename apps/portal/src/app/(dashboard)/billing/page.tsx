@@ -60,7 +60,7 @@ const INVOICES_PER_PAGE = 10;
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("portal_token");
+  return localStorage.getItem("mc_token");
 }
 
 function authHeaders(): Record<string, string> {
