@@ -7,19 +7,24 @@ import {
   useState,
 } from "react";
 import {
+  ArrowRight,
   Bot,
   ChevronDown,
   Clock,
   Coins,
+  Facebook,
+  Instagram,
   Mail,
   MapPin,
   MessageSquare,
   Monitor,
   Phone,
+  Quote,
   RefreshCw,
   Send,
   Smartphone,
   Sparkles,
+  Star,
   Tablet,
   Undo2,
   User,
@@ -47,6 +52,7 @@ interface MenuItem {
   description: string;
   price: string;
   category: string;
+  imageUrl?: string | null;
 }
 
 interface HourEntry {
@@ -55,15 +61,45 @@ interface HourEntry {
   closed: boolean;
 }
 
+interface Testimonial {
+  name: string;
+  text: string;
+  rating: number;
+  avatar?: string;
+}
+
+interface GalleryImage {
+  url: string;
+  caption?: string;
+}
+
+interface ServiceItem {
+  name: string;
+  description: string;
+  icon?: string;
+  price?: string;
+}
+
 interface WebsiteContent {
   heroText?: string;
   heroDescription?: string;
+  heroImage?: string;
+  heroCtaText?: string;
+  aboutText?: string;
+  aboutImage?: string;
   phone?: string;
   email?: string;
   address?: string;
   whatsappNumber?: string;
   menuItems?: MenuItem[];
   hours?: Record<string, HourEntry>;
+  gallery?: GalleryImage[];
+  testimonials?: Testimonial[];
+  services?: ServiceItem[];
+  mapEmbed?: string;
+  instagramUrl?: string;
+  facebookUrl?: string;
+  primaryColor?: string;
   [key: string]: unknown;
 }
 
@@ -205,6 +241,34 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
 
 // ─── Preview site renderer ────────────────────────────────────────────────────
 
+const UNSPLASH_HERO = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200";
+const UNSPLASH_FOOD = "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600";
+const UNSPLASH_ABOUT = "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=600";
+
+const DAY_LABELS: Record<string, string> = {
+  monday: "Lunedì", tuesday: "Martedì", wednesday: "Mercoledì",
+  thursday: "Giovedì", friday: "Venerdì", saturday: "Sabato", sunday: "Domenica",
+  lun: "Lunedì", mar: "Martedì", mer: "Mercoledì",
+  gio: "Giovedì", ven: "Venerdì", sab: "Sabato", dom: "Domenica",
+};
+
+function dayLabel(key: string): string {
+  return DAY_LABELS[key.toLowerCase()] ?? key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          className={`w-3.5 h-3.5 ${n <= rating ? "text-amber-400 fill-amber-400" : "text-gray-300"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 function SitePreview({ content }: { content: WebsiteContent }) {
   const hasContent =
     content.heroText ||
@@ -214,7 +278,11 @@ function SitePreview({ content }: { content: WebsiteContent }) {
     content.address ||
     content.whatsappNumber ||
     (content.menuItems && content.menuItems.length > 0) ||
-    content.hours;
+    (content.services && content.services.length > 0) ||
+    (content.gallery && content.gallery.length > 0) ||
+    (content.testimonials && content.testimonials.length > 0) ||
+    content.hours ||
+    content.aboutText;
 
   if (!hasContent) {
     return (
@@ -232,131 +300,466 @@ function SitePreview({ content }: { content: WebsiteContent }) {
     );
   }
 
+  const accentColor = content.primaryColor ?? "#4f46e5";
+
+  // Group menu items by category
+  const menuByCategory: Record<string, MenuItem[]> = {};
+  if (content.menuItems && content.menuItems.length > 0) {
+    for (const item of content.menuItems) {
+      const cat = item.category || "Altri";
+      if (!menuByCategory[cat]) menuByCategory[cat] = [];
+      menuByCategory[cat].push(item);
+    }
+  }
+
   return (
-    <div className="bg-white text-gray-900 text-sm min-h-full">
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-8 py-12 text-white">
-        <h1 className="text-2xl font-bold mb-2 leading-tight">
-          {content.heroText || "Il tuo sito"}
-        </h1>
-        {content.heroDescription && (
-          <p className="text-sm text-slate-300 leading-relaxed max-w-sm">
-            {content.heroDescription}
+    <div className="bg-white text-gray-900 font-sans min-h-full">
+
+      {/* ── NAV ─────────────────────────────────────────────── */}
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <span className="text-base font-bold tracking-tight text-gray-900">
+            {content.heroText ?? "Il tuo sito"}
+          </span>
+          <div className="hidden sm:flex items-center gap-6 text-sm font-medium text-gray-600">
+            {content.aboutText && <a href="#about" className="hover:text-gray-900 transition-colors">Chi siamo</a>}
+            {(content.menuItems?.length || content.services?.length) ? <a href="#menu" className="hover:text-gray-900 transition-colors">Menu</a> : null}
+            {content.gallery?.length ? <a href="#gallery" className="hover:text-gray-900 transition-colors">Galleria</a> : null}
+            <a href="#contact" className="hover:text-gray-900 transition-colors">Contatti</a>
+          </div>
+          {content.whatsappNumber && (
+            <a
+              href={`https://wa.me/${content.whatsappNumber.replace(/\D/g, "")}`}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white"
+              style={{ backgroundColor: "#25D366" }}
+            >
+              <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
+            </a>
+          )}
+        </div>
+      </nav>
+
+      {/* ── 1. HERO ─────────────────────────────────────────── */}
+      <section className="relative min-h-[480px] flex items-center justify-center overflow-hidden">
+        {/* Background image */}
+        <div className="absolute inset-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={content.heroImage ?? UNSPLASH_HERO}
+            alt="Hero"
+            className="w-full h-full object-cover"
+            loading="eager"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
+        </div>
+        {/* Content */}
+        <div className="relative z-10 text-center px-6 max-w-3xl mx-auto py-24">
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-white/60 mb-4">
+            Benvenuti
           </p>
-        )}
-      </div>
+          <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight mb-5 drop-shadow-lg">
+            {content.heroText ?? "Il tuo sito professionale"}
+          </h1>
+          {content.heroDescription && (
+            <p className="text-base sm:text-lg text-white/80 leading-relaxed mb-8 max-w-xl mx-auto">
+              {content.heroDescription}
+            </p>
+          )}
+          <a
+            href="#contact"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-sm font-semibold text-white shadow-lg transition-opacity hover:opacity-90"
+            style={{ backgroundColor: accentColor }}
+          >
+            {content.heroCtaText ?? "Scopri di più"}
+            <ArrowRight className="w-4 h-4" />
+          </a>
+        </div>
+      </section>
 
-      <div className="px-6 py-6 space-y-6">
-        {/* Contact */}
-        {(content.phone || content.email || content.address) && (
-          <section>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3">
-              Contatti
-            </h2>
-            <div className="space-y-2">
-              {content.phone && (
-                <div className="flex items-center gap-2.5 text-sm text-zinc-700">
-                  <Phone className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  {content.phone}
-                </div>
-              )}
-              {content.email && (
-                <div className="flex items-center gap-2.5 text-sm text-zinc-700">
-                  <Mail className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  {content.email}
-                </div>
-              )}
-              {content.address && (
-                <div className="flex items-center gap-2.5 text-sm text-zinc-700">
-                  <MapPin className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  {content.address}
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* WhatsApp */}
-        {content.whatsappNumber && (
-          <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-100 rounded-xl">
-            <div className="w-8 h-8 bg-[#25D366] rounded-full flex items-center justify-center flex-shrink-0">
-              <MessageSquare className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-green-800">
-                WhatsApp attivo
-              </p>
-              <p className="text-[11px] text-green-600">
-                {content.whatsappNumber}
-              </p>
+      {/* ── 2. ABOUT ────────────────────────────────────────── */}
+      {content.aboutText && (
+        <section id="about" className="py-20 bg-gray-50">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: accentColor }}>
+                  Chi siamo
+                </p>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-5 leading-tight">
+                  La nostra storia
+                </h2>
+                <p className="text-base text-gray-600 leading-relaxed whitespace-pre-line">
+                  {content.aboutText}
+                </p>
+              </div>
+              <div className="rounded-2xl overflow-hidden shadow-xl aspect-[4/3]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={content.aboutImage ?? UNSPLASH_ABOUT}
+                  alt="Chi siamo"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
             </div>
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Menu */}
-        {content.menuItems && content.menuItems.length > 0 && (
-          <section>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3">
-              Menu / Listino
-            </h2>
-            <div className="space-y-1.5">
-              {content.menuItems.map((item) => (
+      {/* ── 3a. SERVICES ────────────────────────────────────── */}
+      {content.services && content.services.length > 0 && (
+        <section id="menu" className="py-20 bg-white">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center mb-12">
+              <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: accentColor }}>
+                Cosa offriamo
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">I nostri servizi</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {content.services.map((svc, idx) => (
                 <div
-                  key={item.id}
-                  className="flex items-start justify-between p-3 bg-zinc-50 rounded-lg"
+                  key={idx}
+                  className="group p-6 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                 >
-                  <div className="flex-1 min-w-0 mr-3">
-                    <p className="font-semibold text-sm text-zinc-900 leading-tight">
-                      {item.name}
+                  {svc.icon && (
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4 text-xl"
+                      style={{ backgroundColor: accentColor }}
+                    >
+                      {svc.icon}
+                    </div>
+                  )}
+                  <h3 className="font-bold text-gray-900 mb-2">{svc.name}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{svc.description}</p>
+                  {svc.price && (
+                    <p className="mt-4 text-base font-bold" style={{ color: accentColor }}>
+                      {svc.price}
                     </p>
-                    {item.description && (
-                      <p className="text-xs text-zinc-500 mt-0.5 leading-snug">
-                        {item.description}
-                      </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── 3b. MENU ────────────────────────────────────────── */}
+      {content.menuItems && content.menuItems.length > 0 && (
+        <section id="menu" className="py-20 bg-gray-50">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center mb-12">
+              <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: accentColor }}>
+                La nostra proposta
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Il Menu</h2>
+            </div>
+            {Object.entries(menuByCategory).map(([category, items]) => (
+              <div key={category} className="mb-12 last:mb-0">
+                <h3 className="text-lg font-bold text-gray-900 mb-5 pb-2 border-b border-gray-200">
+                  {category}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="group flex gap-4 bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="w-20 h-20 flex-shrink-0 overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.imageUrl ?? UNSPLASH_FOOD}
+                          alt={item.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0 py-3 pr-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</p>
+                          <span className="text-sm font-bold flex-shrink-0" style={{ color: accentColor }}>
+                            {item.price}
+                          </span>
+                        </div>
+                        {item.description && (
+                          <p className="text-xs text-gray-500 mt-1 leading-snug line-clamp-2">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 4. GALLERY ──────────────────────────────────────── */}
+      {content.gallery && content.gallery.length > 0 && (
+        <section id="gallery" className="py-20 bg-white">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center mb-12">
+              <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: accentColor }}>
+                I nostri momenti
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Galleria</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {content.gallery.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 aspect-square"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.url}
+                    alt={img.caption ?? `Gallery ${idx + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  {img.caption && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                      <p className="text-white text-sm font-medium">{img.caption}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── 5. TESTIMONIALS ─────────────────────────────────── */}
+      {content.testimonials && content.testimonials.length > 0 && (
+        <section className="py-20 bg-gray-50">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center mb-12">
+              <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: accentColor }}>
+                Cosa dicono di noi
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Recensioni</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {content.testimonials.map((t, idx) => (
+                <div key={idx} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col gap-4">
+                  <Quote className="w-6 h-6 text-gray-200" />
+                  <p className="text-sm text-gray-700 leading-relaxed flex-1">&ldquo;{t.text}&rdquo;</p>
+                  <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                    <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                      {t.avatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={t.avatar} alt={t.name} className="w-full h-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-400">
+                          {t.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{t.name}</p>
+                      <StarRating rating={t.rating} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── 6. HOURS + CONTACT ──────────────────────────────── */}
+      {(content.hours || content.phone || content.email || content.address) && (
+        <section id="contact" className="py-20 bg-white">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center mb-12">
+              <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: accentColor }}>
+                Vieni a trovarci
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Orari e Contatti</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              {/* Hours */}
+              {content.hours && (
+                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                  <div className="flex items-center gap-2 mb-5">
+                    <Clock className="w-4 h-4" style={{ color: accentColor }} />
+                    <h3 className="font-bold text-gray-900">Orari di apertura</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {Object.entries(content.hours).map(([day, h]) => (
+                      <div
+                        key={day}
+                        className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                      >
+                        <span className="text-sm font-medium text-gray-700">{dayLabel(day)}</span>
+                        {h.closed ? (
+                          <span className="text-xs font-semibold text-red-400 bg-red-50 px-2.5 py-0.5 rounded-full">
+                            Chiuso
+                          </span>
+                        ) : (
+                          <span className="text-sm font-semibold text-gray-900">
+                            {h.open} – {h.close}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact + Map */}
+              <div className="flex flex-col gap-5">
+                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-4">Contattaci</h3>
+                  <div className="space-y-3">
+                    {content.phone && (
+                      <a
+                        href={`tel:${content.phone}`}
+                        className="flex items-center gap-3 text-sm text-gray-700 hover:text-gray-900 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0" style={{ backgroundColor: accentColor }}>
+                          <Phone className="w-3.5 h-3.5" />
+                        </div>
+                        {content.phone}
+                      </a>
                     )}
-                    {item.category && (
-                      <span className="inline-block mt-1 text-[9px] font-semibold uppercase tracking-wide text-zinc-400">
-                        {item.category}
-                      </span>
+                    {content.email && (
+                      <a
+                        href={`mailto:${content.email}`}
+                        className="flex items-center gap-3 text-sm text-gray-700 hover:text-gray-900 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0" style={{ backgroundColor: accentColor }}>
+                          <Mail className="w-3.5 h-3.5" />
+                        </div>
+                        {content.email}
+                      </a>
+                    )}
+                    {content.address && (
+                      <div className="flex items-center gap-3 text-sm text-gray-700">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0" style={{ backgroundColor: accentColor }}>
+                          <MapPin className="w-3.5 h-3.5" />
+                        </div>
+                        {content.address}
+                      </div>
+                    )}
+                    {content.whatsappNumber && (
+                      <a
+                        href={`https://wa.me/${content.whatsappNumber.replace(/\D/g, "")}`}
+                        className="flex items-center gap-3 text-sm font-semibold text-white rounded-xl px-4 py-2.5 transition-opacity hover:opacity-90 mt-1"
+                        style={{ backgroundColor: "#25D366" }}
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Scrivici su WhatsApp
+                      </a>
                     )}
                   </div>
-                  <span className="text-sm font-bold text-indigo-600 whitespace-nowrap">
-                    {item.price}
-                  </span>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
 
-        {/* Hours */}
-        {content.hours && (
-          <section>
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-3 flex items-center gap-1.5">
-              <Clock className="w-3 h-3" /> Orari
-            </h2>
-            <div className="space-y-1">
-              {Object.entries(content.hours).map(([day, h]) => (
-                <div
-                  key={day}
-                  className="flex items-center justify-between px-3 py-1.5 bg-zinc-50 rounded-lg text-xs"
-                >
-                  <span className="font-semibold uppercase text-zinc-700">
-                    {day}
-                  </span>
-                  <span
-                    className={
-                      h.closed ? "text-zinc-400" : "text-zinc-700"
-                    }
-                  >
-                    {h.closed ? "Chiuso" : `${h.open} – ${h.close}`}
-                  </span>
-                </div>
-              ))}
+                {/* Map embed placeholder */}
+                {content.mapEmbed ? (
+                  <div
+                    className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm h-40"
+                    dangerouslySetInnerHTML={{ __html: content.mapEmbed }}
+                  />
+                ) : content.address ? (
+                  <div className="rounded-2xl overflow-hidden border border-gray-100 bg-gray-100 h-40 flex items-center justify-center">
+                    <div className="text-center">
+                      <MapPin className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-400">Mappa non disponibile</p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
-          </section>
-        )}
-      </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── 7. FOOTER ───────────────────────────────────────── */}
+      <footer className="bg-gray-900 text-gray-300 pt-12 pb-6">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-10">
+            {/* Brand */}
+            <div>
+              <p className="text-lg font-bold text-white mb-2">
+                {content.heroText ?? "Il tuo sito"}
+              </p>
+              {content.heroDescription && (
+                <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">
+                  {content.heroDescription}
+                </p>
+              )}
+            </div>
+            {/* Quick links */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">
+                Link rapidi
+              </p>
+              <ul className="space-y-2 text-sm">
+                {content.aboutText && <li><a href="#about" className="hover:text-white transition-colors">Chi siamo</a></li>}
+                {(content.menuItems?.length || content.services?.length) ? <li><a href="#menu" className="hover:text-white transition-colors">Menu / Servizi</a></li> : null}
+                {content.gallery?.length ? <li><a href="#gallery" className="hover:text-white transition-colors">Galleria</a></li> : null}
+                <li><a href="#contact" className="hover:text-white transition-colors">Contatti</a></li>
+              </ul>
+            </div>
+            {/* Contact + Social */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">
+                Contatti
+              </p>
+              <ul className="space-y-2 text-sm">
+                {content.phone && (
+                  <li className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                    {content.phone}
+                  </li>
+                )}
+                {content.email && (
+                  <li className="flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                    {content.email}
+                  </li>
+                )}
+                {content.address && (
+                  <li className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                    {content.address}
+                  </li>
+                )}
+              </ul>
+              {(content.instagramUrl || content.facebookUrl) && (
+                <div className="flex items-center gap-3 mt-4">
+                  {content.instagramUrl && (
+                    <a
+                      href={content.instagramUrl}
+                      aria-label="Instagram"
+                      className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors"
+                    >
+                      <Instagram className="w-4 h-4 text-gray-300" />
+                    </a>
+                  )}
+                  {content.facebookUrl && (
+                    <a
+                      href={content.facebookUrl}
+                      aria-label="Facebook"
+                      className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors"
+                    >
+                      <Facebook className="w-4 h-4 text-gray-300" />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-600">
+            <p>© {new Date().getFullYear()} {content.heroText ?? "Il tuo sito"}. Tutti i diritti riservati.</p>
+            <p>Powered by <span className="text-gray-400 font-medium">MadeCreative</span></p>
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }

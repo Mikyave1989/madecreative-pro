@@ -76,12 +76,14 @@ function addPurchasedCredits(clientId: string, amount: number): void {
 const EDITOR_TOOLS: Tool[] = [
   {
     name: "update_hero",
-    description: "Update the hero section title and description of the website",
+    description: "Update the hero section: title, description, background image, and CTA button text",
     input_schema: {
       type: "object" as const,
       properties: {
-        heroText: { type: "string", description: "The main hero title" },
-        heroDescription: { type: "string", description: "The hero subtitle/description" },
+        heroText: { type: "string", description: "The main hero title (bold, impactful)" },
+        heroDescription: { type: "string", description: "The hero subtitle/description (1-2 sentences)" },
+        heroImage: { type: "string", description: "Background image URL. Use Unsplash: https://images.unsplash.com/photo-ID?w=1200. Pick a relevant photo for the business sector." },
+        heroCtaText: { type: "string", description: "CTA button text, e.g. 'Prenota ora', 'Scopri di più', 'Contattaci'" },
       },
       required: ["heroText", "heroDescription"],
     },
@@ -161,13 +163,83 @@ const EDITOR_TOOLS: Tool[] = [
   },
   {
     name: "update_about",
-    description: "Update the about/description section text",
+    description: "Update the about section with text and optional image",
     input_schema: {
       type: "object" as const,
       properties: {
-        text: { type: "string", description: "The about section text" },
+        text: { type: "string", description: "About section text (2-4 paragraphs, professional tone)" },
+        aboutImage: { type: "string", description: "Image URL for the about section. Use Unsplash." },
       },
       required: ["text"],
+    },
+  },
+  {
+    name: "set_gallery",
+    description: "Set the photo gallery with multiple images. Use Unsplash URLs for professional photos relevant to the business.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        images: {
+          type: "array",
+          description: "Array of gallery images (4-8 images recommended)",
+          items: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "Image URL from Unsplash (use ?w=800 for quality)" },
+              caption: { type: "string", description: "Short caption for the image" },
+            },
+            required: ["url"],
+          },
+        },
+      },
+      required: ["images"],
+    },
+  },
+  {
+    name: "set_testimonials",
+    description: "Set customer testimonials/reviews for social proof",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        testimonials: {
+          type: "array",
+          description: "Array of testimonials (3-5 recommended)",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Customer name" },
+              text: { type: "string", description: "Review text (1-3 sentences)" },
+              rating: { type: "number", description: "Rating 1-5" },
+            },
+            required: ["name", "text", "rating"],
+          },
+        },
+      },
+      required: ["testimonials"],
+    },
+  },
+  {
+    name: "set_services",
+    description: "Set the services/offerings section with descriptions and optional prices",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        services: {
+          type: "array",
+          description: "Array of services (3-6 recommended)",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Service name" },
+              description: { type: "string", description: "Service description (1-2 sentences)" },
+              icon: { type: "string", description: "Emoji icon for the service" },
+              price: { type: "string", description: "Price if applicable (e.g. 'Da €50')" },
+            },
+            required: ["name", "description"],
+          },
+        },
+      },
+      required: ["services"],
     },
   },
   {
@@ -208,26 +280,71 @@ const EDITOR_TOOLS: Tool[] = [
 
 function buildSystemPrompt(businessName: string, sector: string, language: string): string {
   const lang = language === "de" ? "German" : language === "it" ? "Italian" : language === "fr" ? "French" : language === "es" ? "Spanish" : language === "nl" ? "Dutch" : language === "pt" ? "Portuguese" : "English";
-  return `You are an AI website builder for "${businessName}" (sector: ${sector}).
-You BUILD websites immediately using tools. Always respond in ${lang}.
+  const unsplashPhotos: Record<string, string[]> = {
+    restaurant: [
+      "photo-1517248135467-4c7edcad34c4", "photo-1414235077428-338989a2e8c0",
+      "photo-1555396273-367ea4eb4db5", "photo-1559339352-11d035aa65de",
+      "photo-1565299624946-b28f40a0ae38", "photo-1574071318508-1cdbab80d002",
+    ],
+    dental: [
+      "photo-1629909613654-28e377c37b09", "photo-1606811841689-23dfddce3e95",
+      "photo-1588776814546-1ffcf47267a5", "photo-1445527815600-ed1e924e93b4",
+    ],
+    beauty: [
+      "photo-1560066984-138dadb4c035", "photo-1522337360788-8b13dee7a37e",
+      "photo-1487412720507-e7ab37603c6f", "photo-1516975080664-ed2fc6a32937",
+    ],
+    hotel: [
+      "photo-1566073771259-6a8506099945", "photo-1582719508461-905c673771fd",
+      "photo-1542314831-068cd1dbfeeb", "photo-1590490360182-c33d955e1750",
+    ],
+    fitness: [
+      "photo-1534438327276-14e5300c3a48", "photo-1571019613454-1cb2f99b2d8b",
+      "photo-1540497077202-7c8a3999166f", "photo-1576678927484-cc907957088c",
+    ],
+    professional: [
+      "photo-1497366216548-37526070297c", "photo-1497366811353-6870744d04b2",
+      "photo-1552664730-d307ca884978", "photo-1553877522-43269d4ea984",
+    ],
+  };
+  const sectorPhotos = unsplashPhotos[sector] ?? unsplashPhotos["professional"] ?? [];
+  const photoList = sectorPhotos.map((id) => `https://images.unsplash.com/${id}?w=800&q=80`).join(", ");
 
-CRITICAL RULES:
-1. NEVER ask for information — USE what the user provides and INVENT the rest based on the sector.
-2. When the user says "build my site" or "create my site" — immediately call ALL tools to create a complete site:
-   - update_hero with a professional title and description
-   - update_contact with any info provided (invent realistic placeholders for missing info)
-   - update_hours with typical hours for the sector
-   - set_whatsapp if a number is given
-   - update_about with a professional description
-   - add_menu_item multiple times to create a realistic menu/service list (at least 8-10 items)
-3. For images: use placeholder URLs from unsplash. Example: https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800 for pizza.
-4. ALWAYS use tools. Never just talk — ACT.
-5. Generate ALL content yourself — realistic names, descriptions, prices for the sector.
-6. After building, respond with a SHORT summary of what was created (2-3 lines max).
+  return `You are a PREMIUM AI website builder for "${businessName}" (sector: ${sector}).
+You build STUNNING, professional websites worth €10,000+. Always respond in ${lang}.
 
-You are like Lovable.dev — the user describes what they want, you BUILD it instantly.
-Do NOT delegate to generate_with_opus for simple site creation — do it yourself with the direct tools.
-Only use generate_with_opus for truly massive content (50+ menu items, full marketing copy).`;
+CRITICAL RULES — FOLLOW EXACTLY:
+
+1. NEVER ask questions. NEVER say you can't do something. BUILD IMMEDIATELY.
+
+2. When the user says "build/create/make my site" — call ALL these tools in sequence:
+   a) update_hero — professional title + compelling description + heroImage from Unsplash + CTA text
+   b) update_about — 2-3 paragraphs about the business + aboutImage from Unsplash
+   c) update_contact — use provided info or invent realistic placeholders
+   d) update_hours — typical hours for the sector
+   e) set_services OR add_menu_item (multiple times) — 6-10 items with realistic descriptions and prices
+   f) set_gallery — 4-6 professional Unsplash photos relevant to the sector
+   g) set_testimonials — 3-4 realistic customer reviews with 4-5 star ratings
+   h) set_whatsapp — if number provided
+
+3. IMAGES ARE MANDATORY. Always include:
+   - heroImage: a stunning hero background photo
+   - aboutImage: a photo for the about section
+   - gallery: 4-6 photos showing the business, products, team
+   Use these Unsplash photo IDs for ${sector}: ${photoList}
+   Format: https://images.unsplash.com/PHOTO_ID?w=800&q=80
+
+4. CONTENT QUALITY: Write like a professional copywriter.
+   - Hero: impactful, emotional, sector-appropriate
+   - About: storytelling, passion, expertise, unique selling points
+   - Services/Menu: detailed descriptions, not just names
+   - Testimonials: realistic, varied, specific details
+
+5. After building, respond with a SHORT summary (2-3 lines) of what was created.
+
+6. For subsequent edits (change title, add item, etc.) — use tools directly, don't ask.
+
+You are building websites that look and feel like €10,000+ professional sites with real photos, compelling copy, and complete content.`;
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -443,9 +560,11 @@ app.post("/", async (c) => {
           }
 
           case "update_hero": {
-            const input = toolInput as { heroText: string; heroDescription: string };
+            const input = toolInput as { heroText: string; heroDescription: string; heroImage?: string; heroCtaText?: string };
             contentUpdates.heroText = input.heroText;
             contentUpdates.heroDescription = input.heroDescription;
+            if (input.heroImage) contentUpdates.heroImage = input.heroImage;
+            if (input.heroCtaText) contentUpdates.heroCtaText = input.heroCtaText;
             return { success: true, updated: "hero" };
           }
 
@@ -504,9 +623,31 @@ app.post("/", async (c) => {
           }
 
           case "update_about": {
-            const input = toolInput as { text: string };
-            contentUpdates.heroDescription = input.text;
+            const input = toolInput as { text: string; aboutImage?: string };
+            contentUpdates.aboutText = input.text;
+            if (input.aboutImage) contentUpdates.aboutImage = input.aboutImage;
             return { success: true, updated: "about" };
+          }
+
+          case "set_gallery": {
+            const input = toolInput as { images: Array<{ url: string; caption?: string }> };
+            contentUpdates.gallery = input.images;
+            currentContent.gallery = input.images;
+            return { success: true, totalImages: input.images.length };
+          }
+
+          case "set_testimonials": {
+            const input = toolInput as { testimonials: Array<{ name: string; text: string; rating: number }> };
+            contentUpdates.testimonials = input.testimonials;
+            currentContent.testimonials = input.testimonials;
+            return { success: true, totalTestimonials: input.testimonials.length };
+          }
+
+          case "set_services": {
+            const input = toolInput as { services: Array<{ name: string; description: string; icon?: string; price?: string }> };
+            contentUpdates.services = input.services;
+            currentContent.services = input.services;
+            return { success: true, totalServices: input.services.length };
           }
 
           default:
