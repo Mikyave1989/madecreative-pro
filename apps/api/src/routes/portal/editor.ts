@@ -15,7 +15,7 @@ app.get("/", async (c) => {
 
   const website = await prisma.clientWebsite.findUnique({
     where: { clientId },
-    select: { id: true, domain: true, pages: true, designTokens: true, deployUrl: true },
+    select: { id: true, domain: true, pages: true, designTokens: true, deployUrl: true, files: true },
   });
 
   if (!website) {

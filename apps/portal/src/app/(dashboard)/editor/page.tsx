@@ -1,11 +1,16 @@
 "use client";
 
 import {
+  Component,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+import {
+  SandpackProvider,
+  SandpackPreview as SandpackFrame,
+} from "@codesandbox/sandpack-react";
 import {
   ArrowRight,
   Bot,
@@ -319,7 +324,7 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function SitePreview({ content }: { content: WebsiteContent }) {
+function StaticSitePreview({ content }: { content: WebsiteContent }) {
   const hasContent =
     content.heroText ||
     content.heroDescription ||
@@ -814,6 +819,526 @@ function SitePreview({ content }: { content: WebsiteContent }) {
   );
 }
 
+// ─── Sandpack helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Escape a raw string so it can be safely embedded as a JS template-literal.
+ * Backticks, backslashes, and ${…} would otherwise break the generated code.
+ */
+function escJs(s: string): string {
+  return s
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\$\{/g, "\\${");
+}
+
+function generateFallbackAppJs(content: WebsiteContent): string {
+  const accent = escJs(content.primaryColor ?? "#4f46e5");
+  const heroText = escJs(content.heroText ?? "Il tuo sito professionale");
+  const heroDesc = escJs(content.heroDescription ?? "");
+  const heroImage = escJs(
+    content.heroImage ??
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200"
+  );
+  const heroCtaText = escJs(content.heroCtaText ?? "Scopri di più");
+  const aboutText = escJs(content.aboutText ?? "");
+  const aboutImage = escJs(
+    content.aboutImage ??
+      "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=600"
+  );
+  const phone = escJs(content.phone ?? "");
+  const email = escJs(content.email ?? "");
+  const address = escJs(content.address ?? "");
+  const whatsapp = escJs(content.whatsappNumber ?? "");
+
+  const servicesJson = JSON.stringify(content.services ?? []);
+  const menuJson = JSON.stringify(content.menuItems ?? []);
+  const galleryJson = JSON.stringify(content.gallery ?? []);
+  const testimonialsJson = JSON.stringify(content.testimonials ?? []);
+  const hoursJson = JSON.stringify(content.hours ?? null);
+
+  return `import "./styles.css";
+
+const ACCENT = "${accent}";
+const SERVICES = ${servicesJson};
+const MENU = ${menuJson};
+const GALLERY = ${galleryJson};
+const TESTIMONIALS = ${testimonialsJson};
+const HOURS = ${hoursJson};
+
+const DAY_LABELS = {
+  monday:"Lunedì",tuesday:"Martedì",wednesday:"Mercoledì",
+  thursday:"Giovedì",friday:"Venerdì",saturday:"Sabato",sunday:"Domenica",
+  lun:"Lunedì",mar:"Martedì",mer:"Mercoledì",
+  gio:"Giovedì",ven:"Venerdì",sab:"Sabato",dom:"Domenica",
+};
+function dayLabel(k) {
+  return DAY_LABELS[k.toLowerCase()] ?? (k.charAt(0).toUpperCase() + k.slice(1));
+}
+
+function StarRating({ rating }) {
+  return (
+    <div style={{display:"flex",gap:"2px"}}>
+      {[1,2,3,4,5].map(n => (
+        <span key={n} style={{color: n <= rating ? "#f59e0b" : "#d1d5db", fontSize:"14px"}}>★</span>
+      ))}
+    </div>
+  );
+}
+
+export default function App() {
+  const hasContent = ${
+    content.heroText ||
+    content.heroDescription ||
+    content.phone ||
+    content.email ||
+    content.address ||
+    content.whatsappNumber ||
+    (content.menuItems && content.menuItems.length > 0) ||
+    (content.services && content.services.length > 0) ||
+    (content.gallery && content.gallery.length > 0) ||
+    (content.testimonials && content.testimonials.length > 0) ||
+    content.hours ||
+    content.aboutText
+      ? "true"
+      : "false"
+  };
+
+  if (!hasContent) {
+    return (
+      <div className="empty-state">
+        <div className="empty-icon">✨</div>
+        <p className="empty-title">Nessun contenuto ancora</p>
+        <p className="empty-sub">Inizia a chattare per creare il tuo sito</p>
+      </div>
+    );
+  }
+
+  const menuByCategory = {};
+  MENU.forEach(item => {
+    const cat = item.category || "Altri";
+    if (!menuByCategory[cat]) menuByCategory[cat] = [];
+    menuByCategory[cat].push(item);
+  });
+
+  return (
+    <div className="site">
+      {/* NAV */}
+      <nav className="nav">
+        <div className="nav-inner">
+          <span className="nav-brand">\`${heroText}\`</span>
+          <div className="nav-links">
+            ${aboutText ? `<a href="#about">Chi siamo</a>` : ""}
+            ${(content.menuItems?.length || content.services?.length) ? `<a href="#menu">Menu</a>` : ""}
+            ${content.gallery?.length ? `<a href="#gallery">Galleria</a>` : ""}
+            <a href="#contact">Contatti</a>
+          </div>
+          ${
+            whatsapp
+              ? `<a href={\`https://wa.me/\${("${whatsapp}").replace(/\\D/g,"")}\`} className="btn-whatsapp">WhatsApp</a>`
+              : ""
+          }
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <section className="hero" style={{backgroundImage:\`url(${heroImage})\`}}>
+        <div className="hero-overlay">
+          <p className="hero-eyebrow">Benvenuti</p>
+          <h1 className="hero-title">${heroText}</h1>
+          ${heroDesc ? `<p className="hero-desc">${heroDesc}</p>` : ""}
+          <a href="#contact" className="hero-cta" style={{backgroundColor: ACCENT}}>
+            ${heroCtaText} →
+          </a>
+        </div>
+      </section>
+
+      ${
+        aboutText
+          ? `{/* ABOUT */}
+      <section id="about" className="section section-gray">
+        <div className="container grid-2">
+          <div>
+            <p className="eyebrow" style={{color:ACCENT}}>Chi siamo</p>
+            <h2 className="section-title">La nostra storia</h2>
+            <p className="section-body">${aboutText}</p>
+          </div>
+          <div className="img-wrap">
+            <img src="${aboutImage}" alt="Chi siamo" />
+          </div>
+        </div>
+      </section>`
+          : ""
+      }
+
+      {/* SERVICES */}
+      {SERVICES.length > 0 && (
+        <section id="menu" className="section">
+          <div className="container">
+            <div className="section-head">
+              <p className="eyebrow" style={{color:ACCENT}}>Cosa offriamo</p>
+              <h2 className="section-title">I nostri servizi</h2>
+            </div>
+            <div className="card-grid">
+              {SERVICES.map((svc, idx) => (
+                <div key={idx} className="card">
+                  {svc.icon && <div className="card-icon" style={{backgroundColor:ACCENT}}>{svc.icon}</div>}
+                  <h3 className="card-title">{svc.name}</h3>
+                  <p className="card-body">{svc.description}</p>
+                  {svc.price && <p className="card-price" style={{color:ACCENT}}>{svc.price}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* MENU */}
+      {MENU.length > 0 && (
+        <section id="menu" className="section section-gray">
+          <div className="container">
+            <div className="section-head">
+              <p className="eyebrow" style={{color:ACCENT}}>La nostra proposta</p>
+              <h2 className="section-title">Il Menu</h2>
+            </div>
+            {Object.entries(menuByCategory).map(([cat, items]) => (
+              <div key={cat} className="menu-cat">
+                <h3 className="menu-cat-title">{cat}</h3>
+                <div className="menu-grid">
+                  {items.map(item => (
+                    <div key={item.id} className="menu-item">
+                      <img src={item.imageUrl || "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200"} alt={item.name} />
+                      <div className="menu-item-body">
+                        <div className="menu-item-row">
+                          <p className="menu-item-name">{item.name}</p>
+                          <span className="menu-item-price" style={{color:ACCENT}}>{item.price}</span>
+                        </div>
+                        {item.description && <p className="menu-item-desc">{item.description}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* GALLERY */}
+      {GALLERY.length > 0 && (
+        <section id="gallery" className="section">
+          <div className="container">
+            <div className="section-head">
+              <p className="eyebrow" style={{color:ACCENT}}>I nostri momenti</p>
+              <h2 className="section-title">Galleria</h2>
+            </div>
+            <div className="gallery-grid">
+              {GALLERY.map((img, idx) => (
+                <div key={idx} className="gallery-item">
+                  <img src={img.url} alt={img.caption || "Gallery"} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TESTIMONIALS */}
+      {TESTIMONIALS.length > 0 && (
+        <section className="section section-gray">
+          <div className="container">
+            <div className="section-head">
+              <p className="eyebrow" style={{color:ACCENT}}>Cosa dicono di noi</p>
+              <h2 className="section-title">Recensioni</h2>
+            </div>
+            <div className="card-grid">
+              {TESTIMONIALS.map((t, idx) => (
+                <div key={idx} className="testimonial-card">
+                  <p className="testimonial-quote">❝{t.text}❞</p>
+                  <div className="testimonial-author">
+                    <div className="testimonial-avatar">
+                      {t.avatar
+                        ? <img src={t.avatar} alt={t.name} />
+                        : <span>{t.name.charAt(0).toUpperCase()}</span>}
+                    </div>
+                    <div>
+                      <p className="testimonial-name">{t.name}</p>
+                      <StarRating rating={t.rating} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* CONTACT + HOURS */}
+      {(HOURS || ${phone ? "true" : "false"} || ${email ? "true" : "false"} || ${address ? "true" : "false"}) && (
+        <section id="contact" className="section">
+          <div className="container">
+            <div className="section-head">
+              <p className="eyebrow" style={{color:ACCENT}}>Vieni a trovarci</p>
+              <h2 className="section-title">Orari e Contatti</h2>
+            </div>
+            <div className="contact-grid">
+              {HOURS && (
+                <div className="hours-card">
+                  <h3 className="hours-title">Orari di apertura</h3>
+                  {Object.entries(HOURS).map(([day, h]) => (
+                    <div key={day} className="hours-row">
+                      <span className="hours-day">{dayLabel(day)}</span>
+                      {h.closed
+                        ? <span className="hours-closed">Chiuso</span>
+                        : <span className="hours-time">{h.open} – {h.close}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="contact-card">
+                <h3 className="hours-title">Contattaci</h3>
+                ${phone ? `<a href="tel:${phone}" className="contact-row"><span className="contact-icon" style={{backgroundColor:ACCENT}}>📞</span>${phone}</a>` : ""}
+                ${email ? `<a href="mailto:${email}" className="contact-row"><span className="contact-icon" style={{backgroundColor:ACCENT}}>✉️</span>${email}</a>` : ""}
+                ${address ? `<div className="contact-row"><span className="contact-icon" style={{backgroundColor:ACCENT}}>📍</span>${address}</div>` : ""}
+                ${
+                  whatsapp
+                    ? `<a href={\`https://wa.me/\${("${whatsapp}").replace(/\\D/g,"")}\`} className="btn-wa-contact">WhatsApp</a>`
+                    : ""
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* FOOTER */}
+      <footer className="footer">
+        <div className="footer-inner">
+          <p className="footer-brand">${heroText}</p>
+          ${heroDesc ? `<p className="footer-desc">${heroDesc}</p>` : ""}
+          <p className="footer-copy">© {new Date().getFullYear()} ${heroText} · Powered by MadeCreative</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+`;
+}
+
+function generateFallbackCSS(): string {
+  return `
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #111827; background: #fff; }
+a { text-decoration: none; color: inherit; }
+img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* Layout */
+.site { min-height: 100vh; }
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+.img-wrap { border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; }
+
+/* Nav */
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); border-bottom: 1px solid #f3f4f6; }
+.nav-inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+.nav-brand { font-size: 15px; font-weight: 700; color: #111827; }
+.nav-links { display: flex; gap: 24px; font-size: 14px; font-weight: 500; color: #4b5563; }
+.nav-links a:hover { color: #111827; }
+.btn-whatsapp { background: #25D366; color: #fff; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+
+/* Hero */
+.hero { position: relative; min-height: 480px; display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center; }
+.hero-overlay { position: relative; z-index: 2; text-align: center; padding: 96px 24px; max-width: 700px; }
+.hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,.6), rgba(0,0,0,.55), rgba(0,0,0,.7)); }
+.hero-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 16px; }
+.hero-title { font-size: 42px; font-weight: 700; color: #fff; line-height: 1.2; margin-bottom: 20px; }
+.hero-desc { font-size: 16px; color: rgba(255,255,255,.8); line-height: 1.6; margin-bottom: 32px; }
+.hero-cta { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; border-radius: 999px; font-size: 14px; font-weight: 600; color: #fff; }
+
+/* Sections */
+.section { padding: 80px 0; }
+.section-gray { background: #f9fafb; }
+.section-head { text-align: center; margin-bottom: 48px; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px; }
+.section-title { font-size: 28px; font-weight: 700; color: #111827; }
+.section-body { font-size: 15px; color: #4b5563; line-height: 1.7; margin-top: 12px; }
+
+/* Cards */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; }
+.card { background: #fff; border: 1px solid #f3f4f6; border-radius: 16px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+.card-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; margin-bottom: 16px; font-size: 20px; }
+.card-title { font-weight: 700; color: #111827; margin-bottom: 8px; }
+.card-body { font-size: 13px; color: #6b7280; line-height: 1.6; }
+.card-price { margin-top: 16px; font-size: 15px; font-weight: 700; }
+
+/* Menu */
+.menu-cat { margin-bottom: 40px; }
+.menu-cat:last-child { margin-bottom: 0; }
+.menu-cat-title { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+.menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.menu-item { display: flex; gap: 16px; background: #fff; border: 1px solid #f3f4f6; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.menu-item img { width: 80px; height: 80px; flex-shrink: 0; object-fit: cover; }
+.menu-item-body { flex: 1; padding: 12px 16px 12px 0; }
+.menu-item-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.menu-item-name { font-weight: 600; font-size: 14px; color: #111827; }
+.menu-item-price { font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.menu-item-desc { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+/* Gallery */
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.gallery-item { aspect-ratio: 1; border-radius: 16px; overflow: hidden; }
+.gallery-item img { transition: transform .4s; }
+.gallery-item:hover img { transform: scale(1.05); }
+
+/* Testimonials */
+.testimonial-card { background: #fff; border: 1px solid #f3f4f6; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.testimonial-quote { font-size: 13px; color: #374151; line-height: 1.6; flex: 1; }
+.testimonial-author { display: flex; align-items: center; gap: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6; }
+.testimonial-avatar { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background: #f3f4f6; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #9ca3af; }
+.testimonial-name { font-size: 12px; font-weight: 600; color: #111827; margin-bottom: 2px; }
+
+/* Contact */
+.contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 40px; }
+.hours-card, .contact-card { background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 16px; padding: 24px; }
+.hours-title { font-weight: 700; color: #111827; margin-bottom: 20px; }
+.hours-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+.hours-row:last-child { border-bottom: none; }
+.hours-day { font-size: 14px; font-weight: 500; color: #374151; }
+.hours-closed { font-size: 12px; font-weight: 600; color: #ef4444; background: #fef2f2; padding: 2px 10px; border-radius: 999px; }
+.hours-time { font-size: 14px; font-weight: 600; color: #111827; }
+.contact-row { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #374151; margin-bottom: 12px; }
+.contact-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; font-size: 14px; }
+.btn-wa-contact { display: inline-flex; align-items: center; gap: 8px; background: #25D366; color: #fff; padding: 10px 20px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-top: 8px; }
+
+/* Footer */
+.footer { background: #111827; color: #9ca3af; padding: 48px 0 24px; }
+.footer-inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; text-align: center; }
+.footer-brand { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.footer-desc { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+.footer-copy { font-size: 12px; color: #4b5563; }
+
+/* Empty state */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #fff; text-align: center; padding: 24px; }
+.empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-title { font-size: 14px; font-weight: 500; color: #9ca3af; margin-bottom: 4px; }
+.empty-sub { font-size: 12px; color: #d1d5db; }
+
+@media (max-width: 640px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .hero-title { font-size: 30px; }
+  .nav-links { display: none; }
+}
+`;
+}
+
+function generateFallbackFiles(content: WebsiteContent): Record<string, string> {
+  return {
+    "/App.js": generateFallbackAppJs(content),
+    "/styles.css": generateFallbackCSS(),
+  };
+}
+
+/** Convert a DB project bundle (Next.js files) to Sandpack-compatible React files. */
+function convertProjectFilesToSandpack(
+  projectFiles: Record<string, string>
+): Record<string, string> {
+  const pageContent = projectFiles["app/page.tsx"] ?? projectFiles["app/page.js"] ?? "";
+  const cssContent = projectFiles["app/globals.css"] ?? projectFiles["styles/globals.css"] ?? "";
+
+  // Strip Next.js-only imports (e.g. next/image, next/link, next/font)
+  // and convert export default to a plain React component App
+  let appJs = pageContent
+    .replace(/^import\s+.*from\s+["']next\/[^"']+["'];?\s*\n?/gm, "")
+    .replace(/^import\s+.*from\s+["']@next\/[^"']+["'];?\s*\n?/gm, "")
+    // Ensure React is imported
+    .replace(/^"use client";\s*\n?/m, "")
+    // rename export default function XYZ to export default function App
+    .replace(/export\s+default\s+function\s+\w+/g, "export default function App")
+    // rename export default const XYZ = to export default function App()
+    .replace(/export\s+default\s+(?:const|let|var)\s+\w+\s*=\s*/g, "export default function App() { return ");
+
+  // Prepend React import if missing
+  if (!appJs.includes("import React")) {
+    appJs = `import React from "react";\nimport "./styles.css";\n` + appJs;
+  } else {
+    appJs = appJs.replace(
+      /import\s+React/,
+      `import "./styles.css";\nimport React`
+    );
+  }
+
+  return {
+    "/App.js": appJs,
+    "/styles.css": cssContent,
+  };
+}
+
+// ─── Sandpack error boundary ──────────────────────────────────────────────────
+
+interface SandpackErrorBoundaryState {
+  hasError: boolean;
+}
+
+class SandpackErrorBoundary extends Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  SandpackErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): SandpackErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  override render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+// ─── Sandpack live preview ────────────────────────────────────────────────────
+
+function SandpackLivePreview({
+  files,
+  content,
+}: {
+  files: Record<string, string> | null;
+  content: WebsiteContent;
+}) {
+  const sandpackFiles = files
+    ? convertProjectFilesToSandpack(files)
+    : generateFallbackFiles(content);
+
+  return (
+    <SandpackErrorBoundary fallback={<StaticSitePreview content={content} />}>
+      <SandpackProvider
+        template="react"
+        files={sandpackFiles}
+        theme="dark"
+        options={{
+          autorun: true,
+          autoReload: true,
+          recompileMode: "delayed",
+          recompileDelay: 500,
+        }}
+      >
+        <SandpackFrame
+          showNavigator={false}
+          showOpenInCodeSandbox={false}
+          showRefreshButton={false}
+          showRestartButton={false}
+          showSandpackErrorOverlay={true}
+          style={{ height: "100%", width: "100%", border: "none" }}
+        />
+      </SandpackProvider>
+    </SandpackErrorBoundary>
+  );
+}
+
 // ─── Preview panel (toolbar + frame) ─────────────────────────────────────────
 
 function PreviewPanel({
@@ -821,11 +1346,13 @@ function PreviewPanel({
   onRefresh,
   building = false,
   deployUrl,
+  projectFiles,
 }: {
   content: WebsiteContent;
   onRefresh: () => void;
   building?: boolean;
   deployUrl?: string | null;
+  projectFiles?: Record<string, string> | null;
 }) {
   const [device, setDevice] = useState<DeviceMode>("desktop");
 
@@ -912,12 +1439,11 @@ function PreviewPanel({
       </div>
 
       {/* Preview frame */}
-      <div className="flex-1 overflow-auto bg-zinc-950 flex justify-center relative">
+      <div className="flex-1 overflow-hidden bg-zinc-950 flex justify-center relative">
         <div
-          className={`${frameWidths[device]} h-full overflow-auto bg-white transition-all duration-300`}
-          style={{ maxHeight: "100%" }}
+          className={`${frameWidths[device]} h-full transition-all duration-300 overflow-hidden`}
         >
-          <SitePreview content={content} />
+          <SandpackLivePreview files={projectFiles ?? null} content={content} />
         </div>
 
         {/* Building overlay */}
@@ -1149,6 +1675,7 @@ export default function EditorPage() {
   });
   const [content, setContent] = useState<WebsiteContent>({});
   const [deployUrl, setDeployUrl] = useState<string | null>(null);
+  const [projectFiles, setProjectFiles] = useState<Record<string, string> | null>(null);
   const [undoing, setUndoing] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1173,7 +1700,11 @@ export default function EditorPage() {
       .then(
         (j: {
           success: boolean;
-          data?: { pages?: WebsiteContent; deployUrl?: string | null };
+          data?: {
+            pages?: WebsiteContent;
+            deployUrl?: string | null;
+            files?: { files?: Record<string, string> };
+          };
           error?: string;
         }) => {
           if (j.success && j.data?.pages) {
@@ -1181,6 +1712,9 @@ export default function EditorPage() {
           }
           if (j.success && j.data?.deployUrl) {
             setDeployUrl(j.data.deployUrl);
+          }
+          if (j.success && j.data?.files?.files) {
+            setProjectFiles(j.data.files.files);
           }
         }
       )
@@ -1568,7 +2102,13 @@ export default function EditorPage() {
           `}
           key={refreshKey}
         >
-          <PreviewPanel content={content} onRefresh={handleRefresh} building={loading} deployUrl={deployUrl} />
+          <PreviewPanel
+            content={content}
+            onRefresh={handleRefresh}
+            building={loading}
+            deployUrl={deployUrl}
+            projectFiles={projectFiles}
+          />
         </div>
       </div>
     </div>
