@@ -1385,6 +1385,40 @@ function generateFallbackFiles(content: WebsiteContent): Record<string, string> 
   };
 }
 
+/** Strip all TypeScript syntax from source code so Sandpack (plain JS) can run it. */
+function stripTypeScript(src: string): string {
+  let code = src;
+
+  // 1. Remove entire interface/type blocks (single-line and multi-line)
+  code = code.replace(/^(?:export\s+)?interface\s+\w+[^{]*\{[^}]*\}\s*\n?/gm, "");
+  code = code.replace(/^(?:export\s+)?type\s+\w+\s*=\s*[^;\n]+;?\s*\n?/gm, "");
+
+  // 2. Remove import type statements
+  code = code.replace(/^import\s+type\s+[^;\n]+;?\s*\n?/gm, "");
+
+  // 3. Remove type annotations from function params and variables
+  //    e.g. (x: string, y: number[]) → (x, y)
+  //    e.g. const x: string = → const x =
+  //    e.g. property?: string | null → property
+  code = code.replace(/(\w+)\??\s*:\s*(?:(?:React\.)?[\w<>[\]|&()\s,.]+?)(?=\s*[=;,)\]}])/g, "$1");
+
+  // 4. Remove generic type params from function calls and declarations
+  //    e.g. useState<string>("") → useState("")
+  //    e.g. Array<MenuItem> → Array
+  code = code.replace(/<(?:[^<>]|<[^<>]*>)*>/g, "");
+
+  // 5. Remove "as Type" casts
+  code = code.replace(/\s+as\s+[\w[\]|&<>().,\s]+(?=[;,)\]\n}])/g, "");
+
+  // 6. Remove non-null assertions (x! → x)
+  code = code.replace(/(\w+|\]|\))!/g, "$1");
+
+  // 7. Clean up empty lines left behind
+  code = code.replace(/\n{3,}/g, "\n\n");
+
+  return code;
+}
+
 /** Convert a DB project bundle (Next.js files) to Sandpack-compatible React files. */
 function convertProjectFilesToSandpack(
   projectFiles: Record<string, string>
@@ -1392,22 +1426,18 @@ function convertProjectFilesToSandpack(
   const pageContent = projectFiles["app/page.tsx"] ?? projectFiles["app/page.js"] ?? "";
   const cssContent = projectFiles["app/globals.css"] ?? projectFiles["styles/globals.css"] ?? "";
 
-  // Strip Next.js-only imports (e.g. next/image, next/link, next/font)
-  // and convert export default to a plain React component App
+  // Strip Next.js-only imports and "use client"
   let appJs = pageContent
     .replace(/^import\s+.*from\s+["']next\/[^"']+["'];?\s*\n?/gm, "")
     .replace(/^import\s+.*from\s+["']@next\/[^"']+["'];?\s*\n?/gm, "")
-    // Ensure React is imported
-    .replace(/^"use client";\s*\n?/m, "")
-    // Strip TypeScript syntax that Sandpack (plain JS) can't parse
-    .replace(/^import\s+type\s+.*\n?/gm, "")              // import type { ... }
-    .replace(/:\s*\w+(\[\])?(?=\s*[=;,)\n])/g, "")         // type annotations: string, number[], etc.
-    .replace(/<\w+(?:\[\])?>/g, "")                         // generic brackets <Type>
-    .replace(/\bas\s+\w+/g, "")                             // as Type casts
-    .replace(/(\w+|\]|\))!/g, "$1")                         // non-null assertions: x! → x
-    // rename export default function XYZ to export default function App
+    .replace(/^"use client";\s*\n?/m, "");
+
+  // Strip all TypeScript syntax
+  appJs = stripTypeScript(appJs);
+
+  // Rename exports to App
+  appJs = appJs
     .replace(/export\s+default\s+function\s+\w+/g, "export default function App")
-    // rename export default const XYZ = to export default function App()
     .replace(/export\s+default\s+(?:const|let|var)\s+\w+\s*=\s*/g, "export default function App() { return ");
 
   // Prepend React import if missing
@@ -1470,16 +1500,18 @@ function SandpackLivePreview({
 
   return (
     <SandpackErrorBoundary fallback={<StaticSitePreview content={content} onSectionClick={onSectionClick} />}>
-      <SandpackPreviewDynamic
-        files={sandpackFiles}
-        theme="dark"
-        options={{
-          autorun: true,
-          autoReload: true,
-          recompileMode: "delayed",
-          recompileDelay: 500,
-        }}
-      />
+      <div style={{ height: "100%", minHeight: "100%" }}>
+        <SandpackPreviewDynamic
+          files={sandpackFiles}
+          theme="dark"
+          options={{
+            autorun: true,
+            autoReload: true,
+            recompileMode: "delayed",
+            recompileDelay: 500,
+          }}
+        />
+      </div>
     </SandpackErrorBoundary>
   );
 }
