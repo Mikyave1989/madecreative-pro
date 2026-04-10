@@ -1,23 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "version": 2,
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": "node_modules/.prisma/**,node_modules/@madecreative/**",
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index" }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }
-      ]
-    }
-  ]
+  "version": 2
 }
