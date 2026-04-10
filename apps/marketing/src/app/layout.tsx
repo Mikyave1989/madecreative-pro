@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     default: "MadeCreative — Il tuo sito professionale in 60 secondi",
     template: "%s | MadeCreative",
   },
-  description: "MadeCreative crea il tuo sito web professionale con AI in 60 secondi. Chatbot 24/7, report mensile, hosting incluso. €197/mese.",
+  description: "MadeCreative crea il tuo sito web professionale con AI in 60 secondi. Chatbot 24/7, report mensile, hosting incluso. A partire da €25/mese.",
   metadataBase: new URL("https://madecreative.pro"),
 };
 

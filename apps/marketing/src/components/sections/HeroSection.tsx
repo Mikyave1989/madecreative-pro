@@ -8,37 +8,37 @@ interface HeroSectionProps {
 const SOCIAL_PROOF: Record<string, Array<{ value: string; label: string }>> = {
   de: [
     { value: "60s", label: "Website generiert" },
-    { value: "€197", label: "alles inklusive / Monat" },
+    { value: "€25", label: "ab / Monat" },
     { value: "14", label: "Tage Geld-zurück" },
   ],
   it: [
     { value: "60s", label: "per generare il sito" },
-    { value: "€197", label: "tutto incluso / mese" },
+    { value: "€25", label: "a partire da / mese" },
     { value: "14", label: "giorni rimborso garantito" },
   ],
   en: [
     { value: "60s", label: "to generate your site" },
-    { value: "€197", label: "all-inclusive / month" },
+    { value: "€25", label: "starting from / month" },
     { value: "14", label: "day money-back guarantee" },
   ],
   es: [
     { value: "60s", label: "para generar tu web" },
-    { value: "€197", label: "todo incluido / mes" },
+    { value: "€25", label: "desde / mes" },
     { value: "14", label: "días garantía devolución" },
   ],
   fr: [
     { value: "60s", label: "pour générer votre site" },
-    { value: "€197", label: "tout inclus / mois" },
+    { value: "€25", label: "à partir de / mois" },
     { value: "14", label: "jours satisfait ou remboursé" },
   ],
   nl: [
     { value: "60s", label: "om je site te genereren" },
-    { value: "€197", label: "alles inbegrepen / maand" },
+    { value: "€25", label: "vanaf / maand" },
     { value: "14", label: "dagen geld-terug-garantie" },
   ],
   pt: [
     { value: "60s", label: "para gerar seu site" },
-    { value: "€197", label: "tudo incluído / mês" },
+    { value: "€25", label: "a partir de / mês" },
     { value: "14", label: "dias garantia reembolso" },
   ],
 };
@@ -132,6 +132,19 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         <p className="animate-fade-up delay-400 text-xs" style={{ color: "rgba(248,250,252,0.3)" }}>
           {t.hero.trustNote}
         </p>
+
+        {/* Hero video */}
+        <div className="animate-fade-up delay-400 mt-12 max-w-3xl mx-auto rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 40px rgba(99,102,241,0.15)" }}>
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-auto block"
+          >
+            <source src="/videos/hero-demo.webm" type="video/webm" />
+          </video>
+        </div>
 
         {/* Social proof */}
         <div className="animate-fade-up delay-400 mt-14 grid grid-cols-3 gap-8 max-w-md mx-auto">
