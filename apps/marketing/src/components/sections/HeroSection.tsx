@@ -53,26 +53,177 @@ const SECTOR_PREVIEWS: Record<string, { heroImg: string; accent: string; tagline
   professional: { heroImg: "photo-1497366216548-37526070297c", accent: "#6366f1", tagline: "Soluzioni professionali" },
 };
 
+/* ── Sector services for preview ──────────────────────────────────── */
+
+const SECTOR_SERVICES: Record<string, Array<{ icon: string; name: string; desc: string }>> = {
+  restaurant: [
+    { icon: "🍽️", name: "Menu del giorno", desc: "Piatti freschi ogni giorno con ingredienti locali selezionati" },
+    { icon: "📅", name: "Prenotazioni", desc: "Prenota il tuo tavolo in pochi secondi, disponibile 24/7" },
+    { icon: "🛵", name: "Delivery", desc: "I nostri sapori direttamente a casa tua" },
+    { icon: "🎉", name: "Eventi", desc: "Organizza compleanni, matrimoni e cene aziendali" },
+  ],
+  dental: [
+    { icon: "✨", name: "Igiene dentale", desc: "Pulizia professionale per denti sani e bianchi" },
+    { icon: "😁", name: "Ortodonzia", desc: "Allineatori invisibili per un sorriso perfetto" },
+    { icon: "🦷", name: "Implantologia", desc: "Impianti di ultima generazione, duraturi e naturali" },
+    { icon: "💎", name: "Sbiancamento", desc: "Trattamento professionale per un sorriso luminoso" },
+  ],
+  beauty: [
+    { icon: "✂️", name: "Taglio e piega", desc: "Stilisti esperti per ogni tipo di capello" },
+    { icon: "🌿", name: "Trattamenti viso", desc: "Rituali di bellezza per una pelle radiosa" },
+    { icon: "💅", name: "Manicure", desc: "Unghie perfette con prodotti premium" },
+    { icon: "🧖", name: "Massaggi", desc: "Relax totale con massaggi professionali" },
+  ],
+  fitness: [
+    { icon: "🏋️", name: "Personal training", desc: "Programmi su misura con trainer certificati" },
+    { icon: "🤸", name: "Corsi di gruppo", desc: "Yoga, pilates, zumba e molto altro" },
+    { icon: "🥗", name: "Nutrizione", desc: "Piani nutrizionali abbinati all'allenamento" },
+    { icon: "♾️", name: "Abbonamenti", desc: "Mensile, trimestrale o annuale — scegli tu" },
+  ],
+  hotel: [
+    { icon: "🛏️", name: "Camere superior", desc: "Ambienti eleganti con vista panoramica" },
+    { icon: "🍷", name: "Ristorante & bar", desc: "Cucina gourmet e cocktail bar" },
+    { icon: "💆", name: "Spa & wellness", desc: "Piscina, sauna e trattamenti esclusivi" },
+    { icon: "💼", name: "Sale meeting", desc: "Spazi modulari per eventi e conferenze" },
+  ],
+  professional: [
+    { icon: "💡", name: "Consulenza", desc: "Analisi e strategie personalizzate per il tuo business" },
+    { icon: "⚙️", name: "Implementazione", desc: "Esecuzione professionale e puntuale" },
+    { icon: "📊", name: "Analytics", desc: "Monitoraggio risultati in tempo reale" },
+    { icon: "🛡️", name: "Supporto", desc: "Assistenza dedicata sempre disponibile" },
+  ],
+  legal: [
+    { icon: "⚖️", name: "Diritto civile", desc: "Tutela dei tuoi diritti in ogni controversia" },
+    { icon: "🔒", name: "Diritto penale", desc: "Difesa professionale e discreta" },
+    { icon: "🏢", name: "Consulenza", desc: "Contratti, società e corporate governance" },
+    { icon: "🤝", name: "Mediazione", desc: "Risoluzione alternativa delle controversie" },
+  ],
+  medical: [
+    { icon: "🩺", name: "Visite", desc: "Specialisti in cardiologia, ortopedia e altro" },
+    { icon: "🔬", name: "Diagnostica", desc: "Analisi e radiologie di ultima generazione" },
+    { icon: "💊", name: "Prevenzione", desc: "Check-up completi personalizzati" },
+    { icon: "🏃", name: "Riabilitazione", desc: "Fisioterapia e percorsi di recupero" },
+  ],
+  ecommerce: [
+    { icon: "🛍️", name: "Catalogo", desc: "Migliaia di prodotti con varianti e prezzi" },
+    { icon: "💳", name: "Pagamenti", desc: "Carta, PayPal, Apple Pay integrati" },
+    { icon: "📦", name: "Spedizioni", desc: "Tracking in tempo reale" },
+    { icon: "📈", name: "Analytics", desc: "Dashboard con metriche di conversione" },
+  ],
+  realestate: [
+    { icon: "🏠", name: "Compravendita", desc: "Compra e vendi con la nostra rete" },
+    { icon: "🔑", name: "Affitti", desc: "Gestione completa residenziale e commerciale" },
+    { icon: "📐", name: "Valutazioni", desc: "Perizie e stime di mercato aggiornate" },
+    { icon: "🏗️", name: "Nuove costruzioni", desc: "Prima casa e ristrutturazioni chiavi in mano" },
+  ],
+};
+
+/* ── Premium font mapping (from BuilderAgent) ─────────────────────── */
+const SECTOR_FONTS: Record<string, { heading: string; body: string; googleQuery: string }> = {
+  restaurant: { heading: "Cormorant Garamond", body: "DM Sans", googleQuery: "Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600" },
+  dental: { heading: "Outfit", body: "Source Sans 3", googleQuery: "Outfit:wght@400;600;700;800&family=Source+Sans+3:wght@400;500;600" },
+  beauty: { heading: "Tenor Sans", body: "Questrial", googleQuery: "Tenor+Sans&family=Questrial" },
+  fitness: { heading: "Bebas Neue", body: "Barlow", googleQuery: "Bebas+Neue&family=Barlow:wght@400;500;600;700" },
+  hotel: { heading: "Italiana", body: "Crimson Text", googleQuery: "Italiana&family=Crimson+Text:wght@400;600;700" },
+  legal: { heading: "Libre Baskerville", body: "Karla", googleQuery: "Libre+Baskerville:wght@400;700&family=Karla:wght@400;500;600" },
+  medical: { heading: "Playfair Display", body: "Nunito", googleQuery: "Playfair+Display:wght@400;600;700;800&family=Nunito:wght@400;500;600" },
+  ecommerce: { heading: "Playfair Display", body: "Nunito", googleQuery: "Playfair+Display:wght@400;600;700;800&family=Nunito:wght@400;500;600" },
+  realestate: { heading: "Playfair Display", body: "Nunito", googleQuery: "Playfair+Display:wght@400;600;700;800&family=Nunito:wght@400;500;600" },
+  professional: { heading: "Playfair Display", body: "Nunito", googleQuery: "Playfair+Display:wght@400;600;700;800&family=Nunito:wght@400;500;600" },
+};
+
 function generateMiniPreview(name: string, sector: string): string {
   const cfg = SECTOR_PREVIEWS[sector] ?? SECTOR_PREVIEWS["professional"]!;
-  const heroUrl = `https://images.unsplash.com/${cfg.heroImg}?auto=format&fit=crop&w=1200&q=80`;
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,system-ui,sans-serif;background:#05070f;color:#f8fafc}</style>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-</head><body>
-<nav style="position:sticky;top:0;z-index:10;background:rgba(5,7,15,0.9);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between">
-<div style="display:flex;align-items:center;gap:8px"><div style="width:28px;height:28px;border-radius:7px;background:${cfg.accent};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff">${(name[0] ?? "M").toUpperCase()}</div><span style="font-weight:700;font-size:15px">${name}</span></div>
-<div style="display:flex;gap:20px;font-size:13px;color:rgba(248,250,252,0.5)"><a href="#" style="color:inherit;text-decoration:none">Servizi</a><a href="#" style="color:inherit;text-decoration:none">Contatti</a><a href="#" style="background:${cfg.accent};color:#fff;padding:6px 16px;border-radius:7px;text-decoration:none;font-weight:600">Contattaci</a></div>
-</nav>
-<section style="position:relative;min-height:360px;display:flex;align-items:center;overflow:hidden">
-<img src="${heroUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.3)">
-<div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(5,7,15,0.7),rgba(5,7,15,0.3))"></div>
-<div style="position:relative;max-width:900px;margin:0 auto;padding:60px 24px">
-<h1 style="font-size:clamp(28px,4vw,48px);font-weight:900;line-height:1.1;letter-spacing:-0.02em;margin-bottom:16px"><span>${name}</span><br><span style="color:${cfg.accent}">${cfg.tagline}</span></h1>
-<p style="font-size:15px;color:rgba(248,250,252,0.55);max-width:440px;line-height:1.6;margin-bottom:28px">Il tuo punto di riferimento. Qualità, professionalità e passione in ogni dettaglio.</p>
-<a href="#" style="background:${cfg.accent};color:#fff;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;display:inline-block">Scopri di più →</a>
-</div></section>
-<div style="text-align:center;padding:12px;font-size:10px;color:rgba(248,250,252,0.15)">Generato con MadeCreative AI</div>
+  const fonts = SECTOR_FONTS[sector] ?? SECTOR_FONTS["professional"]!;
+  const heroUrl = `https://images.unsplash.com/${cfg.heroImg}?auto=format&fit=crop&w=1400&q=85`;
+  const a = cfg.accent;
+  const initial = (name[0] ?? "M").toUpperCase();
+
+  return `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${name}</title>
+<link href="https://fonts.googleapis.com/css2?family=${fonts.googleQuery}&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--accent:${a};--heading:'${fonts.heading}',serif;--body:'${fonts.body}',sans-serif;--bg:#fafaf9;--text:#1a1a1a;--muted:#6b7280;--surface:#fff;--border:rgba(0,0,0,0.06)}
+body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+img{max-width:100%;display:block}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--border);height:64px;display:flex;align-items:center;padding:0 clamp(16px,4vw,48px)}
+.nav-inner{max-width:1200px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{display:flex;align-items:center;gap:10px}
+.nav-logo{width:36px;height:36px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--heading);font-weight:700;font-size:16px;color:#fff;letter-spacing:-0.02em}
+.nav-name{font-family:var(--heading);font-weight:700;font-size:18px;letter-spacing:-0.01em}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-link{font-size:14px;font-weight:500;color:var(--muted);transition:color 0.2s}
+.nav-link:hover{color:var(--text)}
+.nav-cta{background:var(--accent);color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:600;letter-spacing:0.01em;transition:transform 0.2s,box-shadow 0.2s}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,0.12)}
+
+/* HERO */
+.hero{position:relative;min-height:85vh;display:flex;align-items:center;overflow:hidden}
+.hero-bg{position:absolute;inset:0}
+.hero-bg img{width:100%;height:100%;object-fit:cover}
+.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0.2) 50%,rgba(0,0,0,0.45) 100%)}
+.hero-content{position:relative;max-width:1200px;margin:0 auto;padding:80px clamp(16px,4vw,48px)}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.18);border-radius:100px;padding:8px 18px;margin-bottom:28px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.9);letter-spacing:0.08em;text-transform:uppercase}
+.hero-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+.hero h1{font-family:var(--heading);font-size:clamp(36px,5.5vw,72px);font-weight:700;line-height:1.05;letter-spacing:-0.03em;color:#fff;margin-bottom:20px}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{font-size:clamp(16px,1.8vw,20px);color:rgba(255,255,255,0.65);max-width:520px;line-height:1.7;margin-bottom:40px}
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap}
+.btn-primary{background:var(--accent);color:#fff;padding:16px 36px;border-radius:14px;font-weight:700;font-size:15px;transition:transform 0.2s,box-shadow 0.2s;letter-spacing:0.01em}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,0.25)}
+.btn-secondary{background:rgba(255,255,255,0.1);backdrop-filter:blur(8px);color:#fff;border:1px solid rgba(255,255,255,0.2);padding:16px 36px;border-radius:14px;font-weight:600;font-size:15px;transition:all 0.2s}
+.btn-secondary:hover{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.35)}
+
+/* SERVICES */
+.services{padding:100px clamp(16px,4vw,48px)}
+.services-inner{max-width:1200px;margin:0 auto}
+.section-eyebrow{font-size:12px;font-weight:600;color:var(--accent);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px}
+.section-title{font-family:var(--heading);font-size:clamp(28px,3.5vw,44px);font-weight:700;letter-spacing:-0.02em;margin-bottom:16px;line-height:1.1}
+.section-desc{font-size:16px;color:var(--muted);max-width:480px;line-height:1.7;margin-bottom:56px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px 28px;transition:transform 0.3s,box-shadow 0.3s}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.06)}
+.card-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 70%,#000));display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:20px;color:#fff}
+.card h3{font-family:var(--heading);font-size:18px;font-weight:700;margin-bottom:10px;letter-spacing:-0.01em}
+.card p{font-size:14px;color:var(--muted);line-height:1.65}
+
+/* FOOTER */
+.footer{border-top:1px solid var(--border);padding:32px clamp(16px,4vw,48px);text-align:center}
+.footer-text{font-size:12px;color:var(--muted)}
+
+@media(max-width:640px){.nav-links{display:none}.hero h1{font-size:32px}.card-grid{grid-template-columns:1fr}}
+</style></head><body>
+
+<nav class="nav"><div class="nav-inner">
+<div class="nav-brand"><div class="nav-logo">${initial}</div><span class="nav-name">${name}</span></div>
+<div class="nav-links">
+<a href="#servizi" class="nav-link">Servizi</a><a href="#contatti" class="nav-link">Contatti</a>
+<a href="#contatti" class="nav-cta">Prenota ora</a>
+</div></div></nav>
+
+<section class="hero"><div class="hero-bg"><img src="${heroUrl}" alt="${name}" loading="eager"></div>
+<div class="hero-content">
+<div class="hero-eyebrow"><span class="hero-dot"></span>${cfg.tagline}</div>
+<h1>${name}.<br><em>${cfg.tagline}.</em></h1>
+<p>Benvenuto — il punto di riferimento per eccellenza. Qualità artigianale, attenzione al dettaglio e passione autentica dal primo giorno.</p>
+<div class="hero-ctas">
+<a href="#contatti" class="btn-primary">Scopri di più →</a>
+<a href="#servizi" class="btn-secondary">I nostri servizi</a>
+</div></div></section>
+
+<section id="servizi" class="services"><div class="services-inner">
+<div class="section-eyebrow">Cosa offriamo</div>
+<div class="section-title">I nostri servizi</div>
+<div class="section-desc">Tutto quello di cui hai bisogno, curato nei minimi dettagli.</div>
+<div class="card-grid">
+${(SECTOR_SERVICES[sector] ?? SECTOR_SERVICES["professional"]!).map((s: { icon: string; name: string; desc: string }) => `<div class="card"><div class="card-icon">${s.icon}</div><h3>${s.name}</h3><p>${s.desc}</p></div>`).join("")}
+</div></div></section>
+
+<footer class="footer"><p class="footer-text">© ${new Date().getFullYear()} ${name} · Generato con MadeCreative AI</p></footer>
 </body></html>`;
 }
 
