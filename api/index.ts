@@ -1,8 +1,9 @@
 // Vercel serverless entry point
-// Manually converts VercelRequest → Web API Request to avoid body parsing issues
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+// Manually converts IncomingMessage → Web API Request to fix POST body parsing
+import type { IncomingMessage, ServerResponse } from "node:http";
 
-let _app: { fetch: (req: Request) => Promise<Response> } | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _app: any = null;
 
 async function getApp() {
   if (_app) return _app;
@@ -11,7 +12,7 @@ async function getApp() {
   return _app;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: IncomingMessage & { body?: unknown }, res: ServerResponse) {
   try {
     const app = await getApp();
 
@@ -32,16 +33,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Build body — use req.body (already parsed by Vercel) or rawBody
-    let body: BodyInit | null = null;
+    // Build body — use req.body (pre-parsed by Vercel) or rawBody
+    let body: string | Buffer | null = null;
     if (req.method !== "GET" && req.method !== "HEAD") {
       if (typeof req.body === "object" && req.body !== null) {
         body = JSON.stringify(req.body);
         headers.set("content-type", "application/json");
       } else if (typeof req.body === "string") {
         body = req.body;
-      } else if ((req as any).rawBody) {
-        body = (req as any).rawBody;
+      } else if ((req as unknown as Record<string, unknown>).rawBody) {
+        body = (req as unknown as Record<string, Buffer>).rawBody;
       }
     }
 
@@ -56,24 +57,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const response = await app.fetch(request);
 
     // Write response
-    res.status(response.status);
-    response.headers.forEach((value, key) => {
+    res.statusCode = response.status;
+    response.headers.forEach((value: string, key: string) => {
       res.setHeader(key, value);
     });
 
     if (response.body) {
       const reader = response.body.getReader();
-      while (true) {
+      const pump = async (): Promise<void> => {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) { res.end(); return; }
         res.write(value);
-      }
+        return pump();
+      };
+      await pump();
+    } else {
+      const text = await response.text();
+      res.end(text);
     }
-    res.end();
   } catch (err) {
     console.error("Handler error:", err);
     if (!res.headersSent) {
-      res.status(500).json({ error: "Internal server error" });
+      res.statusCode = 500;
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ error: "Internal server error" }));
     }
   }
 }
