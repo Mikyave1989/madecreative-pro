@@ -1068,8 +1068,23 @@ export async function deploySite(params: {
     console.warn("[deploySite] Domain alias error (non-fatal):", domainErr);
   }
 
-  // Prefer the custom domain URL, fall back to Vercel deployment URL
-  const deployUrl = `https://${customDomain}`;
+  // Disable Vercel deployment protection so site is publicly accessible
+  try {
+    await fetch(
+      `https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}${teamQueryAmp ? `?${teamQueryAmp.slice(1)}` : ""}`,
+      {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ vercelAuthentication: { deploymentType: "none" } }),
+      }
+    );
+  } catch {
+    // Non-fatal
+  }
+
+  // Use Vercel deployment URL (custom domain needs DNS wildcard setup)
+  const vercelUrl = deployment.url ? `https://${deployment.url}` : `https://${customDomain}`;
+  const deployUrl = vercelUrl;
 
   return { deployUrl, vercelProjectId };
 }
