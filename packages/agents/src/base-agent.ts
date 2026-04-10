@@ -16,10 +16,27 @@ export interface AgentContext {
   input: Record<string, unknown>;
 }
 
+// CrewAI-inspired: declarative retry/timeout config per agent type
+export interface AgentConfig {
+  maxRetries: number;
+  retryDelayMs: number;
+  timeoutMs: number;
+}
+
+const DEFAULT_AGENT_CONFIG: Record<AgentType, AgentConfig> = {
+  SCRAPER:  { maxRetries: 2, retryDelayMs: 30_000, timeoutMs: 600_000 },  // 10min, high retry delay (proxy rotation)
+  ANALYZER: { maxRetries: 3, retryDelayMs: 5_000,  timeoutMs: 120_000 },  // 2min
+  BUILDER:  { maxRetries: 2, retryDelayMs: 10_000, timeoutMs: 300_000 },  // 5min
+  OUTREACH: { maxRetries: 3, retryDelayMs: 5_000,  timeoutMs: 60_000 },   // 1min
+  CHATBOT:  { maxRetries: 2, retryDelayMs: 5_000,  timeoutMs: 120_000 },  // 2min
+  QA:       { maxRetries: 2, retryDelayMs: 5_000,  timeoutMs: 180_000 },  // 3min
+};
+
 export abstract class BaseAgent {
   protected client: ClaudeClient;
   protected jobId: string;
   protected agentType: AgentType;
+  protected config: AgentConfig;
   protected logs: AgentLog[] = [];
   protected toolCalls: AgentToolCall[] = [];
   protected totalCost = 0;
@@ -30,9 +47,42 @@ export abstract class BaseAgent {
     this.client = getClaudeClient();
     this.jobId = context.jobId;
     this.agentType = context.agentType;
+    this.config = DEFAULT_AGENT_CONFIG[context.agentType];
   }
 
   abstract run(input: Record<string, unknown>): Promise<AgentResult>;
+
+  // CrewAI-inspired: wrap run() with declarative retry + timeout
+  async runWithRetry(input: Record<string, unknown>): Promise<AgentResult> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
+      if (attempt > 0) {
+        this.log("warn", `Retry attempt ${attempt}/${this.config.maxRetries}`, {
+          delay: this.config.retryDelayMs,
+        });
+        await new Promise((r) => setTimeout(r, this.config.retryDelayMs));
+      }
+
+      try {
+        const result = await Promise.race([
+          this.run(input),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error(`Agent timeout after ${this.config.timeoutMs}ms`)),
+              this.config.timeoutMs,
+            ),
+          ),
+        ]);
+        return result;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        this.log("error", `Attempt ${attempt + 1} failed: ${lastError.message}`);
+      }
+    }
+
+    throw lastError ?? new Error("Agent failed after all retries");
+  }
 
   protected abstract getTools(): Tool[];
   protected abstract handleToolCall(

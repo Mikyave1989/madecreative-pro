@@ -77,7 +77,7 @@ export function createOrchestratorWorker(
       };
 
       const agent = await getAgent(agentType, context);
-      const result = await agent.run(input);
+      const result = await agent.runWithRetry(input);
 
       return result;
     },
