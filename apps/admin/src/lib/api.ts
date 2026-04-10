@@ -23,7 +23,7 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!refreshToken) return null;
 
   try {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+    const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
@@ -215,7 +215,7 @@ export async function login(
   email: string,
   password: string
 ): Promise<LoginData> {
-  const res = await apiFetch<ApiResponse<LoginData>>("/auth/login", {
+  const res = await apiFetch<ApiResponse<LoginData>>("/admin/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
@@ -243,12 +243,12 @@ export async function getProspects(
     }
   });
   return apiFetch<PaginatedResponse<Prospect>>(
-    `/prospects?${params.toString()}`
+    `/admin/prospects?${params.toString()}`
   );
 }
 
 export async function getProspectStats(): Promise<ProspectStats> {
-  return apiFetch<ProspectStats>("/prospects/stats");
+  return apiFetch<ProspectStats>("/admin/prospects/stats");
 }
 
 // ─── Agent Jobs ────────────────────────────────────────────────
@@ -261,22 +261,22 @@ export async function getAgentJobs(
     if (v !== undefined && v !== null) params.set(k, String(v));
   });
   return apiFetch<PaginatedResponse<AgentJob>>(
-    `/agent-jobs?${params.toString()}`
+    `/admin/agents?${params.toString()}`
   );
 }
 
 export async function getAgentStats(): Promise<AgentStats[]> {
-  return apiFetch<AgentStats[]>("/agent-jobs/stats");
+  return apiFetch<AgentStats[]>("/admin/agents/stats");
 }
 
 export async function cancelJob(jobId: string): Promise<void> {
-  await apiFetch(`/agent-jobs/${jobId}/cancel`, { method: "POST" });
+  await apiFetch(`/admin/agents/${jobId}/cancel`, { method: "POST" });
 }
 
 // ─── Actions ──────────────────────────────────────────────────
 
 export async function bulkAnalyze(prospectIds: string[]): Promise<void> {
-  await apiFetch("/prospects/bulk-analyze", {
+  await apiFetch("/admin/prospects/bulk-analyze", {
     method: "POST",
     body: JSON.stringify({ prospectIds }),
   });
@@ -287,7 +287,7 @@ export async function startScrape(config: {
   country?: string;
   limit?: number;
 }): Promise<AgentJob> {
-  return apiFetch<AgentJob>("/scraper/start", {
+  return apiFetch<AgentJob>("/admin/agents/scraper/start", {
     method: "POST",
     body: JSON.stringify(config),
   });
@@ -296,5 +296,5 @@ export async function startScrape(config: {
 // ─── Metrics ──────────────────────────────────────────────────
 
 export async function getMetrics(): Promise<DashboardMetrics> {
-  return apiFetch<DashboardMetrics>("/metrics/dashboard");
+  return apiFetch<DashboardMetrics>("/admin/metrics/dashboard");
 }
