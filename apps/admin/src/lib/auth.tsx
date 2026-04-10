@@ -49,8 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (email: string, password: string) => {
       const data = await apiLogin(email, password);
-      setUser(data.admin);
-      localStorage.setItem("mc_admin_user", JSON.stringify(data.admin));
+      const adminUser: AdminUser = { id: data.user.id, email: data.user.email, name: data.user.email, role: data.user.role };
+      setUser(adminUser);
+      localStorage.setItem("mc_admin_user", JSON.stringify(adminUser));
       router.push("/dashboard");
     },
     [router]

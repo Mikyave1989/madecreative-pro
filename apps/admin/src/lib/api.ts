@@ -32,9 +32,9 @@ async function refreshAccessToken(): Promise<string | null> {
       clearTokens();
       return null;
     }
-    const data = (await res.json()) as { accessToken: string; refreshToken: string };
-    setTokens(data.accessToken, data.refreshToken);
-    return data.accessToken;
+    const json = (await res.json()) as ApiResponse<{ accessToken: string; expiresIn: number }>;
+    localStorage.setItem("mc_access_token", json.data.accessToken);
+    return json.data.accessToken;
   } catch {
     clearTokens();
     return null;
@@ -92,10 +92,15 @@ export interface AdminUser {
   role: string;
 }
 
-export interface LoginResponse {
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
+
+export interface LoginData {
   accessToken: string;
   refreshToken: string;
-  admin: AdminUser;
+  user: { id: string; email: string; role: string };
 }
 
 export type ProspectStatus =
@@ -209,13 +214,13 @@ export interface DashboardMetrics {
 export async function login(
   email: string,
   password: string
-): Promise<LoginResponse> {
-  const data = await apiFetch<LoginResponse>("/auth/login", {
+): Promise<LoginData> {
+  const res = await apiFetch<ApiResponse<LoginData>>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  setTokens(data.accessToken, data.refreshToken);
-  return data;
+  setTokens(res.data.accessToken, res.data.refreshToken);
+  return res.data;
 }
 
 export function logout(): void {
