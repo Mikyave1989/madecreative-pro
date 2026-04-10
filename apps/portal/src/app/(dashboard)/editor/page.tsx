@@ -1399,6 +1399,12 @@ function convertProjectFilesToSandpack(
     .replace(/^import\s+.*from\s+["']@next\/[^"']+["'];?\s*\n?/gm, "")
     // Ensure React is imported
     .replace(/^"use client";\s*\n?/m, "")
+    // Strip TypeScript syntax that Sandpack (plain JS) can't parse
+    .replace(/^import\s+type\s+.*\n?/gm, "")              // import type { ... }
+    .replace(/:\s*\w+(\[\])?(?=\s*[=;,)\n])/g, "")         // type annotations: string, number[], etc.
+    .replace(/<\w+(?:\[\])?>/g, "")                         // generic brackets <Type>
+    .replace(/\bas\s+\w+/g, "")                             // as Type casts
+    .replace(/(\w+|\]|\))!/g, "$1")                         // non-null assertions: x! → x
     // rename export default function XYZ to export default function App
     .replace(/export\s+default\s+function\s+\w+/g, "export default function App")
     // rename export default const XYZ = to export default function App()
