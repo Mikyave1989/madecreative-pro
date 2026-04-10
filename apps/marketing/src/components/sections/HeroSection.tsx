@@ -22,6 +22,60 @@ interface HeroSectionProps {
   locale: string;
 }
 
+/* ── Sector detection from URL/title ──────────────────────────────────── */
+
+function detectSector(title: string, url: string): string {
+  const text = `${title} ${url}`.toLowerCase();
+  if (/ristorante|restaurant|pizz|trattoria|bar|cafe|bistro|cucina|food|sushi/i.test(text)) return "restaurant";
+  if (/dent|odont|smile|sorriso/i.test(text)) return "dental";
+  if (/bellezza|beauty|salone|salon|hair|estet|nail|spa|wellness|benessere/i.test(text)) return "beauty";
+  if (/fitness|palestra|gym|sport|yoga|pilates/i.test(text)) return "fitness";
+  if (/hotel|b&b|albergo|resort|hostel/i.test(text)) return "hotel";
+  if (/legale|avvocato|lawyer|legal|studio legale/i.test(text)) return "legal";
+  if (/medic|doctor|clinic|salute|health|farmacia/i.test(text)) return "medical";
+  if (/shop|store|ecommerce|negozio|boutique/i.test(text)) return "ecommerce";
+  if (/immobil|real estate|casa|house|apartment/i.test(text)) return "realestate";
+  return "professional";
+}
+
+/* ── Mini site preview generator ──────────────────────────────────────── */
+
+const SECTOR_PREVIEWS: Record<string, { heroImg: string; accent: string; tagline: string }> = {
+  restaurant: { heroImg: "photo-1517248135467-4c7edcad34c4", accent: "#e85d04", tagline: "Cucina autentica" },
+  dental: { heroImg: "photo-1629909613654-28e377c37b09", accent: "#0ea5e9", tagline: "Il tuo sorriso perfetto" },
+  beauty: { heroImg: "photo-1560066984-138dadb4c035", accent: "#ec4899", tagline: "Bellezza e benessere" },
+  fitness: { heroImg: "photo-1534438327276-14e5300c3a48", accent: "#22c55e", tagline: "Il tuo percorso fitness" },
+  hotel: { heroImg: "photo-1566073771259-6a8506099945", accent: "#a855f7", tagline: "La tua casa lontano da casa" },
+  legal: { heroImg: "photo-1589829545856-d10d557cf95f", accent: "#64748b", tagline: "Al tuo fianco, sempre" },
+  medical: { heroImg: "photo-1576091160550-2173dba999ef", accent: "#ef4444", tagline: "La tua salute" },
+  ecommerce: { heroImg: "photo-1556742049-0cfed4f6a45d", accent: "#f59e0b", tagline: "Il tuo shop online" },
+  realestate: { heroImg: "photo-1560518883-ce09059eeffa", accent: "#14b8a6", tagline: "La casa dei tuoi sogni" },
+  professional: { heroImg: "photo-1497366216548-37526070297c", accent: "#6366f1", tagline: "Soluzioni professionali" },
+};
+
+function generateMiniPreview(name: string, sector: string): string {
+  const cfg = SECTOR_PREVIEWS[sector] ?? SECTOR_PREVIEWS["professional"]!;
+  const heroUrl = `https://images.unsplash.com/${cfg.heroImg}?auto=format&fit=crop&w=1200&q=80`;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,system-ui,sans-serif;background:#05070f;color:#f8fafc}</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+</head><body>
+<nav style="position:sticky;top:0;z-index:10;background:rgba(5,7,15,0.9);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center;gap:8px"><div style="width:28px;height:28px;border-radius:7px;background:${cfg.accent};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff">${(name[0] ?? "M").toUpperCase()}</div><span style="font-weight:700;font-size:15px">${name}</span></div>
+<div style="display:flex;gap:20px;font-size:13px;color:rgba(248,250,252,0.5)"><a href="#" style="color:inherit;text-decoration:none">Servizi</a><a href="#" style="color:inherit;text-decoration:none">Contatti</a><a href="#" style="background:${cfg.accent};color:#fff;padding:6px 16px;border-radius:7px;text-decoration:none;font-weight:600">Contattaci</a></div>
+</nav>
+<section style="position:relative;min-height:360px;display:flex;align-items:center;overflow:hidden">
+<img src="${heroUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.3)">
+<div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(5,7,15,0.7),rgba(5,7,15,0.3))"></div>
+<div style="position:relative;max-width:900px;margin:0 auto;padding:60px 24px">
+<h1 style="font-size:clamp(28px,4vw,48px);font-weight:900;line-height:1.1;letter-spacing:-0.02em;margin-bottom:16px"><span>${name}</span><br><span style="color:${cfg.accent}">${cfg.tagline}</span></h1>
+<p style="font-size:15px;color:rgba(248,250,252,0.55);max-width:440px;line-height:1.6;margin-bottom:28px">Il tuo punto di riferimento. Qualità, professionalità e passione in ogni dettaglio.</p>
+<a href="#" style="background:${cfg.accent};color:#fff;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;display:inline-block">Scopri di più →</a>
+</div></section>
+<div style="text-align:center;padding:12px;font-size:10px;color:rgba(248,250,252,0.15)">Generato con MadeCreative AI</div>
+</body></html>`;
+}
+
 const SOCIAL_PROOF: Record<string, Array<{ value: string; label: string }>> = {
   de: [
     { value: "60s", label: "Website generiert" },
@@ -59,6 +113,8 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [showPreview, setShowPreview] = useState(false);
 
   async function handleAnalyze(e: React.FormEvent) {
     e.preventDefault();
@@ -76,6 +132,12 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
       const json = (await res.json()) as { success: boolean; data?: AnalysisResult; error?: string };
       if (json.success && json.data) {
         setResult(json.data);
+        // Generate preview site based on detected sector
+        const siteName = json.data.title?.split(/[|–—·]/).shift()?.trim() || url.replace(/https?:\/\//, "").split("/")[0]?.replace("www.", "") || "Il tuo sito";
+        const sector = detectSector(json.data.title ?? "", url);
+        const html = generateMiniPreview(siteName, sector);
+        setPreviewHtml(html);
+        setShowPreview(false);
       } else {
         setError(json.error ?? "Errore nell'analisi");
       }
@@ -195,10 +257,11 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
           </button>
         </form>
 
-        {/* Analysis result */}
+        {/* Analysis result + Preview */}
         {result && (
-          <div className="animate-fade-up max-w-2xl mx-auto mb-8 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}>
+          <div className="animate-fade-up max-w-3xl mx-auto mb-8 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}>
             <div className="p-5">
+              {/* Score bar */}
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-sm font-semibold text-white">{result.title || result.url}</p>
@@ -209,6 +272,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
                 </div>
               </div>
 
+              {/* Issues */}
               {result.issues.length > 0 && (
                 <div className="space-y-1.5 mb-4">
                   {result.issues.map((issue, i) => (
@@ -220,6 +284,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
                 </div>
               )}
 
+              {/* Badges */}
               <div className="flex items-center gap-3 mb-4">
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${result.mobile ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
                   {result.mobile ? "✓" : "✗"} Mobile
@@ -232,14 +297,50 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
                 </span>
               </div>
 
-              <a
-                href={`/${locale}#pricing`}
-                className="block w-full text-center gradient-indigo text-white px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-all"
-              >
-                Ricostruisci il tuo sito con l&apos;AI — da €25/mese
-              </a>
-              <p className="text-center mt-2" style={{ color: "rgba(248,250,252,0.3)", fontSize: "11px" }}>
-                Prova gratuita • Nessuna carta richiesta • Cancella quando vuoi
+              {/* Preview toggle */}
+              {!showPreview ? (
+                <button
+                  onClick={() => setShowPreview(true)}
+                  className="block w-full text-center gradient-indigo text-white px-6 py-3.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-all hover:-translate-y-0.5"
+                >
+                  Guarda come rifacciamo il tuo sito — gratis
+                </button>
+              ) : (
+                <>
+                  {/* Browser chrome + iframe preview */}
+                  <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div className="px-4 py-2.5 flex items-center gap-3" style={{ background: "#0d1117", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#ff5f57" }} />
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#febc2e" }} />
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#28c840" }} />
+                      </div>
+                      <div className="flex-1 flex items-center gap-2 rounded-md px-3 py-1 text-xs" style={{ background: "#161b27", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(248,250,252,0.4)", maxWidth: "320px", margin: "0 auto" }}>
+                        <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="#28c840" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        <span className="truncate">tuosito.madecreative.pro</span>
+                      </div>
+                    </div>
+                    <iframe
+                      srcDoc={previewHtml}
+                      title="Preview sito rifatto"
+                      className="w-full"
+                      style={{ height: "420px", border: "none", display: "block" }}
+                      sandbox="allow-same-origin"
+                      loading="lazy"
+                    />
+                  </div>
+
+                  {/* CTA */}
+                  <a
+                    href={`/${locale}#pricing`}
+                    className="block w-full text-center gradient-indigo text-white px-6 py-3.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-all hover:-translate-y-0.5"
+                  >
+                    Vuoi questo sito? Attivalo da €25/mese
+                  </a>
+                </>
+              )}
+              <p className="text-center mt-2.5" style={{ color: "rgba(248,250,252,0.3)", fontSize: "11px" }}>
+                Preview gratuita • Il sito diventa tuo e lo modifichi con l&apos;AI
               </p>
             </div>
           </div>
