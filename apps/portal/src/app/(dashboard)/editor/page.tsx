@@ -31,11 +31,13 @@ import {
   Clock,
   Coins,
   Facebook,
+  FileCode,
   Instagram,
   Mail,
   MapPin,
   MessageSquare,
   Monitor,
+  MousePointer,
   Phone,
   Quote,
   RefreshCw,
@@ -57,6 +59,7 @@ interface ChatMessage {
   cost?: number;
   streaming?: boolean;
   tools?: Array<{ name: string; status: "running" | "done" }>;
+  changes?: Record<string, unknown>;
 }
 
 interface Credits {
@@ -241,6 +244,62 @@ const TOOL_LABELS: Record<string, string> = {
   generate_with_opus: "Generazione AI",
 };
 
+// ─── Changes card (Phase 6) ───────────────────────────────────────────────────
+
+const CHANGE_LABELS: Record<string, string> = {
+  heroText: "Titolo hero",
+  heroDescription: "Descrizione hero",
+  heroImage: "Immagine hero",
+  heroCtaText: "Testo CTA hero",
+  aboutText: "Sezione chi siamo",
+  aboutImage: "Immagine chi siamo",
+  phone: "Telefono",
+  email: "Email",
+  address: "Indirizzo",
+  whatsappNumber: "WhatsApp",
+  menuItems: "Menu",
+  services: "Servizi",
+  gallery: "Galleria foto",
+  testimonials: "Testimonianze",
+  hours: "Orari",
+  mapEmbed: "Mappa",
+  instagramUrl: "Instagram",
+  facebookUrl: "Facebook",
+  primaryColor: "Colore principale",
+};
+
+function ChangesCard({ changes }: { changes: Record<string, unknown> }) {
+  const [expanded, setExpanded] = useState(false);
+  const keys = Object.keys(changes);
+  if (keys.length === 0) return null;
+
+  return (
+    <div className="mt-2 max-w-[90%]">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+      >
+        <FileCode className="w-3 h-3" />
+        {keys.length} {keys.length === 1 ? "sezione modificata" : "sezioni modificate"}
+        <ChevronDown
+          className={`w-3 h-3 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
+      {expanded && (
+        <div className="mt-2 bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs space-y-1.5">
+          {keys.map((key) => (
+            <div key={key} className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+              <span className="text-zinc-400">{CHANGE_LABELS[key] ?? key}</span>
+              <span className="text-emerald-400 ml-auto font-medium">modificata</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChatBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === "user";
 
@@ -303,6 +362,9 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
           {msg.cost.toFixed(1)} crediti
         </p>
       )}
+      {msg.changes && Object.keys(msg.changes).length > 0 && (
+        <ChangesCard changes={msg.changes} />
+      )}
     </div>
   );
 }
@@ -337,7 +399,60 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function StaticSitePreview({ content }: { content: WebsiteContent }) {
+// ─── Visual edit section wrapper (Phase 5) ───────────────────────────────────
+
+function SectionWrap({
+  name,
+  label,
+  children,
+  active,
+  onSectionClick,
+}: {
+  name: string;
+  label: string;
+  children: React.ReactNode;
+  active: boolean;
+  onSectionClick: (section: string) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  if (!active) return <>{children}</>;
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => onSectionClick(name)}
+      style={{
+        outline: hovered ? "2px solid #6366f1" : "2px solid transparent",
+        outlineOffset: "-2px",
+        cursor: "pointer",
+      }}
+    >
+      {hovered && (
+        <div
+          className="absolute top-2 left-1/2 z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white shadow-lg"
+          style={{
+            transform: "translateX(-50%)",
+            backgroundColor: "#6366f1",
+            pointerEvents: "none",
+          }}
+        >
+          <MousePointer className="w-3 h-3" />
+          {label}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function StaticSitePreview({
+  content,
+  onSectionClick,
+}: {
+  content: WebsiteContent;
+  onSectionClick?: (section: string) => void;
+}) {
   const hasContent =
     content.heroText ||
     content.heroDescription ||
@@ -380,6 +495,9 @@ function StaticSitePreview({ content }: { content: WebsiteContent }) {
     }
   }
 
+  const editMode = !!onSectionClick;
+  const sectionClick = onSectionClick ?? (() => {});
+
   return (
     <div className="bg-white text-gray-900 font-sans min-h-full">
 
@@ -408,6 +526,7 @@ function StaticSitePreview({ content }: { content: WebsiteContent }) {
       </nav>
 
       {/* ── 1. HERO ─────────────────────────────────────────── */}
+      <SectionWrap name="hero" label="Hero" active={editMode} onSectionClick={sectionClick}>
       <section className="relative min-h-[480px] flex items-center justify-center overflow-hidden">
         {/* Background image */}
         <div className="absolute inset-0">
@@ -443,9 +562,11 @@ function StaticSitePreview({ content }: { content: WebsiteContent }) {
           </a>
         </div>
       </section>
+      </SectionWrap>
 
       {/* ── 2. ABOUT ────────────────────────────────────────── */}
       {content.aboutText && (
+        <SectionWrap name="about" label="Chi siamo" active={editMode} onSectionClick={sectionClick}>
         <section id="about" className="py-20 bg-gray-50">
           <div className="max-w-6xl mx-auto px-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
@@ -472,10 +593,12 @@ function StaticSitePreview({ content }: { content: WebsiteContent }) {
             </div>
           </div>
         </section>
+        </SectionWrap>
       )}
 
       {/* ── 3a. SERVICES ────────────────────────────────────── */}
       {content.services && content.services.length > 0 && (
+        <SectionWrap name="services" label="Servizi" active={editMode} onSectionClick={sectionClick}>
         <section id="menu" className="py-20 bg-white">
           <div className="max-w-6xl mx-auto px-6">
             <div className="text-center mb-12">
@@ -510,10 +633,12 @@ function StaticSitePreview({ content }: { content: WebsiteContent }) {
             </div>
           </div>
         </section>
+        </SectionWrap>
       )}
 
       {/* ── 3b. MENU ────────────────────────────────────────── */}
       {content.menuItems && content.menuItems.length > 0 && (
+        <SectionWrap name="menu" label="Menu" active={editMode} onSectionClick={sectionClick}>
         <section id="menu" className="py-20 bg-gray-50">
           <div className="max-w-6xl mx-auto px-6">
             <div className="text-center mb-12">
@@ -562,10 +687,12 @@ function StaticSitePreview({ content }: { content: WebsiteContent }) {
             ))}
           </div>
         </section>
+        </SectionWrap>
       )}
 
       {/* ── 4. GALLERY ──────────────────────────────────────── */}
       {content.gallery && content.gallery.length > 0 && (
+        <SectionWrap name="gallery" label="Galleria" active={editMode} onSectionClick={sectionClick}>
         <section id="gallery" className="py-20 bg-white">
           <div className="max-w-6xl mx-auto px-6">
             <div className="text-center mb-12">
@@ -597,10 +724,12 @@ function StaticSitePreview({ content }: { content: WebsiteContent }) {
             </div>
           </div>
         </section>
+        </SectionWrap>
       )}
 
       {/* ── 5. TESTIMONIALS ─────────────────────────────────── */}
       {content.testimonials && content.testimonials.length > 0 && (
+        <SectionWrap name="testimonials" label="Recensioni" active={editMode} onSectionClick={sectionClick}>
         <section className="py-20 bg-gray-50">
           <div className="max-w-6xl mx-auto px-6">
             <div className="text-center mb-12">
@@ -635,10 +764,12 @@ function StaticSitePreview({ content }: { content: WebsiteContent }) {
             </div>
           </div>
         </section>
+        </SectionWrap>
       )}
 
       {/* ── 6. HOURS + CONTACT ──────────────────────────────── */}
       {(content.hours || content.phone || content.email || content.address) && (
+        <SectionWrap name="contact" label="Orari e Contatti" active={editMode} onSectionClick={sectionClick}>
         <section id="contact" className="py-20 bg-white">
           <div className="max-w-6xl mx-auto px-6">
             <div className="text-center mb-12">
@@ -743,6 +874,7 @@ function StaticSitePreview({ content }: { content: WebsiteContent }) {
             </div>
           </div>
         </section>
+        </SectionWrap>
       )}
 
       {/* ── 7. FOOTER ───────────────────────────────────────── */}
@@ -1318,16 +1450,18 @@ class SandpackErrorBoundary extends Component<
 function SandpackLivePreview({
   files,
   content,
+  onSectionClick,
 }: {
   files: Record<string, string> | null;
   content: WebsiteContent;
+  onSectionClick?: (section: string) => void;
 }) {
   const sandpackFiles = files
     ? convertProjectFilesToSandpack(files)
     : generateFallbackFiles(content);
 
   return (
-    <SandpackErrorBoundary fallback={<StaticSitePreview content={content} />}>
+    <SandpackErrorBoundary fallback={<StaticSitePreview content={content} onSectionClick={onSectionClick} />}>
       <SandpackPreviewDynamic
         files={sandpackFiles}
         theme="dark"
@@ -1350,14 +1484,17 @@ function PreviewPanel({
   building = false,
   deployUrl,
   projectFiles,
+  onSectionClick,
 }: {
   content: WebsiteContent;
   onRefresh: () => void;
   building?: boolean;
   deployUrl?: string | null;
   projectFiles?: Record<string, string> | null;
+  onSectionClick?: (section: string) => void;
 }) {
   const [device, setDevice] = useState<DeviceMode>("desktop");
+  const [editMode, setEditMode] = useState(false);
 
   const frameWidths: Record<DeviceMode, string> = {
     desktop: "w-full",
@@ -1430,6 +1567,20 @@ function PreviewPanel({
           ))}
         </div>
 
+        {/* Visual Edit Mode toggle */}
+        <button
+          onClick={() => setEditMode((v) => !v)}
+          title={editMode ? "Disattiva modifica visuale" : "Modifica visuale"}
+          aria-label={editMode ? "Disattiva modifica visuale" : "Attiva modifica visuale"}
+          className={`p-1.5 rounded-md transition-colors flex-shrink-0 ${
+            editMode
+              ? "bg-indigo-600 text-white"
+              : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+          }`}
+        >
+          <MousePointer className="w-3.5 h-3.5" />
+        </button>
+
         {/* Refresh */}
         <button
           onClick={onRefresh}
@@ -1446,7 +1597,11 @@ function PreviewPanel({
         <div
           className={`${frameWidths[device]} h-full transition-all duration-300 overflow-hidden`}
         >
-          <SandpackLivePreview files={projectFiles ?? null} content={content} />
+          <SandpackLivePreview
+            files={projectFiles ?? null}
+            content={content}
+            onSectionClick={editMode ? onSectionClick : undefined}
+          />
         </div>
 
         {/* Building overlay */}
@@ -1761,7 +1916,13 @@ export default function EditorPage() {
             const retryJson = (await retry.json()) as ChatResponse;
             if (retryJson.success && retryJson.data) {
               const creditCost = credits.remaining - (retryJson.data.credits?.remaining ?? credits.remaining);
-              setMessages((prev) => [...prev, { role: "assistant", content: retryJson.data!.response, cost: creditCost > 0 ? creditCost : undefined }]);
+              const retryChanges = retryJson.data.contentUpdates ?? {};
+              setMessages((prev) => [...prev, {
+                role: "assistant",
+                content: retryJson.data!.response,
+                cost: creditCost > 0 ? creditCost : undefined,
+                ...(Object.keys(retryChanges).length > 0 ? { changes: retryChanges } : {}),
+              }]);
               if (retryJson.data.currentContent) setContent(retryJson.data.currentContent);
               if (retryJson.data.deployUrl) setDeployUrl(retryJson.data.deployUrl);
               if (retryJson.data.credits) setCredits(retryJson.data.credits);
@@ -1784,9 +1945,15 @@ export default function EditorPage() {
 
         if (json.data) {
           const creditCost = credits.remaining - (json.data.credits?.remaining ?? credits.remaining);
+          const changes = json.data.contentUpdates ?? {};
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: json.data!.response, cost: creditCost > 0 ? creditCost : undefined },
+            {
+              role: "assistant",
+              content: json.data!.response,
+              cost: creditCost > 0 ? creditCost : undefined,
+              ...(Object.keys(changes).length > 0 ? { changes } : {}),
+            },
           ]);
           if (json.data.currentContent) setContent(json.data.currentContent);
           if (json.data.deployUrl) setDeployUrl(json.data.deployUrl);
@@ -1855,6 +2022,7 @@ export default function EditorPage() {
         const decoder = new TextDecoder();
         let buffer = "";
         let assistantText = "";
+        let accumulatedChanges: Record<string, unknown> = {};
 
         while (true) {
           const { done, value } = await reader.read();
@@ -1926,6 +2094,7 @@ export default function EditorPage() {
               case "content_update": {
                 const updates = event.updates as Record<string, unknown>;
                 setContent((prev) => ({ ...prev, ...updates }));
+                accumulatedChanges = { ...accumulatedChanges, ...updates };
                 break;
               }
 
@@ -1951,14 +2120,18 @@ export default function EditorPage() {
           }
         }
 
-        // Mark streaming as finished and compute credit cost display
+        // Mark streaming as finished, attach content changes
+        const finalChanges = accumulatedChanges;
         setMessages((prev) => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last?.role === "assistant") {
             const { streaming: _streaming, ...rest } = last;
             void _streaming;
-            updated[updated.length - 1] = rest;
+            updated[updated.length - 1] = {
+              ...rest,
+              ...(Object.keys(finalChanges).length > 0 ? { changes: finalChanges } : {}),
+            };
           }
           return updated;
         });
@@ -2030,6 +2203,34 @@ export default function EditorPage() {
 
   function handleRefresh() {
     setRefreshKey((k) => k + 1);
+  }
+
+  const SECTION_LABELS: Record<string, string> = {
+    hero: "hero",
+    about: "chi siamo",
+    services: "servizi",
+    menu: "menu",
+    gallery: "galleria",
+    testimonials: "recensioni",
+    contact: "orari e contatti",
+  };
+
+  function handleSectionClick(section: string) {
+    const label = SECTION_LABELS[section] ?? section;
+    const prompt = `Modifica la sezione ${label}: `;
+    setInput(prompt);
+    // Switch to chat tab on mobile
+    setMobileTab("chat");
+    // Focus the textarea after a short tick so the tab switch renders first
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      const el = textareaRef.current;
+      if (el) {
+        el.selectionStart = el.selectionEnd = el.value.length;
+        el.style.height = "auto";
+        el.style.height = `${Math.min(el.scrollHeight, 104)}px`;
+      }
+    }, 50);
   }
 
   return (
@@ -2111,6 +2312,7 @@ export default function EditorPage() {
             building={loading}
             deployUrl={deployUrl}
             projectFiles={projectFiles}
+            onSectionClick={handleSectionClick}
           />
         </div>
       </div>
