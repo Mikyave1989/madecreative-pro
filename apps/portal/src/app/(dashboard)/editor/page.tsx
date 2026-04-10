@@ -856,21 +856,9 @@ export default function EditorPage() {
   }
 
   return (
-    /*
-     * Break out of the dashboard's padding using negative margins.
-     * The dashboard <main> applies p-3 sm:p-4 md:p-6 lg:p-8 and max-w-7xl.
-     * We undo that here so the editor stretches edge-to-edge.
-     * Height: 100vh minus 64px for the sticky header.
-     */
     <div
-      className="
-        -mx-3 -my-3
-        sm:-mx-4 sm:-my-4
-        md:-mx-6 md:-my-6
-        lg:-mx-8 lg:-my-8
-        bg-zinc-950
-      "
-      style={{ height: "calc(100vh - 64px)" }}
+      className="bg-zinc-950"
+      style={{ height: "calc(100vh - 56px)" }}
     >
       {/* ── Mobile tab bar (visible <md) ── */}
       <div className="md:hidden flex items-stretch h-10 border-b border-zinc-800 bg-zinc-900 flex-shrink-0">

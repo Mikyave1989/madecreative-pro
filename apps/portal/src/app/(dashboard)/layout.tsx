@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -13,6 +13,7 @@ export default function DashboardLayout({
 }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -35,18 +36,25 @@ export default function DashboardLayout({
     return null;
   }
 
+  // Editor page gets full screen (no header, no padding, just bottom nav)
+  const isEditor = pathname === "/editor";
+
+  if (isEditor) {
+    return (
+      <div className="min-h-screen bg-zinc-950">
+        <main className="pb-14">{children}</main>
+        <Sidebar />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950">
+      <Header />
+      <main className="p-3 sm:p-4 md:p-6 pb-20 max-w-5xl mx-auto">
+        {children}
+      </main>
       <Sidebar />
-
-      {/* Main content area — offset for desktop sidebar */}
-      <div className="lg:pl-64">
-        <Header />
-
-        <main className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-          {children}
-        </main>
-      </div>
     </div>
   );
 }

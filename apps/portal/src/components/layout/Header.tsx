@@ -1,47 +1,40 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
-import { PlanBadge } from "@/components/ui/Badge";
-
-function getGreeting(name: string): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return `Buongiorno, ${name}`;
-  if (hour < 18) return `Buon pomeriggio, ${name}`;
-  return `Buonasera, ${name}`;
-}
+import { LogOut } from "lucide-react";
 
 export function Header() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const firstName = user?.contactName?.split(" ")[0] ?? "Cliente";
 
   return (
-    <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
-      <div className="flex items-center justify-between h-16 px-6">
-        {/* Greeting — offset for mobile hamburger */}
-        <div className="pl-10 lg:pl-0">
-          <h1 className="text-base font-semibold text-gray-900">
-            {getGreeting(firstName)}
-          </h1>
+    <header className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
+      <div className="flex items-center justify-between h-14 px-4 max-w-5xl mx-auto">
+        {/* Logo + company */}
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <span className="text-base font-bold text-white">
+            made<span className="text-indigo-400">creative</span>
+          </span>
           {user && (
-            <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">
+            <span className="hidden sm:inline text-xs text-slate-500 border-l border-slate-700 pl-2.5">
               {user.companyName}
-            </p>
+            </span>
           )}
-        </div>
+        </Link>
 
-        {/* Right side */}
+        {/* User + logout */}
         <div className="flex items-center gap-3">
-          {user && <PlanBadge plan={user.plan} size="sm" />}
-
-          {/* Notification bell */}
+          <span className="text-sm text-slate-400 hidden sm:inline">
+            Ciao, {firstName}
+          </span>
           <button
-            className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Notifiche"
+            onClick={logout}
+            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+            aria-label="Esci"
+            title="Esci"
           >
-            <Bell className="w-5 h-5" />
-            {/* Indicatore notifiche non lette */}
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
