@@ -1,47 +1,42 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import {
-  Users,
-  DollarSign,
-  Bot,
-  TrendingUp,
-  TrendingDown,
-  ArrowUpRight,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Users, Euro, Target, Bot, AlertTriangle, RefreshCw } from "lucide-react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Spinner } from "@/components/ui/Spinner";
-import { MOCK_METRICS, MOCK_RECENT_JOBS } from "@/lib/mockData";
-import { formatCurrency, timeAgo } from "@/lib/utils";
-import type { AgentType, JobStatus, ProspectStatus } from "@/lib/api";
+import {
+  getMetrics,
+  getProspectsFunnel,
+  getAgentJobs,
+} from "@/lib/api";
+import { formatCurrency, timeAgo, truncateId } from "@/lib/utils";
+import type {
+  DashboardMetrics,
+  FunnelEntry,
+  AgentJob,
+  AgentType,
+  JobStatus,
+} from "@/lib/api";
 
-// ─── Counter Animation ─────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────
 
-function useCounter(target: number, duration = 1200): number {
-  const [value, setValue] = useState(0);
-  const frame = useRef<number | null>(null);
+interface DashboardData {
+  metrics: DashboardMetrics;
+  funnel: FunnelEntry[];
+  recentJobs: AgentJob[];
+}
 
-  useEffect(() => {
-    const start = performance.now();
-    const animate = (now: number) => {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(eased * target));
-      if (progress < 1) {
-        frame.current = requestAnimationFrame(animate);
-      }
-    };
-    frame.current = requestAnimationFrame(animate);
-    return () => {
-      if (frame.current !== null) cancelAnimationFrame(frame.current);
-    };
-  }, [target, duration]);
+// ─── Skeleton Primitives ───────────────────────────────────────
 
-  return value;
+function SkeletonBlock({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <div
+      className={`animate-pulse rounded bg-slate-800/60 ${className ?? ""}`}
+      style={style}
+      aria-hidden="true"
+    />
+  );
 }
 
 // ─── KPI Card ──────────────────────────────────────────────────
@@ -50,61 +45,43 @@ type NeonColor = "cyan" | "violet" | "amber" | "green";
 
 interface KpiCardProps {
   label: string;
-  value: number;
-  prefix?: string;
-  suffix?: string;
+  value: string;
   subLabel: string;
   subValue: string;
   icon: React.ElementType;
   color: NeonColor;
-  loading?: boolean;
-  delay?: number;
 }
 
-function KpiCard({
-  label,
-  value,
-  prefix = "",
-  suffix = "",
-  subLabel,
-  subValue,
-  icon: Icon,
-  color,
-  loading = false,
-  delay = 0,
-}: KpiCardProps) {
-  const count = useCounter(value);
+const kpiColorMap: Record<
+  NeonColor,
+  { text: string; border: string; icon: string }
+> = {
+  cyan: {
+    text: "text-neon-cyan",
+    border: "border-neon-cyan/30 hover:border-neon-cyan/60 hover:shadow-neon-cyan",
+    icon: "bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan",
+  },
+  violet: {
+    text: "text-neon-violet",
+    border: "border-neon-violet/30 hover:border-neon-violet/60 hover:shadow-neon-violet",
+    icon: "bg-neon-violet/10 border-neon-violet/30 text-neon-violet",
+  },
+  amber: {
+    text: "text-neon-amber",
+    border: "border-neon-amber/30 hover:border-neon-amber/60 hover:shadow-neon-amber",
+    icon: "bg-neon-amber/10 border-neon-amber/30 text-neon-amber",
+  },
+  green: {
+    text: "text-neon-green",
+    border: "border-neon-green/30 hover:border-neon-green/60 hover:shadow-neon-green",
+    icon: "bg-neon-green/10 border-neon-green/30 text-neon-green",
+  },
+};
 
-  const colorMap: Record<NeonColor, { text: string; border: string; icon: string }> = {
-    cyan: {
-      text: "text-neon-cyan",
-      border: "border-neon-cyan/30 hover:border-neon-cyan/60 hover:shadow-neon-cyan",
-      icon: "bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan",
-    },
-    violet: {
-      text: "text-neon-violet",
-      border: "border-neon-violet/30 hover:border-neon-violet/60 hover:shadow-neon-violet",
-      icon: "bg-neon-violet/10 border-neon-violet/30 text-neon-violet",
-    },
-    amber: {
-      text: "text-neon-amber",
-      border: "border-neon-amber/30 hover:border-neon-amber/60 hover:shadow-neon-amber",
-      icon: "bg-neon-amber/10 border-neon-amber/30 text-neon-amber",
-    },
-    green: {
-      text: "text-neon-green",
-      border: "border-neon-green/30 hover:border-neon-green/60 hover:shadow-neon-green",
-      icon: "bg-neon-green/10 border-neon-green/30 text-neon-green",
-    },
-  };
-
-  const c = colorMap[color];
-
+function KpiCard({ label, value, subLabel, subValue, icon: Icon, color }: KpiCardProps) {
+  const c = kpiColorMap[color];
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay, ease: "easeOut" }}
+    <div
       className={`rounded-lg border bg-bg-card p-5 transition-all duration-300 ${c.border}`}
     >
       <div className="flex items-start justify-between">
@@ -112,258 +89,396 @@ function KpiCard({
           <p className="font-mono-tech text-[10px] uppercase tracking-widest text-slate-500 mb-3">
             {label}
           </p>
-          {loading ? (
-            <Spinner size="md" />
-          ) : (
-            <p className={`font-orbitron text-3xl font-bold ${c.text}`}
-              style={{ textShadow: color === "cyan" ? "0 0 12px #00f0ff60" : undefined }}>
-              {prefix}{count.toLocaleString("it-IT")}{suffix}
-            </p>
-          )}
+          <p
+            className={`font-orbitron text-3xl font-bold ${c.text}`}
+            style={color === "cyan" ? { textShadow: "0 0 12px #00f0ff60" } : undefined}
+          >
+            {value}
+          </p>
           <p className="mt-2 font-mono-tech text-[10px] text-slate-600">
             <span className="text-slate-500">{subLabel}</span>{" "}
             <span className={c.text}>{subValue}</span>
           </p>
         </div>
-        <div className={`flex h-9 w-9 items-center justify-center rounded border ${c.icon}`}>
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded border ${c.icon}`}
+        >
           <Icon className="h-4 w-4" />
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-// ─── Pipeline Funnel ───────────────────────────────────────────
-
-const PIPELINE_STAGES: { key: ProspectStatus; label: string; color: string }[] = [
-  { key: "SCRAPED",      label: "Scraped",      color: "#64748b" },
-  { key: "QUALIFIED",    label: "Qualified",    color: "#a855f7" },
-  { key: "PREVIEW_READY", label: "Preview Ready", color: "#00f0ff" },
-  { key: "CONTACTED",    label: "Contacted",    color: "#f59e0b" },
-  { key: "FOLLOWED_UP",  label: "Followed Up",  color: "#3b82f6" },
-  { key: "REPLIED",      label: "Replied",      color: "#10b981" },
-  { key: "CONVERTED",    label: "Converted",    color: "#22c55e" },
-];
-
-function PipelineFunnel({ pipeline }: { pipeline: Record<ProspectStatus, number> }) {
-  const maxCount = PIPELINE_STAGES.reduce(
-    (max, s) => Math.max(max, pipeline[s.key] ?? 0),
-    1
+function KpiCardSkeleton() {
+  return (
+    <div className="rounded-lg border border-border-subtle bg-bg-card p-5">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 space-y-3">
+          <SkeletonBlock className="h-2.5 w-24" />
+          <SkeletonBlock className="h-8 w-32" />
+          <SkeletonBlock className="h-2 w-28" />
+        </div>
+        <SkeletonBlock className="h-9 w-9 rounded" />
+      </div>
+    </div>
   );
+}
+
+// ─── Funnel Stage Colors ───────────────────────────────────────
+
+const FUNNEL_COLORS: Record<string, string> = {
+  SCRAPED: "#64748b",
+  QUALIFIED: "#a855f7",
+  PREVIEW_READY: "#00f0ff",
+  CONTACTED: "#f59e0b",
+  FOLLOWED_UP: "#3b82f6",
+  REPLIED: "#10b981",
+  CONVERTED: "#22c55e",
+  LOST: "#ef4444",
+  BLACKLISTED: "#6b7280",
+};
+
+function labelForStatus(status: string): string {
+  return status
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ─── Prospect Funnel ───────────────────────────────────────────
+
+function ProspectFunnel({ funnel }: { funnel: FunnelEntry[] }) {
+  const maxCount = funnel.reduce((max, e) => Math.max(max, e.count), 1);
+  const totalBase = funnel[0]?.count ?? 1;
 
   return (
-    <Card neon="subtle" className="col-span-full lg:col-span-2">
+    <Card neon="subtle">
       <CardHeader>
-        <CardTitle>Prospect Pipeline</CardTitle>
-        <span className="font-mono-tech text-[9px] text-slate-600 uppercase tracking-widest">
-          Funnel
+        <CardTitle>Prospect Funnel</CardTitle>
+        <span className="font-mono-tech text-[9px] uppercase tracking-widest text-slate-600">
+          All time
         </span>
       </CardHeader>
-      <div className="space-y-3">
-        {PIPELINE_STAGES.map((stage, i) => {
-          const count = pipeline[stage.key] ?? 0;
-          const widthPct = Math.max((count / maxCount) * 100, 4);
-          const total = pipeline.SCRAPED ?? 1;
-          const pct = ((count / total) * 100).toFixed(1);
 
-          return (
-            <motion.div
-              key={stage.key}
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.07 + 0.3 }}
-              className="group"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span
-                  className="font-mono-tech text-[10px] uppercase tracking-wider"
-                  style={{ color: stage.color }}
-                >
-                  {stage.label}
-                </span>
-                <span className="font-mono-tech text-[10px] text-slate-500">
-                  {count} <span className="text-slate-700">({pct}%)</span>
-                </span>
+      {funnel.length === 0 ? (
+        <p className="font-mono-tech text-xs text-slate-600 py-4 text-center">
+          No funnel data available
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {funnel.map((entry) => {
+            const color = FUNNEL_COLORS[entry.status] ?? "#64748b";
+            const widthPct = Math.max((entry.count / maxCount) * 100, 4);
+            const pct = ((entry.count / totalBase) * 100).toFixed(1);
+
+            return (
+              <div key={entry.status}>
+                <div className="flex items-center justify-between mb-1">
+                  <span
+                    className="font-mono-tech text-[10px] uppercase tracking-wider"
+                    style={{ color }}
+                  >
+                    {labelForStatus(entry.status)}
+                  </span>
+                  <span className="font-mono-tech text-[10px] text-slate-500">
+                    {entry.count.toLocaleString("it-IT")}{" "}
+                    <span className="text-slate-700">({pct}%)</span>
+                  </span>
+                </div>
+                <div className="h-5 w-full rounded-sm bg-bg-elevated overflow-hidden">
+                  <div
+                    className="h-full rounded-sm transition-all duration-700"
+                    style={{
+                      width: `${widthPct}%`,
+                      background: `linear-gradient(90deg, ${color}30, ${color})`,
+                      boxShadow: `0 0 8px ${color}40`,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="h-5 w-full rounded-sm bg-bg-elevated overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${widthPct}%` }}
-                  transition={{ duration: 0.8, delay: i * 0.07 + 0.4, ease: "easeOut" }}
-                  className="h-full rounded-sm"
-                  style={{
-                    background: `linear-gradient(90deg, ${stage.color}30, ${stage.color})`,
-                    boxShadow: `0 0 8px ${stage.color}40`,
-                  }}
-                />
-              </div>
-            </motion.div>
-          );
-        })}
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function FunnelSkeleton() {
+  return (
+    <Card neon="subtle">
+      <CardHeader>
+        <CardTitle>Prospect Funnel</CardTitle>
+      </CardHeader>
+      <div className="space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="space-y-1">
+            <div className="flex justify-between">
+              <SkeletonBlock className="h-2.5 w-20" />
+              <SkeletonBlock className="h-2.5 w-12" />
+            </div>
+            <SkeletonBlock
+              className="h-5 rounded-sm"
+              style={{ width: `${90 - i * 10}%` } as React.CSSProperties}
+            />
+          </div>
+        ))}
       </div>
     </Card>
   );
 }
 
-// ─── Agent Color Map ───────────────────────────────────────────
+// ─── Agent Color Maps ──────────────────────────────────────────
 
-const AGENT_COLOR: Record<AgentType, { color: string; name: "cyan" | "violet" | "amber" | "green" | "red" }> = {
-  SCRAPER:  { color: "#00f0ff", name: "cyan" },
-  ANALYZER: { color: "#a855f7", name: "violet" },
-  BUILDER:  { color: "#f59e0b", name: "amber" },
-  OUTREACH: { color: "#10b981", name: "green" },
-  QA:       { color: "#ef4444", name: "red" },
+const AGENT_COLOR: Record<AgentType, string> = {
+  SCRAPER: "#00f0ff",
+  ANALYZER: "#a855f7",
+  BUILDER: "#f59e0b",
+  OUTREACH: "#10b981",
+  QA: "#ef4444",
 };
 
-const JOB_STATUS_COLOR: Record<JobStatus, "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "gray"> = {
-  QUEUED:    "gray",
-  RUNNING:   "cyan",
+const JOB_STATUS_BADGE: Record<
+  JobStatus,
+  "cyan" | "violet" | "amber" | "green" | "red" | "gray"
+> = {
+  QUEUED: "gray",
+  RUNNING: "cyan",
   COMPLETED: "green",
-  FAILED:    "red",
+  FAILED: "red",
   CANCELLED: "gray",
 };
 
-// ─── Live Agent Feed ───────────────────────────────────────────
+// ─── Recent Agent Activity ─────────────────────────────────────
 
-function LiveAgentFeed() {
-  const [jobs, setJobs] = useState(MOCK_RECENT_JOBS);
-
-  // Simulate auto-refresh every 5s
-  useEffect(() => {
-    const id = setInterval(() => {
-      setJobs((prev) => {
-        // Shuffle slightly to simulate live updates
-        return [...prev].sort(() => Math.random() - 0.5).slice(0, 10);
-      });
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
-
+function AgentActivity({ jobs }: { jobs: AgentJob[] }) {
   return (
-    <Card neon="subtle" className="col-span-full lg:col-span-1">
+    <Card neon="subtle">
       <CardHeader>
-        <CardTitle>Live Agent Feed</CardTitle>
-        <div className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neon-cyan" />
-          <span className="font-mono-tech text-[9px] uppercase tracking-widest text-neon-cyan/60">
-            Live
-          </span>
-        </div>
+        <CardTitle>Recent Agent Activity</CardTitle>
+        <span className="font-mono-tech text-[9px] uppercase tracking-widest text-slate-600">
+          Last 5 jobs
+        </span>
       </CardHeader>
 
-      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-        {jobs.map((job, i) => {
-          const agent = AGENT_COLOR[job.agentType];
-          const statusColor = JOB_STATUS_COLOR[job.status];
+      {jobs.length === 0 ? (
+        <p className="font-mono-tech text-xs text-slate-600 py-4 text-center">
+          No agent jobs found
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {jobs.map((job) => {
+            const agentColor = AGENT_COLOR[job.agentType] ?? "#64748b";
+            const statusColor = JOB_STATUS_BADGE[job.status] ?? "gray";
+            const refId = job.prospectId ?? job.clientId;
 
-          return (
-            <motion.div
-              key={`${job.id}-${i}`}
-              initial={{ opacity: 0, x: 16 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.04 }}
-              className="flex items-center gap-3 rounded border border-border-subtle/50 bg-bg-elevated/40 px-3 py-2"
-            >
-              {/* Agent type pill */}
-              <span
-                className="shrink-0 rounded border px-1.5 py-0.5 font-mono-tech text-[9px] uppercase"
-                style={{
-                  color: agent.color,
-                  borderColor: `${agent.color}40`,
-                  backgroundColor: `${agent.color}10`,
-                }}
+            return (
+              <div
+                key={job.id}
+                className="flex items-center gap-3 rounded border border-border-subtle/50 bg-bg-elevated/40 px-3 py-2"
               >
-                {job.agentType.slice(0, 3)}
-              </span>
+                {/* Agent type pill */}
+                <span
+                  className="shrink-0 rounded border px-1.5 py-0.5 font-mono-tech text-[9px] uppercase"
+                  style={{
+                    color: agentColor,
+                    borderColor: `${agentColor}40`,
+                    backgroundColor: `${agentColor}10`,
+                  }}
+                >
+                  {job.agentType.slice(0, 3)}
+                </span>
 
-              {/* Details */}
-              <div className="flex-1 min-w-0">
-                <p className="truncate font-mono-tech text-[10px] text-slate-400">
-                  {job.prospectName ?? job.clientName ?? "System"}
-                </p>
-                <p className="font-mono-tech text-[9px] text-slate-700">
-                  {timeAgo(job.updatedAt)}
-                </p>
+                {/* Details */}
+                <div className="flex-1 min-w-0">
+                  <p className="truncate font-mono-tech text-[10px] text-slate-400">
+                    {refId ? truncateId(refId) : truncateId(job.id)}
+                  </p>
+                  <p className="font-mono-tech text-[9px] text-slate-700">
+                    {timeAgo(job.updatedAt)}
+                  </p>
+                </div>
+
+                {/* Status */}
+                <Badge color={statusColor} size="sm">
+                  {job.status}
+                </Badge>
               </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
 
-              {/* Status */}
-              <Badge color={statusColor} size="sm">
-                {job.status}
-              </Badge>
-            </motion.div>
-          );
-        })}
+function AgentActivitySkeleton() {
+  return (
+    <Card neon="subtle">
+      <CardHeader>
+        <CardTitle>Recent Agent Activity</CardTitle>
+      </CardHeader>
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 rounded border border-border-subtle/50 bg-bg-elevated/40 px-3 py-2"
+          >
+            <SkeletonBlock className="h-5 w-8 rounded" />
+            <div className="flex-1 space-y-1">
+              <SkeletonBlock className="h-2.5 w-24" />
+              <SkeletonBlock className="h-2 w-14" />
+            </div>
+            <SkeletonBlock className="h-5 w-16 rounded" />
+          </div>
+        ))}
       </div>
     </Card>
+  );
+}
+
+// ─── Error Banner ──────────────────────────────────────────────
+
+function ErrorBanner({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-neon-red/30 bg-neon-red/5 p-4">
+      <AlertTriangle className="h-4 w-4 shrink-0 text-neon-red mt-0.5" />
+      <div className="flex-1">
+        <p className="font-mono-tech text-xs text-neon-red uppercase tracking-wider mb-1">
+          Failed to load dashboard data
+        </p>
+        <p className="font-mono-tech text-[10px] text-slate-500">{message}</p>
+      </div>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-1.5 rounded border border-neon-red/30 px-3 py-1 font-mono-tech text-[10px] uppercase tracking-wider text-neon-red hover:border-neon-red/60 hover:bg-neon-red/10 transition-colors"
+      >
+        <RefreshCw className="h-3 w-3" />
+        Retry
+      </button>
+    </div>
   );
 }
 
 // ─── Page ──────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const metrics = MOCK_METRICS;
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchAll() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [metrics, funnel, jobsPage] = await Promise.all([
+        getMetrics(),
+        getProspectsFunnel(),
+        getAgentJobs({ limit: 5 }),
+      ]);
+      setData({ metrics, funnel, recentJobs: jobsPage.data });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
 
   return (
     <PageWrapper>
+      {/* Header */}
       <div className="mb-6">
-        <h1 className="font-orbitron text-2xl font-bold text-neon-cyan"
-          style={{ textShadow: "0 0 12px #00f0ff40" }}>
+        <h1
+          className="font-orbitron text-2xl font-bold text-neon-cyan"
+          style={{ textShadow: "0 0 12px #00f0ff40" }}
+        >
           Dashboard
         </h1>
         <p className="mt-1 font-mono-tech text-xs text-slate-500">
-          Platform overview — real-time metrics
+          Platform overview — live data
         </p>
       </div>
 
+      {/* Error banner */}
+      {error && !loading && (
+        <div className="mb-6">
+          <ErrorBanner message={error} onRetry={fetchAll} />
+        </div>
+      )}
+
       {/* KPI Row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
-        <KpiCard
-          label="Total Clients"
-          value={metrics.totalClients}
-          subLabel="MRR"
-          subValue={formatCurrency(metrics.mrr)}
-          icon={Users}
-          color="cyan"
-          delay={0}
-        />
-        <KpiCard
-          label="Prospects Today"
-          value={metrics.prospectsToday}
-          subLabel="Trend"
-          subValue={`+${metrics.prospectsTrend} vs yesterday`}
-          icon={metrics.prospectsTrend >= 0 ? TrendingUp : TrendingDown}
-          color="violet"
-          delay={0.08}
-        />
-        <KpiCard
-          label="Active Jobs"
-          value={metrics.activeJobs}
-          subLabel="Status"
-          subValue={metrics.activeJobs > 0 ? "Running" : "All Idle"}
-          icon={Bot}
-          color="amber"
-          delay={0.16}
-          loading={metrics.activeJobs > 0}
-        />
-        <KpiCard
-          label="Conversion Rate"
-          value={Math.round(metrics.conversionRate * 10) / 10}
-          suffix="%"
-          subLabel="Avg"
-          subValue="Last 30 days"
-          icon={ArrowUpRight}
-          color="green"
-          delay={0.24}
-        />
+        {loading || !data ? (
+          <>
+            <KpiCardSkeleton />
+            <KpiCardSkeleton />
+            <KpiCardSkeleton />
+            <KpiCardSkeleton />
+          </>
+        ) : (
+          <>
+            <KpiCard
+              label="Total Clients"
+              value={data.metrics.clients.total.toLocaleString("it-IT")}
+              subLabel="Active"
+              subValue={data.metrics.clients.active.toLocaleString("it-IT")}
+              icon={Users}
+              color="cyan"
+            />
+            <KpiCard
+              label="MRR"
+              value={formatCurrency(data.metrics.revenue.mrr)}
+              subLabel="This month"
+              subValue={formatCurrency(data.metrics.revenue.monthlyRevenue)}
+              icon={Euro}
+              color="green"
+            />
+            <KpiCard
+              label="Total Prospects"
+              value={data.metrics.prospects.total.toLocaleString("it-IT")}
+              subLabel="Converted"
+              subValue={`${data.metrics.prospects.conversionRate.toFixed(1)}%`}
+              icon={Target}
+              color="violet"
+            />
+            <KpiCard
+              label="Agent Jobs"
+              value={data.metrics.agents.running.toLocaleString("it-IT")}
+              subLabel="Completed"
+              subValue={data.metrics.agents.completed.toLocaleString("it-IT")}
+              icon={Bot}
+              color="amber"
+            />
+          </>
+        )}
       </div>
 
-      {/* Pipeline + Feed */}
+      {/* Funnel + Activity */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <PipelineFunnel pipeline={metrics.pipeline} />
+          {loading || !data ? (
+            <FunnelSkeleton />
+          ) : (
+            <ProspectFunnel funnel={data.funnel} />
+          )}
         </div>
         <div className="lg:col-span-1">
-          <LiveAgentFeed />
+          {loading || !data ? (
+            <AgentActivitySkeleton />
+          ) : (
+            <AgentActivity jobs={data.recentJobs} />
+          )}
         </div>
       </div>
     </PageWrapper>

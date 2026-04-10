@@ -121,13 +121,16 @@ export type ProspectStatus =
 export interface Prospect {
   id: string;
   companyName: string;
-  website: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  website: string | null;
   country: string;
+  city: string | null;
   sector: string;
   leadScore: number;
   status: ProspectStatus;
-  painPoints: string[];
-  suggestedServices: string[];
+  painPoints: unknown[];
+  suggestedServices: unknown[];
   aiAnalysis: string | null;
   createdAt: string;
   updatedAt: string;
@@ -137,10 +140,10 @@ export interface ProspectFilters {
   search?: string;
   country?: string;
   sector?: string;
-  status?: ProspectStatus[];
+  status?: string;
   minScore?: number;
   maxScore?: number;
-  sortBy?: "score" | "createdAt" | "country";
+  sortBy?: string;
   sortOrder?: "asc" | "desc";
   page?: number;
   limit?: number;
@@ -152,13 +155,6 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
-}
-
-export interface ProspectStats {
-  total: number;
-  today: number;
-  byStatus: Record<ProspectStatus, number>;
-  conversionRate: number;
 }
 
 export type AgentType =
@@ -174,14 +170,14 @@ export interface AgentJob {
   id: string;
   agentType: AgentType;
   status: JobStatus;
-  progress: number;
+  progress: number | null;
   prospectId: string | null;
-  prospectName: string | null;
   clientId: string | null;
-  clientName: string | null;
+  input: unknown;
+  output: unknown;
+  error: string | null;
   durationMs: number | null;
   costEur: number | null;
-  logs: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -189,28 +185,92 @@ export interface AgentJob {
 export interface AgentJobFilters {
   agentType?: AgentType;
   status?: JobStatus;
-  dateFrom?: string;
-  dateTo?: string;
   page?: number;
   limit?: number;
 }
 
-export interface AgentStats {
-  agentType: AgentType;
-  status: "IDLE" | "RUNNING" | "ERROR";
-  jobsToday: number;
-  costTodayEur: number;
-  lastRunAt: string | null;
-}
+// ─── Dashboard Metrics (matches GET /admin/metrics) ───────────
 
 export interface DashboardMetrics {
-  totalClients: number;
-  mrr: number;
-  prospectsToday: number;
-  prospectsTrend: number;
-  activeJobs: number;
-  conversionRate: number;
-  pipeline: Record<ProspectStatus, number>;
+  clients: {
+    total: number;
+    active: number;
+    newThisMonth: number;
+    newLastMonth: number;
+    growth: number;
+  };
+  revenue: {
+    mrr: number;
+    monthlyRevenue: number;
+  };
+  prospects: {
+    total: number;
+    newThisMonth: number;
+    converted: number;
+    conversionRate: number;
+  };
+  agents: {
+    queued: number;
+    running: number;
+    completed: number;
+    failed: number;
+  };
+}
+
+// ─── Revenue Chart (matches GET /admin/metrics/revenue-chart) ─
+
+export interface RevenueChartEntry {
+  month: string;
+  revenue: number;
+  clients: number;
+}
+
+// ─── Prospects Funnel (GET /admin/metrics/prospects-funnel) ────
+
+export interface FunnelEntry {
+  status: string;
+  count: number;
+}
+
+// ─── Pipeline (GET /admin/prospects/pipeline) ─────────────────
+
+export interface PipelineProspect {
+  id: string;
+  companyName: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  country: string;
+  sector: string;
+  leadScore: number;
+  status: string;
+  lastContactedAt: string | null;
+  repliedAt: string | null;
+  convertedAt: string | null;
+  outreachEmails: unknown[];
+}
+
+export interface PipelineData {
+  columns: Record<string, { prospects: PipelineProspect[]; count: number }>;
+  totals: { total: number; converted: number; conversionRate: number };
+}
+
+// ─── Client (GET /admin/clients) ──────────────────────────────
+
+export interface Client {
+  id: string;
+  email: string;
+  companyName: string;
+  contactName: string | null;
+  country: string;
+  city: string | null;
+  sector: string;
+  plan: string;
+  status: string;
+  language: string;
+  websiteUrl: string | null;
+  stripeCustomerId: string | null;
+  stripeSubId: string | null;
+  createdAt: string;
 }
 
 // ─── Auth ──────────────────────────────────────────────────────
@@ -231,6 +291,23 @@ export function logout(): void {
   clearTokens();
 }
 
+// ─── Metrics ──────────────────────────────────────────────────
+
+export async function getMetrics(): Promise<DashboardMetrics> {
+  const res = await apiFetch<ApiResponse<DashboardMetrics>>("/admin/metrics");
+  return res.data;
+}
+
+export async function getRevenueChart(): Promise<RevenueChartEntry[]> {
+  const res = await apiFetch<ApiResponse<RevenueChartEntry[]>>("/admin/metrics/revenue-chart");
+  return res.data;
+}
+
+export async function getProspectsFunnel(): Promise<FunnelEntry[]> {
+  const res = await apiFetch<ApiResponse<FunnelEntry[]>>("/admin/metrics/prospects-funnel");
+  return res.data;
+}
+
 // ─── Prospects ─────────────────────────────────────────────────
 
 export async function getProspects(
@@ -238,21 +315,34 @@ export async function getProspects(
 ): Promise<PaginatedResponse<Prospect>> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => {
-    if (v !== undefined && v !== null) {
-      if (Array.isArray(v)) {
-        v.forEach((item: string) => params.append(k, item));
-      } else {
-        params.set(k, String(v));
-      }
+    if (v !== undefined && v !== null && v !== "") {
+      params.set(k, String(v));
     }
   });
-  return apiFetch<PaginatedResponse<Prospect>>(
+  const res = await apiFetch<ApiResponse<PaginatedResponse<Prospect>>>(
     `/admin/prospects?${params.toString()}`
   );
+  return res.data;
 }
 
-export async function getProspectStats(): Promise<ProspectStats> {
-  return apiFetch<ProspectStats>("/admin/prospects/stats");
+export async function getProspectById(id: string): Promise<Prospect> {
+  const res = await apiFetch<ApiResponse<Prospect>>(`/admin/prospects/${id}`);
+  return res.data;
+}
+
+export async function updateProspect(id: string, data: Partial<Prospect>): Promise<Prospect> {
+  const res = await apiFetch<ApiResponse<Prospect>>(`/admin/prospects/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+  return res.data;
+}
+
+// ─── Pipeline ─────────────────────────────────────────────────
+
+export async function getPipeline(): Promise<PipelineData> {
+  const res = await apiFetch<ApiResponse<PipelineData>>("/admin/prospects/pipeline");
+  return res.data;
 }
 
 // ─── Agent Jobs ────────────────────────────────────────────────
@@ -262,43 +352,98 @@ export async function getAgentJobs(
 ): Promise<PaginatedResponse<AgentJob>> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => {
-    if (v !== undefined && v !== null) params.set(k, String(v));
+    if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
   });
-  return apiFetch<PaginatedResponse<AgentJob>>(
-    `/admin/agents?${params.toString()}`
+  const res = await apiFetch<ApiResponse<PaginatedResponse<AgentJob>>>(
+    `/admin/agents/jobs?${params.toString()}`
   );
+  return res.data;
 }
 
-export async function getAgentStats(): Promise<AgentStats[]> {
-  return apiFetch<AgentStats[]>("/admin/agents/stats");
+export async function getAgentJobById(id: string): Promise<AgentJob> {
+  const res = await apiFetch<ApiResponse<AgentJob>>(`/admin/agents/jobs/${id}`);
+  return res.data;
+}
+
+export async function getAgentStats(): Promise<Record<string, { total: number; byStatus: Record<string, number> }>> {
+  const res = await apiFetch<ApiResponse<{ byStatus: { status: string; _count: number }[]; byType: { agentType: string; _count: number }[]; recentCost: unknown }>>("/admin/agents/stats");
+  const result: Record<string, { total: number; byStatus: Record<string, number> }> = {};
+  for (const entry of res.data.byType ?? []) {
+    result[entry.agentType] = { total: entry._count, byStatus: {} };
+  }
+  for (const entry of res.data.byStatus ?? []) {
+    // Fill in status info
+    if (!result[entry.status]) {
+      result[entry.status] = { total: entry._count, byStatus: {} };
+    }
+  }
+  return result;
 }
 
 export async function cancelJob(jobId: string): Promise<void> {
-  await apiFetch(`/admin/agents/${jobId}/cancel`, { method: "POST" });
+  await apiFetch(`/admin/agents/jobs/${jobId}`, { method: "DELETE" });
+}
+
+// ─── Clients ──────────────────────────────────────────────────
+
+export async function getClients(
+  filters: { search?: string; status?: string; page?: number; limit?: number } = {}
+): Promise<PaginatedResponse<Client>> {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+  });
+  const res = await apiFetch<ApiResponse<PaginatedResponse<Client>>>(
+    `/admin/clients?${params.toString()}`
+  );
+  return res.data;
+}
+
+export async function getClientById(id: string): Promise<Client> {
+  const res = await apiFetch<ApiResponse<Client>>(`/admin/clients/${id}`);
+  return res.data;
 }
 
 // ─── Actions ──────────────────────────────────────────────────
 
-export async function bulkAnalyze(prospectIds: string[]): Promise<void> {
-  await apiFetch("/admin/prospects/bulk-analyze", {
+export async function bulkAnalyze(): Promise<{ queued: number }> {
+  const res = await apiFetch<ApiResponse<{ queued: number }>>("/admin/agents/bulk-analyze", {
     method: "POST",
-    body: JSON.stringify({ prospectIds }),
   });
+  return res.data;
 }
 
 export async function startScrape(config: {
-  sector?: string;
-  country?: string;
-  limit?: number;
-}): Promise<AgentJob> {
-  return apiFetch<AgentJob>("/admin/agents/scraper/start", {
+  query: string;
+  location: string;
+  country: string;
+  sector: string;
+  maxResults?: number;
+}): Promise<unknown> {
+  const res = await apiFetch<ApiResponse<unknown>>("/admin/prospects/scrape/start", {
     method: "POST",
     body: JSON.stringify(config),
   });
+  return res.data;
 }
 
-// ─── Metrics ──────────────────────────────────────────────────
+export async function buildPreview(prospectId: string): Promise<unknown> {
+  const res = await apiFetch<ApiResponse<unknown>>(`/admin/prospects/${prospectId}/build-preview`, {
+    method: "POST",
+  });
+  return res.data;
+}
 
-export async function getMetrics(): Promise<DashboardMetrics> {
-  return apiFetch<DashboardMetrics>("/admin/metrics/dashboard");
+export async function sendOutreach(prospectId: string): Promise<unknown> {
+  const res = await apiFetch<ApiResponse<unknown>>(`/admin/prospects/${prospectId}/send-outreach`, {
+    method: "POST",
+  });
+  return res.data;
+}
+
+export async function generatePaymentLink(prospectId: string): Promise<{ checkoutUrl: string; expiresAt: string }> {
+  const res = await apiFetch<ApiResponse<{ checkoutUrl: string; expiresAt: string }>>(`/admin/prospects/${prospectId}/generate-payment-link`, {
+    method: "POST",
+  });
+  return res.data;
 }

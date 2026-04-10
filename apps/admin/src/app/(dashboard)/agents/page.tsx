@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Play, XCircle, Eye, Activity } from "lucide-react";
+import { XCircle, Eye, Activity, RefreshCw, AlertTriangle } from "lucide-react";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -20,218 +20,104 @@ import {
   Pagination,
 } from "@/components/ui/Table";
 import { Spinner } from "@/components/ui/Spinner";
-import { MOCK_JOBS, MOCK_AGENT_STATS } from "@/lib/mockData";
-import { formatCurrency, formatDuration, truncateId, timeAgo } from "@/lib/utils";
+import { getAgentJobs, cancelJob } from "@/lib/api";
+import { cn, formatCurrency, formatDuration, truncateId, timeAgo } from "@/lib/utils";
 import type { AgentType, JobStatus, AgentJob } from "@/lib/api";
 
 // ─── Constants ─────────────────────────────────────────────────
 
 const AGENT_META: Record<
   AgentType,
-  {
-    label: string;
-    color: string;
-    neon: "cyan" | "violet" | "amber" | "green" | "red";
-    description: string;
-  }
+  { label: string; color: string; badgeColor: "cyan" | "violet" | "amber" | "green" | "blue" }
 > = {
-  SCRAPER:  { label: "Scraper",  color: "#00f0ff", neon: "cyan",   description: "Web scraping & lead discovery" },
-  ANALYZER: { label: "Analyzer", color: "#a855f7", neon: "violet", description: "AI prospect analysis & scoring" },
-  BUILDER:  { label: "Builder",  color: "#f59e0b", neon: "amber",  description: "Website & content generation" },
-  OUTREACH: { label: "Outreach", color: "#10b981", neon: "green",  description: "Automated email outreach" },
-  QA:       { label: "QA",       color: "#ef4444", neon: "red",    description: "Quality assurance & testing" },
+  SCRAPER:  { label: "Scraper",  color: "#a855f7", badgeColor: "violet" },
+  ANALYZER: { label: "Analyzer", color: "#06b6d4", badgeColor: "cyan"   },
+  BUILDER:  { label: "Builder",  color: "#f59e0b", badgeColor: "amber"  },
+  OUTREACH: { label: "Outreach", color: "#10b981", badgeColor: "green"  },
+  QA:       { label: "QA",       color: "#3b82f6", badgeColor: "blue"   },
 };
 
-const JOB_STATUS_COLOR: Record<
+const JOB_STATUS_BADGE: Record<
   JobStatus,
   "cyan" | "violet" | "amber" | "green" | "blue" | "red" | "gray"
 > = {
-  QUEUED:    "gray",
-  RUNNING:   "cyan",
+  QUEUED:    "amber",
+  RUNNING:   "blue",
   COMPLETED: "green",
   FAILED:    "red",
   CANCELLED: "gray",
 };
 
-const AGENT_STATUS_COLOR: Record<
-  "IDLE" | "RUNNING" | "ERROR",
-  "gray" | "cyan" | "red"
-> = {
-  IDLE:    "gray",
-  RUNNING: "cyan",
-  ERROR:   "red",
-};
-
+const ALL_AGENT_TYPES: AgentType[] = ["SCRAPER", "ANALYZER", "BUILDER", "OUTREACH", "QA"];
+const ALL_JOB_STATUSES: JobStatus[] = ["QUEUED", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"];
 const PAGE_SIZE = 15;
 
-// ─── Weekly Job Chart (CSS bars) ──────────────────────────────
-
-const WEEKLY_DATA = [
-  { day: "Mon", jobs: 18 },
-  { day: "Tue", jobs: 32 },
-  { day: "Wed", jobs: 27 },
-  { day: "Thu", jobs: 41 },
-  { day: "Fri", jobs: 35 },
-  { day: "Sat", jobs: 14 },
-  { day: "Sun", jobs: 9 },
-];
-
-function WeeklyChart() {
-  const max = Math.max(...WEEKLY_DATA.map((d) => d.jobs));
-
-  return (
-    <Card neon="subtle">
-      <CardHeader>
-        <CardTitle>Jobs (7 Days)</CardTitle>
-        <span className="font-mono-tech text-[9px] text-slate-600 uppercase">
-          {WEEKLY_DATA.reduce((a, b) => a + b.jobs, 0)} total
-        </span>
-      </CardHeader>
-      <div className="flex items-end gap-2 h-24">
-        {WEEKLY_DATA.map((d, i) => (
-          <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
-            <span className="font-mono-tech text-[9px] text-slate-600">{d.jobs}</span>
-            <motion.div
-              initial={{ height: 0 }}
-              animate={{ height: `${(d.jobs / max) * 72}px` }}
-              transition={{ delay: i * 0.06 + 0.3, duration: 0.5, ease: "easeOut" }}
-              className="w-full rounded-sm"
-              style={{
-                background: `linear-gradient(to top, #00f0ff30, #00f0ff)`,
-                boxShadow: "0 0 6px #00f0ff40",
-              }}
-            />
-            <span className="font-mono-tech text-[9px] text-slate-600">{d.day}</span>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-// ─── Agent Status Card ─────────────────────────────────────────
-
-function AgentCard({
-  stat,
-  delay,
-}: {
-  stat: (typeof MOCK_AGENT_STATS)[number];
-  delay: number;
-}) {
-  const meta = AGENT_META[stat.agentType];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay, duration: 0.35 }}
-      className={`rounded-lg border bg-bg-card p-4 transition-all duration-300`}
-      style={{
-        borderColor: `${meta.color}30`,
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = `${meta.color}80`;
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 12px ${meta.color}30`;
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = `${meta.color}30`;
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-      }}
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{
-                backgroundColor: meta.color,
-                boxShadow: `0 0 6px ${meta.color}`,
-                animation: stat.status === "RUNNING" ? "pulse 1.5s infinite" : undefined,
-              }}
-            />
-            <span
-              className="font-orbitron text-sm font-bold"
-              style={{ color: meta.color }}
-            >
-              {meta.label}
-            </span>
-          </div>
-          <p className="font-mono-tech text-[9px] text-slate-600">{meta.description}</p>
-        </div>
-        <Badge color={AGENT_STATUS_COLOR[stat.status]} size="sm" pulse={stat.status === "RUNNING"}>
-          {stat.status}
-        </Badge>
-      </div>
-
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div>
-          <p className="font-mono-tech text-[9px] uppercase text-slate-600">Jobs Today</p>
-          <p className="font-orbitron text-lg font-bold text-slate-200">{stat.jobsToday}</p>
-        </div>
-        <div>
-          <p className="font-mono-tech text-[9px] uppercase text-slate-600">Cost Today</p>
-          <p className="font-orbitron text-lg font-bold text-slate-200">
-            {formatCurrency(stat.costTodayEur)}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <p className="font-mono-tech text-[9px] text-slate-700">
-          {stat.lastRunAt ? `Last: ${timeAgo(stat.lastRunAt)}` : "Never run"}
-        </p>
-        {["SCRAPER", "ANALYZER"].includes(stat.agentType) && (
-          <Button color={meta.neon} variant="outline" size="sm">
-            <Play className="h-3 w-3" />
-            Run
-          </Button>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
 // ─── Job Detail Modal ──────────────────────────────────────────
+
+function JsonBlock({ value }: { value: unknown }) {
+  if (value === null || value === undefined) {
+    return <span className="font-mono-tech text-[10px] text-slate-600">—</span>;
+  }
+  const text =
+    typeof value === "string"
+      ? value
+      : JSON.stringify(value, null, 2);
+  return (
+    <pre className="whitespace-pre-wrap break-all font-mono-tech text-[10px] leading-5 text-slate-400">
+      {text}
+    </pre>
+  );
+}
 
 function JobDetailModal({
   job,
   onClose,
+  onCancel,
+  cancelling,
 }: {
   job: AgentJob | null;
   onClose: () => void;
+  onCancel: (id: string) => void;
+  cancelling: boolean;
 }) {
   if (!job) return null;
   const meta = AGENT_META[job.agentType];
+  const canCancel = job.status === "QUEUED" || job.status === "RUNNING";
 
   return (
     <Modal open={!!job} onClose={onClose} title={`Job ${truncateId(job.id)}`} size="lg">
-      <div className="space-y-4">
-        {/* Meta */}
-        <div className="flex flex-wrap gap-3">
-          <Badge color={meta.neon}>{job.agentType}</Badge>
-          <Badge color={JOB_STATUS_COLOR[job.status]}>{job.status}</Badge>
-          {job.prospectName && (
-            <span className="font-mono-tech text-[10px] text-slate-500">
-              Prospect: {job.prospectName}
-            </span>
-          )}
-          {job.clientName && (
-            <span className="font-mono-tech text-[10px] text-slate-500">
-              Client: {job.clientName}
-            </span>
+      <div className="space-y-5">
+        {/* Badges row */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge color={meta.badgeColor}>{job.agentType}</Badge>
+          <Badge color={JOB_STATUS_BADGE[job.status]} pulse={job.status === "RUNNING"}>
+            {job.status}
+          </Badge>
+          {canCancel && (
+            <button
+              onClick={() => onCancel(job.id)}
+              disabled={cancelling}
+              className="ml-auto flex items-center gap-1.5 rounded border border-neon-red/40 px-3 py-1 font-mono-tech text-[10px] uppercase text-neon-red transition-colors hover:bg-neon-red/10 disabled:opacity-50"
+              aria-label="Cancel job"
+            >
+              {cancelling ? (
+                <Spinner size="sm" color="text-neon-red" />
+              ) : (
+                <XCircle className="h-3 w-3" />
+              )}
+              Cancel
+            </button>
           )}
         </div>
 
-        {/* Progress */}
-        {job.status === "RUNNING" && (
+        {/* Progress bar (running only) */}
+        {job.status === "RUNNING" && job.progress !== null && (
           <div>
-            <div className="flex justify-between mb-1">
+            <div className="mb-1 flex justify-between">
               <span className="font-mono-tech text-[10px] text-slate-500">Progress</span>
               <span className="font-mono-tech text-[10px] text-neon-cyan">{job.progress}%</span>
             </div>
-            <div className="h-2 w-full rounded-full bg-bg-elevated overflow-hidden">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-bg-elevated">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${job.progress}%` }}
@@ -243,20 +129,20 @@ function JobDetailModal({
           </div>
         )}
 
-        {/* Details */}
-        <div className="grid grid-cols-2 gap-3">
-          {job.durationMs !== null && (
-            <div>
-              <p className="font-mono-tech text-[9px] uppercase text-slate-600">Duration</p>
-              <p className="font-mono-tech text-sm text-slate-300">{formatDuration(job.durationMs)}</p>
-            </div>
-          )}
-          {job.costEur !== null && (
-            <div>
-              <p className="font-mono-tech text-[9px] uppercase text-slate-600">Cost</p>
-              <p className="font-mono-tech text-sm text-slate-300">{formatCurrency(job.costEur)}</p>
-            </div>
-          )}
+        {/* Metadata grid */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <p className="font-mono-tech text-[9px] uppercase text-slate-600">Duration</p>
+            <p className="font-mono-tech text-sm text-slate-300">
+              {job.durationMs !== null ? formatDuration(job.durationMs) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="font-mono-tech text-[9px] uppercase text-slate-600">Cost</p>
+            <p className="font-mono-tech text-sm text-slate-300">
+              {job.costEur !== null ? formatCurrency(job.costEur) : "—"}
+            </p>
+          </div>
           <div>
             <p className="font-mono-tech text-[9px] uppercase text-slate-600">Created</p>
             <p className="font-mono-tech text-xs text-slate-400">{timeAgo(job.createdAt)}</p>
@@ -265,144 +151,263 @@ function JobDetailModal({
             <p className="font-mono-tech text-[9px] uppercase text-slate-600">Updated</p>
             <p className="font-mono-tech text-xs text-slate-400">{timeAgo(job.updatedAt)}</p>
           </div>
+          {job.prospectId && (
+            <div className="col-span-2">
+              <p className="font-mono-tech text-[9px] uppercase text-slate-600">Prospect ID</p>
+              <p className="font-mono-tech text-xs text-slate-400 break-all">{job.prospectId}</p>
+            </div>
+          )}
+          {job.clientId && (
+            <div className="col-span-2">
+              <p className="font-mono-tech text-[9px] uppercase text-slate-600">Client ID</p>
+              <p className="font-mono-tech text-xs text-slate-400 break-all">{job.clientId}</p>
+            </div>
+          )}
         </div>
 
-        {/* Logs */}
+        {/* Input */}
         <div>
-          <p className="font-mono-tech text-[9px] uppercase text-slate-600 mb-2">Logs</p>
-          <div className="rounded border border-border-subtle bg-bg-base p-3 max-h-36 overflow-y-auto">
-            {job.logs.map((log, i) => (
-              <p key={i} className="font-mono-tech text-[10px] text-slate-500 leading-5">
-                {log}
-              </p>
-            ))}
+          <p className="mb-2 font-mono-tech text-[9px] uppercase text-slate-600">Input</p>
+          <div className="max-h-36 overflow-y-auto rounded border border-border-subtle bg-bg-base p-3">
+            <JsonBlock value={job.input} />
           </div>
         </div>
+
+        {/* Output */}
+        <div>
+          <p className="mb-2 font-mono-tech text-[9px] uppercase text-slate-600">Output</p>
+          <div className="max-h-36 overflow-y-auto rounded border border-border-subtle bg-bg-base p-3">
+            <JsonBlock value={job.output} />
+          </div>
+        </div>
+
+        {/* Error */}
+        {job.error && (
+          <div>
+            <p className="mb-2 font-mono-tech text-[9px] uppercase text-neon-red">Error</p>
+            <div className="max-h-28 overflow-y-auto rounded border border-neon-red/30 bg-neon-red/5 p-3">
+              <p className="font-mono-tech text-[10px] leading-5 text-neon-red">{job.error}</p>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
+  );
+}
+
+// ─── Summary Stat Cards ────────────────────────────────────────
+
+function StatCard({
+  label,
+  value,
+  color,
+  delay,
+}: {
+  label: string;
+  value: number | string;
+  color: string;
+  delay: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.3 }}
+    >
+      <Card neon="subtle">
+        <p className="font-mono-tech text-[9px] uppercase tracking-widest text-slate-600 mb-1">
+          {label}
+        </p>
+        <p
+          className="font-orbitron text-xl font-bold"
+          style={{ color, textShadow: `0 0 10px ${color}40` }}
+        >
+          {value}
+        </p>
+      </Card>
+    </motion.div>
   );
 }
 
 // ─── Page ──────────────────────────────────────────────────────
 
 export default function AgentsPage() {
+  // ── Filter state ──────────────────────────────────────────────
   const [filterAgent, setFilterAgent] = useState<AgentType | "">("");
   const [filterStatus, setFilterStatus] = useState<JobStatus | "">("");
   const [page, setPage] = useState(1);
+
+  // ── Data state ────────────────────────────────────────────────
+  const [jobs, setJobs] = useState<AgentJob[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // ── UI state ──────────────────────────────────────────────────
   const [activeJob, setActiveJob] = useState<AgentJob | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  const filtered = MOCK_JOBS.filter((j) => {
-    if (filterAgent && j.agentType !== filterAgent) return false;
-    if (filterStatus && j.status !== filterStatus) return false;
-    return true;
-  });
+  // ── Fetch ─────────────────────────────────────────────────────
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getAgentJobs({
+        agentType: filterAgent || undefined,
+        status: filterStatus || undefined,
+        page,
+        limit: PAGE_SIZE,
+      });
+      setJobs(result.data);
+      setTotal(result.total);
+      setTotalPages(result.totalPages);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load agent jobs");
+    } finally {
+      setLoading(false);
+    }
+  }, [filterAgent, filterStatus, page]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  useEffect(() => {
+    void fetchJobs();
+  }, [fetchJobs]);
 
-  const totalCostMonth = MOCK_AGENT_STATS.reduce(
-    (sum, s) => sum + s.costTodayEur,
-    0
+  // ── Cancel ────────────────────────────────────────────────────
+  const handleCancel = useCallback(
+    async (jobId: string) => {
+      setCancellingId(jobId);
+      try {
+        await cancelJob(jobId);
+        // Reflect cancellation optimistically then refetch
+        setJobs((prev) =>
+          prev.map((j) => (j.id === jobId ? { ...j, status: "CANCELLED" as JobStatus } : j))
+        );
+        if (activeJob?.id === jobId) {
+          setActiveJob((prev) =>
+            prev ? { ...prev, status: "CANCELLED" as JobStatus } : prev
+          );
+        }
+        // Refetch to get the server-accurate state
+        void fetchJobs();
+      } catch {
+        // Non-blocking: failure just clears the loading state
+      } finally {
+        setCancellingId(null);
+      }
+    },
+    [activeJob, fetchJobs]
   );
+
+  // ── Filter change helpers ─────────────────────────────────────
+  const handleAgentFilter = (value: string) => {
+    setFilterAgent(value as AgentType | "");
+    setPage(1);
+  };
+
+  const handleStatusFilter = (value: string) => {
+    setFilterStatus(value as JobStatus | "");
+    setPage(1);
+  };
+
+  // ── Derived counts from current page (used for stat cards when loaded) ─
+  const statusCounts = jobs.reduce<Partial<Record<JobStatus, number>>>((acc, j) => {
+    acc[j.status] = (acc[j.status] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <PageWrapper>
       {/* Header */}
-      <div className="mb-6">
-        <h1
-          className="font-orbitron text-2xl font-bold text-neon-amber"
-          style={{ textShadow: "0 0 12px #f59e0b40" }}
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1
+            className="font-orbitron text-2xl font-bold text-neon-amber"
+            style={{ textShadow: "0 0 12px #f59e0b40" }}
+          >
+            Agent Monitor
+          </h1>
+          <p className="mt-1 font-mono-tech text-xs text-slate-500">
+            Real-time job tracking across all agent types
+          </p>
+        </div>
+        <button
+          onClick={() => void fetchJobs()}
+          disabled={loading}
+          className={cn(
+            "flex items-center gap-1.5 rounded border border-border-subtle px-3 py-1.5",
+            "font-mono-tech text-[10px] uppercase text-slate-400 transition-colors",
+            "hover:border-neon-cyan/50 hover:text-neon-cyan disabled:opacity-40"
+          )}
+          aria-label="Refresh jobs"
         >
-          Agent Monitor
-        </h1>
-        <p className="mt-1 font-mono-tech text-xs text-slate-500">
-          5 agents — real-time job tracking
-        </p>
+          <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
+          Refresh
+        </button>
       </div>
 
-      {/* Agent Status Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
-        {MOCK_AGENT_STATS.map((stat, i) => (
-          <AgentCard key={stat.agentType} stat={stat} delay={i * 0.05} />
-        ))}
+      {/* Stat summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        <StatCard label="Total (page)" value={total} color="#00f0ff" delay={0} />
+        <StatCard label="Queued" value={statusCounts.QUEUED ?? 0} color="#f59e0b" delay={0.05} />
+        <StatCard label="Running" value={statusCounts.RUNNING ?? 0} color="#3b82f6" delay={0.1} />
+        <StatCard label="Completed" value={statusCounts.COMPLETED ?? 0} color="#10b981" delay={0.15} />
+        <StatCard label="Failed" value={statusCounts.FAILED ?? 0} color="#ef4444" delay={0.2} />
       </div>
 
-      {/* Stats Panel + Chart */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="md:col-span-2">
-          <WeeklyChart />
-        </div>
-        <div className="grid grid-rows-2 gap-3">
-          <Card neon="subtle">
-            <p className="font-mono-tech text-[9px] uppercase tracking-widest text-slate-600 mb-1">
-              Total API Cost (Month)
-            </p>
-            <p className="font-orbitron text-2xl font-bold text-neon-amber">
-              {formatCurrency(totalCostMonth * 30)}
-            </p>
-            <p className="font-mono-tech text-[9px] text-slate-700 mt-1">
-              Estimate based on daily avg
-            </p>
-          </Card>
-          <Card neon="subtle">
-            <p className="font-mono-tech text-[9px] uppercase tracking-widest text-slate-600 mb-1">
-              Avg Job Duration
-            </p>
-            <p className="font-orbitron text-2xl font-bold text-neon-blue">
-              {formatDuration(
-                MOCK_JOBS.filter((j) => j.durationMs !== null).reduce(
-                  (sum, j) => sum + (j.durationMs ?? 0),
-                  0
-                ) /
-                  Math.max(
-                    MOCK_JOBS.filter((j) => j.durationMs !== null).length,
-                    1
-                  )
-              )}
-            </p>
-            <p className="font-mono-tech text-[9px] text-slate-700 mt-1">
-              Across all completed jobs
-            </p>
-          </Card>
-        </div>
-      </div>
-
-      {/* Jobs Table */}
+      {/* Filters */}
       <div className="mb-4 flex items-end gap-3 flex-wrap">
-        <div className="w-40">
+        <div className="w-44">
           <Select
             label="Agent Type"
             value={filterAgent}
-            onChange={(e) => { setFilterAgent(e.target.value as AgentType | ""); setPage(1); }}
+            onChange={(e) => handleAgentFilter(e.target.value)}
           >
             <option value="">All Agents</option>
-            {(Object.keys(AGENT_META) as AgentType[]).map((t) => (
-              <option key={t} value={t}>{AGENT_META[t].label}</option>
+            {ALL_AGENT_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {AGENT_META[t].label}
+              </option>
             ))}
           </Select>
         </div>
-        <div className="w-36">
+        <div className="w-40">
           <Select
             label="Status"
             value={filterStatus}
-            onChange={(e) => { setFilterStatus(e.target.value as JobStatus | ""); setPage(1); }}
+            onChange={(e) => handleStatusFilter(e.target.value)}
           >
-            <option value="">All Status</option>
-            {(["QUEUED", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"] as JobStatus[]).map(
-              (s) => (
-                <option key={s} value={s}>{s}</option>
-              )
-            )}
+            <option value="">All Statuses</option>
+            {ALL_JOB_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </Select>
         </div>
-        <div className="flex items-center gap-1 ml-auto">
+        <div className="flex items-center gap-1.5 ml-auto">
           <Activity className="h-3.5 w-3.5 text-slate-600" />
           <span className="font-mono-tech text-[10px] text-slate-600">
-            {filtered.length} jobs
+            {loading ? "Loading..." : `${total} jobs`}
           </span>
         </div>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="mb-4 flex items-center gap-3 rounded border border-neon-red/30 bg-neon-red/5 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-neon-red" />
+          <p className="font-mono-tech text-xs text-neon-red">{error}</p>
+          <button
+            onClick={() => void fetchJobs()}
+            className="ml-auto font-mono-tech text-[10px] uppercase text-neon-red underline hover:no-underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Table */}
       <Table>
         <Thead>
           <tr>
@@ -410,43 +415,61 @@ export default function AgentsPage() {
             <Th>Agent</Th>
             <Th>Status</Th>
             <Th>Progress</Th>
-            <Th>Target</Th>
             <Th>Duration</Th>
             <Th>Cost</Th>
+            <Th>Created</Th>
             <Th>Actions</Th>
           </tr>
         </Thead>
         <Tbody>
-          {paginated.length === 0 ? (
+          {loading ? (
+            <tr>
+              <td colSpan={8} className="px-4 py-16 text-center">
+                <div className="flex flex-col items-center gap-3">
+                  <Spinner size="md" />
+                  <span className="font-mono-tech text-[10px] uppercase tracking-widest text-slate-600">
+                    Loading jobs...
+                  </span>
+                </div>
+              </td>
+            </tr>
+          ) : jobs.length === 0 ? (
             <TableEmpty message="No jobs match the current filters" colSpan={8} />
           ) : (
-            paginated.map((job) => {
+            jobs.map((job) => {
               const meta = AGENT_META[job.agentType];
+              const isCancelling = cancellingId === job.id;
+              const canCancel = job.status === "QUEUED" || job.status === "RUNNING";
+
               return (
-                <Tr key={job.id}>
+                <Tr
+                  key={job.id}
+                  onClick={() => setActiveJob(job)}
+                  selected={activeJob?.id === job.id}
+                >
                   <Td>
                     <span className="font-mono-tech text-[10px] text-slate-500">
                       {truncateId(job.id)}
                     </span>
                   </Td>
                   <Td>
-                    <span
-                      className="font-mono-tech text-xs font-bold"
-                      style={{ color: meta.color }}
-                    >
+                    <Badge color={meta.badgeColor} size="sm">
                       {meta.label}
-                    </span>
+                    </Badge>
                   </Td>
                   <Td>
-                    <Badge color={JOB_STATUS_COLOR[job.status]} size="sm"
-                      pulse={job.status === "RUNNING"}>
+                    <Badge
+                      color={JOB_STATUS_BADGE[job.status]}
+                      size="sm"
+                      pulse={job.status === "RUNNING"}
+                    >
                       {job.status}
                     </Badge>
                   </Td>
                   <Td>
-                    {job.status === "RUNNING" ? (
+                    {job.status === "RUNNING" && job.progress !== null ? (
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full bg-bg-elevated overflow-hidden min-w-20">
+                        <div className="h-1.5 min-w-[60px] flex-1 overflow-hidden rounded-full bg-bg-elevated">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${job.progress}%` }}
@@ -455,21 +478,19 @@ export default function AgentsPage() {
                             style={{ boxShadow: "0 0 4px #00f0ff" }}
                           />
                         </div>
-                        <span className="font-mono-tech text-[10px] text-neon-cyan shrink-0">
+                        <span className="shrink-0 font-mono-tech text-[10px] text-neon-cyan">
                           {job.progress}%
                         </span>
-                        <Spinner size="sm" />
                       </div>
                     ) : (
                       <span className="font-mono-tech text-[10px] text-slate-600">
-                        {job.status === "COMPLETED" ? "100%" : `${job.progress}%`}
+                        {job.status === "COMPLETED"
+                          ? "100%"
+                          : job.progress !== null
+                          ? `${job.progress}%`
+                          : "—"}
                       </span>
                     )}
-                  </Td>
-                  <Td>
-                    <span className="font-mono-tech text-[10px] text-slate-400">
-                      {job.prospectName ?? job.clientName ?? "—"}
-                    </span>
                   </Td>
                   <Td>
                     <span className="font-mono-tech text-[10px] text-slate-500">
@@ -482,20 +503,34 @@ export default function AgentsPage() {
                     </span>
                   </Td>
                   <Td>
-                    <div className="flex items-center gap-1.5">
+                    <span className="font-mono-tech text-[10px] text-slate-500">
+                      {timeAgo(job.createdAt)}
+                    </span>
+                  </Td>
+                  <Td>
+                    <div
+                      className="flex items-center gap-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         onClick={() => setActiveJob(job)}
-                        className="rounded border border-border-subtle p-1.5 text-slate-500 hover:border-neon-cyan/50 hover:text-neon-cyan transition-colors"
+                        className="rounded border border-border-subtle p-1.5 text-slate-500 transition-colors hover:border-neon-cyan/50 hover:text-neon-cyan"
                         aria-label="View job details"
                       >
                         <Eye className="h-3 w-3" />
                       </button>
-                      {(job.status === "QUEUED" || job.status === "RUNNING") && (
+                      {canCancel && (
                         <button
-                          className="rounded border border-border-subtle p-1.5 text-slate-500 hover:border-neon-red/50 hover:text-neon-red transition-colors"
+                          onClick={() => void handleCancel(job.id)}
+                          disabled={isCancelling}
+                          className="rounded border border-border-subtle p-1.5 text-slate-500 transition-colors hover:border-neon-red/50 hover:text-neon-red disabled:opacity-40"
                           aria-label="Cancel job"
                         >
-                          <XCircle className="h-3 w-3" />
+                          {isCancelling ? (
+                            <Spinner size="sm" color="text-neon-red" />
+                          ) : (
+                            <XCircle className="h-3 w-3" />
+                          )}
                         </button>
                       )}
                     </div>
@@ -506,10 +541,16 @@ export default function AgentsPage() {
           )}
         </Tbody>
       </Table>
+
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       {/* Job Detail Modal */}
-      <JobDetailModal job={activeJob} onClose={() => setActiveJob(null)} />
+      <JobDetailModal
+        job={activeJob}
+        onClose={() => setActiveJob(null)}
+        onCancel={handleCancel}
+        cancelling={cancellingId === activeJob?.id}
+      />
     </PageWrapper>
   );
 }
