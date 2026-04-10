@@ -413,16 +413,84 @@ export async function bulkAnalyze(): Promise<{ queued: number }> {
   return res.data;
 }
 
-export async function startScrape(config: {
-  query: string;
-  location: string;
-  country: string;
+// ─── Campaign / Scrape ────────────────────────────────────────
+
+export interface ScrapeConfig {
+  id: string;
+  name: string;
   sector: string;
+  countries: string[];
+  cities: string[] | null;
+  keywords: string[];
+  excludeKeywords: string[] | null;
+  minRating: number | null;
+  maxResults: number;
+  isActive: boolean;
+  lastRunAt: string | null;
+  totalFound: number;
+  schedule: string | null;
+  createdAt: string;
+}
+
+export interface OutreachStats {
+  today: { sent: number };
+  totals: { sent: number; opened: number; clicked: number; bounced: number; replied: number };
+  rates: { openRate: number; clickRate: number; bounceRate: number; replyRate: number };
+  topSubjects: { subject: string; count: number }[];
+  dailyChart: { date: string; count: number }[];
+}
+
+export async function startScrape(config: {
+  name: string;
+  sector: string;
+  countries: string[];
+  cities?: string[];
+  keywords: string[];
+  excludeKeywords?: string[];
+  minRating?: number;
   maxResults?: number;
-}): Promise<unknown> {
-  const res = await apiFetch<ApiResponse<unknown>>("/admin/prospects/scrape/start", {
+}): Promise<{ jobId: string; scrapeConfigId: string }> {
+  const res = await apiFetch<ApiResponse<{ jobId: string; scrapeConfigId: string }>>("/admin/prospects/scrape/start", {
     method: "POST",
     body: JSON.stringify(config),
+  });
+  return res.data;
+}
+
+export async function getScrapeConfigs(): Promise<ScrapeConfig[]> {
+  const res = await apiFetch<ApiResponse<ScrapeConfig[]>>("/admin/prospects/scrape/configs");
+  return res.data;
+}
+
+export async function createScrapeConfig(config: {
+  name: string;
+  sector: string;
+  countries: string[];
+  cities?: string[];
+  keywords: string[];
+  excludeKeywords?: string[];
+  minRating?: number;
+  maxResults?: number;
+}): Promise<ScrapeConfig> {
+  const res = await apiFetch<ApiResponse<ScrapeConfig>>("/admin/prospects/scrape/configs", {
+    method: "POST",
+    body: JSON.stringify(config),
+  });
+  return res.data;
+}
+
+export async function deleteScrapeConfig(id: string): Promise<void> {
+  await apiFetch(`/admin/prospects/scrape/configs/${id}`, { method: "DELETE" });
+}
+
+export async function getOutreachStats(): Promise<OutreachStats> {
+  const res = await apiFetch<ApiResponse<OutreachStats>>("/admin/prospects/outreach/stats");
+  return res.data;
+}
+
+export async function analyzeProspect(prospectId: string): Promise<{ jobId: string }> {
+  const res = await apiFetch<ApiResponse<{ jobId: string }>>(`/admin/prospects/${prospectId}/analyze`, {
+    method: "POST",
   });
   return res.data;
 }
