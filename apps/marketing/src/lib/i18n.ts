@@ -214,7 +214,7 @@ export const translations: Record<Locale, Translations> = {
           number: "03",
           title: "Launch & Automatisierung",
           description:
-            "Mit einem Klick geht deine Website live. Chatbot, Social Media und E-Mail-Automation starten sofort.",
+            "Mit einem Klick geht deine Website live. Chatbot, WhatsApp-Widget und Automationen starten sofort.",
         },
       ],
     },
@@ -469,7 +469,7 @@ export const translations: Record<Locale, Translations> = {
       title: "Il tuo sito web",
       titleHighlight: "in 60 secondi",
       subtitle:
-        "MadeCreative costruisce il tuo sito professionale, gestisce il SEO, i social media e genera lead — tutto automatizzato dall'AI.",
+        "MadeCreative costruisce il tuo sito professionale, AI Editor, chatbot, WhatsApp e menu editor — tutto automatizzato dall'AI.",
       cta: "Genera il tuo sito gratis in 60 secondi",
       ctaSecondary: "Come funziona",
       trustNote: "Nessuna carta di credito. Cancella quando vuoi.",
@@ -495,7 +495,7 @@ export const translations: Record<Locale, Translations> = {
           number: "03",
           title: "Lancio & Automazione",
           description:
-            "Con un clic il tuo sito va live. Chatbot, social media e automazione email partono immediatamente.",
+            "Con un clic il tuo sito va live. Chatbot, widget WhatsApp e automazioni partono immediatamente.",
         },
       ],
     },
@@ -784,37 +784,37 @@ export const translations: Record<Locale, Translations> = {
     features: {
       sectionLabel: "Qué Incluye",
       title: "Todo lo que necesita tu empresa",
-      subtitle: "Una plataforma. Presencia digital completa.",
+      subtitle: "Una plataforma. Presencia digital completa. Desde €25/mes.",
       items: [
         {
-          title: "Sitio Web Profesional",
+          title: "Editor AI (estilo Lovable)",
           description:
-            "Sitio generado por IA adaptado a tu sector, desplegado en 60 segundos con SEO integrado.",
+            "Edita tu web hablando con la IA. Dile qué quieres — la IA lo hace al instante. Preview en vivo incluida.",
         },
         {
-          title: "SEO Local",
+          title: "Widget WhatsApp",
           description:
-            "Mejor posición en búsquedas locales. Optimizamos tu Google Business Profile.",
+            "Un clic y tus clientes te contactan por WhatsApp. Solo pon tu número y aparece automáticamente.",
         },
         {
-          title: "Redes Sociales",
+          title: "Menú y Lista de Precios",
           description:
-            "Posts creados por IA para Instagram y Facebook, programados y publicados automáticamente.",
+            "Añade productos, platos o servicios con precios y fotos. Se genera como página dedicada en tu web.",
         },
         {
-          title: "Chatbot IA",
+          title: "Chatbot IA 24/7",
           description:
-            "Chatbot de soporte 24/7 entrenado con los datos de tu empresa, integrado en tu sitio.",
+            "Responde preguntas, reserva citas y captura leads — siempre activo, entrenado con tu negocio.",
         },
         {
-          title: "Automatización",
+          title: "Dominio + SSL Custom",
           description:
-            "Secuencias email, notificaciones lead, solicitudes de reseñas — todo automatizado.",
+            "Conecta tu propio dominio. Certificado SSL, CDN y hosting incluidos en el precio.",
         },
         {
-          title: "Informes Mensuales",
+          title: "Rollback y Versiones",
           description:
-            "Informes mensuales detallados sobre tráfico, leads e impacto en facturación.",
+            "Cada cambio se guarda. ¿No te gusta? Un clic y vuelves a la versión anterior.",
         },
       ],
     },
@@ -1065,37 +1065,37 @@ export const translations: Record<Locale, Translations> = {
     features: {
       sectionLabel: "Ce Qui Est Inclus",
       title: "Tout ce dont votre entreprise a besoin",
-      subtitle: "Une plateforme. Présence digitale complète.",
+      subtitle: "Une plateforme. Présence digitale complète. À partir de €25/mois.",
       items: [
         {
-          title: "Site Web Professionnel",
+          title: "Éditeur AI (style Lovable)",
           description:
-            "Site généré par IA adapté à votre secteur, déployé en 60 secondes avec SEO intégré.",
+            "Modifiez votre site en discutant avec l'IA. Dites ce que vous voulez — l'IA le fait instantanément. Aperçu en direct inclus.",
         },
         {
-          title: "SEO Local",
+          title: "Widget WhatsApp",
           description:
-            "Meilleur classement dans les recherches locales. Nous optimisons votre profil Google Business.",
+            "Un clic et vos clients vous contactent sur WhatsApp. Entrez votre numéro et il apparaît automatiquement.",
         },
         {
-          title: "Réseaux Sociaux",
+          title: "Menu et Tarifs",
           description:
-            "Posts créés par IA pour Instagram et Facebook, planifiés et publiés automatiquement chaque semaine.",
+            "Ajoutez produits, plats ou services avec prix et photos. Une page dédiée est générée sur votre site.",
         },
         {
-          title: "Chatbot IA",
+          title: "Chatbot IA 24/7",
           description:
-            "Chatbot de support 24/7 entraîné sur vos données d'entreprise, intégré dans votre site.",
+            "Répond aux questions, prend les rendez-vous et capture les leads — toujours actif, formé sur votre entreprise.",
         },
         {
-          title: "Automatisation",
+          title: "Domaine + SSL Custom",
           description:
-            "Séquences email, notifications leads, demandes d'avis — tout automatisé.",
+            "Connectez votre propre nom de domaine. Certificat SSL, CDN et hébergement inclus.",
         },
         {
-          title: "Rapports Mensuels",
+          title: "Rollback et Versions",
           description:
-            "Rapports mensuels détaillés sur le trafic, les leads et l'impact sur le chiffre d'affaires.",
+            "Chaque modification est sauvegardée. Pas satisfait ? Un clic et vous revenez à la version précédente.",
         },
       ],
     },
@@ -1301,7 +1301,7 @@ export const translations: Record<Locale, Translations> = {
     meta: {
       title: "MadeCreative — AI-website in 60 seconden",
       description:
-        "MadeCreative maakt uw professionele website in 60 seconden met AI. Lokale SEO, social media, chatbot en leads — volledig geautomatiseerd. Vanaf €25/maand.",
+        "MadeCreative bouwt uw website met AI in 60 seconden. AI-editor, chatbot, WhatsApp, menu-editor, SEO — alles geautomatiseerd. Vanaf €25/maand.",
     },
     nav: {
       howItWorks: "Hoe het werkt",
@@ -1314,7 +1314,7 @@ export const translations: Record<Locale, Translations> = {
       title: "Uw website",
       titleHighlight: "in 60 seconden",
       subtitle:
-        "MadeCreative bouwt uw professionele website, beheert SEO, social media en genereert leads — alles geautomatiseerd door AI.",
+        "MadeCreative bouwt uw website met AI, inclusief AI-editor, chatbot, WhatsApp-widget, menu-editor en automatische SEO — vanaf €25/maand.",
       cta: "Genereer uw website gratis in 60 seconden",
       ctaSecondary: "Hoe het werkt",
       trustNote: "Geen creditcard nodig. Op elk moment opzegbaar.",
@@ -1340,44 +1340,44 @@ export const translations: Record<Locale, Translations> = {
           number: "03",
           title: "Launch & Automatisering",
           description:
-            "Met één klik gaat uw website live. Chatbot, social media en e-mailautomatisering starten direct.",
+            "Met één klik gaat uw website live. Chatbot, WhatsApp-widget en automatisering starten direct.",
         },
       ],
     },
     features: {
       sectionLabel: "Wat Is Inbegrepen",
       title: "Alles wat uw bedrijf nodig heeft",
-      subtitle: "Eén platform. Volledige digitale aanwezigheid.",
+      subtitle: "Eén platform. Volledige digitale aanwezigheid. Vanaf €25/maand.",
       items: [
         {
-          title: "Professionele Website",
+          title: "AI-Editor (zoals Lovable)",
           description:
-            "AI-gegenereerde website op maat voor uw sector, in 60 seconden gedeployed met ingebouwde SEO.",
+            "Bewerk uw website via chat met AI. Zeg wat u wilt — de AI past het direct aan. Inclusief live preview.",
         },
         {
-          title: "Lokale SEO",
+          title: "WhatsApp-Widget",
           description:
-            "Hogere rankings in lokale zoekopdrachten. We optimaliseren uw Google Business-profiel.",
+            "Eén klik en uw klanten bereiken u via WhatsApp. Automatisch ingebed op uw website.",
         },
         {
-          title: "Social Media",
+          title: "Menu & Prijslijst",
           description:
-            "AI-gemaakte posts voor Instagram en Facebook, automatisch gepland en wekelijks gepubliceerd.",
+            "Voeg producten, gerechten of diensten toe met prijzen en foto's. Wordt als aparte pagina gegenereerd.",
         },
         {
-          title: "AI-Chatbot",
+          title: "AI-Chatbot 24/7",
           description:
-            "24/7 klantenservice-chatbot getraind op uw bedrijfsgegevens, ingebed op uw website.",
+            "Beantwoordt klantvragen, boekt afspraken en vangt leads — altijd actief, getraind op uw bedrijf.",
         },
         {
-          title: "Automatisering",
+          title: "Eigen Domein + SSL",
           description:
-            "E-mailsequenties, leadmeldingen, beoordelingsverzoeken — alles geautomatiseerd.",
+            "Koppel uw eigen domeinnaam. SSL-certificaat, CDN en hosting zijn inbegrepen.",
         },
         {
-          title: "Maandelijkse Rapporten",
+          title: "Rollback & Versies",
           description:
-            "Gedetailleerde maandelijkse prestatieraporten over websiteverkeer, leads en omzetimpact.",
+            "Elke wijziging wordt opgeslagen. Niet tevreden? Eén klik en u gaat terug naar de vorige versie.",
         },
       ],
     },
@@ -1629,37 +1629,37 @@ export const translations: Record<Locale, Translations> = {
     features: {
       sectionLabel: "O Que Está Incluído",
       title: "Tudo o que a sua empresa precisa",
-      subtitle: "Uma plataforma. Presença digital completa.",
+      subtitle: "Uma plataforma. Presença digital completa. A partir de €25/mês.",
       items: [
         {
-          title: "Site Web Profissional",
+          title: "Editor AI (estilo Lovable)",
           description:
-            "Site gerado por IA adaptado ao seu setor, deployed em 60 segundos com SEO integrado.",
+            "Edite seu site conversando com a IA. Diga o que quer — a IA faz na hora. Preview ao vivo incluída.",
         },
         {
-          title: "SEO Local",
+          title: "Widget WhatsApp",
           description:
-            "Melhor posicionamento nas pesquisas locais. Otimizamos o seu perfil Google Business.",
+            "Um clique e seus clientes falam com você pelo WhatsApp. Coloque seu número e aparece automaticamente.",
         },
         {
-          title: "Redes Sociais",
+          title: "Menu e Lista de Preços",
           description:
-            "Posts criados por IA para Instagram e Facebook, agendados e publicados automaticamente cada semana.",
+            "Adicione produtos, pratos ou serviços com preços e fotos. Uma página dedicada é gerada no seu site.",
         },
         {
-          title: "Chatbot IA",
+          title: "Chatbot IA 24/7",
           description:
-            "Chatbot de suporte 24/7 treinado nos dados da sua empresa, integrado no seu site.",
+            "Responde perguntas, agenda compromissos e captura leads — sempre ativo, treinado no seu negócio.",
         },
         {
-          title: "Automação",
+          title: "Domínio + SSL Custom",
           description:
-            "Sequências de email, notificações de leads, pedidos de avaliação — tudo automatizado.",
+            "Conecte seu próprio domínio. Certificado SSL, CDN e hospedagem incluídos no preço.",
         },
         {
-          title: "Relatórios Mensais",
+          title: "Rollback e Versões",
           description:
-            "Relatórios mensais detalhados sobre tráfego, leads e impacto na faturação.",
+            "Cada alteração é salva. Não gostou? Um clique e volta à versão anterior.",
         },
       ],
     },
@@ -1865,7 +1865,7 @@ export const translations: Record<Locale, Translations> = {
     meta: {
       title: "MadeCreative — AI-powered website in 60 seconds",
       description:
-        "MadeCreative creates your professional website in 60 seconds with AI. Local SEO, social media, chatbot and leads — fully automated. From €25/month.",
+        "MadeCreative builds your website with AI in 60 seconds. AI editor, chatbot, WhatsApp widget, menu editor, SEO — all automated. From €25/month.",
     },
     nav: {
       howItWorks: "How it works",
@@ -1878,7 +1878,7 @@ export const translations: Record<Locale, Translations> = {
       title: "Your website",
       titleHighlight: "in 60 seconds",
       subtitle:
-        "MadeCreative builds your professional website, manages SEO, social media and generates leads — all automated by AI.",
+        "MadeCreative builds your professional website, AI editor, chatbot, WhatsApp and menu editor — all automated by AI.",
       cta: "Generate your website free in 60 seconds",
       ctaSecondary: "How it works",
       trustNote: "No credit card required. Cancel anytime.",
@@ -1904,44 +1904,44 @@ export const translations: Record<Locale, Translations> = {
           number: "03",
           title: "Launch & Automation",
           description:
-            "With one click your website goes live. Chatbot, social media and email automation start immediately.",
+            "With one click your website goes live. Chatbot, WhatsApp widget and automations start immediately.",
         },
       ],
     },
     features: {
       sectionLabel: "What's Included",
       title: "Everything your business needs",
-      subtitle: "One platform. Complete digital presence.",
+      subtitle: "One platform. Complete digital presence. From €25/month.",
       items: [
         {
-          title: "Professional Website",
+          title: "AI Editor (Lovable-style)",
           description:
-            "AI-generated website tailored to your sector, deployed in 60 seconds with built-in SEO.",
+            "Edit your website by chatting with AI. Say what you want — AI makes it happen instantly. Live preview included.",
         },
         {
-          title: "Local SEO",
+          title: "WhatsApp Widget",
           description:
-            "Higher rankings in local searches. We optimize your Google Business Profile.",
+            "One click and your customers reach you on WhatsApp. Just enter your number — it appears automatically on your site.",
         },
         {
-          title: "Social Media",
+          title: "Menu & Price List",
           description:
-            "AI-created posts for Instagram and Facebook, scheduled and published automatically every week.",
+            "Add products, dishes or services with prices and photos. A dedicated page is generated on your website.",
         },
         {
-          title: "AI Chatbot",
+          title: "AI Chatbot 24/7",
           description:
-            "24/7 customer support chatbot trained on your business data, embedded on your website.",
+            "Answers customer questions, books appointments and captures leads — always on, trained on your business.",
         },
         {
-          title: "Automation",
+          title: "Custom Domain + SSL",
           description:
-            "Email sequences, lead notifications, review requests — all automated.",
+            "Connect your own domain name. SSL certificate, CDN and hosting are all included.",
         },
         {
-          title: "Monthly Reports",
+          title: "Rollback & Versions",
           description:
-            "Detailed monthly performance reports on website traffic, leads and revenue impact.",
+            "Every change is saved. Don't like it? One click and you're back to the previous version.",
         },
       ],
     },
