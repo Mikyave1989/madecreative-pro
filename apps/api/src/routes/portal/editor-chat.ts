@@ -747,13 +747,13 @@ app.post("/", async (c) => {
           data: { files: projectBundle as unknown as object },
         });
 
+        // Deploy with HTML (reliable) — Next.js project stored in DB for future Sandpack preview
         const result = await deploySite({
           clientId,
           companyName: client.companyName,
           sector: client.sector,
           content: mergedContent,
           subdomain,
-          projectFiles: projectBundle,
         });
 
         deployUrl = result.deployUrl;
@@ -983,7 +983,6 @@ app.post("/stream", async (c) => {
                 sector: client.sector,
                 content: mergedContent,
                 subdomain,
-                projectFiles: projectBundle,
               });
               deployUrl = deployResult.deployUrl;
               await prisma.clientWebsite.update({
