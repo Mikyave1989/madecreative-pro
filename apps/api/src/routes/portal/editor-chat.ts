@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import type { JwtPayload } from "@madecreative/shared";
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages/index";
@@ -439,6 +440,175 @@ app.post("/buy-credits", async (c) => {
   }
 });
 
+// ─── Shared tool handler factory ─────────────────────────────────────────────
+
+function buildToolHandler(
+  claude: Awaited<ReturnType<typeof import("@madecreative/ai")["getClaudeClient"]>>,
+  currentContent: Record<string, unknown>,
+  contentUpdates: Record<string, unknown>
+): (toolName: string, toolInput: Record<string, unknown>) => Promise<unknown> {
+  return async (toolName: string, toolInput: Record<string, unknown>) => {
+    switch (toolName) {
+      case "search_photos": {
+        const input = toolInput as { query: string; count?: number };
+        const count = Math.min(input.count ?? 4, 8);
+        const apiKey = process.env["PEXELS_API_KEY"];
+        if (!apiKey) return { photos: [], error: "Photo search not configured" };
+        try {
+          const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(input.query)}&per_page=${count}&size=medium`, {
+            headers: { Authorization: apiKey },
+          });
+          const data = await res.json() as { photos: Array<{ src: { large: string; medium: string }; photographer: string; alt: string }> };
+          return { photos: (data.photos ?? []).map(p => ({ url: p.src.large, alt: p.alt || input.query })) };
+        } catch {
+          return { photos: [], error: "Search failed" };
+        }
+      }
+
+      case "get_current_content":
+        return currentContent;
+
+      case "generate_with_opus": {
+        const input = toolInput as { task: string; context: string; outputFormat: string };
+        const opusResult = await claude.callWithText(
+          [{ role: "user", content: `${input.task}\n\nContext: ${input.context}\n\nOutput format: Return ONLY valid JSON. For menu_items: {"items":[{"name":"...","description":"...","price":"€...","category":"..."}]}. For text: {"text":"..."}. For hero_content: {"heroText":"...","heroDescription":"..."}` }],
+          {
+            system: "You are a premium content generator for business websites. Generate high-quality, professional content. Always return valid JSON only, no markdown or explanation.",
+            model: "claude-opus-4-5" as const,
+            maxTokens: 4096,
+          }
+        );
+        try {
+          const jsonMatch = opusResult.text.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) return { error: "Failed to parse Opus output" };
+          const generated = JSON.parse(jsonMatch[0]);
+
+          if (input.outputFormat === "menu_items" && generated.items) {
+            const items = (generated.items as Array<{ name: string; description?: string; price: string; category?: string }>).map((item) => ({
+              id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+              name: item.name,
+              description: item.description ?? "",
+              price: item.price,
+              category: item.category ?? "",
+              imageUrl: null,
+            }));
+            const existing = (currentContent.menuItems as Array<Record<string, unknown>>) ?? [];
+            contentUpdates.menuItems = [...existing, ...items];
+            currentContent.menuItems = contentUpdates.menuItems;
+            return { success: true, generatedItems: items.length, items: items.map((i) => `${i.name} - ${i.price}`) };
+          }
+          if (input.outputFormat === "hero_content" && generated.heroText) {
+            contentUpdates.heroText = generated.heroText;
+            contentUpdates.heroDescription = generated.heroDescription;
+            return { success: true, heroText: generated.heroText, heroDescription: generated.heroDescription };
+          }
+          if (input.outputFormat === "text" && generated.text) {
+            contentUpdates.heroDescription = generated.text;
+            return { success: true, text: generated.text };
+          }
+          return { success: true, raw: generated };
+        } catch {
+          return { error: "Failed to parse generated content", raw: opusResult.text.substring(0, 500) };
+        }
+      }
+
+      case "update_hero": {
+        const input = toolInput as { heroText?: string; heroDescription?: string; heroImage?: string; heroCtaText?: string };
+        if (input.heroText) contentUpdates.heroText = input.heroText;
+        if (input.heroDescription) contentUpdates.heroDescription = input.heroDescription;
+        if (input.heroImage) contentUpdates.heroImage = input.heroImage;
+        if (input.heroCtaText) contentUpdates.heroCtaText = input.heroCtaText;
+        return { success: true, updated: "hero" };
+      }
+
+      case "update_contact": {
+        const input = toolInput as { phone?: string; email?: string; address?: string };
+        if (input.phone) contentUpdates.phone = input.phone;
+        if (input.email) contentUpdates.email = input.email;
+        if (input.address) contentUpdates.address = input.address;
+        return { success: true, updated: Object.keys(input) };
+      }
+
+      case "set_whatsapp": {
+        const input = toolInput as { whatsappNumber: string };
+        contentUpdates.whatsappNumber = input.whatsappNumber;
+        return { success: true, whatsappNumber: input.whatsappNumber };
+      }
+
+      case "add_menu_item": {
+        const input = toolInput as { name: string; description?: string; price: string; category?: string };
+        const menuItems = ((currentContent.menuItems as Array<Record<string, unknown>>) ?? []).slice();
+        menuItems.push({
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+          name: input.name,
+          description: input.description ?? "",
+          price: input.price,
+          category: input.category ?? "",
+          imageUrl: null,
+        });
+        contentUpdates.menuItems = menuItems;
+        currentContent.menuItems = menuItems;
+        return { success: true, added: input.name, totalItems: menuItems.length };
+      }
+
+      case "remove_menu_item": {
+        const input = toolInput as { name: string };
+        const items = ((currentContent.menuItems as Array<Record<string, unknown>>) ?? []);
+        const filtered = items.filter((i) => (i.name as string).toLowerCase() !== input.name.toLowerCase());
+        contentUpdates.menuItems = filtered;
+        currentContent.menuItems = filtered;
+        return { success: true, removed: input.name, remaining: filtered.length };
+      }
+
+      case "update_hours": {
+        const input = toolInput as { updates: Array<{ day: string; open?: string; close?: string; closed?: boolean }> };
+        const hours = (currentContent.hours as Record<string, Record<string, unknown>>) ?? {};
+        for (const u of input.updates) {
+          if (!hours[u.day]) hours[u.day] = { open: "09:00", close: "18:00", closed: false };
+          const dayEntry = hours[u.day]!;
+          if (u.open !== undefined) dayEntry.open = u.open;
+          if (u.close !== undefined) dayEntry.close = u.close;
+          if (u.closed !== undefined) dayEntry.closed = u.closed;
+        }
+        contentUpdates.hours = hours;
+        currentContent.hours = hours;
+        return { success: true, updatedDays: input.updates.map((u) => u.day) };
+      }
+
+      case "update_about": {
+        const input = toolInput as { text: string; aboutImage?: string };
+        contentUpdates.aboutText = input.text;
+        if (input.aboutImage) contentUpdates.aboutImage = input.aboutImage;
+        return { success: true, updated: "about" };
+      }
+
+      case "set_gallery": {
+        const input = toolInput as { images: Array<{ url: string; caption?: string }> };
+        contentUpdates.gallery = input.images;
+        currentContent.gallery = input.images;
+        return { success: true, totalImages: input.images.length };
+      }
+
+      case "set_testimonials": {
+        const input = toolInput as { testimonials: Array<{ name: string; text: string; rating: number }> };
+        contentUpdates.testimonials = input.testimonials;
+        currentContent.testimonials = input.testimonials;
+        return { success: true, totalTestimonials: input.testimonials.length };
+      }
+
+      case "set_services": {
+        const input = toolInput as { services: Array<{ name: string; description: string; icon?: string; price?: string }> };
+        contentUpdates.services = input.services;
+        currentContent.services = input.services;
+        return { success: true, totalServices: input.services.length };
+      }
+
+      default:
+        return { error: `Unknown tool: ${toolName}` };
+    }
+  };
+}
+
 // POST /portal/editor/chat — send a message to the AI editor
 app.post("/", async (c) => {
   const { prisma } = await import("@madecreative/db");
@@ -510,172 +680,7 @@ app.post("/", async (c) => {
   try {
     const result = await claude.toolUseLoop(
       messages,
-      async (toolName, toolInput) => {
-        switch (toolName) {
-          case "search_photos": {
-            const input = toolInput as { query: string; count?: number };
-            const count = Math.min(input.count ?? 4, 8);
-            const apiKey = process.env["PEXELS_API_KEY"];
-            if (!apiKey) return { photos: [], error: "Photo search not configured" };
-            try {
-              const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(input.query)}&per_page=${count}&size=medium`, {
-                headers: { Authorization: apiKey },
-              });
-              const data = await res.json() as { photos: Array<{ src: { large: string; medium: string }; photographer: string; alt: string }> };
-              return { photos: (data.photos ?? []).map(p => ({ url: p.src.large, alt: p.alt || input.query })) };
-            } catch {
-              return { photos: [], error: "Search failed" };
-            }
-          }
-
-          case "get_current_content":
-            return currentContent;
-
-          case "generate_with_opus": {
-            const input = toolInput as { task: string; context: string; outputFormat: string };
-            // Call Opus for heavy content generation
-            const opusResult = await claude.callWithText(
-              [{ role: "user", content: `${input.task}\n\nContext: ${input.context}\n\nOutput format: Return ONLY valid JSON. For menu_items: {"items":[{"name":"...","description":"...","price":"€...","category":"..."}]}. For text: {"text":"..."}. For hero_content: {"heroText":"...","heroDescription":"..."}` }],
-              {
-                system: "You are a premium content generator for business websites. Generate high-quality, professional content. Always return valid JSON only, no markdown or explanation.",
-                model: "claude-opus-4-5" as const,
-                maxTokens: 4096,
-              }
-            );
-
-            // Parse Opus response and auto-apply content
-            try {
-              const jsonMatch = opusResult.text.match(/\{[\s\S]*\}/);
-              if (!jsonMatch) return { error: "Failed to parse Opus output" };
-              const generated = JSON.parse(jsonMatch[0]);
-
-              if (input.outputFormat === "menu_items" && generated.items) {
-                const items = (generated.items as Array<{ name: string; description?: string; price: string; category?: string }>).map((item) => ({
-                  id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-                  name: item.name,
-                  description: item.description ?? "",
-                  price: item.price,
-                  category: item.category ?? "",
-                  imageUrl: null,
-                }));
-                const existing = (currentContent.menuItems as Array<Record<string, unknown>>) ?? [];
-                contentUpdates.menuItems = [...existing, ...items];
-                currentContent.menuItems = contentUpdates.menuItems;
-                return { success: true, generatedItems: items.length, items: items.map((i) => `${i.name} - ${i.price}`) };
-              }
-
-              if (input.outputFormat === "hero_content" && generated.heroText) {
-                contentUpdates.heroText = generated.heroText;
-                contentUpdates.heroDescription = generated.heroDescription;
-                return { success: true, heroText: generated.heroText, heroDescription: generated.heroDescription };
-              }
-
-              if (input.outputFormat === "text" && generated.text) {
-                contentUpdates.heroDescription = generated.text;
-                return { success: true, text: generated.text };
-              }
-
-              return { success: true, raw: generated };
-            } catch {
-              return { error: "Failed to parse generated content", raw: opusResult.text.substring(0, 500) };
-            }
-          }
-
-          case "update_hero": {
-            const input = toolInput as { heroText?: string; heroDescription?: string; heroImage?: string; heroCtaText?: string };
-            if (input.heroText) contentUpdates.heroText = input.heroText;
-            if (input.heroDescription) contentUpdates.heroDescription = input.heroDescription;
-            if (input.heroImage) contentUpdates.heroImage = input.heroImage;
-            if (input.heroCtaText) contentUpdates.heroCtaText = input.heroCtaText;
-            return { success: true, updated: "hero" };
-          }
-
-          case "update_contact": {
-            const input = toolInput as { phone?: string; email?: string; address?: string };
-            if (input.phone) contentUpdates.phone = input.phone;
-            if (input.email) contentUpdates.email = input.email;
-            if (input.address) contentUpdates.address = input.address;
-            return { success: true, updated: Object.keys(input) };
-          }
-
-          case "set_whatsapp": {
-            const input = toolInput as { whatsappNumber: string };
-            contentUpdates.whatsappNumber = input.whatsappNumber;
-            return { success: true, whatsappNumber: input.whatsappNumber };
-          }
-
-          case "add_menu_item": {
-            const input = toolInput as { name: string; description?: string; price: string; category?: string };
-            const menuItems = ((currentContent.menuItems as Array<Record<string, unknown>>) ?? []).slice();
-            menuItems.push({
-              id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-              name: input.name,
-              description: input.description ?? "",
-              price: input.price,
-              category: input.category ?? "",
-              imageUrl: null,
-            });
-            contentUpdates.menuItems = menuItems;
-            currentContent.menuItems = menuItems;
-            return { success: true, added: input.name, totalItems: menuItems.length };
-          }
-
-          case "remove_menu_item": {
-            const input = toolInput as { name: string };
-            const items = ((currentContent.menuItems as Array<Record<string, unknown>>) ?? []);
-            const filtered = items.filter((i) => (i.name as string).toLowerCase() !== input.name.toLowerCase());
-            contentUpdates.menuItems = filtered;
-            currentContent.menuItems = filtered;
-            return { success: true, removed: input.name, remaining: filtered.length };
-          }
-
-          case "update_hours": {
-            const input = toolInput as { updates: Array<{ day: string; open?: string; close?: string; closed?: boolean }> };
-            const hours = (currentContent.hours as Record<string, Record<string, unknown>>) ?? {};
-            for (const u of input.updates) {
-              if (!hours[u.day]) hours[u.day] = { open: "09:00", close: "18:00", closed: false };
-              const dayEntry = hours[u.day]!;
-              if (u.open !== undefined) dayEntry.open = u.open;
-              if (u.close !== undefined) dayEntry.close = u.close;
-              if (u.closed !== undefined) dayEntry.closed = u.closed;
-            }
-            contentUpdates.hours = hours;
-            currentContent.hours = hours;
-            return { success: true, updatedDays: input.updates.map((u) => u.day) };
-          }
-
-          case "update_about": {
-            const input = toolInput as { text: string; aboutImage?: string };
-            contentUpdates.aboutText = input.text;
-            if (input.aboutImage) contentUpdates.aboutImage = input.aboutImage;
-            return { success: true, updated: "about" };
-          }
-
-          case "set_gallery": {
-            const input = toolInput as { images: Array<{ url: string; caption?: string }> };
-            contentUpdates.gallery = input.images;
-            currentContent.gallery = input.images;
-            return { success: true, totalImages: input.images.length };
-          }
-
-          case "set_testimonials": {
-            const input = toolInput as { testimonials: Array<{ name: string; text: string; rating: number }> };
-            contentUpdates.testimonials = input.testimonials;
-            currentContent.testimonials = input.testimonials;
-            return { success: true, totalTestimonials: input.testimonials.length };
-          }
-
-          case "set_services": {
-            const input = toolInput as { services: Array<{ name: string; description: string; icon?: string; price?: string }> };
-            contentUpdates.services = input.services;
-            currentContent.services = input.services;
-            return { success: true, totalServices: input.services.length };
-          }
-
-          default:
-            return { error: `Unknown tool: ${toolName}` };
-        }
-      },
+      buildToolHandler(claude, currentContent, contentUpdates),
       {
         system: systemPrompt,
         tools: EDITOR_TOOLS,
@@ -804,6 +809,188 @@ app.post("/", async (c) => {
     console.error("[EditorChat] Error:", message);
     return c.json({ success: false, error: "AI editor error. Please try again." }, 500);
   }
+});
+
+// POST /portal/editor/chat/stream — streaming SSE version of the chat endpoint
+app.post("/stream", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { getClaudeClient } = await import("@madecreative/ai");
+  const clientId = c.get("jwtPayload").sub;
+
+  // Check credits
+  const credits = getCredits(clientId);
+  if (credits.remaining < 0.5) {
+    return c.json({
+      success: false,
+      error: "Crediti esauriti. Acquista crediti aggiuntivi per continuare.",
+      credits,
+    }, 402);
+  }
+
+  const body = await c.req.json().catch(() => null);
+  if (!body?.message || typeof body.message !== "string") {
+    return c.json({ success: false, error: "Message is required" }, 400);
+  }
+
+  const userMessage = body.message as string;
+  const conversationHistory = (body.history ?? []) as MessageParam[];
+
+  // Load client and website data
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    include: { website: true },
+  });
+
+  if (!client) {
+    return c.json({ success: false, error: "Client not found" }, 404);
+  }
+
+  // Current website content
+  let currentContent: Record<string, unknown> = {};
+  if (client.website?.pages) {
+    try {
+      currentContent = typeof client.website.pages === "string"
+        ? JSON.parse(client.website.pages as string)
+        : (client.website.pages as Record<string, unknown>);
+    } catch {
+      currentContent = {};
+    }
+  }
+
+  const systemPrompt = buildSystemPrompt(
+    client.companyName,
+    client.sector,
+    client.language,
+    currentContent
+  );
+
+  const messages: MessageParam[] = [
+    ...conversationHistory.slice(-20),
+    { role: "user", content: userMessage },
+  ];
+
+  const isFullBuild = /\b(crea|costruisci|build|make|genera|fai)\b.*\b(sito|site|website|pagina)\b/i.test(userMessage);
+  const editorModel = isFullBuild ? "claude-opus-4-5" as const : "claude-haiku-4-5" as const;
+
+  const claude = getClaudeClient();
+  const contentUpdates: Record<string, unknown> = {};
+
+  c.header("X-Accel-Buffering", "no");
+
+  return streamSSE(c, async (stream) => {
+    const toolNames: string[] = [];
+
+    try {
+      const generator = claude.streamToolUseLoop(
+        messages,
+        async (toolName, toolInput) => {
+          toolNames.push(toolName);
+          const handler = buildToolHandler(claude, currentContent, contentUpdates);
+          const result = await handler(toolName, toolInput);
+
+          // Stream content updates immediately after each tool mutates state
+          if (Object.keys(contentUpdates).length > 0) {
+            await stream.writeSSE({ data: JSON.stringify({ type: "content_update", updates: { ...contentUpdates } }) });
+          }
+
+          return result;
+        },
+        {
+          system: systemPrompt,
+          tools: EDITOR_TOOLS,
+          model: editorModel,
+          maxTokens: 4096,
+        }
+      );
+
+      for await (const event of generator) {
+        if (event.type === "done") {
+          // Persist to DB and deploy
+          let deployUrl: string | null = client.website?.deployUrl ?? null;
+
+          if (Object.keys(contentUpdates).length > 0 && !client.website) {
+            const { slugify } = await import("../../lib/deploy-site.js");
+            const slug = slugify(client.companyName);
+            client.website = await prisma.clientWebsite.create({
+              data: {
+                clientId,
+                domain: `${slug}.madecreative.pro`,
+                subdomain: slug,
+                pages: contentUpdates as object,
+                deployStatus: "NONE",
+              },
+            });
+          }
+
+          if (Object.keys(contentUpdates).length > 0 && client.website) {
+            const previousContent = JSON.parse(JSON.stringify(currentContent));
+            const snapshots = ((client.website.designTokens as { _snapshots?: Array<{ ts: string; data: object }> })?._snapshots ?? []).slice(-19);
+            snapshots.push({ ts: new Date().toISOString(), data: previousContent });
+
+            const mergedContent = { ...currentContent, ...contentUpdates };
+            await prisma.clientWebsite.update({
+              where: { id: client.website.id },
+              data: {
+                pages: mergedContent as object,
+                designTokens: { ...(client.website.designTokens as object ?? {}), _snapshots: snapshots },
+                deployStatus: "DEPLOYING",
+              },
+            });
+
+            try {
+              const { deploySite, slugify } = await import("../../lib/deploy-site.js");
+              const subdomain =
+                (client.website.subdomain as string | null | undefined) ??
+                (slugify(client.companyName) || clientId.slice(0, 12));
+              const deployResult = await deploySite({
+                clientId,
+                companyName: client.companyName,
+                sector: client.sector,
+                content: mergedContent,
+                subdomain,
+              });
+              deployUrl = deployResult.deployUrl;
+              await prisma.clientWebsite.update({
+                where: { id: client.website.id },
+                data: {
+                  deployUrl: deployResult.deployUrl,
+                  vercelProjectId: deployResult.vercelProjectId,
+                  deployStatus: "DEPLOYED",
+                  lastDeployedAt: new Date(),
+                },
+              });
+            } catch (deployErr) {
+              const errMsg = deployErr instanceof Error ? deployErr.message : String(deployErr);
+              console.warn("[EditorChat/stream] Deploy failed (non-fatal):", errMsg);
+              await prisma.clientWebsite.update({
+                where: { id: client.website.id },
+                data: { deployStatus: "FAILED" },
+              }).catch(() => {});
+            }
+          }
+
+          const creditCost = estimateCreditCost(toolNames, isFullBuild);
+          deductCredits(clientId, creditCost);
+
+          await stream.writeSSE({
+            data: JSON.stringify({
+              type: "complete",
+              deployUrl,
+              credits: getCredits(clientId),
+              contentUpdates: Object.keys(contentUpdates).length > 0 ? contentUpdates : null,
+              usage: event.usage,
+            }),
+          });
+        } else {
+          await stream.writeSSE({ data: JSON.stringify(event) });
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[EditorChat/stream] Error:", message);
+      await stream.writeSSE({ data: JSON.stringify({ type: "error", message: "AI editor error. Please try again." }) });
+    }
+  });
 });
 
 // GET /portal/editor/chat/history — get version history (snapshots)

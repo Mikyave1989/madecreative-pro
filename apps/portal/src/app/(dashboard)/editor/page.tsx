@@ -37,6 +37,8 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   cost?: number;
+  streaming?: boolean;
+  tools?: Array<{ name: string; status: "running" | "done" }>;
 }
 
 interface Credits {
@@ -205,6 +207,22 @@ function renderMessageContent(content: string) {
   });
 }
 
+const TOOL_LABELS: Record<string, string> = {
+  update_hero: "Hero",
+  update_contact: "Contatti",
+  set_whatsapp: "WhatsApp",
+  add_menu_item: "Menu",
+  remove_menu_item: "Menu",
+  update_hours: "Orari",
+  update_about: "Chi siamo",
+  set_gallery: "Galleria",
+  set_testimonials: "Recensioni",
+  set_services: "Servizi",
+  search_photos: "Foto",
+  get_current_content: "Contenuto",
+  generate_with_opus: "Generazione AI",
+};
+
 function ChatBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === "user";
 
@@ -225,9 +243,41 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
 
   return (
     <div className="flex flex-col gap-1">
+      {/* Tool call badges */}
+      {msg.tools && msg.tools.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-1 max-w-[90%]">
+          {msg.tools.map((tool, i) => (
+            <span
+              key={i}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                tool.status === "running"
+                  ? "bg-indigo-950/40 border-indigo-500/40 text-indigo-300"
+                  : "bg-emerald-950/40 border-emerald-500/30 text-emerald-400"
+              }`}
+            >
+              {tool.status === "running" ? (
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              )}
+              {TOOL_LABELS[tool.name] ?? tool.name}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="max-w-[90%]">
         <div className="bg-zinc-800/60 border border-zinc-700/50 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-zinc-200 leading-relaxed">
-          {renderMessageContent(msg.content)}
+          {msg.content ? (
+            <>
+              {renderMessageContent(msg.content)}
+              {msg.streaming && (
+                <span className="inline-block w-0.5 h-3.5 bg-indigo-400 ml-0.5 animate-pulse align-middle" />
+              )}
+            </>
+          ) : msg.streaming ? (
+            <span className="inline-block w-0.5 h-3.5 bg-indigo-400 animate-pulse align-middle" />
+          ) : null}
         </div>
       </div>
       {msg.cost !== undefined && msg.cost > 0 && (
@@ -1137,33 +1187,20 @@ export default function EditorPage() {
       .catch(() => {});
   }, []);
 
-  const sendMessage = useCallback(
-    async (text?: string) => {
-      const msg = (text ?? input).trim();
-      if (!msg || loading) return;
-
-      setInput("");
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
-
-      setMessages((prev) => [...prev, { role: "user", content: msg }]);
-      setLoading(true);
-
+  // Non-streaming fallback
+  const sendMessageNonStreaming = useCallback(
+    async (msg: string) => {
       try {
         const res = await fetch(`${API_URL}/portal/editor/chat`, {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({
             message: msg,
-            history: messages.map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
+            history: messages.map((m) => ({ role: m.role, content: m.content })),
           }),
         });
 
-        const json = (await res.json()) as {
+        type ChatResponse = {
           success: boolean;
           data?: {
             response: string;
@@ -1179,13 +1216,12 @@ export default function EditorPage() {
         if (res.status === 401) {
           const refreshed = await refreshTokenIfNeeded();
           if (refreshed) {
-            // Retry with new token
             const retry = await fetch(`${API_URL}/portal/editor/chat`, {
               method: "POST",
               headers: authHeaders(),
               body: JSON.stringify({ message: msg, history: messages.map((m) => ({ role: m.role, content: m.content })) }),
             });
-            const retryJson = (await retry.json()) as typeof json;
+            const retryJson = (await retry.json()) as ChatResponse;
             if (retryJson.success && retryJson.data) {
               const creditCost = credits.remaining - (retryJson.data.credits?.remaining ?? credits.remaining);
               setMessages((prev) => [...prev, { role: "assistant", content: retryJson.data!.response, cost: creditCost > 0 ? creditCost : undefined }]);
@@ -1199,13 +1235,12 @@ export default function EditorPage() {
           return;
         }
 
+        const json = (await res.json()) as ChatResponse;
+
         if (!res.ok || !json.success) {
-          const errText =
-            json.error ??
-            `Errore del server (${res.status}). Riprova tra qualche secondo.`;
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: errText },
+            { role: "assistant", content: json.error ?? `Errore del server (${res.status}). Riprova tra qualche secondo.` },
           ]);
           return;
         }
@@ -1214,38 +1249,200 @@ export default function EditorPage() {
           const creditCost = credits.remaining - (json.data.credits?.remaining ?? credits.remaining);
           setMessages((prev) => [
             ...prev,
-            {
-              role: "assistant",
-              content: json.data!.response,
-              cost: creditCost > 0 ? creditCost : undefined,
-            },
+            { role: "assistant", content: json.data!.response, cost: creditCost > 0 ? creditCost : undefined },
           ]);
-          if (json.data.currentContent) {
-            setContent(json.data.currentContent);
-          }
-          if (json.data.deployUrl) {
-            setDeployUrl(json.data.deployUrl);
-          }
-          if (json.data.credits) {
-            setCredits(json.data.credits);
-          }
+          if (json.data.currentContent) setContent(json.data.currentContent);
+          if (json.data.deployUrl) setDeployUrl(json.data.deployUrl);
+          if (json.data.credits) setCredits(json.data.credits);
         }
       } catch (err) {
-        const errMsg =
-          err instanceof Error ? err.message : "Errore di connessione";
+        const errMsg = err instanceof Error ? err.message : "Errore di connessione";
         setMessages((prev) => [
           ...prev,
-          {
-            role: "assistant",
-            content: `Errore di rete: ${errMsg}. Controlla la connessione e riprova.`,
-          },
+          { role: "assistant", content: `Errore di rete: ${errMsg}. Controlla la connessione e riprova.` },
         ]);
+      }
+    },
+    [credits.remaining, messages]
+  );
+
+  const sendMessage = useCallback(
+    async (text?: string) => {
+      const msg = (text ?? input).trim();
+      if (!msg || loading) return;
+
+      setInput("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+
+      setMessages((prev) => [...prev, { role: "user", content: msg }]);
+      setLoading(true);
+
+      // Index of the assistant message we'll update during streaming
+      let assistantMsgIndex = -1;
+
+      try {
+        const res = await fetch(`${API_URL}/portal/editor/chat/stream`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            message: msg,
+            history: messages.map((m) => ({ role: m.role, content: m.content })),
+          }),
+        });
+
+        // Fall back to non-streaming on auth error or no body
+        if (res.status === 401) {
+          const refreshed = await refreshTokenIfNeeded();
+          if (!refreshed) {
+            setMessages((prev) => [...prev, { role: "assistant", content: "Sessione scaduta. Effettua il login di nuovo." }]);
+            return;
+          }
+          await sendMessageNonStreaming(msg);
+          return;
+        }
+
+        if (!res.ok || !res.body) {
+          await sendMessageNonStreaming(msg);
+          return;
+        }
+
+        // Add empty assistant message placeholder
+        setMessages((prev) => {
+          assistantMsgIndex = prev.length; // user msg is last, assistant will be at length
+          return [...prev, { role: "assistant", content: "", streaming: true, tools: [] }];
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let assistantText = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+
+          for (const part of parts) {
+            if (!part.startsWith("data: ")) continue;
+            const raw = part.slice(6).trim();
+            if (!raw) continue;
+
+            let event: Record<string, unknown>;
+            try {
+              event = JSON.parse(raw) as Record<string, unknown>;
+            } catch {
+              continue;
+            }
+
+            switch (event.type) {
+              case "text_delta": {
+                assistantText += event.text as string;
+                const captured = assistantText;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === "assistant") {
+                    updated[updated.length - 1] = { ...last, content: captured };
+                  }
+                  return updated;
+                });
+                break;
+              }
+
+              case "tool_start": {
+                const toolName = event.toolName as string;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === "assistant") {
+                    const tools = [...(last.tools ?? []), { name: toolName, status: "running" as const }];
+                    updated[updated.length - 1] = { ...last, tools };
+                  }
+                  return updated;
+                });
+                break;
+              }
+
+              case "tool_done": {
+                const toolName = event.toolName as string;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === "assistant") {
+                    const tools = (last.tools ?? []).map((t) =>
+                      t.name === toolName && t.status === "running"
+                        ? { ...t, status: "done" as const }
+                        : t
+                    );
+                    updated[updated.length - 1] = { ...last, tools };
+                  }
+                  return updated;
+                });
+                break;
+              }
+
+              case "content_update": {
+                const updates = event.updates as Record<string, unknown>;
+                setContent((prev) => ({ ...prev, ...updates }));
+                break;
+              }
+
+              case "complete": {
+                if (event.deployUrl) setDeployUrl(event.deployUrl as string);
+                if (event.credits) setCredits(event.credits as Credits);
+                break;
+              }
+
+              case "error": {
+                assistantText = (event.message as string | undefined) ?? "Errore del server. Riprova.";
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === "assistant") {
+                    updated[updated.length - 1] = { ...last, content: assistantText };
+                  }
+                  return updated;
+                });
+                break;
+              }
+            }
+          }
+        }
+
+        // Mark streaming as finished and compute credit cost display
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last?.role === "assistant") {
+            const { streaming: _streaming, ...rest } = last;
+            void _streaming;
+            updated[updated.length - 1] = rest;
+          }
+          return updated;
+        });
+      } catch {
+        // Network or parse error — fall back to non-streaming
+        // Remove the empty streaming placeholder if it was added
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last?.role === "assistant" && last.streaming && !last.content) {
+            updated.pop();
+          }
+          return updated;
+        });
+        await sendMessageNonStreaming(msg);
       } finally {
         setLoading(false);
         textareaRef.current?.focus();
       }
     },
-    [input, loading, messages]
+    [input, loading, messages, sendMessageNonStreaming]
   );
 
   const handleUndo = useCallback(async () => {

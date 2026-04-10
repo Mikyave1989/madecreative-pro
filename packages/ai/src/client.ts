@@ -33,6 +33,13 @@ export interface ToolUseLoopResult {
   iterations: number;
 }
 
+export type StreamEvent =
+  | { type: "text_delta"; text: string }
+  | { type: "tool_start"; toolName: string; toolId: string }
+  | { type: "tool_done"; toolName: string; result: unknown }
+  | { type: "content_update"; updates: Record<string, unknown> }
+  | { type: "done"; usage: { inputTokens: number; outputTokens: number; cost: number } };
+
 function calculateCost(
   model: string,
   inputTokens: number,
@@ -228,6 +235,168 @@ export class ClaudeClient {
       totalOutputTokens,
       totalCost,
       iterations,
+    };
+  }
+
+  /**
+   * Streams a tool use loop, yielding StreamEvent as the model responds.
+   * Yields text_delta events letter-by-letter, tool_start/tool_done around
+   * each tool execution, and a done event with final token usage.
+   */
+  async *streamToolUseLoop(
+    initialMessages: MessageParam[],
+    toolHandler: (
+      toolName: string,
+      toolInput: Record<string, unknown>
+    ) => Promise<unknown>,
+    options: ClaudeCallOptions = {}
+  ): AsyncGenerator<StreamEvent> {
+    const {
+      model = this.defaultModel,
+      maxTokens = 4096,
+      system,
+      tools,
+      toolChoice,
+      temperature,
+    } = options;
+
+    const messages: MessageParam[] = [...initialMessages];
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalCost = 0;
+    let iterations = 0;
+    const maxIterations = 20;
+
+    while (iterations < maxIterations) {
+      iterations++;
+
+      const params: Anthropic.MessageStreamParams = {
+        model,
+        max_tokens: maxTokens,
+        messages,
+        ...(system ? { system } : {}),
+        ...(tools && tools.length > 0 ? { tools } : {}),
+        ...(toolChoice ? { tool_choice: toolChoice } : {}),
+        ...(temperature !== undefined ? { temperature } : {}),
+      };
+
+      const stream = this.client.messages.stream(params);
+
+      // Accumulate full content blocks for tool processing
+      const contentBlocks: Anthropic.ContentBlock[] = [];
+      let currentToolUseBlock: { id: string; name: string; inputJson: string } | null = null;
+
+      // Process stream events
+      for await (const event of stream) {
+        if (event.type === "content_block_start") {
+          if (event.content_block.type === "tool_use") {
+            currentToolUseBlock = {
+              id: event.content_block.id,
+              name: event.content_block.name,
+              inputJson: "",
+            };
+            yield { type: "tool_start", toolName: event.content_block.name, toolId: event.content_block.id };
+          }
+        } else if (event.type === "content_block_delta") {
+          if (event.delta.type === "text_delta") {
+            yield { type: "text_delta", text: event.delta.text };
+          } else if (event.delta.type === "input_json_delta" && currentToolUseBlock) {
+            currentToolUseBlock.inputJson += event.delta.partial_json;
+          }
+        } else if (event.type === "content_block_stop") {
+          if (currentToolUseBlock) {
+            // Parse the completed tool input and add to contentBlocks
+            let parsedInput: Record<string, unknown> = {};
+            try {
+              parsedInput = JSON.parse(currentToolUseBlock.inputJson || "{}") as Record<string, unknown>;
+            } catch {
+              parsedInput = {};
+            }
+            contentBlocks.push({
+              type: "tool_use",
+              id: currentToolUseBlock.id,
+              name: currentToolUseBlock.name,
+              input: parsedInput,
+            } as Anthropic.ToolUseBlock);
+            currentToolUseBlock = null;
+          }
+        } else if (event.type === "message_delta") {
+          // Accumulate usage
+          if (event.usage) {
+            totalOutputTokens += event.usage.output_tokens;
+          }
+        } else if (event.type === "message_start") {
+          if (event.message.usage) {
+            totalInputTokens += event.message.usage.input_tokens;
+            totalOutputTokens += event.message.usage.output_tokens;
+          }
+        }
+      }
+
+      // Get the finalized message
+      const finalMessage = await stream.finalMessage();
+      const stopReason = finalMessage.stop_reason;
+
+      // Rebuild content blocks from finalMessage for accuracy
+      const finalContentBlocks = finalMessage.content;
+
+      // Add text blocks that are not already in contentBlocks
+      const textBlocks = finalContentBlocks.filter((b: Anthropic.ContentBlock) => b.type === "text");
+      const allBlocks: Anthropic.ContentBlock[] = [
+        ...textBlocks,
+        ...contentBlocks,
+      ];
+
+      messages.push({ role: "assistant", content: allBlocks });
+
+      if (stopReason === "end_turn" || stopReason !== "tool_use") {
+        break;
+      }
+
+      // Process all tool_use blocks
+      const toolUseBlocks = allBlocks.filter((b) => b.type === "tool_use") as Anthropic.ToolUseBlock[];
+      if (toolUseBlocks.length === 0) {
+        break;
+      }
+
+      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+      for (const toolBlock of toolUseBlocks) {
+        try {
+          const result = await toolHandler(
+            toolBlock.name,
+            toolBlock.input as Record<string, unknown>
+          );
+          yield { type: "tool_done", toolName: toolBlock.name, result };
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolBlock.id,
+            content: JSON.stringify(result),
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          yield { type: "tool_done", toolName: toolBlock.name, result: { error: errMsg } };
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolBlock.id,
+            content: `Error: ${errMsg}`,
+            is_error: true,
+          });
+        }
+      }
+
+      messages.push({ role: "user", content: toolResults });
+    }
+
+    totalCost = calculateCost(model, totalInputTokens, totalOutputTokens);
+
+    yield {
+      type: "done",
+      usage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        cost: totalCost,
+      },
     };
   }
 }
