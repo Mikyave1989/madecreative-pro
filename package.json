@@ -29,8 +29,11 @@
     "turbo": "2.9.4",
     "typescript": "^5.7.2"
   },
+  "optionalDependencies": {
+    "lightningcss-linux-x64-gnu": "*"
+  },
   "engines": {
-    "node": "20.x",
+    "node": ">=20",
     "npm": ">=10.0.0"
   },
   "packageManager": "npm@10.9.2"
