@@ -33,8 +33,5 @@
     "node": "20.x",
     "npm": ">=10.0.0"
   },
-  "packageManager": "npm@10.9.2",
-  "dependencies": {
-    "@codesandbox/sandpack-react": "^2.20.0"
-  }
+  "packageManager": "npm@10.9.2"
 }

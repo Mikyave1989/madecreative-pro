@@ -7,10 +7,23 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  SandpackProvider,
-  SandpackPreview as SandpackFrame,
-} from "@codesandbox/sandpack-react";
+import dynamic from "next/dynamic";
+
+// Dynamic import of Sandpack — avoids build failure if package not installed
+const SandpackPreviewDynamic = dynamic(
+  () => import("@codesandbox/sandpack-react").then((mod) => {
+    const { SandpackProvider, SandpackPreview: Frame } = mod;
+    // Return a wrapper component
+    return function SandpackWrapper({ files, theme, options }: { files: Record<string, string>; theme?: string; options?: Record<string, unknown> }) {
+      return (
+        <SandpackProvider template="react" files={files} theme={theme as "dark"} options={options}>
+          <Frame style={{ height: "100%", border: "none" }} />
+        </SandpackProvider>
+      );
+    };
+  }),
+  { ssr: false, loading: () => null }
+);
 import {
   ArrowRight,
   Bot,
@@ -1315,8 +1328,7 @@ function SandpackLivePreview({
 
   return (
     <SandpackErrorBoundary fallback={<StaticSitePreview content={content} />}>
-      <SandpackProvider
-        template="react"
+      <SandpackPreviewDynamic
         files={sandpackFiles}
         theme="dark"
         options={{
@@ -1325,16 +1337,7 @@ function SandpackLivePreview({
           recompileMode: "delayed",
           recompileDelay: 500,
         }}
-      >
-        <SandpackFrame
-          showNavigator={false}
-          showOpenInCodeSandbox={false}
-          showRefreshButton={false}
-          showRestartButton={false}
-          showSandpackErrorOverlay={true}
-          style={{ height: "100%", width: "100%", border: "none" }}
-        />
-      </SandpackProvider>
+      />
     </SandpackErrorBoundary>
   );
 }
