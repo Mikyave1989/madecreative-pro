@@ -16,8 +16,9 @@ const PLAN_CREDITS: Record<string, number> = {
 };
 
 // Variable credit cost based on complexity (like Lovable.dev)
-function estimateCreditCost(toolCalls: string[]): number {
+function estimateCreditCost(toolCalls: string[], isFullBuild = false): number {
   if (toolCalls.length === 0) return 0.5; // Simple chat
+  if (isFullBuild && toolCalls.length > 0) return 3.0; // Full site build
   if (toolCalls.includes("generate_with_opus")) return 2.0; // Opus generation
   if (toolCalls.length >= 3) return 1.5; // Complex multi-tool
   return 1.0; // Standard edit
@@ -85,7 +86,7 @@ const EDITOR_TOOLS: Tool[] = [
         heroImage: { type: "string", description: "Background image URL. Use Unsplash: https://images.unsplash.com/photo-ID?w=1200. Pick a relevant photo for the business sector." },
         heroCtaText: { type: "string", description: "CTA button text, e.g. 'Prenota ora', 'Scopri di più', 'Contattaci'" },
       },
-      required: ["heroText", "heroDescription"],
+      required: [],
     },
   },
   {
@@ -243,6 +244,18 @@ const EDITOR_TOOLS: Tool[] = [
     },
   },
   {
+    name: "search_photos",
+    description: "Search for professional stock photos. Returns URLs. Use descriptive queries in English.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "Search query in English, e.g. 'italian restaurant interior warm cozy'" },
+        count: { type: "number", description: "Number of photos (1-8, default 4)" },
+      },
+      required: ["query"],
+    },
+  },
+  {
     name: "get_current_content",
     description: "Get the current website content to understand what's on the site",
     input_schema: {
@@ -278,71 +291,59 @@ const EDITOR_TOOLS: Tool[] = [
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
-function buildSystemPrompt(businessName: string, sector: string, language: string): string {
+function buildSystemPrompt(businessName: string, sector: string, language: string, currentContent: Record<string, unknown>): string {
   const lang = language === "de" ? "German" : language === "it" ? "Italian" : language === "fr" ? "French" : language === "es" ? "Spanish" : language === "nl" ? "Dutch" : language === "pt" ? "Portuguese" : "English";
-  const unsplashPhotos: Record<string, string[]> = {
-    restaurant: [
-      "photo-1517248135467-4c7edcad34c4", "photo-1414235077428-338989a2e8c0",
-      "photo-1555396273-367ea4eb4db5", "photo-1559339352-11d035aa65de",
-      "photo-1565299624946-b28f40a0ae38", "photo-1574071318508-1cdbab80d002",
-    ],
-    dental: [
-      "photo-1629909613654-28e377c37b09", "photo-1606811841689-23dfddce3e95",
-      "photo-1588776814546-1ffcf47267a5", "photo-1445527815600-ed1e924e93b4",
-    ],
-    beauty: [
-      "photo-1560066984-138dadb4c035", "photo-1522337360788-8b13dee7a37e",
-      "photo-1487412720507-e7ab37603c6f", "photo-1516975080664-ed2fc6a32937",
-    ],
-    hotel: [
-      "photo-1566073771259-6a8506099945", "photo-1582719508461-905c673771fd",
-      "photo-1542314831-068cd1dbfeeb", "photo-1590490360182-c33d955e1750",
-    ],
-    fitness: [
-      "photo-1534438327276-14e5300c3a48", "photo-1571019613454-1cb2f99b2d8b",
-      "photo-1540497077202-7c8a3999166f", "photo-1576678927484-cc907957088c",
-    ],
-    professional: [
-      "photo-1497366216548-37526070297c", "photo-1497366811353-6870744d04b2",
-      "photo-1552664730-d307ca884978", "photo-1553877522-43269d4ea984",
-    ],
-  };
-  const sectorPhotos = unsplashPhotos[sector] ?? unsplashPhotos["professional"] ?? [];
-  const photoList = sectorPhotos.map((id) => `https://images.unsplash.com/${id}?w=800&q=80`).join(", ");
+
+  // Summarise current state for AI memory
+  const existingSections: string[] = [];
+  if (currentContent.heroText) existingSections.push(`hero (title: "${currentContent.heroText}")`);
+  if (currentContent.aboutText) existingSections.push("about");
+  if (currentContent.phone || currentContent.email || currentContent.address) existingSections.push("contact");
+  if (currentContent.hours) existingSections.push("hours");
+  if (Array.isArray(currentContent.menuItems) && currentContent.menuItems.length > 0) existingSections.push(`menu (${(currentContent.menuItems as unknown[]).length} items)`);
+  if (Array.isArray(currentContent.services) && currentContent.services.length > 0) existingSections.push(`services (${(currentContent.services as unknown[]).length} items)`);
+  if (Array.isArray(currentContent.gallery) && currentContent.gallery.length > 0) existingSections.push(`gallery (${(currentContent.gallery as unknown[]).length} images)`);
+  if (Array.isArray(currentContent.testimonials) && currentContent.testimonials.length > 0) existingSections.push(`testimonials (${(currentContent.testimonials as unknown[]).length})`);
+  if (currentContent.whatsappNumber) existingSections.push(`whatsapp (${currentContent.whatsappNumber})`);
+
+  const currentStateBlock = existingSections.length > 0
+    ? `\nCURRENT WEBSITE STATE:\nThe following sections already exist: ${existingSections.join(", ")}.\n`
+    : `\nCURRENT WEBSITE STATE: No content yet. The site is blank.\n`;
 
   return `You are a PREMIUM AI website builder for "${businessName}" (sector: ${sector}).
 You build STUNNING, professional websites worth €10,000+. Always respond in ${lang}.
-
+${currentStateBlock}
 CRITICAL RULES — FOLLOW EXACTLY:
 
 1. NEVER ask questions. NEVER say you can't do something. BUILD IMMEDIATELY.
 
-2. When the user says "build/create/make my site" — call ALL these tools in sequence:
-   a) update_hero — professional title + compelling description + heroImage from Unsplash + CTA text
-   b) update_about — 2-3 paragraphs about the business + aboutImage from Unsplash
+2. For single-section edits, ONLY call the ONE relevant tool. Do NOT touch other sections.
+
+3. When the user says "build/create/make my site" — call ALL these tools in sequence:
+   a) update_hero — professional title + compelling description + heroImage + CTA text
+   b) update_about — 2-3 paragraphs about the business + aboutImage
    c) update_contact — use provided info or invent realistic placeholders
    d) update_hours — typical hours for the sector
    e) set_services OR add_menu_item (multiple times) — 6-10 items with realistic descriptions and prices
-   f) set_gallery — 4-6 professional Unsplash photos relevant to the sector
+   f) set_gallery — 4-6 professional photos relevant to the sector
    g) set_testimonials — 3-4 realistic customer reviews with 4-5 star ratings
    h) set_whatsapp — if number provided
 
-3. IMAGES ARE MANDATORY. Always include:
-   - heroImage: a stunning hero background photo
-   - aboutImage: a photo for the about section
-   - gallery: 4-6 photos showing the business, products, team
-   Use these Unsplash photo IDs for ${sector}: ${photoList}
-   Format: https://images.unsplash.com/PHOTO_ID?w=800&q=80
+4. IMAGES: Use the search_photos tool to find SPECIFIC, relevant photos.
+   - For hero: search "[business type] [specific detail]" e.g. "neapolitan pizza oven wood fire"
+   - For gallery: multiple specific searches, not one generic
+   - For about: "[business type] team chef owner"
+   NEVER use hardcoded URLs. Always search with search_photos tool.
 
-4. CONTENT QUALITY: Write like a professional copywriter.
+5. CONTENT QUALITY: Write like a professional copywriter.
    - Hero: impactful, emotional, sector-appropriate
    - About: storytelling, passion, expertise, unique selling points
    - Services/Menu: detailed descriptions, not just names
    - Testimonials: realistic, varied, specific details
 
-5. After building, respond with a SHORT summary (2-3 lines) of what was created.
+6. After building, respond with a SHORT summary (2-3 lines) of what was created.
 
-6. For subsequent edits (change title, add item, etc.) — use tools directly, don't ask.
+7. For subsequent edits (change title, add item, etc.) — use tools directly, don't ask.
 
 You are building websites that look and feel like €10,000+ professional sites with real photos, compelling copy, and complete content.`;
 }
@@ -489,13 +490,18 @@ app.post("/", async (c) => {
   const systemPrompt = buildSystemPrompt(
     client.companyName,
     client.sector,
-    client.language
+    client.language,
+    currentContent
   );
 
   const messages: MessageParam[] = [
     ...conversationHistory.slice(-20), // Keep last 20 messages for context
     { role: "user", content: userMessage },
   ];
+
+  // Intent detection: full site build vs. single edit
+  const isFullBuild = /\b(crea|costruisci|build|make|genera|fai)\b.*\b(sito|site|website|pagina)\b/i.test(userMessage);
+  const editorModel = isFullBuild ? "claude-opus-4-5" as const : "claude-haiku-4-5" as const;
 
   // Call Claude with tools
   const claude = getClaudeClient();
@@ -506,6 +512,22 @@ app.post("/", async (c) => {
       messages,
       async (toolName, toolInput) => {
         switch (toolName) {
+          case "search_photos": {
+            const input = toolInput as { query: string; count?: number };
+            const count = Math.min(input.count ?? 4, 8);
+            const apiKey = process.env["PEXELS_API_KEY"];
+            if (!apiKey) return { photos: [], error: "Photo search not configured" };
+            try {
+              const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(input.query)}&per_page=${count}&size=medium`, {
+                headers: { Authorization: apiKey },
+              });
+              const data = await res.json() as { photos: Array<{ src: { large: string; medium: string }; photographer: string; alt: string }> };
+              return { photos: (data.photos ?? []).map(p => ({ url: p.src.large, alt: p.alt || input.query })) };
+            } catch {
+              return { photos: [], error: "Search failed" };
+            }
+          }
+
           case "get_current_content":
             return currentContent;
 
@@ -560,9 +582,9 @@ app.post("/", async (c) => {
           }
 
           case "update_hero": {
-            const input = toolInput as { heroText: string; heroDescription: string; heroImage?: string; heroCtaText?: string };
-            contentUpdates.heroText = input.heroText;
-            contentUpdates.heroDescription = input.heroDescription;
+            const input = toolInput as { heroText?: string; heroDescription?: string; heroImage?: string; heroCtaText?: string };
+            if (input.heroText) contentUpdates.heroText = input.heroText;
+            if (input.heroDescription) contentUpdates.heroDescription = input.heroDescription;
             if (input.heroImage) contentUpdates.heroImage = input.heroImage;
             if (input.heroCtaText) contentUpdates.heroCtaText = input.heroCtaText;
             return { success: true, updated: "hero" };
@@ -657,7 +679,7 @@ app.post("/", async (c) => {
       {
         system: systemPrompt,
         tools: EDITOR_TOOLS,
-        model: "claude-haiku-4-5" as const,
+        model: editorModel,
         maxTokens: 4096,
       }
     );
@@ -705,7 +727,7 @@ app.post("/", async (c) => {
         }
       }
     }
-    const creditCost = estimateCreditCost(toolNames);
+    const creditCost = estimateCreditCost(toolNames, isFullBuild);
     deductCredits(clientId, creditCost);
 
     // Extract assistant text
@@ -765,12 +787,12 @@ app.post("/rollback", async (c) => {
 
   const website = await prisma.clientWebsite.findUnique({
     where: { clientId },
-    select: { id: true, designTokens: true },
+    select: { id: true, designTokens: true, pages: true },
   });
 
   if (!website) return c.json({ success: false, error: "Website not found" }, 404);
 
-  const snapshots = (website.designTokens as { _snapshots?: Array<{ ts: string; data: object }> })?._snapshots ?? [];
+  const snapshots = ((website.designTokens as { _snapshots?: Array<{ ts: string; data: object }> })?._snapshots ?? []).slice();
 
   // Default: rollback to most recent snapshot
   const targetIndex = index ?? snapshots.length - 1;
@@ -778,10 +800,18 @@ app.post("/rollback", async (c) => {
 
   if (!snapshot) return c.json({ success: false, error: "No version to restore" }, 404);
 
-  // Restore content
+  // Save current state as a new snapshot BEFORE restoring (so undo is itself undoable)
+  const currentPages = website.pages ?? {};
+  const updatedSnapshots = snapshots.filter((_, i) => i !== targetIndex);
+  updatedSnapshots.push({ ts: new Date().toISOString(), data: currentPages as object });
+
+  // Restore content and update snapshots
   await prisma.clientWebsite.update({
     where: { id: website.id },
-    data: { pages: snapshot.data },
+    data: {
+      pages: snapshot.data,
+      designTokens: { ...(website.designTokens as object ?? {}), _snapshots: updatedSnapshots },
+    },
   });
 
   // Queue rebuild
@@ -801,7 +831,7 @@ app.post("/rollback", async (c) => {
     data: {
       restoredTo: snapshot.ts,
       content: snapshot.data,
-      message: "Versione ripristinata. Il sito si aggiornera in circa 2 minuti.",
+      message: "Versione precedente ripristinata. Il sito si aggiornera in circa 2 minuti.",
     },
   });
 });

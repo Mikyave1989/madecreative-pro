@@ -1234,13 +1234,12 @@ export default function EditorPage() {
         error?: string;
       };
       if (json.success && json.data?.content) {
-        setContent(json.data.content);
-        const dateStr = new Date(json.data.restoredTo).toLocaleString("it-IT");
+        setContent(json.data.content as WebsiteContent);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: `Versione ripristinata al ${dateStr}. Le modifiche si aggiornano in \~2 minuti.`,
+            content: `Versione precedente ripristinata. Le modifiche si aggiornano in ~2 minuti.`,
           },
         ]);
       } else {
