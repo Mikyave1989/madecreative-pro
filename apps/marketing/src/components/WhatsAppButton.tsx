@@ -1,6 +1,6 @@
 "use client";
 
-const WHATSAPP_NUMBER = process.env["NEXT_PUBLIC_WHATSAPP_NUMBER"] ?? "393791234567";
+const WHATSAPP_NUMBER = process.env["NEXT_PUBLIC_WHATSAPP_NUMBER"] ?? "393317389918";
 
 const MESSAGES: Record<string, string> = {
   de: "Hallo! Ich interessiere mich für eine Website mit MadeCreative.",
