@@ -21,8 +21,8 @@ const HARDCODED_FAQS = [
     a: "Un click dal portale. Il sito va offline entro 24 ore. Nessun preavviso, nessuna penale.",
   },
   {
-    q: "E se non mi piace?",
-    a: "Rimborso automatico entro 14 giorni dalla sottoscrizione. Nessun ticket, nessuna chiamata. Un click.",
+    q: "E se voglio cancellare?",
+    a: "Puoi cancellare in qualsiasi momento. In caso di problemi, il nostro team di supporto ti aiuterà immediatamente.",
   },
   {
     q: "Funziona per il mio settore?",

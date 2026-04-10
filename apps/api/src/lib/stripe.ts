@@ -117,6 +117,10 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session
 ): Promise<void> {
   const prospectId = session.metadata?.["prospectId"] as string | undefined;
+  const plan = (session.metadata?.["plan"] as string) ?? "STARTER";
+  const websiteUrl = (session.metadata?.["websiteUrl"] as string) || null;
+  const companyNameMeta = (session.metadata?.["companyName"] as string) || null;
+  const localeMeta = (session.metadata?.["locale"] as string) || null;
 
   if (!session.customer_email || !session.customer) return;
 
@@ -131,6 +135,7 @@ async function handleCheckoutCompleted(
         stripeCustomerId: session.customer as string,
         stripeSubId: session.subscription as string,
         status: "ACTIVE",
+        plan,
       },
     });
     return;
@@ -164,13 +169,15 @@ async function handleCheckoutCompleted(
   const client = await prisma.client.create({
     data: {
       email: session.customer_email,
-      companyName: prospectData?.companyName ?? session.customer_email.split("@")[0] ?? "Business",
+      companyName: prospectData?.companyName ?? companyNameMeta ?? session.customer_email.split("@")[0] ?? "Business",
       contactName: prospectData?.contactName ?? "Contact",
       passwordHash,
       country: prospectData?.country ?? "DE",
       city: prospectData?.city ?? null,
       sector: prospectData?.sector ?? "professional",
-      language: prospectData?.language ?? "de",
+      language: prospectData?.language ?? localeMeta ?? "de",
+      plan,
+      websiteUrl,
       stripeCustomerId: session.customer as string,
       stripeSubId: session.subscription as string,
       status: "ACTIVE",

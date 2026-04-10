@@ -79,11 +79,12 @@ export function Badge({
 // Badge per piano
 export function PlanBadge({ plan, size = "sm" }: { plan: Plan; size?: "sm" | "md" }) {
   const map: Record<Plan, { label: string; variant: BadgeVariant }> = {
+    FREE: { label: "Free", variant: "gray" },
     STARTER: { label: "Starter", variant: "indigo" },
     GROWTH: { label: "Growth", variant: "violet" },
-    ENTERPRISE: { label: "Enterprise", variant: "amber" },
+    PRO: { label: "Pro", variant: "amber" },
   };
-  const { label, variant } = map[plan];
+  const { label, variant } = map[plan] ?? { label: plan, variant: "gray" as BadgeVariant };
   return <Badge label={label} variant={variant} size={size} />;
 }
 
@@ -91,12 +92,12 @@ export function PlanBadge({ plan, size = "sm" }: { plan: Plan; size?: "sm" | "md
 export function StatusBadge({
   status,
 }: {
-  status: ClientStatus | "ACTIVE" | "AT_RISK" | "PAUSED";
+  status: ClientStatus | "ACTIVE" | "CHURNED" | "REFUNDED";
 }) {
   const map: Record<string, { label: string; variant: BadgeVariant }> = {
     ACTIVE: { label: "Attivo", variant: "green" },
-    AT_RISK: { label: "A rischio", variant: "yellow" },
-    PAUSED: { label: "Sospeso", variant: "red" },
+    CHURNED: { label: "Cancellato", variant: "red" },
+    REFUNDED: { label: "Rimborsato", variant: "yellow" },
   };
   const { label, variant } = map[status] ?? { label: status, variant: "gray" };
   return <Badge label={label} variant={variant} dot />;

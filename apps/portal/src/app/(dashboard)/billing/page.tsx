@@ -20,7 +20,7 @@ import {
 
 interface BillingInfo {
   plan: string;
-  status: "ACTIVE" | "AT_RISK" | "PAUSED";
+  status: "ACTIVE" | "CHURNED" | "REFUNDED";
   nextChargeDate: string | null;
   nextChargeAmount: number;
   clientSince: string;
@@ -100,19 +100,19 @@ const STATUS_CONFIG = {
     label: "Abbonamento attivo",
     description: "Il tuo abbonamento e attivo e tutti i servizi sono operativi.",
   },
-  AT_RISK: {
+  CHURNED: {
     icon: AlertTriangle,
     color: "text-amber-400",
     bg: "bg-amber-500/10 border-amber-500/20",
-    label: "Pagamento a rischio",
-    description: "Aggiorna il metodo di pagamento per evitare interruzioni.",
+    label: "Abbonamento cancellato",
+    description: "Il tuo abbonamento e stato cancellato.",
   },
-  PAUSED: {
+  REFUNDED: {
     icon: PauseCircle,
     color: "text-red-400",
     bg: "bg-red-500/10 border-red-500/20",
-    label: "Abbonamento sospeso",
-    description: "Il tuo abbonamento e sospeso. Contatta il supporto.",
+    label: "Rimborsato",
+    description: "Il tuo abbonamento e stato rimborsato.",
   },
 };
 

@@ -92,10 +92,13 @@ model Client {
   email            String         @unique
   phone            String?
   passwordHash     String
-  country          String
+  country          String         @default("DE")
   city             String?
-  sector           String
+  sector           String         @default("professional")
   language         String         @default("de")
+  plan             String         @default("FREE")
+  // FREE, STARTER, GROWTH, PRO
+  websiteUrl       String?
   status           String         @default("ACTIVE")
   // ACTIVE, CHURNED, REFUNDED
   stripeCustomerId String?        @unique

@@ -29,12 +29,12 @@ export default function LoginPage() {
       const data = await login(email, password);
 
       const user: AuthUser = {
-        id: data.client.id ?? "",
-        email: data.client.email ?? email,
-        companyName: data.client.companyName,
-        contactName: data.client.contactName ?? data.client.companyName,
-        plan: data.client.plan,
-        status: data.client.status,
+        id: data.user.id ?? "",
+        email: data.user.email ?? email,
+        companyName: data.user.companyName,
+        contactName: data.user.contactName ?? data.user.companyName,
+        plan: data.user.plan as AuthUser["plan"],
+        status: data.user.status as AuthUser["status"],
       };
 
       setAuth(data.accessToken, data.refreshToken, user);

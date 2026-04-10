@@ -10,8 +10,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
-export type Plan = "STARTER" | "GROWTH" | "ENTERPRISE";
-export type ClientStatus = "ACTIVE" | "AT_RISK" | "PAUSED";
+export type Plan = "FREE" | "STARTER" | "GROWTH" | "PRO";
+export type ClientStatus = "ACTIVE" | "CHURNED" | "REFUNDED";
 
 export interface AuthUser {
   id: string;

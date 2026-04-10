@@ -4,6 +4,9 @@
   "buildCommand": "cd ../.. && npm run build --workspace=@madecreative/admin",
   "outputDirectory": ".next",
   "installCommand": "cd ../.. && npm install",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://api.madecreative.pro"
+  },
   "headers": [
     {
       "source": "/(.*)",

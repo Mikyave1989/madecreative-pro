@@ -12,37 +12,30 @@ const SOCIAL_PROOF: Record<string, Array<{ value: string; label: string }>> = {
   de: [
     { value: "60s", label: "Website generiert" },
     { value: "€25", label: "ab / Monat" },
-    { value: "14", label: "Tage Geld-zurück" },
   ],
   it: [
     { value: "60s", label: "per generare il sito" },
     { value: "€25", label: "a partire da / mese" },
-    { value: "14", label: "giorni rimborso garantito" },
   ],
   en: [
     { value: "60s", label: "to generate your site" },
     { value: "€25", label: "starting from / month" },
-    { value: "14", label: "day money-back guarantee" },
   ],
   es: [
     { value: "60s", label: "para generar tu web" },
     { value: "€25", label: "desde / mes" },
-    { value: "14", label: "días garantía devolución" },
   ],
   fr: [
     { value: "60s", label: "pour générer votre site" },
     { value: "€25", label: "à partir de / mois" },
-    { value: "14", label: "jours satisfait ou remboursé" },
   ],
   nl: [
     { value: "60s", label: "om je site te genereren" },
     { value: "€25", label: "vanaf / maand" },
-    { value: "14", label: "dagen geld-terug-garantie" },
   ],
   pt: [
     { value: "60s", label: "para gerar seu site" },
     { value: "€25", label: "a partir de / mês" },
-    { value: "14", label: "dias garantia reembolso" },
   ],
 };
 
@@ -188,7 +181,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         </div>
 
         {/* Social proof */}
-        <div className="animate-fade-up delay-400 mt-14 grid grid-cols-3 gap-8 max-w-md mx-auto">
+        <div className="animate-fade-up delay-400 mt-14 grid grid-cols-2 gap-8 max-w-md mx-auto">
           {proof.map((item) => (
             <div key={item.label} className="text-center">
               <div className="text-3xl font-bold" style={{ color: "#818cf8" }}>

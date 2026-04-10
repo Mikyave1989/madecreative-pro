@@ -1,5 +1,5 @@
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
+  process.env.NEXT_PUBLIC_API_URL ?? "https://api.madecreative.pro";
 
 // ─── Token Management ──────────────────────────────────────────
 
@@ -55,7 +55,11 @@ async function apiFetch<T>(
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers,
+    signal: options.signal ?? AbortSignal.timeout(15_000),
+  });
 
   if (res.status === 401 && retry) {
     const newToken = await refreshAccessToken();
