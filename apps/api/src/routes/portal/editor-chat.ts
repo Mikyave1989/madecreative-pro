@@ -687,6 +687,21 @@ app.post("/", async (c) => {
     // Save content updates to DB if any changes were made
     let deployUrl: string | null = client.website?.deployUrl ?? null;
 
+    // Auto-create ClientWebsite if it doesn't exist
+    if (Object.keys(contentUpdates).length > 0 && !client.website) {
+      const { slugify } = await import("../../lib/deploy-site.js");
+      const slug = slugify(client.companyName);
+      client.website = await prisma.clientWebsite.create({
+        data: {
+          clientId,
+          domain: `${slug}.madecreative.pro`,
+          subdomain: slug,
+          pages: contentUpdates as object,
+          deployStatus: "NONE",
+        },
+      });
+    }
+
     if (Object.keys(contentUpdates).length > 0 && client.website) {
       // Snapshot current state for rollback
       const previousContent = JSON.parse(JSON.stringify(currentContent));
