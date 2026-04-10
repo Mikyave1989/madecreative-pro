@@ -86,6 +86,79 @@ app.get("/", async (c) => {
   });
 });
 
+// GET /admin/pipeline — Prospects grouped by status with counters
+// NOTE: registered BEFORE /:id to avoid param conflict
+app.get("/pipeline", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const PIPELINE_STATUSES = [
+    "PREVIEW_GENERATED",
+    "EMAIL_SENT",
+    "REPLIED",
+    "CALL_SCHEDULED",
+    "CONVERTED",
+    "LOST",
+  ] as const;
+
+  const [prospects, countsByStatus] = await Promise.all([
+    prisma.prospect.findMany({
+      where: {
+        status: {
+          in: [
+            "PREVIEW_GENERATED",
+            "EMAIL_SENT",
+            "REPLIED",
+            "CALL_SCHEDULED",
+            "CONVERTED",
+            "LOST",
+          ],
+        },
+      },
+      select: {
+        id: true,
+        companyName: true,
+        contactName: true,
+        contactEmail: true,
+        country: true,
+        sector: true,
+        leadScore: true,
+        status: true,
+        lastContactedAt: true,
+        repliedAt: true,
+        convertedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        outreachEmails: {
+          orderBy: { sentAt: "desc" },
+          take: 1,
+          select: { sentAt: true, subject: true, status: true },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.prospect.groupBy({
+      by: ["status"],
+      _count: { id: true },
+    }),
+  ]);
+
+  const counts: Record<string, number> = {};
+  for (const row of countsByStatus) {
+    counts[row.status] = row._count.id;
+  }
+
+  const columns: Record<string, typeof prospects> = {};
+  for (const s of PIPELINE_STATUSES) {
+    columns[s] = [];
+  }
+  for (const p of prospects) {
+    if (p.status in columns) {
+      columns[p.status]!.push(p);
+    }
+  }
+
+  return c.json({ success: true, data: { columns, counts } });
+});
+
 // GET /admin/prospects/:id
 app.get("/:id", async (c) => {
   const { prisma } = await import("@madecreative/db");
@@ -534,78 +607,7 @@ app.post("/:id/analyze", async (c) => {
   return c.json({ success: true, data: { jobId: job.id } }, 202);
 });
 
-// GET /admin/pipeline — Prospects grouped by status with counters
-app.get("/pipeline", async (c) => {
-  const { prisma } = await import("@madecreative/db");
-  const PIPELINE_STATUSES = [
-    "PREVIEW_GENERATED",
-    "EMAIL_SENT",
-    "REPLIED",
-    "CALL_SCHEDULED",
-    "CONVERTED",
-    "LOST",
-  ] as const;
-
-  // Fetch prospects for pipeline-relevant statuses
-  const [prospects, countsByStatus] = await Promise.all([
-    prisma.prospect.findMany({
-      where: {
-        status: {
-          in: [
-            "PREVIEW_GENERATED",
-            "EMAIL_SENT",
-            "REPLIED",
-            "CALL_SCHEDULED",
-            "CONVERTED",
-            "LOST",
-          ],
-        },
-      },
-      select: {
-        id: true,
-        companyName: true,
-        country: true,
-        sector: true,
-        leadScore: true,
-        status: true,
-        lastContactedAt: true,
-        repliedAt: true,
-        convertedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        outreachEmails: {
-          orderBy: { sentAt: "desc" },
-          take: 1,
-          select: { sentAt: true, subject: true, status: true },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-    }),
-    prisma.prospect.groupBy({
-      by: ["status"],
-      _count: { id: true },
-    }),
-  ]);
-
-  // Build counts map
-  const counts: Record<string, number> = {};
-  for (const row of countsByStatus) {
-    counts[row.status] = row._count.id;
-  }
-
-  // Group prospects by status column
-  const columns: Record<string, typeof prospects> = {};
-  for (const s of PIPELINE_STATUSES) {
-    columns[s] = [];
-  }
-  for (const p of prospects) {
-    if (p.status in columns) {
-      columns[p.status]!.push(p);
-    }
-  }
-
-  return c.json({ success: true, data: { columns, counts } });
-});
+// (pipeline route moved before /:id to avoid param conflict)
 
 // POST /admin/prospects/:id/generate-payment-link
 app.post("/:id/generate-payment-link", async (c) => {
