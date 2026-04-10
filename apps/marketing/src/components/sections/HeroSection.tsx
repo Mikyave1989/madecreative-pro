@@ -3,6 +3,20 @@
 import { useState } from "react";
 import type { Translations } from "@/lib/i18n";
 
+const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.madecreative.pro";
+
+interface AnalysisResult {
+  url: string;
+  title: string | null;
+  description: string | null;
+  platform: string;
+  score: number;
+  issues: string[];
+  mobile: boolean;
+  https: boolean;
+  seo: boolean;
+}
+
 interface HeroSectionProps {
   t: Translations;
   locale: string;
@@ -42,11 +56,34 @@ const SOCIAL_PROOF: Record<string, Array<{ value: string; label: string }>> = {
 export function HeroSection({ t, locale }: HeroSectionProps) {
   const proof = SOCIAL_PROOF[locale] ?? SOCIAL_PROOF["en"]!;
   const [url, setUrl] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState("");
 
-  function handleAnalyze(e: React.FormEvent) {
+  async function handleAnalyze(e: React.FormEvent) {
     e.preventDefault();
-    if (!url.trim()) return;
-    window.location.href = `/${locale}#pricing?url=${encodeURIComponent(url.trim())}`;
+    if (!url.trim() || analyzing) return;
+    setAnalyzing(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const res = await fetch(`${API_URL}/public/signup/analyze-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const json = (await res.json()) as { success: boolean; data?: AnalysisResult; error?: string };
+      if (json.success && json.data) {
+        setResult(json.data);
+      } else {
+        setError(json.error ?? "Errore nell'analisi");
+      }
+    } catch {
+      setError("Errore di connessione");
+    } finally {
+      setAnalyzing(false);
+    }
   }
 
   return (
@@ -139,14 +176,75 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
           </div>
           <button
             type="submit"
-            className="glow-indigo inline-flex items-center gap-2 gradient-indigo text-white px-8 py-4 rounded-xl text-base font-semibold hover:opacity-90 transition-all duration-200 hover:-translate-y-0.5 whitespace-nowrap"
+            disabled={analyzing}
+            className="glow-indigo inline-flex items-center gap-2 gradient-indigo text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base font-semibold hover:opacity-90 transition-all duration-200 hover:-translate-y-0.5 whitespace-nowrap disabled:opacity-60"
           >
-            {t.hero.urlCta}
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
+            {analyzing ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                Analisi...
+              </>
+            ) : (
+              <>
+                {t.hero.urlCta}
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </>
+            )}
           </button>
         </form>
+
+        {/* Analysis result */}
+        {result && (
+          <div className="animate-fade-up max-w-2xl mx-auto mb-8 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}>
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-semibold text-white">{result.title || result.url}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "rgba(248,250,252,0.4)" }}>{result.platform} • {result.url}</p>
+                </div>
+                <div className={`text-2xl font-bold px-3 py-1 rounded-lg ${result.score >= 70 ? "text-emerald-400 bg-emerald-500/10" : result.score >= 40 ? "text-amber-400 bg-amber-500/10" : "text-red-400 bg-red-500/10"}`}>
+                  {result.score}/100
+                </div>
+              </div>
+
+              {result.issues.length > 0 && (
+                <div className="space-y-1.5 mb-4">
+                  {result.issues.map((issue, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs" style={{ color: "rgba(248,250,252,0.5)" }}>
+                      <svg className="w-3.5 h-3.5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                      {issue}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 mb-4">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${result.mobile ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                  {result.mobile ? "✓" : "✗"} Mobile
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${result.https ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                  {result.https ? "✓" : "✗"} HTTPS
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${result.seo ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                  {result.seo ? "✓" : "✗"} SEO
+                </span>
+              </div>
+
+              <a
+                href={`/${locale}/signup?url=${encodeURIComponent(result.url)}`}
+                className="block w-full text-center gradient-indigo text-white px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-all"
+              >
+                Ricostruisci il tuo sito con l&apos;AI — da €197/mese
+              </a>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <p className="text-sm text-red-400 mb-6">{error}</p>
+        )}
 
         {/* Secondary CTA */}
         <div className="animate-fade-up delay-300 flex justify-center items-center mb-10">
