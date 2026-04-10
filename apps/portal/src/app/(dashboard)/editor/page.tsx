@@ -355,10 +355,10 @@ export default function EditorPage() {
       </div>
 
       {/* Main split area */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0">
         {/* Chat panel */}
         {showChat && (
-          <div className={`flex flex-col bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden ${showPreview ? "w-full lg:w-1/2" : "w-full"}`}>
+          <div className={`flex flex-col bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden ${showPreview ? "w-full md:w-1/2" : "w-full"}`}>
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 && (
@@ -446,7 +446,7 @@ export default function EditorPage() {
 
         {/* Preview panel */}
         {showPreview && (
-          <div className={`${showChat ? "w-full lg:w-1/2" : "w-full"}`}>
+          <div className={`${showChat ? "w-full md:w-1/2" : "w-full"}`}>
             <PreviewPanel content={content} />
           </div>
         )}

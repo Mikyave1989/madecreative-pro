@@ -534,12 +534,12 @@ export default function ProspectsPage() {
         <Thead>
           <tr>
             <Th>Company</Th>
-            <Th className="hidden md:table-cell">Contact</Th>
+            <Th className="hidden sm:table-cell">Contact</Th>
             <Th className="hidden md:table-cell">Country</Th>
             <Th>Sector</Th>
             <Th>Score</Th>
             <Th>Status</Th>
-            <Th className="hidden md:table-cell">Created</Th>
+            <Th className="hidden lg:table-cell">Created</Th>
           </tr>
         </Thead>
         <Tbody>
@@ -576,7 +576,7 @@ export default function ProspectsPage() {
                     )}
                   </div>
                 </Td>
-                <Td className="hidden md:table-cell">
+                <Td className="hidden sm:table-cell">
                   {prospect.contactName ? (
                     <div>
                       <p className="text-xs text-slate-300">
@@ -617,7 +617,7 @@ export default function ProspectsPage() {
                     {STATUS_LABEL[prospect.status]}
                   </Badge>
                 </Td>
-                <Td className="hidden md:table-cell">
+                <Td className="hidden lg:table-cell">
                   <span
                     className="font-mono-tech text-[10px] text-slate-600"
                     title={new Date(prospect.createdAt).toLocaleString("it-IT")}

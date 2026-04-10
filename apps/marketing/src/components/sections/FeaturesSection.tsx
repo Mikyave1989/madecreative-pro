@@ -65,7 +65,7 @@ export function FeaturesSection({ t }: FeaturesSectionProps) {
         </div>
 
         {/* Feature grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {t.features.items.map((item, i) => {
             const color = COLORS[i % COLORS.length]!;
             const icon = ICONS[i % ICONS.length];

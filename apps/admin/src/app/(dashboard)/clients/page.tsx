@@ -362,8 +362,8 @@ export default function ClientsPage() {
             <Th className="hidden md:table-cell">Email</Th>
             <Th>Plan</Th>
             <Th>Status</Th>
-            <Th className="hidden md:table-cell">Country</Th>
-            <Th className="hidden md:table-cell">Created</Th>
+            <Th className="hidden lg:table-cell">Country</Th>
+            <Th className="hidden lg:table-cell">Created</Th>
           </tr>
         </Thead>
         <Tbody>
@@ -413,7 +413,7 @@ export default function ClientsPage() {
                     {client.status}
                   </Badge>
                 </Td>
-                <Td className="hidden md:table-cell">
+                <Td className="hidden lg:table-cell">
                   <span className="font-mono-tech text-[11px] text-slate-400">
                     {client.country}
                     {client.city && (
@@ -421,7 +421,7 @@ export default function ClientsPage() {
                     )}
                   </span>
                 </Td>
-                <Td className="hidden md:table-cell">
+                <Td className="hidden lg:table-cell">
                   <span className="font-mono-tech text-[10px] text-slate-600">
                     {new Date(client.createdAt).toLocaleDateString("it-IT")}
                   </span>

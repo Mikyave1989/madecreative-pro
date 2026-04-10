@@ -162,7 +162,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Account */}
         <Section title="Account" icon={User} iconColor="#ec4899" delay={0}>
           <div className="space-y-0">

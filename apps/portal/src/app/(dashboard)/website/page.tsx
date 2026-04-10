@@ -167,7 +167,7 @@ export default function WebsitePage() {
       ) : (
         <>
           {/* Screenshot + info */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Screenshot — 2/3 */}
             <Card className="lg:col-span-2" padding="none">
               <div className="relative bg-gray-100 rounded-t-xl overflow-hidden aspect-video flex items-center justify-center">
@@ -246,7 +246,7 @@ export default function WebsitePage() {
               title="Lighthouse Score"
               subtitle="Misurato su Google PageSpeed — dati aggiornati ogni settimana"
             />
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
               <LighthouseCircle
                 score={website.lighthouse.performance}
                 label="Performance"
@@ -281,7 +281,7 @@ export default function WebsitePage() {
           </Card>
 
           {/* Analytics */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* KPI analytics */}
             <div className="grid grid-cols-1 gap-4">
               <AnalyticsKpi

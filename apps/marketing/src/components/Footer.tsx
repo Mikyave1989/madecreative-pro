@@ -18,7 +18,7 @@ export function Footer({ t, locale }: FooterProps) {
       }}
     >
       <div className="max-w-7xl mx-auto">
-        <div className="grid md:grid-cols-4 gap-6 sm:gap-8 lg:gap-12 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-12 mb-12">
           {/* Brand */}
           <div className="md:col-span-2">
             <Link href={`/${locale}`} className="inline-block mb-4">

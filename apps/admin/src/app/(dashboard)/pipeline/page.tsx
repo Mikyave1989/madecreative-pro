@@ -96,7 +96,7 @@ function scoreColor(score: number): "green" | "amber" | "red" {
 
 function ColumnSkeleton() {
   return (
-    <div className="flex flex-col min-w-[210px] max-w-[230px] rounded-lg border border-border-subtle bg-bg-sidebar/50 animate-pulse">
+    <div className="flex flex-col min-w-[180px] max-w-[230px] rounded-lg border border-border-subtle bg-bg-sidebar/50 animate-pulse">
       <div className="flex items-center justify-between p-3 border-b border-border-subtle">
         <div className="h-3 w-24 rounded bg-slate-700" />
         <div className="h-5 w-6 rounded bg-slate-700" />
@@ -348,7 +348,7 @@ function PipelineColumn({
 
   return (
     <div
-      className="flex flex-col min-w-[210px] max-w-[230px] rounded-lg border border-border-subtle bg-bg-sidebar/50"
+      className="flex flex-col min-w-[180px] max-w-[230px] rounded-lg border border-border-subtle bg-bg-sidebar/50"
       role="region"
       aria-label={`${config.label} column`}
     >
@@ -640,7 +640,7 @@ export default function PipelinePage() {
           >
             <div
               className="flex gap-3"
-              style={{ minWidth: `${PIPELINE_COLUMNS.length * 230}px` }}
+              style={{ minWidth: `${PIPELINE_COLUMNS.length * 190}px` }}
             >
               {PIPELINE_COLUMNS.map((status) => {
                 const prospects = data.columns[status] ?? [];

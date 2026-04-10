@@ -480,7 +480,7 @@ export function HowItWorksSection({ t }: HowItWorksSectionProps) {
         </div>
 
         {/* Two-column: Steps + Agent Floor */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center mb-20">
+        <div className="grid md:grid-cols-2 gap-12 items-center mb-20">
           {/* Steps */}
           <div className="space-y-8">
             {t.howItWorks.steps.map((step, i) => {

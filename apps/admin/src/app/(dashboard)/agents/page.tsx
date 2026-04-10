@@ -347,7 +347,7 @@ export default function AgentsPage() {
       </div>
 
       {/* Stat summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
         <StatCard label="Total (page)" value={total} color="#00f0ff" delay={0} />
         <StatCard label="Queued" value={statusCounts.QUEUED ?? 0} color="#f59e0b" delay={0.05} />
         <StatCard label="Running" value={statusCounts.RUNNING ?? 0} color="#3b82f6" delay={0.1} />
@@ -411,13 +411,13 @@ export default function AgentsPage() {
       <Table>
         <Thead>
           <tr>
-            <Th className="hidden md:table-cell">ID</Th>
+            <Th className="hidden lg:table-cell">ID</Th>
             <Th>Agent</Th>
             <Th>Status</Th>
             <Th>Progress</Th>
             <Th className="hidden md:table-cell">Duration</Th>
             <Th className="hidden md:table-cell">Cost</Th>
-            <Th className="hidden md:table-cell">Created</Th>
+            <Th className="hidden lg:table-cell">Created</Th>
             <Th>Actions</Th>
           </tr>
         </Thead>
@@ -447,7 +447,7 @@ export default function AgentsPage() {
                   onClick={() => setActiveJob(job)}
                   selected={activeJob?.id === job.id}
                 >
-                  <Td className="hidden md:table-cell">
+                  <Td className="hidden lg:table-cell">
                     <span className="font-mono-tech text-[10px] text-slate-500">
                       {truncateId(job.id)}
                     </span>
@@ -502,7 +502,7 @@ export default function AgentsPage() {
                       {job.costEur !== null ? formatCurrency(job.costEur) : "—"}
                     </span>
                   </Td>
-                  <Td className="hidden md:table-cell">
+                  <Td className="hidden lg:table-cell">
                     <span className="font-mono-tech text-[10px] text-slate-500">
                       {timeAgo(job.createdAt)}
                     </span>

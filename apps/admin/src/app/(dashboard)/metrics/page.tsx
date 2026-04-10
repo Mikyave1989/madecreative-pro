@@ -471,7 +471,7 @@ export default function MetricsPage() {
       {metricsError && <ErrorBanner message={metricsError} onRetry={loadMetrics} />}
 
       {/* KPI Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 mb-6">
         <KpiCard
           label="Total Clients"
           value={metrics?.clients.total ?? 0}
@@ -571,7 +571,7 @@ export default function MetricsPage() {
       )}
 
       {/* Chart + Funnel */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {chartError ? (
           <div className="rounded border border-neon-red/20 bg-bg-card p-4 flex items-center justify-between">
             <p className="font-mono-tech text-xs text-neon-red">{chartError}</p>

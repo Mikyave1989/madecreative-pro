@@ -619,7 +619,7 @@ function LaunchTab({ addToast }: LaunchTabProps) {
         )}
 
         {configsLoading ? (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
@@ -645,7 +645,7 @@ function LaunchTab({ addToast }: LaunchTabProps) {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {configs.map((cfg) => (
               <ConfigCard
                 key={cfg.id}
@@ -946,7 +946,7 @@ function MonitorTab({ addToast }: MonitorTabProps) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
           {/* Step 1: Scraping */}
           <PipelineStep
             step={1}
@@ -1249,7 +1249,7 @@ function OutreachStatsTab() {
       {error && <ErrorBanner message={error} onRetry={fetchStats} />}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div
