@@ -209,7 +209,7 @@ async function detectChurnedClients(): Promise<void> {
 
   const rows = churnRisk
     .map(
-      (c) =>
+      (c: { id: string; email: string; companyName: string; contactName: string | null; lastLoginAt: Date | null }) =>
         `- ${c.companyName} (${c.email}) — last login: ${c.lastLoginAt?.toISOString() ?? "never"}`
     )
     .join("\n");
