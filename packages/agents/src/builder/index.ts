@@ -1,26 +1,29 @@
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 import { BaseAgent, type AgentContext } from "../base-agent.js";
 import type { AgentResult } from "@madecreative/shared";
+import { getTemplateConfig } from "@madecreative/shared";
 import { prisma } from "@madecreative/db";
 import { builderTools } from "./tools.js";
 import { BUILDER_SYSTEM_PROMPT, buildBuilderUserPrompt } from "./prompt.js";
 import { BuilderInputSchema } from "./types.js";
 import type { Photo, ColorPalette } from "./types.js";
 
-// ─── Sector Default Palettes ─────────────────────────────────────────────────
+// ─── Sector Default Palettes (from shared template configs) ──────────────────
 
-const SECTOR_DEFAULT_PALETTES: Record<string, ColorPalette> = {
-  restaurant: { primary: "#1a1208", accent: "#c9a84c", background: "#faf8f4", text: "#2d2419" },
-  dental: { primary: "#0a2540", accent: "#00b4d8", background: "#f0f8ff", text: "#1a3050" },
-  legal: { primary: "#1a1a2e", accent: "#c5a028", background: "#f8f7f4", text: "#2d2d3e" },
-  fitness: { primary: "#0d0d0d", accent: "#ff3d00", background: "#111111", text: "#f5f5f5" },
-  beauty: { primary: "#2a1f1a", accent: "#c9967a", background: "#fdf8f5", text: "#3d2e26" },
-  hotel: { primary: "#1c1610", accent: "#c9a84c", background: "#f9f6f0", text: "#2c2418" },
-  ecommerce: { primary: "#1a1a1a", accent: "#e63946", background: "#ffffff", text: "#1a1a1a" },
-  realestate: { primary: "#1a2744", accent: "#c9a84c", background: "#f8f7f5", text: "#2a3554" },
-  medical: { primary: "#005f73", accent: "#0a9396", background: "#f0fbfc", text: "#1a3a40" },
-  professional: { primary: "#1e2d40", accent: "#2563eb", background: "#f5f7fa", text: "#2a3854" },
-};
+function getSectorPalette(sector: string): ColorPalette {
+  const cfg = getTemplateConfig(sector);
+  return {
+    primary: cfg.colors.primary,
+    accent: cfg.colors.accent,
+    background: cfg.colors.background,
+    text: cfg.colors.text,
+  };
+}
+
+const SECTOR_DEFAULT_PALETTES: Record<string, ColorPalette> = Object.fromEntries(
+  ["restaurant", "dental", "legal", "fitness", "beauty", "hotel", "ecommerce", "realestate", "medical", "professional"]
+    .map((s) => [s, getSectorPalette(s)])
+);
 
 // ─── Pexels/Unsplash Fallback Keywords ───────────────────────────────────────
 
@@ -727,43 +730,12 @@ export class BuilderAgent extends BaseAgent {
           SECTOR_DEFAULT_PALETTES[sector] ??
           SECTOR_DEFAULT_PALETTES["professional"]!;
 
-        const sectorFonts: Record<string, { heading: string; body: string; fontsUrl: string }> = {
-          restaurant: {
-            heading: "Cormorant Garamond",
-            body: "DM Sans",
-            fontsUrl: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap",
-          },
-          dental: {
-            heading: "Outfit",
-            body: "Source Sans 3",
-            fontsUrl: "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap",
-          },
-          legal: {
-            heading: "Libre Baskerville",
-            body: "Karla",
-            fontsUrl: "https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Karla:wght@300;400;500;600&display=swap",
-          },
-          fitness: {
-            heading: "Bebas Neue",
-            body: "Barlow",
-            fontsUrl: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,300;0,400;0,600;0,700&display=swap",
-          },
-          beauty: {
-            heading: "Tenor Sans",
-            body: "Questrial",
-            fontsUrl: "https://fonts.googleapis.com/css2?family=Tenor+Sans&family=Questrial&display=swap",
-          },
-          hotel: {
-            heading: "Italiana",
-            body: "Crimson Text",
-            fontsUrl: "https://fonts.googleapis.com/css2?family=Italiana&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap",
-          },
-        };
-
-        const fonts = sectorFonts[sector] ?? {
-          heading: "Playfair Display",
-          body: "Nunito",
-          fontsUrl: "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700&family=Nunito:wght@300;400;500;600&display=swap",
+        // Use shared template config for consistent fonts across all surfaces
+        const templateCfg = getTemplateConfig(sector);
+        const fonts = {
+          heading: templateCfg.fonts.heading,
+          body: templateCfg.fonts.body,
+          fontsUrl: templateCfg.fonts.googleFontsUrl,
         };
 
         const heroImageUrl = photos[0]?.["url"] as string | undefined ??
