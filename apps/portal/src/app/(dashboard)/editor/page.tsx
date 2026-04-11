@@ -1379,10 +1379,32 @@ img { display: block; width: 100%; height: 100%; object-fit: cover; }
 }
 
 function generateFallbackFiles(content: WebsiteContent): Record<string, string> {
-  return {
-    "/App.js": generateFallbackAppJs(content),
-    "/styles.css": generateFallbackCSS(),
-  };
+  // Use the universal premium site generator for consistent quality
+  try {
+    const { generateSandpackFiles } = require("@madecreative/shared") as {
+      generateSandpackFiles: (data: { name: string; sector: string; tagline?: string; description?: string; phone?: string; email?: string; address?: string; services?: Array<{ icon: string; name: string; desc: string }> }) => Record<string, string>;
+    };
+    return generateSandpackFiles({
+      name: content.heroText ?? "Il tuo sito",
+      sector: "professional",
+      tagline: content.heroDescription ?? undefined,
+      description: content.aboutText ?? undefined,
+      phone: content.phone ?? undefined,
+      email: content.email ?? undefined,
+      address: content.address ?? undefined,
+      services: content.services?.map((s) => ({
+        icon: s.icon ?? "✨",
+        name: s.name,
+        desc: s.description,
+      })),
+    });
+  } catch {
+    // Fallback to old generator if shared import fails
+    return {
+      "/App.js": generateFallbackAppJs(content),
+      "/styles.css": generateFallbackCSS(),
+    };
+  }
 }
 
 /** Strip all TypeScript syntax from source code so Sandpack (plain JS) can run it. */

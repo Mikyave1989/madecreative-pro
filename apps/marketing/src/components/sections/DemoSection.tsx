@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import type { Translations } from "@/lib/i18n";
+import { generatePremiumSite } from "@madecreative/shared";
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -442,7 +443,7 @@ export function DemoSection({ t, locale }: DemoSectionProps) {
     // Small pause after last step so "Sito pronto!" is visible
     await new Promise((r) => setTimeout(r, 500));
 
-    const html = generateSiteHtml(name, sector, city);
+    const html = generatePremiumSite({ name, sector, city });
     setGeneratedHtml(html);
     setDemoState("success");
   }

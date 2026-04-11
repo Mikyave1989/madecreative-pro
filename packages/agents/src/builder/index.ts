@@ -1,7 +1,7 @@
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 import { BaseAgent, type AgentContext } from "../base-agent.js";
 import type { AgentResult } from "@madecreative/shared";
-import { getTemplateConfig } from "@madecreative/shared";
+import { getTemplateConfig, generatePremiumSite } from "@madecreative/shared";
 import { prisma } from "@madecreative/db";
 import { builderTools } from "./tools.js";
 import { BUILDER_SYSTEM_PROMPT, buildBuilderUserPrompt } from "./prompt.js";
@@ -798,25 +798,23 @@ export class BuilderAgent extends BaseAgent {
           }
         }
 
-        // Also generate static HTML for Vercel deploy (static hosting, no Node.js needed)
-        const htmlContent = generateStaticHtml({
-          businessName: projectData.businessName,
+        // Generate premium HTML via shared universal generator (same quality everywhere)
+        const htmlContent = generatePremiumSite({
+          name: projectData.businessName,
+          sector,
           tagline: projectData.tagline,
-          heroTitle: projectData.heroTitle,
-          heroSubtitle: projectData.heroSubtitle,
-          aboutText: projectData.aboutText ?? "",
-          cta: projectData.cta,
-          metaTitle: projectData.metaTitle,
-          metaDescription: projectData.metaDescription,
+          description: projectData.description,
+          heroImage: heroImageUrl,
           address: projectData.address,
           phone: projectData.phone,
           email: projectData.email,
-          heroImageUrl,
-          colors,
-          sector,
-          fontHeading: fonts.heading,
-          fontBody: fonts.body,
-          googleFontsUrl: fonts.fontsUrl,
+          city: (businessData["city"] as string) ?? undefined,
+          googleRating: projectData.googleRating,
+          reviewCount: projectData.reviewCount,
+          services: projectData.menuItems?.flatMap(cat =>
+            cat.items.map(item => ({ icon: "✨", name: item.name, desc: item.description }))
+          ),
+          galleryImages: projectData.galleryImages,
         });
 
         // Save to temp dir

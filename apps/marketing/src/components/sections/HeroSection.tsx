@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Translations } from "@/lib/i18n";
+import { generatePremiumSite } from "@madecreative/shared";
 
 const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.madecreative.pro";
 
@@ -286,7 +287,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         // Generate preview site based on detected sector
         const siteName = json.data.title?.split(/[|–—·]/).shift()?.trim() || url.replace(/https?:\/\//, "").split("/")[0]?.replace("www.", "") || "Il tuo sito";
         const sector = detectSector(json.data.title ?? "", url);
-        const html = generateMiniPreview(siteName, sector);
+        const html = generatePremiumSite({ name: siteName, sector });
         setPreviewHtml(html);
         setShowPreview(false);
       } else {
