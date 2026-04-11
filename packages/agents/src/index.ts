@@ -8,3 +8,41 @@ export { OutreachAgent, analyzeReply } from "./outreach/index.js";
 export type { ReplyAnalysisResult } from "./outreach/index.js";
 export { ChatbotAgent } from "./chatbot/index.js";
 export { QaAgent } from "./qa/index.js";
+
+// ─── Design Pipeline ──────────────────────────────────────────────────────────
+export {
+  DesignPipelineOrchestrator,
+  SiteResearchAgent,
+  StitchClient,
+  getStitchClient,
+  PREMIUM_ANIMATIONS,
+  PREMIUM_COMPONENT_VARIANTS,
+  SECTOR_VARIANT_PREFERENCES,
+  getVariantForSection,
+  collectEffectsCss,
+  collectEffectsJs,
+  getAllEffectsForSite,
+} from "./design/index.js";
+
+export type {
+  DesignSpec,
+  DesignPipelineInput,
+  DesignPipelineOutput,
+  ColorSystem,
+  TypographySystem,
+  LayoutSystem,
+  AnimationSystem,
+  AnimationPreset,
+  ComponentVariant,
+  SectionDefinition,
+  BrandAsset,
+  ScrapedContent,
+  StitchScreen,
+  StitchDesignSystem,
+} from "./design/index.js";
+
+export {
+  DesignSpecSchema,
+  DesignPipelineInputSchema,
+  DesignPipelineOutputSchema,
+} from "./design/index.js";

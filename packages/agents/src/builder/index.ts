@@ -6,6 +6,9 @@ import { builderTools } from "./tools.js";
 import { BUILDER_SYSTEM_PROMPT, buildBuilderUserPrompt } from "./prompt.js";
 import { BuilderInputSchema } from "./types.js";
 import type { Photo, ColorPalette } from "./types.js";
+import { DesignPipelineOrchestrator } from "../design/orchestrator.js";
+import { getAllEffectsForSite, getVariantForSection } from "../design/ui-components.js";
+import type { DesignSpec } from "../design/types.js";
 
 // ─── Sector Default Palettes ─────────────────────────────────────────────────
 
@@ -510,6 +513,456 @@ function generateStaticHtml(params: {
       entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
     }, { threshold: 0.15 });
     reveals.forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>`;
+}
+
+// ─── Helper: generate PREMIUM HTML from DesignSpec ──────────────────────────
+// This is the new generator that uses the full DesignSpec with premium effects,
+// Aceternity/Magic UI-inspired animations, and consistent design across channels.
+
+function generatePremiumHtml(params: {
+  designSpec: DesignSpec;
+  effectsCss: string;
+  effectsJs: string;
+  slug: string;
+}): string {
+  const { designSpec: ds, effectsCss, effectsJs, slug } = params;
+  const c = ds.colors;
+  const t = ds.typography;
+  const content = ds.content;
+  const heroImg = ds.assets.heroImage?.url ?? ds.assets.photos[0]?.url ?? "";
+  const logoUrl = ds.assets.logo?.url;
+
+  // Convert hex to RGB for CSS variables
+  function hexToRgb(hex: string): string {
+    const h = hex.replace("#", "");
+    if (h.length < 6) return "0,0,0";
+    return `${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)}`;
+  }
+
+  // Build gallery HTML from photos
+  const galleryPhotos = ds.assets.photos
+    .filter((p) => p.type !== "logo")
+    .slice(0, 8);
+
+  const galleryHtml = galleryPhotos.length > 0
+    ? galleryPhotos.map((photo, i) =>
+      `<div class="img-hover-container reveal-up" style="--stagger-index:${i}">
+        <img src="${photo.url}" alt="${photo.alt ?? ds.business.name}" loading="lazy" width="${photo.width ?? ""}" height="${photo.height ?? ""}">
+      </div>`
+    ).join("\n          ")
+    : "";
+
+  // Build services/menu HTML from scraped content
+  const services = ds.scrapedContent?.services ?? ds.scrapedContent?.menuItems ?? [];
+  const servicesHtml = services.slice(0, 6).map((svc, i) =>
+    `<div class="service-card spotlight-container reveal-up" style="--stagger-index:${i}">
+            <h3 style="font-family:'${t.headingFont}',serif; font-size:${t.scale.h4}; color:${c.primary}; margin-bottom:0.5rem;">${svc.name}</h3>
+            ${svc.description ? `<p style="color:${c.textMuted}; line-height:1.6; font-size:0.95rem;">${svc.description}</p>` : ""}
+            ${svc.price ? `<p style="color:${c.accent}; font-weight:600; margin-top:0.5rem;">${svc.price}</p>` : ""}
+          </div>`
+  ).join("\n          ");
+
+  // Build testimonials HTML
+  const testimonials = ds.scrapedContent?.testimonials ?? [];
+  const testimonialsHtml = testimonials.slice(0, 3).map((t_item, i) =>
+    `<div class="testimonial-card reveal-up" style="--stagger-index:${i}">
+            <div style="font-size:2.5rem; color:${c.accent}; font-family:Georgia,serif; line-height:1; margin-bottom:0.75rem;">&ldquo;</div>
+            <p style="color:${c.text}; line-height:1.7; font-size:0.95rem; margin-bottom:1rem;">${t_item.text}</p>
+            ${t_item.author ? `<p style="font-weight:600; color:${c.primary}; font-size:0.85rem;">${t_item.author}</p>` : ""}
+            ${t_item.rating ? `<p style="color:${c.accent}; font-size:0.8rem;">${"★".repeat(Math.round(t_item.rating))}${"☆".repeat(5 - Math.round(t_item.rating))}</p>` : ""}
+          </div>`
+  ).join("\n          ");
+
+  // Contact info
+  const phone = ds.scrapedContent?.phones?.[0] ?? ds.business.name;
+  const email = ds.scrapedContent?.emails?.[0] ?? "";
+  const address = ds.scrapedContent?.address ?? "";
+
+  // Social links
+  const socialLinks = ds.scrapedContent?.socialLinks ?? {};
+  const socialHtml = Object.entries(socialLinks)
+    .map(([platform, url]) => `<a href="${url}" target="_blank" rel="noopener" style="color:${c.accent}; text-decoration:none; text-transform:capitalize;">${platform}</a>`)
+    .join(" &nbsp;·&nbsp; ");
+
+  // Language-aware labels
+  const lang = ds.business.language.slice(0, 2);
+  const labels: Record<string, Record<string, string>> = {
+    it: { about: "Chi Siamo", services: "Servizi", gallery: "Galleria", testimonials: "Dicono di Noi", contact: "Contatti", address: "Indirizzo", phone: "Telefono", email: "Email", followUs: "Seguici" },
+    de: { about: "Über Uns", services: "Leistungen", gallery: "Galerie", testimonials: "Kundenstimmen", contact: "Kontakt", address: "Adresse", phone: "Telefon", email: "E-Mail", followUs: "Folgen Sie uns" },
+    fr: { about: "À Propos", services: "Services", gallery: "Galerie", testimonials: "Témoignages", contact: "Contact", address: "Adresse", phone: "Téléphone", email: "E-mail", followUs: "Suivez-nous" },
+    es: { about: "Quiénes Somos", services: "Servicios", gallery: "Galería", testimonials: "Testimonios", contact: "Contacto", address: "Dirección", phone: "Teléfono", email: "Correo", followUs: "Síguenos" },
+    en: { about: "About Us", services: "Services", gallery: "Gallery", testimonials: "Testimonials", contact: "Contact", address: "Address", phone: "Phone", email: "Email", followUs: "Follow Us" },
+  };
+  const l = labels[lang] ?? labels["it"]!;
+
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${content.metaTitle}</title>
+  <meta name="description" content="${content.metaDescription}">
+  <meta property="og:title" content="${content.metaTitle}">
+  <meta property="og:description" content="${content.metaDescription}">
+  ${heroImg ? `<meta property="og:image" content="${heroImg}">` : ""}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="${t.googleFontsUrl}" rel="stylesheet">
+  <style>
+    :root {
+      --color-primary: ${c.primary};
+      --color-secondary: ${c.secondary};
+      --color-accent: ${c.accent};
+      --color-bg: ${c.background};
+      --color-surface: ${c.surface};
+      --color-text: ${c.text};
+      --color-text-muted: ${c.textMuted};
+      --color-border: ${c.border};
+      --font-heading: '${t.headingFont}', serif;
+      --font-body: '${t.bodyFont}', sans-serif;
+      --accent-rgb: ${hexToRgb(c.accent)};
+      --bg-rgb: ${hexToRgb(c.background)};
+      --primary-rgb: ${hexToRgb(c.primary)};
+      --radius-sm: ${ds.layout.borderRadius.sm};
+      --radius-md: ${ds.layout.borderRadius.md};
+      --radius-lg: ${ds.layout.borderRadius.lg};
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+    body {
+      overflow-x: hidden;
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: ${t.bodyWeight};
+      line-height: ${t.lineHeight.body};
+    }
+    img { max-width: 100%; height: auto; display: block; }
+    a { color: inherit; text-decoration: none; transition: opacity 0.2s; }
+    a:hover { opacity: 0.85; }
+
+    /* ── Glass Navigation ── */
+    .glass-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 ${ds.layout.containerPadding}; height: 72px;
+      background: transparent;
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    .glass-nav.scrolled {
+      background: rgba(var(--bg-rgb), 0.88);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+    }
+    .nav-brand {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      color: #fff;
+      transition: color 0.4s;
+    }
+    .glass-nav.scrolled .nav-brand { color: var(--color-primary); }
+    .nav-links { display: flex; gap: 2rem; align-items: center; }
+    .nav-links a {
+      font-size: 0.82rem; color: rgba(255,255,255,0.85);
+      letter-spacing: 0.05em; transition: color 0.4s;
+    }
+    .glass-nav.scrolled .nav-links a { color: var(--color-text-muted); }
+    .nav-cta {
+      background: var(--color-accent) !important;
+      color: var(--color-primary) !important;
+      font-weight: 700; padding: 0.5rem 1.2rem;
+      border-radius: var(--radius-sm);
+    }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center;
+      position: relative; overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: -10%;
+      background-image: url('${heroImg}');
+      background-size: cover; background-position: center;
+      will-change: transform;
+    }
+    .hero-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.2) 100%);
+    }
+    .hero-content {
+      position: relative; z-index: 2;
+      max-width: ${ds.layout.maxWidth}; margin: 0 auto;
+      padding: 5rem ${ds.layout.containerPadding} 3rem;
+      width: 100%;
+    }
+    .hero-tagline {
+      font-size: ${t.scale.xs}; font-weight: 600; color: var(--color-accent);
+      letter-spacing: ${t.letterSpacing.label}; text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+    .hero-title {
+      font-family: var(--font-heading);
+      font-size: ${t.scale.hero};
+      font-weight: ${t.headingWeight};
+      color: #ffffff; line-height: ${t.lineHeight.heading};
+      margin-bottom: 1.5rem; max-width: 750px;
+    }
+    .hero-divider {
+      width: 60px; height: 2px;
+      background: var(--color-accent); margin-bottom: 1.5rem;
+    }
+    .hero-subtitle {
+      font-size: 1.1rem; color: rgba(255,255,255,0.72);
+      line-height: 1.7; max-width: 520px; margin-bottom: 2.5rem;
+    }
+
+    /* ── Sections ── */
+    section { padding: ${ds.layout.sectionPadding} ${ds.layout.containerPadding}; }
+    .container { max-width: ${ds.layout.maxWidth}; margin: 0 auto; }
+    .section-label {
+      font-size: ${t.scale.xs}; font-weight: 600; color: var(--color-accent);
+      letter-spacing: ${t.letterSpacing.label}; text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: ${t.scale.h2}; color: var(--color-primary);
+      font-weight: ${t.headingWeight}; margin-bottom: 1.5rem;
+      line-height: ${t.lineHeight.heading};
+    }
+    .section-divider {
+      width: 50px; height: 1px;
+      background: var(--color-accent); margin-bottom: 2rem;
+    }
+
+    /* ── About ── */
+    .about { background: var(--color-surface); }
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: ${ds.layout.gap.xl}; align-items: center; }
+    .about-text { font-size: 1rem; line-height: ${t.lineHeight.body}; color: var(--color-text); }
+
+    /* ── Services Grid ── */
+    .services-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: ${ds.layout.gap.lg};
+    }
+    .service-card {
+      padding: 2rem; border-radius: var(--radius-md);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .service-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+    }
+
+    /* ── Gallery ── */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: ${ds.layout.gap.md};
+    }
+    .gallery-grid img {
+      width: 100%; height: 280px; object-fit: cover;
+      border-radius: var(--radius-md);
+    }
+
+    /* ── Testimonials ── */
+    .testimonials-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: ${ds.layout.gap.lg};
+    }
+    .testimonial-card {
+      padding: 2rem; border-radius: var(--radius-md);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+    }
+
+    /* ── Stats ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: ${ds.layout.gap.md}; margin-top: 2rem; }
+    .stat-card { padding: 1.5rem; text-align: center; border-radius: var(--radius-sm); }
+    .stat-card:nth-child(odd) { background: var(--color-primary); }
+    .stat-card:nth-child(even) { background: var(--color-surface); border: 1px solid var(--color-border); }
+    .stat-value {
+      font-family: var(--font-heading); font-size: 2.2rem;
+      font-weight: 500; margin-bottom: 0.25rem;
+    }
+    .stat-card:nth-child(odd) .stat-value { color: var(--color-accent); }
+    .stat-card:nth-child(even) .stat-value { color: var(--color-primary); }
+    .stat-label { font-size: 0.78rem; }
+    .stat-card:nth-child(odd) .stat-label { color: rgba(255,255,255,0.6); }
+    .stat-card:nth-child(even) .stat-label { color: var(--color-text-muted); }
+
+    /* ── Contact ── */
+    .contact-section { background: var(--color-primary); }
+    .contact-section .section-label { color: var(--color-accent); }
+    .contact-section .section-title { color: #ffffff; }
+    .contact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: ${ds.layout.gap.lg}; }
+    .contact-item-label {
+      font-size: 0.7rem; color: var(--color-accent);
+      letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 0.5rem;
+    }
+    .contact-item-value {
+      font-size: 0.95rem; color: rgba(255,255,255,0.8);
+      line-height: 1.6;
+    }
+
+    /* ── Footer ── */
+    footer {
+      background: #050505; color: rgba(255,255,255,0.35);
+      padding: 2.5rem ${ds.layout.containerPadding};
+      text-align: center; font-size: 0.8rem;
+    }
+    footer a { color: var(--color-accent); }
+
+    /* ── Premium Effects CSS ── */
+    ${effectsCss}
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .about-grid { grid-template-columns: 1fr; }
+      .contact-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .nav-links { display: none; }
+      .hero-content { padding: 5rem 1.5rem 3rem; }
+    }
+  </style>
+</head>
+<body class="grain-overlay">
+  <div class="scroll-progress"></div>
+
+  <!-- Navigation -->
+  <nav class="glass-nav" id="main-nav">
+    ${logoUrl
+      ? `<a href="#" class="nav-brand"><img src="${logoUrl}" alt="${ds.business.name}" style="height:36px;"></a>`
+      : `<a href="#" class="nav-brand">${ds.business.name}</a>`
+    }
+    <div class="nav-links">
+      <a href="#about">${l["about"]}</a>
+      ${servicesHtml ? `<a href="#services">${l["services"]}</a>` : ""}
+      ${galleryHtml ? `<a href="#gallery">${l["gallery"]}</a>` : ""}
+      <a href="#contact">${l["contact"]}</a>
+      <a href="#contact" class="nav-cta magnetic-btn">${content.ctaPrimary}</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero parallax-container" id="hero">
+    <div class="hero-bg parallax-bg"></div>
+    <div class="hero-overlay"></div>
+    <div class="aurora-bg"></div>
+    <div class="hero-content">
+      <p class="hero-tagline">${content.tagline}</p>
+      <h1 class="hero-title char-reveal">${content.heroTitle}</h1>
+      <div class="hero-divider"></div>
+      <p class="hero-subtitle">${content.heroSubtitle}</p>
+      <a href="#contact" class="magnetic-btn" style="background:var(--color-accent); color:var(--color-primary); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em;">${content.ctaPrimary}</a>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section class="about" id="about">
+    <div class="container">
+      <div class="about-grid">
+        <div class="reveal-up">
+          <p class="section-label">${l["about"]}</p>
+          <h2 class="section-title">${ds.business.name}</h2>
+          <div class="section-divider"></div>
+          <p class="about-text">${content.aboutText}</p>
+        </div>
+        <div class="stats-grid stagger-children reveal-scale">
+          <div class="stat-card"><p class="stat-value count-up">${ds.business.googleRating?.toFixed(1) ?? "5.0"}</p><p class="stat-label">Google Rating</p></div>
+          <div class="stat-card"><p class="stat-value count-up">${ds.business.reviewCount ?? "100"}+</p><p class="stat-label">Reviews</p></div>
+          <div class="stat-card"><p class="stat-value count-up">15+</p><p class="stat-label">Years</p></div>
+          <div class="stat-card"><p class="stat-value count-up">500+</p><p class="stat-label">Clients</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  ${servicesHtml ? `
+  <!-- Services -->
+  <section id="services">
+    <div class="container">
+      <p class="section-label">${l["services"]}</p>
+      <h2 class="section-title">${l["services"]}</h2>
+      <div class="section-divider"></div>
+      <div class="services-grid stagger-children">
+        ${servicesHtml}
+      </div>
+    </div>
+  </section>` : ""}
+
+  ${galleryHtml ? `
+  <!-- Gallery -->
+  <section id="gallery" style="background:var(--color-surface);">
+    <div class="container">
+      <p class="section-label">${l["gallery"]}</p>
+      <h2 class="section-title">${l["gallery"]}</h2>
+      <div class="section-divider"></div>
+      <div class="gallery-grid stagger-children">
+        ${galleryHtml}
+      </div>
+    </div>
+  </section>` : ""}
+
+  ${testimonialsHtml ? `
+  <!-- Testimonials -->
+  <section id="testimonials">
+    <div class="container">
+      <p class="section-label">${l["testimonials"]}</p>
+      <h2 class="section-title">${l["testimonials"]}</h2>
+      <div class="section-divider"></div>
+      <div class="testimonials-grid stagger-children">
+        ${testimonialsHtml}
+      </div>
+    </div>
+  </section>` : ""}
+
+  <!-- Contact -->
+  <section class="contact-section" id="contact">
+    <div class="container">
+      <p class="section-label">${l["contact"]}</p>
+      <h2 class="section-title">${l["contact"]}</h2>
+      <div class="section-divider"></div>
+      <div class="contact-grid">
+        ${address ? `<div class="reveal-up">
+          <p class="contact-item-label">${l["address"]}</p>
+          <p class="contact-item-value">${address}</p>
+        </div>` : ""}
+        ${phone ? `<div class="reveal-up">
+          <p class="contact-item-label">${l["phone"]}</p>
+          <a href="tel:${phone}" class="contact-item-value">${phone}</a>
+        </div>` : ""}
+        ${email ? `<div class="reveal-up">
+          <p class="contact-item-label">${l["email"]}</p>
+          <a href="mailto:${email}" class="contact-item-value">${email}</a>
+        </div>` : ""}
+      </div>
+      ${socialHtml ? `<div style="margin-top:2rem;" class="reveal-up">
+        <p class="contact-item-label">${l["followUs"]}</p>
+        <p style="margin-top:0.5rem;">${socialHtml}</p>
+      </div>` : ""}
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; ${new Date().getFullYear()} ${ds.business.name}. All rights reserved.</p>
+    <p style="margin-top:0.5rem; font-size:0.7rem; opacity:0.5;">
+      Powered by <a href="https://madecreative.pro" target="_blank">MadeCreative</a>
+    </p>
+  </footer>
+
+  <script>
+    // ── Premium Effects JS ──
+    ${effectsJs}
   </script>
 </body>
 </html>`;
@@ -1074,6 +1527,7 @@ export class BuilderAgent extends BaseAgent {
         id: string;
         isProspect: boolean;
         existingPhotoUrls?: string[];
+        topReviews?: string[];
       } | null = null;
 
       if (parsed.data.prospectId) {
@@ -1132,11 +1586,196 @@ export class BuilderAgent extends BaseAgent {
         return { success: false, error, apiCost: 0, tokensUsed: 0, durationMs: 0, toolCalls: [] };
       }
 
-      await this.updateProgress(15);
-      this.log("info", "Builder agent: starting build", {
+      await this.updateProgress(10);
+      this.log("info", "Builder agent: starting design pipeline", {
         business: businessData.companyName,
         sector: businessData.sector,
       });
+
+      // ─── NEW: Run the Design Pipeline first ─────────────────────────
+      // This runs: Research → Stitch → UI Components → Content
+      // and produces a unified DesignSpec for all channels.
+      const designPipeline = new DesignPipelineOrchestrator();
+      let designSpec: DesignSpec | null = null;
+
+      try {
+        this.log("info", "Running design pipeline (research → stitch → UI → content)");
+        const pipelineResult = await designPipeline.execute(
+          {
+            clientId: parsed.data.clientId,
+            prospectId: parsed.data.prospectId,
+            websiteUrl: businessData.website ?? undefined,
+            language: businessData.language,
+            templateSlug: parsed.data.templateSlug,
+            customizations: parsed.data.customizations,
+          },
+          {
+            companyName: businessData.companyName,
+            sector: businessData.sector,
+            country: businessData.country,
+            language: businessData.language,
+            city: businessData.city,
+            description: businessData.description,
+            website: businessData.website,
+            googleRating: businessData.googleRating,
+            reviewCount: businessData.reviewCount,
+            phone: businessData.phone,
+            email: businessData.email,
+            address: businessData.address,
+            existingPhotoUrls: businessData.existingPhotoUrls,
+            topReviews: businessData.topReviews,
+          },
+        );
+
+        designSpec = pipelineResult.designSpec;
+
+        if (pipelineResult.warnings.length > 0) {
+          for (const w of pipelineResult.warnings) {
+            this.log("warn", `Design pipeline warning: ${w}`);
+          }
+        }
+
+        this.log("info", `Design pipeline complete: ${designSpec.assets.photos.length} photos, ` +
+          `${designSpec.sections.length} sections, ` +
+          `stitch: ${designSpec.stitch ? "yes" : "no"}, ` +
+          `colors from: ${designSpec.colors.extractedFrom ?? "defaults"}`);
+      } catch (pipelineErr) {
+        this.log("warn", `Design pipeline failed, falling back to legacy builder: ${
+          pipelineErr instanceof Error ? pipelineErr.message : String(pipelineErr)
+        }`);
+      }
+
+      await this.updateProgress(40);
+
+      // ─── Generate site using DesignSpec or legacy flow ──────────────
+      if (designSpec) {
+        // Use the DesignSpec to build the site with premium effects
+        this.log("info", "Building site from DesignSpec with premium UI effects");
+
+        const slug = generateSlug(businessData.companyName, businessData.city);
+
+        // Collect all premium effects CSS/JS
+        const { css: effectsCss, js: effectsJs } = getAllEffectsForSite(
+          designSpec.sections.map((s) => ({
+            type: s.type,
+            variant: s.variant,
+          })),
+        );
+
+        // Build premium HTML using DesignSpec
+        const htmlContent = generatePremiumHtml({
+          designSpec,
+          effectsCss,
+          effectsJs,
+          slug,
+        });
+
+        await this.updateProgress(70);
+
+        // Save to temp dir
+        const outputDir = `/tmp/preview-${slug}`;
+        try {
+          const fs = await import("fs/promises");
+          await fs.mkdir(outputDir, { recursive: true });
+          await fs.writeFile(`${outputDir}/index.html`, htmlContent, "utf-8");
+          // Also save DesignSpec as JSON for portal/campaign to consume
+          await fs.writeFile(`${outputDir}/design-spec.json`, JSON.stringify(designSpec, null, 2), "utf-8");
+          this.log("info", `Files saved to ${outputDir}`);
+        } catch (fsErr) {
+          this.log("warn", `Could not save files: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`);
+        }
+
+        // Deploy
+        const { url, warning } = await deployToVercel(slug, htmlContent);
+        if (warning) this.log("warn", warning);
+
+        await this.updateProgress(85);
+
+        // Take screenshots
+        let screenshotDesktop: string | undefined;
+        let screenshotMobile: string | undefined;
+        if (url) {
+          try {
+            const { chromium } = await import("playwright");
+            const browser = await chromium.launch({ args: ["--no-sandbox"] });
+            const desktopPage = await browser.newPage();
+            await desktopPage.setViewportSize({ width: 1440, height: 900 });
+            await desktopPage.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+            await desktopPage.waitForTimeout(1500);
+            const desktopBuf = await desktopPage.screenshot({ fullPage: false });
+            await desktopPage.close();
+
+            const mobilePage = await browser.newPage();
+            await mobilePage.setViewportSize({ width: 390, height: 844 });
+            await mobilePage.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+            await mobilePage.waitForTimeout(1500);
+            const mobileBuf = await mobilePage.screenshot({ fullPage: false });
+            await mobilePage.close();
+            await browser.close();
+
+            const fs = await import("fs/promises");
+            await fs.writeFile(`${outputDir}/screenshot-desktop.jpg`, desktopBuf);
+            await fs.writeFile(`${outputDir}/screenshot-mobile.jpg`, mobileBuf);
+            screenshotDesktop = `${outputDir}/screenshot-desktop.jpg`;
+            screenshotMobile = `${outputDir}/screenshot-mobile.jpg`;
+          } catch (ssErr) {
+            this.log("warn", `Screenshot failed: ${ssErr instanceof Error ? ssErr.message : String(ssErr)}`);
+          }
+        }
+
+        // Update prospect/client record
+        if (businessData.isProspect && url) {
+          await prisma.prospect.update({
+            where: { id: businessData.id },
+            data: {
+              previewSiteUrl: url,
+              previewGeneratedAt: new Date(),
+              status: "PREVIEW_GENERATED",
+            },
+          });
+        }
+
+        await this.updateProgress(95);
+
+        const output = {
+          businessId: businessData.id,
+          isProspect: businessData.isProspect,
+          sector: businessData.sector,
+          designSpec: { id: designSpec.id, version: designSpec.version },
+          previewUrl: url,
+          screenshotDesktop,
+          screenshotMobile,
+          photoCount: designSpec.assets.photos.length,
+          photosOriginal: designSpec.assets.photoSources.original,
+          photosStock: designSpec.assets.photoSources.stock,
+          stitchEnabled: !!designSpec.stitch,
+          stitchScreens: designSpec.stitch?.screens.length ?? 0,
+          premiumEffects: designSpec.animations.premiumEffects.length,
+          colorsExtractedFrom: designSpec.colors.extractedFrom,
+          status: url ? "PREVIEW_READY" : "BUILD_ONLY",
+          apiCost: this.totalCost,
+          durationMs: Date.now() - startTime,
+        };
+
+        await this.markJobCompleted(output);
+        this.log("info", "Builder agent: completed with design pipeline", {
+          business: businessData.companyName,
+          previewUrl: url,
+        });
+
+        return {
+          success: true,
+          data: output,
+          apiCost: this.totalCost,
+          tokensUsed: this.totalInputTokens + this.totalOutputTokens,
+          durationMs: Date.now() - startTime,
+          toolCalls: this.toolCalls,
+        };
+      }
+
+      // ─── Legacy flow (fallback) ────────────────────────────────────
+      this.log("info", "Using legacy builder flow (design pipeline unavailable)");
+      await this.updateProgress(15);
 
       const userPrompt = buildBuilderUserPrompt({
         businessName: businessData.companyName,
@@ -1176,7 +1815,7 @@ export class BuilderAgent extends BaseAgent {
       };
 
       await this.markJobCompleted(output);
-      this.log("info", "Builder agent: completed successfully", {
+      this.log("info", "Builder agent: completed with legacy flow", {
         business: businessData.companyName,
       });
 

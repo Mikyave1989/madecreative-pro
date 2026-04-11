@@ -57,6 +57,14 @@ const ENV_VARS: EnvVar[] = [
     secret: true,
   },
 
+  // ── Google Stitch (AI UI Design) ─────────────────────────────────────────
+  {
+    key: "STITCH_API_KEY",
+    description: "Google Stitch API key for AI-powered UI generation (optional, 350 free/month)",
+    required: false,
+    secret: true,
+  },
+
   // ── Email ─────────────────────────────────────────────────────────────────
   {
     key: "RESEND_API_KEY",
