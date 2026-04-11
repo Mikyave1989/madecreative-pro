@@ -60,8 +60,11 @@ export class StitchClient {
     if (this.initialized) return this.sdk !== null;
 
     try {
-      const mod = await import("@google/stitch-sdk");
-      this.sdk = mod.stitch ?? mod.default?.stitch ?? mod.default;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mod: any = await import("@google/stitch-sdk");
+      const sdkExport = mod.stitch ?? mod.default?.stitch ?? mod.default;
+      // Cast to our internal interface — the SDK shape may differ slightly
+      this.sdk = sdkExport as unknown as StitchSDK | null;
 
       if (!this.sdk) {
         console.warn("[StitchClient] SDK loaded but no stitch export found");
@@ -100,7 +103,8 @@ export class StitchClient {
 
     try {
       // Use tool client for project creation
-      const mod = await import("@google/stitch-sdk");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mod: any = await import("@google/stitch-sdk");
       const StitchToolClient = mod.StitchToolClient ?? mod.default?.StitchToolClient;
 
       if (StitchToolClient) {
