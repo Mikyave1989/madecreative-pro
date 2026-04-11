@@ -41,7 +41,7 @@ app.post("/checkout", async (c) => {
     return c.json({ success: false, error: "Invalid JSON body" }, 400);
   }
 
-  const { plan, billing, email, companyName, websiteUrl, locale } = body as {
+  const rawBody = body as {
     plan?: string;
     billing?: string;
     email?: string;
@@ -49,6 +49,14 @@ app.post("/checkout", async (c) => {
     websiteUrl?: string;
     locale?: string;
   };
+
+  // Normalize plan to UPPERCASE (frontend sends lowercase)
+  const plan = rawBody.plan?.toUpperCase();
+  const billing = rawBody.billing?.toLowerCase();
+  const email = rawBody.email;
+  const companyName = rawBody.companyName;
+  const websiteUrl = rawBody.websiteUrl;
+  const locale = rawBody.locale;
 
   const validPlans = ["STARTER", "GROWTH", "PRO"] as const;
   const validBillings = ["monthly", "annual"] as const;
@@ -75,8 +83,13 @@ app.post("/checkout", async (c) => {
   }
 
   // Look up the Stripe price ID from environment
-  const envKey = `STRIPE_PRICE_${plan}_${billing.toUpperCase()}`;
-  const priceId = process.env[envKey];
+  // Try multiple naming conventions:
+  //   STRIPE_PRICE_STARTER_MONTHLY → STRIPE_STARTER_PRICE_ID → STRIPE_PRICE_ID
+  const priceId =
+    process.env[`STRIPE_PRICE_${plan}_${billing.toUpperCase()}`] ??
+    process.env[`STRIPE_${plan}_PRICE_ID`] ??
+    process.env[`STRIPE_PRICE_${plan}`] ??
+    process.env["STRIPE_PRICE_ID"];
 
   if (!priceId) {
     return c.json(
