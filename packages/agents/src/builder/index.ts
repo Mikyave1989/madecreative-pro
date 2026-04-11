@@ -7,6 +7,7 @@ import { builderTools } from "./tools.js";
 import { BUILDER_SYSTEM_PROMPT, buildBuilderUserPrompt } from "./prompt.js";
 import { BuilderInputSchema } from "./types.js";
 import type { Photo, ColorPalette } from "./types.js";
+import { generateNextJsProject, type ProjectData } from "./generate-project.js";
 
 // ─── Sector Default Palettes (from shared template configs) ──────────────────
 
@@ -741,18 +742,75 @@ export class BuilderAgent extends BaseAgent {
         const heroImageUrl = photos[0]?.["url"] as string | undefined ??
           `https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1600&auto=format&fit=crop`;
 
-        const htmlContent = generateStaticHtml({
+        // Generate premium Next.js project with React components + Framer Motion
+        const projectData: ProjectData = {
           businessName: (businessData["businessName"] as string) ?? "Business",
           tagline: (businessData["tagline"] as string) ?? "",
+          description: (businessData["description"] as string) ?? (businessData["heroSubtitle"] as string) ?? "",
+          aboutText: (businessData["aboutText"] as string) ?? undefined,
           heroTitle: (businessData["heroTitle"] as string) ?? (businessData["businessName"] as string) ?? "Business",
           heroSubtitle: (businessData["heroSubtitle"] as string) ?? "",
-          aboutText: (businessData["aboutText"] as string) ?? "",
+          heroImage: heroImageUrl,
           cta: (businessData["cta"] as string) ?? "Contattaci",
           metaTitle: (businessData["metaTitle"] as string) ?? (businessData["businessName"] as string) ?? "Business",
           metaDescription: (businessData["metaDescription"] as string) ?? "",
           address: (businessData["address"] as string) ?? "Su richiesta",
           phone: (businessData["phone"] as string) ?? "Su richiesta",
           email: (businessData["email"] as string) ?? "info@business.com",
+          website: (businessData["website"] as string) ?? undefined,
+          sector,
+          language: (businessData["language"] as string) ?? "it",
+          colors,
+          galleryImages: photos.slice(0, 6).map((p) => ({ url: p["url"] as string, alt: (p["alt"] as string) ?? undefined })),
+          menuItems: (businessData["menuItems"] as ProjectData["menuItems"]) ?? undefined,
+          testimonials: (businessData["testimonials"] as ProjectData["testimonials"]) ?? undefined,
+          openingHours: (businessData["openingHours"] as ProjectData["openingHours"]) ?? undefined,
+          googleRating: businessData["googleRating"] as number | undefined,
+          reviewCount: businessData["reviewCount"] as number | undefined,
+          socialLinks: businessData["socialLinks"] as ProjectData["socialLinks"] | undefined,
+          googleMapsEmbedUrl: (businessData["googleMapsEmbedUrl"] as string) ?? undefined,
+        };
+
+        const projectFiles = generateNextJsProject(projectData);
+        this.log("info", `build_preview_site: generated Next.js project with ${Object.keys(projectFiles).length} files`);
+
+        // Save project files to ClientWebsite if prospect has one
+        if (this.agentType === "BUILDER") {
+          try {
+            const prospect = await prisma.prospect.findUnique({
+              where: { id: toolInput["prospectId"] as string ?? "" },
+              select: { clientId: true },
+            });
+            if (prospect?.clientId) {
+              await prisma.clientWebsite.upsert({
+                where: { clientId: prospect.clientId },
+                update: { files: projectFiles },
+                create: {
+                  clientId: prospect.clientId,
+                  files: projectFiles,
+                  domain: slug,
+                  pages: projectFiles,
+                },
+              });
+            }
+          } catch {
+            // Non-critical — project files saved but client record may not exist yet
+          }
+        }
+
+        // Also generate static HTML for Vercel deploy (static hosting, no Node.js needed)
+        const htmlContent = generateStaticHtml({
+          businessName: projectData.businessName,
+          tagline: projectData.tagline,
+          heroTitle: projectData.heroTitle,
+          heroSubtitle: projectData.heroSubtitle,
+          aboutText: projectData.aboutText ?? "",
+          cta: projectData.cta,
+          metaTitle: projectData.metaTitle,
+          metaDescription: projectData.metaDescription,
+          address: projectData.address,
+          phone: projectData.phone,
+          email: projectData.email,
           heroImageUrl,
           colors,
           sector,

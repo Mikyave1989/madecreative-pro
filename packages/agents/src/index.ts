@@ -4,6 +4,8 @@ export { startOrchestrator, createOrchestratorWorker } from "./orchestrator.js";
 export { ScraperAgent } from "./scraper/index.js";
 export { AnalyzerAgent } from "./analyzer/index.js";
 export { BuilderAgent } from "./builder/index.js";
+export { generateNextJsProject } from "./builder/generate-project.js";
+export type { ProjectData } from "./builder/generate-project.js";
 export { OutreachAgent, analyzeReply } from "./outreach/index.js";
 export type { ReplyAnalysisResult } from "./outreach/index.js";
 export { ChatbotAgent } from "./chatbot/index.js";

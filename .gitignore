@@ -53,3 +53,4 @@ reference-repos/
 scripts/
 
 .vercel
+.claude/settings.local.json
