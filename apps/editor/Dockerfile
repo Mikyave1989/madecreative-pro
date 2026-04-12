@@ -1,3 +1,5 @@
+# MadeCreative Editor — built from bolt.diy
+# Cache bust: v2
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
