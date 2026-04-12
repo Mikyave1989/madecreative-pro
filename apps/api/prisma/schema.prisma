@@ -38,6 +38,9 @@ model Prospect {
   painPoints         Json?
   suggestedServices  Json?
   aiAnalysis         String?
+  photoUrls          Json?           // string[] — original photos from Google Maps / website
+  logoUrl            String?         // original logo URL extracted from website
+  photoQuality       Int?            // 0-100 overall quality score of original photos
   previewSiteUrl     String?
   previewGeneratedAt DateTime?
   status             String          @default("SCRAPED")
@@ -120,6 +123,8 @@ model ClientWebsite {
   domain           String
   subdomain        String?
   designTokens     Json?
+  originalPhotos   Json?           // { url, source, quality }[] — curated original photos
+  logoUrl          String?         // final logo: original or AI-generated SVG
   pages            Json
   files            Json?
   deployUrl        String?

@@ -501,6 +501,57 @@ export class AnalyzerAgent extends BaseAgent {
         return parsed;
       }
 
+      // ── 4b. Evaluate Photo Quality ─────────────────────────────────────────
+      case "evaluate_photos": {
+        const prospectId = toolInput["prospectId"] as string;
+        this.log("info", `Evaluating photo quality for prospect ${prospectId}`);
+
+        const p = await prisma.prospect.findUnique({
+          where: { id: prospectId },
+          select: { photoUrls: true, logoUrl: true },
+        });
+
+        const urls = (Array.isArray(p?.photoUrls) ? p.photoUrls : []) as string[];
+        if (urls.length === 0) {
+          return { photoQuality: 0, photoCount: 0, hasLogo: Boolean(p?.logoUrl), recommendation: "NO_PHOTOS" };
+        }
+
+        // Check image accessibility and size via HEAD requests
+        let totalScore = 0;
+        let reachable = 0;
+        for (const url of urls.slice(0, 6)) {
+          try {
+            const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(5000) });
+            if (res.ok) {
+              reachable++;
+              const contentLength = parseInt(res.headers.get("content-length") ?? "0");
+              const contentType = res.headers.get("content-type") ?? "";
+              // > 50KB = likely decent quality, > 200KB = good quality
+              if (contentType.startsWith("image/")) {
+                if (contentLength > 200_000) totalScore += 90;
+                else if (contentLength > 50_000) totalScore += 60;
+                else if (contentLength > 10_000) totalScore += 30;
+                else totalScore += 10; // tiny image, probably low quality
+              }
+            }
+          } catch {
+            // unreachable, score stays 0 for this image
+          }
+        }
+
+        const photoQuality = reachable > 0 ? Math.round(totalScore / reachable) : 0;
+        const recommendation = photoQuality >= 60 ? "USE_ORIGINALS" : photoQuality >= 30 ? "MIX_WITH_STOCK" : "REPLACE_WITH_STOCK";
+
+        // Persist quality score
+        await prisma.prospect.update({
+          where: { id: prospectId },
+          data: { photoQuality },
+        });
+
+        this.log("info", `Photo quality: ${photoQuality}/100, ${reachable}/${urls.length} reachable → ${recommendation}`);
+        return { photoQuality, photoCount: reachable, totalPhotos: urls.length, hasLogo: Boolean(p?.logoUrl), recommendation };
+      }
+
       // ── 5. Update Prospect Status ───────────────────────────────────────────
       case "update_prospect_status": {
         const {
@@ -602,6 +653,8 @@ export class AnalyzerAgent extends BaseAgent {
           sector: true,
           country: true,
           employeeEstimate: true,
+          photoUrls: true,
+          logoUrl: true,
           status: true,
         },
       });

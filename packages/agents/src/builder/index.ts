@@ -1,13 +1,14 @@
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 import { BaseAgent, type AgentContext } from "../base-agent.js";
 import type { AgentResult } from "@madecreative/shared";
-import { getTemplateConfig, generatePremiumSite } from "@madecreative/shared";
+import { getTemplateConfig, generatePremiumSite, generateNextJsProject } from "@madecreative/shared";
+import type { ProjectData } from "@madecreative/shared";
 import { prisma } from "@madecreative/db";
 import { builderTools } from "./tools.js";
 import { BUILDER_SYSTEM_PROMPT, buildBuilderUserPrompt } from "./prompt.js";
 import { BuilderInputSchema } from "./types.js";
 import type { Photo, ColorPalette } from "./types.js";
-import { generateNextJsProject, type ProjectData } from "./generate-project.js";
+// generateNextJsProject + ProjectData now imported from @madecreative/shared
 
 // ─── Sector Default Palettes (from shared template configs) ──────────────────
 
@@ -540,25 +541,51 @@ export class BuilderAgent extends BaseAgent {
         const businessName = (toolInput["businessName"] as string) ?? "";
         const city = (toolInput["city"] as string | undefined) ?? "";
         const existing = (toolInput["existingPhotoUrls"] as string[] | undefined) ?? [];
+        const photoQuality = (toolInput["photoQuality"] as number | undefined) ?? 0;
+        const prospectId = toolInput["prospectId"] as string | undefined;
 
-        const photos: Photo[] = existing.slice(0, 10).map((url) => ({
-          url,
-          source: "google_maps" as const,
-        }));
+        // If we have a prospectId, try to fetch saved photos from DB
+        let dbPhotos: string[] = existing;
+        if (prospectId && dbPhotos.length === 0) {
+          try {
+            const p = await prisma.prospect.findUnique({
+              where: { id: prospectId },
+              select: { photoUrls: true },
+            });
+            if (Array.isArray(p?.photoUrls)) dbPhotos = p.photoUrls as string[];
+          } catch { /* non-fatal */ }
+        }
 
-        // If we don't have enough photos, fetch from Pexels/Unsplash
-        if (photos.length < 5) {
+        const photos: Photo[] = [];
+
+        // Decision: use originals based on quality score
+        // >= 60: use all originals, supplement with stock if < 6
+        // 30-59: use originals + stock mix
+        // < 30: skip originals, use only stock
+        if (photoQuality >= 30 && dbPhotos.length > 0) {
+          const originals = dbPhotos.slice(0, photoQuality >= 60 ? 10 : 3).map((url) => ({
+            url,
+            source: "existing_site" as const,
+            score: photoQuality >= 60 ? 9 : 6,
+            scoreReason: photoQuality >= 60 ? "High quality original photo" : "Acceptable original photo, supplemented with stock",
+          }));
+          photos.push(...originals);
+        }
+
+        // Top up with stock photos if needed
+        const needed = 6 - photos.length;
+        if (needed > 0) {
           const keyword = SECTOR_STOCK_KEYWORDS[sector] ?? `${sector} ${city}`;
-          const pexels = await fetchPexelsPhotos(keyword, 5 - photos.length);
+          const pexels = await fetchPexelsPhotos(keyword, needed);
           photos.push(...pexels);
 
-          if (photos.length < 5) {
-            const unsplash = await fetchStockPhotos(keyword, 5 - photos.length);
+          if (photos.length < 6) {
+            const unsplash = await fetchStockPhotos(keyword, 6 - photos.length);
             photos.push(...unsplash);
           }
         }
 
-        this.log("info", `fetch_business_photos: found ${photos.length} photos`, { sector, businessName });
+        this.log("info", `fetch_business_photos: ${photos.length} photos (${dbPhotos.length} original, quality=${photoQuality})`, { sector, businessName });
         return photos;
       }
 
@@ -811,8 +838,9 @@ export class BuilderAgent extends BaseAgent {
           city: (businessData["city"] as string) ?? undefined,
           googleRating: projectData.googleRating,
           reviewCount: projectData.reviewCount,
+          logoUrl: (businessData["logoUrl"] as string) ?? undefined,
           services: projectData.menuItems?.flatMap(cat =>
-            cat.items.map(item => ({ icon: "✨", name: item.name, desc: item.description }))
+            cat.items.map(item => ({ icon: "\u2728", name: item.name, desc: item.description }))
           ),
           galleryImages: projectData.galleryImages,
         });
@@ -1102,6 +1130,8 @@ export class BuilderAgent extends BaseAgent {
         id: string;
         isProspect: boolean;
         existingPhotoUrls?: string[];
+        logoUrl?: string | null;
+        photoQuality?: number | null;
       } | null = null;
 
       if (parsed.data.prospectId) {
@@ -1128,6 +1158,9 @@ export class BuilderAgent extends BaseAgent {
           address: null,
           id: prospect.id,
           isProspect: true,
+          existingPhotoUrls: Array.isArray(prospect.photoUrls) ? (prospect.photoUrls as string[]) : [],
+          logoUrl: prospect.logoUrl,
+          photoQuality: prospect.photoQuality,
         };
       } else if (parsed.data.clientId) {
         const client = await prisma.client.findUnique({

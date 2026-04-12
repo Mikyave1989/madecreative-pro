@@ -1,3 +1,17 @@
+/**
+ * Editor Chat — Lovable-style AI code generation
+ *
+ * The AI generates real React/Next.js/Tailwind code via universal file tools:
+ *   write_file  — create or overwrite a project file
+ *   edit_file   — surgical edit (find & replace) in a file
+ *   read_file   — read current file contents
+ *   search_photos — Pexels API for stock photos
+ *   list_files  — list all project files
+ *
+ * Project files stored in ClientWebsite.files (JSON Record<string,string>)
+ * Sandpack renders them in real-time on the frontend.
+ */
+
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { JwtPayload } from "@madecreative/shared";
@@ -8,32 +22,27 @@ type Variables = { jwtPayload: JwtPayload };
 
 const app = new Hono<{ Variables: Variables }>();
 
-// ─── Credit system (Lovable-style variable cost) ─────────────────────────────
+// ─── Credit system ──────────────────────────────────────────────────────────
 
 const PLAN_CREDITS: Record<string, number> = {
-  starter: 100,   // €197/mo — 100 crediti inclusi
-  growth: 250,    // €347/mo — 250 crediti inclusi
-  pro: 500,       // €597/mo — 500 crediti inclusi
+  STARTER: 200,
+  GROWTH: 500,
+  PRO: 1000,
 };
 
-// Variable credit cost based on complexity (like Lovable.dev)
 function estimateCreditCost(toolCalls: string[], isFullBuild = false): number {
-  if (toolCalls.length === 0) return 0.5; // Simple chat
-  if (isFullBuild && toolCalls.length > 0) return 3.0; // Full site build
-  if (toolCalls.includes("generate_with_opus")) return 2.0; // Opus generation
-  if (toolCalls.length >= 3) return 1.5; // Complex multi-tool
-  return 1.0; // Standard edit
+  if (toolCalls.length === 0) return 0.5;
+  if (isFullBuild) return 5.0;
+  if (toolCalls.filter(t => t === "write_file").length >= 5) return 3.0;
+  if (toolCalls.length >= 3) return 1.5;
+  return 1.0;
 }
-
-// ─── Credit helpers (in-memory, Redis in production) ──────────────────────────
 
 const creditStore = new Map<string, { used: number; purchased: number; resetAt: number }>();
 
-function getCredits(clientId: string, plan = "starter"): { remaining: number; used: number; total: number; purchased: number } {
+function getCredits(clientId: string, plan = "STARTER"): { remaining: number; used: number; total: number; purchased: number } {
   const now = Date.now();
   let entry = creditStore.get(clientId);
-
-  // Reset monthly
   if (!entry || now > entry.resetAt) {
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
@@ -42,16 +51,9 @@ function getCredits(clientId: string, plan = "starter"): { remaining: number; us
     entry = { used: 0, purchased, resetAt: nextMonth.getTime() };
     creditStore.set(clientId, entry);
   }
-
-  const planCredits = PLAN_CREDITS[plan] ?? 100;
+  const planCredits = PLAN_CREDITS[plan] ?? 200;
   const total = planCredits + entry.purchased;
-
-  return {
-    remaining: Math.max(0, total - entry.used),
-    used: entry.used,
-    total,
-    purchased: entry.purchased,
-  };
+  return { remaining: Math.max(0, total - entry.used), used: entry.used, total, purchased: entry.purchased };
 }
 
 function deductCredits(clientId: string, amount: number): boolean {
@@ -64,201 +66,56 @@ function deductCredits(clientId: string, amount: number): boolean {
 
 function addPurchasedCredits(clientId: string, amount: number): void {
   const entry = creditStore.get(clientId);
-  if (entry) {
-    entry.purchased += amount;
-  } else {
+  if (entry) { entry.purchased += amount; }
+  else {
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
     creditStore.set(clientId, { used: 0, purchased: amount, resetAt: nextMonth.getTime() });
   }
 }
 
-// ─── Editor tools for Claude ──────────────────────────────────────────────────
+// ─── Universal file tools ───────────────────────────────────────────────────
 
 const EDITOR_TOOLS: Tool[] = [
   {
-    name: "update_hero",
-    description: "Update the hero section: title, description, background image, and CTA button text",
+    name: "write_file",
+    description: "Create or overwrite a file in the project. Use this to create new components, pages, styles, or any file. The path is relative to the project root (e.g. 'app/page.tsx', 'components/Hero.tsx', 'app/globals.css').",
     input_schema: {
       type: "object" as const,
       properties: {
-        heroText: { type: "string", description: "The main hero title (bold, impactful)" },
-        heroDescription: { type: "string", description: "The hero subtitle/description (1-2 sentences)" },
-        heroImage: { type: "string", description: "Background image URL. Use Unsplash: https://images.unsplash.com/photo-ID?w=1200. Pick a relevant photo for the business sector." },
-        heroCtaText: { type: "string", description: "CTA button text, e.g. 'Prenota ora', 'Scopri di più', 'Contattaci'" },
+        path: { type: "string", description: "File path relative to project root (e.g. 'app/page.tsx', 'components/Pricing.tsx')" },
+        content: { type: "string", description: "Complete file content" },
       },
-      required: [],
+      required: ["path", "content"],
     },
   },
   {
-    name: "update_contact",
-    description: "Update contact information (phone, email, address)",
+    name: "edit_file",
+    description: "Make a surgical edit to an existing file. Finds the old_content string and replaces it with new_content. Use this for small changes instead of rewriting the whole file. If the file doesn't exist or old_content isn't found, it fails.",
     input_schema: {
       type: "object" as const,
       properties: {
-        phone: { type: "string", description: "Phone number" },
-        email: { type: "string", description: "Email address" },
-        address: { type: "string", description: "Physical address" },
+        path: { type: "string", description: "File path to edit" },
+        old_content: { type: "string", description: "Exact string to find (must match exactly, including whitespace)" },
+        new_content: { type: "string", description: "Replacement string" },
       },
-      required: [],
+      required: ["path", "old_content", "new_content"],
     },
   },
   {
-    name: "set_whatsapp",
-    description: "Set the WhatsApp number for the floating contact button",
+    name: "read_file",
+    description: "Read the contents of a project file. Use this to understand what's currently in a file before editing it.",
     input_schema: {
       type: "object" as const,
       properties: {
-        whatsappNumber: { type: "string", description: "WhatsApp number with country code (e.g. +39 333 1234567)" },
+        path: { type: "string", description: "File path to read" },
       },
-      required: ["whatsappNumber"],
+      required: ["path"],
     },
   },
   {
-    name: "add_menu_item",
-    description: "Add a product, dish or service to the menu/price list",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        name: { type: "string", description: "Product/dish name" },
-        description: { type: "string", description: "Short description" },
-        price: { type: "string", description: "Price (e.g. '€12.50')" },
-        category: { type: "string", description: "Category (e.g. Antipasti, Primi, Dessert)" },
-      },
-      required: ["name", "price"],
-    },
-  },
-  {
-    name: "remove_menu_item",
-    description: "Remove a menu item by name",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        name: { type: "string", description: "Exact name of the item to remove" },
-      },
-      required: ["name"],
-    },
-  },
-  {
-    name: "update_hours",
-    description: "Update opening hours for specific days",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        updates: {
-          type: "array",
-          description: "Array of day updates",
-          items: {
-            type: "object",
-            properties: {
-              day: { type: "string", enum: ["lun", "mar", "mer", "gio", "ven", "sab", "dom"] },
-              open: { type: "string", description: "Opening time (HH:MM)" },
-              close: { type: "string", description: "Closing time (HH:MM)" },
-              closed: { type: "boolean", description: "Whether the day is closed" },
-            },
-            required: ["day"],
-          },
-        },
-      },
-      required: ["updates"],
-    },
-  },
-  {
-    name: "update_about",
-    description: "Update the about section with text and optional image",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        text: { type: "string", description: "About section text (2-4 paragraphs, professional tone)" },
-        aboutImage: { type: "string", description: "Image URL for the about section. Use Unsplash." },
-      },
-      required: ["text"],
-    },
-  },
-  {
-    name: "set_gallery",
-    description: "Set the photo gallery with multiple images. Use Unsplash URLs for professional photos relevant to the business.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        images: {
-          type: "array",
-          description: "Array of gallery images (4-8 images recommended)",
-          items: {
-            type: "object",
-            properties: {
-              url: { type: "string", description: "Image URL from Unsplash (use ?w=800 for quality)" },
-              caption: { type: "string", description: "Short caption for the image" },
-            },
-            required: ["url"],
-          },
-        },
-      },
-      required: ["images"],
-    },
-  },
-  {
-    name: "set_testimonials",
-    description: "Set customer testimonials/reviews for social proof",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        testimonials: {
-          type: "array",
-          description: "Array of testimonials (3-5 recommended)",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string", description: "Customer name" },
-              text: { type: "string", description: "Review text (1-3 sentences)" },
-              rating: { type: "number", description: "Rating 1-5" },
-            },
-            required: ["name", "text", "rating"],
-          },
-        },
-      },
-      required: ["testimonials"],
-    },
-  },
-  {
-    name: "set_services",
-    description: "Set the services/offerings section with descriptions and optional prices",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        services: {
-          type: "array",
-          description: "Array of services (3-6 recommended)",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string", description: "Service name" },
-              description: { type: "string", description: "Service description (1-2 sentences)" },
-              icon: { type: "string", description: "Emoji icon for the service" },
-              price: { type: "string", description: "Price if applicable (e.g. 'Da €50')" },
-            },
-            required: ["name", "description"],
-          },
-        },
-      },
-      required: ["services"],
-    },
-  },
-  {
-    name: "search_photos",
-    description: "Search for professional stock photos. Returns URLs. Use descriptive queries in English.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        query: { type: "string", description: "Search query in English, e.g. 'italian restaurant interior warm cozy'" },
-        count: { type: "number", description: "Number of photos (1-8, default 4)" },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "get_current_content",
-    description: "Get the current website content to understand what's on the site",
+    name: "list_files",
+    description: "List all files in the project. Returns an array of file paths.",
     input_schema: {
       type: "object" as const,
       properties: {},
@@ -266,189 +123,169 @@ const EDITOR_TOOLS: Tool[] = [
     },
   },
   {
-    name: "generate_with_opus",
-    description: "Delegate complex content generation to Claude Opus (powerful model). Use this for: writing full menus with many items, creating professional descriptions, generating marketing copy, bulk content creation. Returns generated content that you should then apply using the other tools.",
+    name: "search_photos",
+    description: "Search for professional stock photos via Pexels. Returns URLs. Use descriptive queries in English.",
     input_schema: {
       type: "object" as const,
       properties: {
-        task: {
-          type: "string",
-          description: "What to generate (e.g. 'Create a full Italian restaurant menu with 20 dishes across 4 categories with descriptions and prices')",
-        },
-        context: {
-          type: "string",
-          description: "Business context: name, sector, city, style, any preferences the user mentioned",
-        },
-        outputFormat: {
-          type: "string",
-          enum: ["menu_items", "text", "hero_content"],
-          description: "Expected output format",
-        },
+        query: { type: "string", description: "Search query in English, e.g. 'italian restaurant interior'" },
+        count: { type: "number", description: "Number of photos (1-8, default 4)" },
       },
-      required: ["task", "context", "outputFormat"],
+      required: ["query"],
     },
   },
 ];
 
-// ─── System prompt ────────────────────────────────────────────────────────────
+// ─── System prompt ──────────────────────────────────────────────────────────
 
-function buildSystemPrompt(businessName: string, sector: string, language: string, currentContent: Record<string, unknown>): string {
+function buildSystemPrompt(businessName: string, sector: string, language: string, projectFiles: Record<string, string>): string {
   const lang = language === "de" ? "German" : language === "it" ? "Italian" : language === "fr" ? "French" : language === "es" ? "Spanish" : language === "nl" ? "Dutch" : language === "pt" ? "Portuguese" : "English";
 
-  // Summarise current state for AI memory
-  const existingSections: string[] = [];
-  if (currentContent.heroText) existingSections.push(`hero (title: "${currentContent.heroText}")`);
-  if (currentContent.aboutText) existingSections.push("about");
-  if (currentContent.phone || currentContent.email || currentContent.address) existingSections.push("contact");
-  if (currentContent.hours) existingSections.push("hours");
-  if (Array.isArray(currentContent.menuItems) && currentContent.menuItems.length > 0) existingSections.push(`menu (${(currentContent.menuItems as unknown[]).length} items)`);
-  if (Array.isArray(currentContent.services) && currentContent.services.length > 0) existingSections.push(`services (${(currentContent.services as unknown[]).length} items)`);
-  if (Array.isArray(currentContent.gallery) && currentContent.gallery.length > 0) existingSections.push(`gallery (${(currentContent.gallery as unknown[]).length} images)`);
-  if (Array.isArray(currentContent.testimonials) && currentContent.testimonials.length > 0) existingSections.push(`testimonials (${(currentContent.testimonials as unknown[]).length})`);
-  if (currentContent.whatsappNumber) existingSections.push(`whatsapp (${currentContent.whatsappNumber})`);
+  const fileList = Object.keys(projectFiles);
+  const hasFiles = fileList.length > 0;
 
-  const currentStateBlock = existingSections.length > 0
-    ? `\nCURRENT WEBSITE STATE:\nThe following sections already exist: ${existingSections.join(", ")}.\n`
-    : `\nCURRENT WEBSITE STATE: No content yet. The site is blank.\n`;
+  return `You are a world-class AI full-stack developer. You build stunning, production-ready websites using React, Next.js 14 (App Router), and Tailwind CSS. Always respond in ${lang}.
 
-  return `You are a PREMIUM AI website builder for "${businessName}" (sector: ${sector}).
-You build STUNNING, professional websites worth €10,000+. Always respond in ${lang}.
-${currentStateBlock}
-CRITICAL RULES — FOLLOW EXACTLY:
+PROJECT: "${businessName}" (sector: ${sector})
+${hasFiles ? `\nEXISTING FILES (${fileList.length}):\n${fileList.map(f => `  - ${f}`).join("\n")}\n\nUse read_file to see the contents of any file before editing.` : "\nThis is a NEW project with no files yet."}
 
-1. NEVER ask questions. NEVER say you can't do something. BUILD IMMEDIATELY.
+═══════════════════════════════════════════════
+ARCHITECTURE & TECH STACK
+═══════════════════════════════════════════════
 
-2. For single-section edits, ONLY call the ONE relevant tool. Do NOT touch other sections.
+You build with:
+- **Next.js 14** App Router (app/ directory, page.tsx for routes, layout.tsx for shared UI)
+- **React 18** with hooks (useState, useEffect, useRef, useCallback)
+- **Tailwind CSS** for all styling (never inline styles, never CSS modules)
+- **Framer Motion** for animations (motion.div, AnimatePresence, useInView, useScroll)
+- **TypeScript** (.tsx files)
+- **Lucide React** for icons (import { Icon } from "lucide-react")
 
-3. When the user says "build/create/make my site" — call ALL these tools in sequence:
-   a) update_hero — professional title + compelling description + heroImage + CTA text
-   b) update_about — 2-3 paragraphs about the business + aboutImage
-   c) update_contact — use provided info or invent realistic placeholders
-   d) update_hours — typical hours for the sector
-   e) set_services OR add_menu_item (multiple times) — 6-10 items with realistic descriptions and prices
-   f) set_gallery — 4-6 professional photos relevant to the sector
-   g) set_testimonials — 3-4 realistic customer reviews with 4-5 star ratings
-   h) set_whatsapp — if number provided
+Project structure:
+\`\`\`
+app/layout.tsx          — Root layout (html, body, fonts, shared nav/footer)
+app/page.tsx            — Homepage
+app/[route]/page.tsx    — Additional pages
+app/globals.css         — Tailwind directives + custom CSS
+components/*.tsx        — Reusable React components
+lib/*.ts                — Utilities, data, types
+tailwind.config.ts      — Tailwind configuration
+package.json            — Dependencies
+\`\`\`
 
-4. IMAGES: Use the search_photos tool to find SPECIFIC, relevant photos.
-   - For hero: search "[business type] [specific detail]" e.g. "neapolitan pizza oven wood fire"
-   - For gallery: multiple specific searches, not one generic
-   - For about: "[business type] team chef owner"
-   NEVER use hardcoded URLs. Always search with search_photos tool.
+═══════════════════════════════════════════════
+CRITICAL RULES
+═══════════════════════════════════════════════
 
-5. CONTENT QUALITY: Write like a professional copywriter.
-   - Hero: impactful, emotional, sector-appropriate
-   - About: storytelling, passion, expertise, unique selling points
-   - Services/Menu: detailed descriptions, not just names
-   - Testimonials: realistic, varied, specific details
+1. **NEVER ask questions. NEVER say you can't. BUILD IMMEDIATELY.**
+   If the user says "build me an e-commerce", you create ALL the files right now.
 
-6. After building, respond with a SHORT summary (2-3 lines) of what was created.
+2. **ALWAYS use Tailwind CSS classes.** Never use inline styles. Use responsive prefixes (sm:, md:, lg:). Use dark: for dark mode support.
 
-7. For subsequent edits (change title, add item, etc.) — use tools directly, don't ask.
+3. **Use "use client" directive** on components that use hooks, event handlers, or browser APIs. Server components by default.
 
-You are building websites that look and feel like €10,000+ professional sites with real photos, compelling copy, and complete content.`;
+4. **For images**, use the search_photos tool to find real photos, then use <img> with the URL. Use Tailwind classes for sizing/styling.
+
+5. **File-first approach:** Each component in its own file. Import and compose in page.tsx.
+
+6. **When editing existing code**, use edit_file for small changes (swap a text, change a color). Use write_file to rewrite entire files when making big structural changes.
+
+7. **When building a full site from scratch**, create files in this order:
+   a) tailwind.config.ts
+   b) app/globals.css (with @tailwind directives)
+   c) lib/data.ts (business data, content)
+   d) components/ (Nav, Hero, Footer, etc.)
+   e) app/layout.tsx (imports Nav, Footer)
+   f) app/page.tsx (imports components)
+   g) Additional pages (app/about/page.tsx, etc.)
+
+8. **Code quality:** Production-ready. Proper TypeScript types. Accessible (aria labels, semantic HTML). Mobile-first responsive. Performance-optimized (lazy loading, proper image sizes).
+
+9. **You can build ANYTHING:** Landing pages, multi-page sites, e-commerce with product grids and cart, dashboards, blogs, portfolios, SaaS landing pages, booking systems — ANYTHING the user asks for.
+
+10. **After building**, respond with a SHORT summary (2-3 lines) of what you created/changed.
+
+═══════════════════════════════════════════════
+TAILWIND CONFIG (always include this in new projects)
+═══════════════════════════════════════════════
+
+\`\`\`typescript
+// tailwind.config.ts
+import type { Config } from "tailwindcss";
+const config: Config = {
+  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
+  theme: {
+    extend: {
+      fontFamily: {
+        heading: ["var(--font-heading)"],
+        body: ["var(--font-body)"],
+      },
+    },
+  },
+  plugins: [],
+};
+export default config;
+\`\`\`
+
+═══════════════════════════════════════════════
+DESIGN PRINCIPLES
+═══════════════════════════════════════════════
+
+- **€10k+ visual quality**: generous whitespace, professional typography scale, subtle shadows and borders
+- **Micro-interactions**: hover effects on buttons/cards, smooth transitions, scroll reveals
+- **Premium color palettes**: sector-appropriate colors with accent for CTAs
+- **Mobile-first**: every section must look perfect on 375px screens
+- **Performance**: lazy load images below the fold, minimize re-renders
+- **Accessibility**: proper heading hierarchy, focus states, color contrast
+
+You are the best website builder in the world. Build something incredible.`;
 }
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
-
-// GET /portal/editor/chat/credits — check remaining credits
-app.get("/credits", async (c) => {
-  const clientId = c.get("jwtPayload").sub;
-  const credits = getCredits(clientId);
-  return c.json({
-    success: true,
-    data: {
-      ...credits,
-      costInfo: {
-        chat: 0.5,
-        simpleEdit: 1.0,
-        complexEdit: 1.5,
-        opusGeneration: 2.0,
-      },
-      topUpOptions: [
-        { credits: 50, price: "€9.90", priceId: "price_topup_50" },
-        { credits: 150, price: "€24.90", priceId: "price_topup_150" },
-        { credits: 500, price: "€69.90", priceId: "price_topup_500" },
-      ],
-    },
-  });
-});
-
-// POST /portal/editor/chat/buy-credits — purchase additional credits
-app.post("/buy-credits", async (c) => {
-  const { prisma } = await import("@madecreative/db");
-  const clientId = c.get("jwtPayload").sub;
-  const body = await c.req.json().catch(() => null);
-  const pack = body?.pack as string;
-
-  const PACKS: Record<string, { credits: number; amount: number }> = {
-    "50": { credits: 50, amount: 990 },
-    "150": { credits: 150, amount: 2490 },
-    "500": { credits: 500, amount: 6990 },
-  };
-
-  const selected = PACKS[pack];
-  if (!selected) {
-    return c.json({ success: false, error: "Invalid credit pack" }, 400);
-  }
-
-  // Create Stripe checkout for credit purchase
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { stripeCustomerId: true, email: true },
-  });
-
-  if (!client) return c.json({ success: false, error: "Client not found" }, 404);
-
-  const stripeKey = process.env["STRIPE_SECRET_KEY"];
-  if (!stripeKey) {
-    // Fallback: add credits directly (dev mode)
-    addPurchasedCredits(clientId, selected.credits);
-    return c.json({
-      success: true,
-      data: { credits: getCredits(clientId), added: selected.credits },
-    });
-  }
-
-  try {
-    const { default: Stripe } = await import("stripe");
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" });
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer: client.stripeCustomerId ?? undefined,
-      customer_email: !client.stripeCustomerId ? client.email : undefined,
-      line_items: [{
-        price_data: {
-          currency: "eur",
-          product_data: { name: `${selected.credits} Crediti AI — MadeCreative` },
-          unit_amount: selected.amount,
-        },
-        quantity: 1,
-      }],
-      metadata: { clientId, creditPack: pack, credits: String(selected.credits) },
-      success_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/editor?credits=purchased`,
-      cancel_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/editor`,
-    });
-
-    return c.json({
-      success: true,
-      data: { checkoutUrl: session.url, credits: selected.credits },
-    });
-  } catch (err) {
-    return c.json({ success: false, error: "Payment error" }, 500);
-  }
-});
-
-// ─── Shared tool handler factory ─────────────────────────────────────────────
+// ─── Tool handler ───────────────────────────────────────────────────────────
 
 function buildToolHandler(
-  claude: Awaited<ReturnType<typeof import("@madecreative/ai")["getClaudeClient"]>>,
-  currentContent: Record<string, unknown>,
-  contentUpdates: Record<string, unknown>
+  projectFiles: Record<string, string>,
+  fileUpdates: Record<string, string | null>,
 ): (toolName: string, toolInput: Record<string, unknown>) => Promise<unknown> {
   return async (toolName: string, toolInput: Record<string, unknown>) => {
     switch (toolName) {
+      case "write_file": {
+        const path = toolInput["path"] as string;
+        const content = toolInput["content"] as string;
+        if (!path || content === undefined) return { error: "path and content required" };
+        // Store the update
+        fileUpdates[path] = content;
+        projectFiles[path] = content;
+        return { success: true, path, size: content.length };
+      }
+
+      case "edit_file": {
+        const path = toolInput["path"] as string;
+        const oldContent = toolInput["old_content"] as string;
+        const newContent = toolInput["new_content"] as string;
+        if (!path || !oldContent) return { error: "path and old_content required" };
+
+        const current = projectFiles[path];
+        if (!current) return { error: `File not found: ${path}` };
+        if (!current.includes(oldContent)) return { error: `old_content not found in ${path}. Use read_file first to see the current content.` };
+
+        const updated = current.replace(oldContent, newContent);
+        fileUpdates[path] = updated;
+        projectFiles[path] = updated;
+        return { success: true, path, size: updated.length };
+      }
+
+      case "read_file": {
+        const path = toolInput["path"] as string;
+        const content = projectFiles[path];
+        if (!content) return { error: `File not found: ${path}`, availableFiles: Object.keys(projectFiles) };
+        return { path, content, size: content.length };
+      }
+
+      case "list_files": {
+        return { files: Object.keys(projectFiles), count: Object.keys(projectFiles).length };
+      }
+
       case "search_photos": {
         const input = toolInput as { query: string; count?: number };
         const count = Math.min(input.count ?? 4, 8);
@@ -458,149 +295,11 @@ function buildToolHandler(
           const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(input.query)}&per_page=${count}&size=medium`, {
             headers: { Authorization: apiKey },
           });
-          const data = await res.json() as { photos: Array<{ src: { large: string; medium: string }; photographer: string; alt: string }> };
+          const data = await res.json() as { photos: Array<{ src: { large: string; medium: string }; alt: string }> };
           return { photos: (data.photos ?? []).map(p => ({ url: p.src.large, alt: p.alt || input.query })) };
         } catch {
           return { photos: [], error: "Search failed" };
         }
-      }
-
-      case "get_current_content":
-        return currentContent;
-
-      case "generate_with_opus": {
-        const input = toolInput as { task: string; context: string; outputFormat: string };
-        const opusResult = await claude.callWithText(
-          [{ role: "user", content: `${input.task}\n\nContext: ${input.context}\n\nOutput format: Return ONLY valid JSON. For menu_items: {"items":[{"name":"...","description":"...","price":"€...","category":"..."}]}. For text: {"text":"..."}. For hero_content: {"heroText":"...","heroDescription":"..."}` }],
-          {
-            system: "You are a premium content generator for business websites. Generate high-quality, professional content. Always return valid JSON only, no markdown or explanation.",
-            model: "claude-opus-4-5" as const,
-            maxTokens: 4096,
-          }
-        );
-        try {
-          const jsonMatch = opusResult.text.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) return { error: "Failed to parse Opus output" };
-          const generated = JSON.parse(jsonMatch[0]);
-
-          if (input.outputFormat === "menu_items" && generated.items) {
-            const items = (generated.items as Array<{ name: string; description?: string; price: string; category?: string }>).map((item) => ({
-              id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-              name: item.name,
-              description: item.description ?? "",
-              price: item.price,
-              category: item.category ?? "",
-              imageUrl: null,
-            }));
-            const existing = (currentContent.menuItems as Array<Record<string, unknown>>) ?? [];
-            contentUpdates.menuItems = [...existing, ...items];
-            currentContent.menuItems = contentUpdates.menuItems;
-            return { success: true, generatedItems: items.length, items: items.map((i) => `${i.name} - ${i.price}`) };
-          }
-          if (input.outputFormat === "hero_content" && generated.heroText) {
-            contentUpdates.heroText = generated.heroText;
-            contentUpdates.heroDescription = generated.heroDescription;
-            return { success: true, heroText: generated.heroText, heroDescription: generated.heroDescription };
-          }
-          if (input.outputFormat === "text" && generated.text) {
-            contentUpdates.heroDescription = generated.text;
-            return { success: true, text: generated.text };
-          }
-          return { success: true, raw: generated };
-        } catch {
-          return { error: "Failed to parse generated content", raw: opusResult.text.substring(0, 500) };
-        }
-      }
-
-      case "update_hero": {
-        const input = toolInput as { heroText?: string; heroDescription?: string; heroImage?: string; heroCtaText?: string };
-        if (input.heroText) contentUpdates.heroText = input.heroText;
-        if (input.heroDescription) contentUpdates.heroDescription = input.heroDescription;
-        if (input.heroImage) contentUpdates.heroImage = input.heroImage;
-        if (input.heroCtaText) contentUpdates.heroCtaText = input.heroCtaText;
-        return { success: true, updated: "hero" };
-      }
-
-      case "update_contact": {
-        const input = toolInput as { phone?: string; email?: string; address?: string };
-        if (input.phone) contentUpdates.phone = input.phone;
-        if (input.email) contentUpdates.email = input.email;
-        if (input.address) contentUpdates.address = input.address;
-        return { success: true, updated: Object.keys(input) };
-      }
-
-      case "set_whatsapp": {
-        const input = toolInput as { whatsappNumber: string };
-        contentUpdates.whatsappNumber = input.whatsappNumber;
-        return { success: true, whatsappNumber: input.whatsappNumber };
-      }
-
-      case "add_menu_item": {
-        const input = toolInput as { name: string; description?: string; price: string; category?: string };
-        const menuItems = ((currentContent.menuItems as Array<Record<string, unknown>>) ?? []).slice();
-        menuItems.push({
-          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-          name: input.name,
-          description: input.description ?? "",
-          price: input.price,
-          category: input.category ?? "",
-          imageUrl: null,
-        });
-        contentUpdates.menuItems = menuItems;
-        currentContent.menuItems = menuItems;
-        return { success: true, added: input.name, totalItems: menuItems.length };
-      }
-
-      case "remove_menu_item": {
-        const input = toolInput as { name: string };
-        const items = ((currentContent.menuItems as Array<Record<string, unknown>>) ?? []);
-        const filtered = items.filter((i) => (i.name as string).toLowerCase() !== input.name.toLowerCase());
-        contentUpdates.menuItems = filtered;
-        currentContent.menuItems = filtered;
-        return { success: true, removed: input.name, remaining: filtered.length };
-      }
-
-      case "update_hours": {
-        const input = toolInput as { updates: Array<{ day: string; open?: string; close?: string; closed?: boolean }> };
-        const hours = (currentContent.hours as Record<string, Record<string, unknown>>) ?? {};
-        for (const u of input.updates) {
-          if (!hours[u.day]) hours[u.day] = { open: "09:00", close: "18:00", closed: false };
-          const dayEntry = hours[u.day]!;
-          if (u.open !== undefined) dayEntry.open = u.open;
-          if (u.close !== undefined) dayEntry.close = u.close;
-          if (u.closed !== undefined) dayEntry.closed = u.closed;
-        }
-        contentUpdates.hours = hours;
-        currentContent.hours = hours;
-        return { success: true, updatedDays: input.updates.map((u) => u.day) };
-      }
-
-      case "update_about": {
-        const input = toolInput as { text: string; aboutImage?: string };
-        contentUpdates.aboutText = input.text;
-        if (input.aboutImage) contentUpdates.aboutImage = input.aboutImage;
-        return { success: true, updated: "about" };
-      }
-
-      case "set_gallery": {
-        const input = toolInput as { images: Array<{ url: string; caption?: string }> };
-        contentUpdates.gallery = input.images;
-        currentContent.gallery = input.images;
-        return { success: true, totalImages: input.images.length };
-      }
-
-      case "set_testimonials": {
-        const input = toolInput as { testimonials: Array<{ name: string; text: string; rating: number }> };
-        contentUpdates.testimonials = input.testimonials;
-        currentContent.testimonials = input.testimonials;
-        return { success: true, totalTestimonials: input.testimonials.length };
-      }
-
-      case "set_services": {
-        const input = toolInput as { services: Array<{ name: string; description: string; icon?: string; price?: string }> };
-        contentUpdates.services = input.services;
-        currentContent.services = input.services;
-        return { success: true, totalServices: input.services.length };
       }
 
       default:
@@ -609,288 +308,100 @@ function buildToolHandler(
   };
 }
 
-// POST /portal/editor/chat — send a message to the AI editor
-app.post("/", async (c) => {
-  const { prisma } = await import("@madecreative/db");
-  const { getClaudeClient } = await import("@madecreative/ai");
+// ─── Routes ─────────────────────────────────────────────────────────────────
+
+// GET /portal/editor/chat/credits
+app.get("/credits", async (c) => {
   const clientId = c.get("jwtPayload").sub;
+  const { prisma } = await import("@madecreative/db");
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { plan: true } });
+  const credits = getCredits(clientId, client?.plan ?? "STARTER");
+  return c.json({ success: true, data: { ...credits, topUpOptions: [
+    { credits: 100, price: "\u20ac4.90", priceId: "price_topup_100" },
+    { credits: 300, price: "\u20ac9.90", priceId: "price_topup_300" },
+    { credits: 1000, price: "\u20ac24.90", priceId: "price_topup_1000" },
+  ] } });
+});
 
-  // Check credits
-  const credits = getCredits(clientId);
-  if (credits.remaining < 0.5) {
-    return c.json({
-      success: false,
-      error: "Crediti esauriti. Acquista crediti aggiuntivi per continuare.",
-      credits,
-      buyCreditsUrl: `https://buy.stripe.com/credits`, // TODO: create Stripe link
-    }, 402);
-  }
-
+// POST /portal/editor/chat/buy-credits
+app.post("/buy-credits", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
   const body = await c.req.json().catch(() => null);
-  if (!body?.message || typeof body.message !== "string") {
-    return c.json({ success: false, error: "Message is required" }, 400);
+  const pack = body?.pack as string;
+  const PACKS: Record<string, { credits: number; amount: number }> = {
+    "100": { credits: 100, amount: 490 },
+    "300": { credits: 300, amount: 990 },
+    "1000": { credits: 1000, amount: 2490 },
+  };
+  const selected = PACKS[pack];
+  if (!selected) return c.json({ success: false, error: "Invalid credit pack" }, 400);
+
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { stripeCustomerId: true, email: true } });
+  if (!client) return c.json({ success: false, error: "Client not found" }, 404);
+
+  const stripeKey = process.env["STRIPE_SECRET_KEY"];
+  if (!stripeKey) {
+    addPurchasedCredits(clientId, selected.credits);
+    return c.json({ success: true, data: { credits: getCredits(clientId), added: selected.credits } });
   }
-
-  const userMessage = body.message as string;
-  const conversationHistory = (body.history ?? []) as MessageParam[];
-
-  // Load client and website data
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    include: { website: true },
-  });
-
-  if (!client) {
-    return c.json({ success: false, error: "Client not found" }, 404);
-  }
-
-  // Current website content (from pages JSON)
-  let currentContent: Record<string, unknown> = {};
-  if (client.website?.pages) {
-    try {
-      currentContent = typeof client.website.pages === "string"
-        ? JSON.parse(client.website.pages as string)
-        : (client.website.pages as Record<string, unknown>);
-    } catch {
-      currentContent = {};
-    }
-  }
-
-  // Build messages
-  const systemPrompt = buildSystemPrompt(
-    client.companyName,
-    client.sector,
-    client.language,
-    currentContent
-  );
-
-  const messages: MessageParam[] = [
-    ...conversationHistory.slice(-20), // Keep last 20 messages for context
-    { role: "user", content: userMessage },
-  ];
-
-  // Intent detection: full site build vs. single edit
-  const isFullBuild = /\b(crea|costruisci|build|make|genera|fai)\b.*\b(sito|site|website|pagina)\b/i.test(userMessage);
-  const editorModel = isFullBuild ? "claude-opus-4-5" as const : "claude-haiku-4-5" as const;
-
-  // Call Claude with tools
-  const claude = getClaudeClient();
-  const contentUpdates: Record<string, unknown> = {};
 
   try {
-    const result = await claude.toolUseLoop(
-      messages,
-      buildToolHandler(claude, currentContent, contentUpdates),
-      {
-        system: systemPrompt,
-        tools: EDITOR_TOOLS,
-        model: editorModel,
-        maxTokens: 4096,
-      }
-    );
-
-    // Save content updates to DB if any changes were made
-    let deployUrl: string | null = client.website?.deployUrl ?? null;
-
-    // Auto-create ClientWebsite if it doesn't exist
-    if (Object.keys(contentUpdates).length > 0 && !client.website) {
-      const { slugify } = await import("../../lib/deploy-site.js");
-      const slug = slugify(client.companyName);
-      client.website = await prisma.clientWebsite.create({
-        data: {
-          clientId,
-          domain: `${slug}.madecreative.pro`,
-          subdomain: slug,
-          pages: contentUpdates as object,
-          deployStatus: "NONE",
-        },
-      });
-    }
-
-    if (Object.keys(contentUpdates).length > 0 && client.website) {
-      // Snapshot current state for rollback
-      const previousContent = JSON.parse(JSON.stringify(currentContent));
-      const snapshots = ((client.website.designTokens as { _snapshots?: Array<{ ts: string; data: object }> })?._snapshots ?? []).slice(-19);
-      snapshots.push({ ts: new Date().toISOString(), data: previousContent });
-
-      const mergedContent = { ...currentContent, ...contentUpdates };
-      await prisma.clientWebsite.update({
-        where: { id: client.website.id },
-        data: {
-          pages: mergedContent as object,
-          designTokens: { ...(client.website.designTokens as object ?? {}), _snapshots: snapshots },
-          deployStatus: "DEPLOYING",
-        },
-      });
-
-      // Auto-deploy: push directly to Vercel
-      try {
-        const { deploySite, slugify } = await import("../../lib/deploy-site.js");
-        const { generateProjectFiles } = await import("../../lib/generate-project.js");
-
-        const subdomain =
-          (client.website.subdomain as string | null | undefined) ??
-          (slugify(client.companyName) || clientId.slice(0, 12));
-
-        // Generate real Next.js project from content
-        const projectBundle = generateProjectFiles({
-          companyName: client.companyName,
-          sector: client.sector,
-          content: mergedContent,
-          subdomain,
-          primaryColor: (mergedContent.primaryColor as string) ?? undefined,
-        });
-
-        // Store project files in DB
-        await prisma.clientWebsite.update({
-          where: { id: client.website.id },
-          data: { files: projectBundle as unknown as object },
-        });
-
-        // Deploy with HTML (reliable) — Next.js project stored in DB for future Sandpack preview
-        const result = await deploySite({
-          clientId,
-          companyName: client.companyName,
-          sector: client.sector,
-          content: mergedContent,
-          subdomain,
-        });
-
-        deployUrl = result.deployUrl;
-
-        await prisma.clientWebsite.update({
-          where: { id: client.website.id },
-          data: {
-            deployUrl: result.deployUrl,
-            vercelProjectId: result.vercelProjectId,
-            deployStatus: "DEPLOYED",
-            lastDeployedAt: new Date(),
-          },
-        });
-
-        console.log(`[EditorChat] Deployed: ${result.deployUrl}`);
-      } catch (deployErr) {
-        const errMsg = deployErr instanceof Error ? deployErr.message : String(deployErr);
-        console.warn("[EditorChat] Deploy failed (non-fatal):", errMsg);
-        await prisma.clientWebsite.update({
-          where: { id: client.website.id },
-          data: { deployStatus: "FAILED" },
-        }).catch(() => {});
-      }
-    }
-
-    // Deduct credits (variable cost like Lovable.dev)
-    const toolNames: string[] = [];
-    for (const m of result.messages) {
-      if (m.role === "assistant" && Array.isArray(m.content)) {
-        for (const b of m.content) {
-          if (typeof b === "object" && "type" in b && b.type === "tool_use" && "name" in b) {
-            toolNames.push(b.name as string);
-          }
-        }
-      }
-    }
-    const creditCost = estimateCreditCost(toolNames, isFullBuild);
-    deductCredits(clientId, creditCost);
-
-    // Extract assistant text
-    const assistantText = result.finalContent
-      .filter((b) => b.type === "text")
-      .map((b) => (b as { type: "text"; text: string }).text)
-      .join("\n");
-
-    // Build response messages for conversation history
-    const newMessages: MessageParam[] = [
-      { role: "user", content: userMessage },
-      { role: "assistant", content: assistantText },
-    ];
-
-    return c.json({
-      success: true,
-      data: {
-        response: assistantText,
-        contentUpdates: Object.keys(contentUpdates).length > 0 ? contentUpdates : null,
-        currentContent: { ...currentContent, ...contentUpdates },
-        deployUrl,
-        newMessages,
-        credits: getCredits(clientId),
-        cost: {
-          inputTokens: result.totalInputTokens,
-          outputTokens: result.totalOutputTokens,
-          totalCost: result.totalCost,
-        },
-      },
+    const { default: Stripe } = await import("stripe");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" });
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      customer: client.stripeCustomerId ?? undefined,
+      customer_email: !client.stripeCustomerId ? client.email : undefined,
+      line_items: [{ price_data: { currency: "eur", product_data: { name: `${selected.credits} Crediti AI` }, unit_amount: selected.amount }, quantity: 1 }],
+      metadata: { clientId, credits: String(selected.credits) },
+      success_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/editor?credits=purchased`,
+      cancel_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/editor`,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[EditorChat] Error:", message);
-    return c.json({ success: false, error: "AI editor error. Please try again." }, 500);
+    return c.json({ success: true, data: { checkoutUrl: session.url, credits: selected.credits } });
+  } catch {
+    return c.json({ success: false, error: "Payment error" }, 500);
   }
 });
 
-// POST /portal/editor/chat/stream — streaming SSE version of the chat endpoint
+// ─── POST /portal/editor/chat/stream — main streaming chat ─────────────────
+
 app.post("/stream", async (c) => {
   const { prisma } = await import("@madecreative/db");
   const { getClaudeClient } = await import("@madecreative/ai");
   const clientId = c.get("jwtPayload").sub;
 
-  // Check credits
-  const credits = getCredits(clientId);
-  if (credits.remaining < 0.5) {
-    return c.json({
-      success: false,
-      error: "Crediti esauriti. Acquista crediti aggiuntivi per continuare.",
-      credits,
-    }, 402);
-  }
+  const client = await prisma.client.findUnique({ where: { id: clientId }, include: { website: true } });
+  if (!client) return c.json({ success: false, error: "Client not found" }, 404);
+
+  const credits = getCredits(clientId, client.plan);
+  if (credits.remaining < 0.5) return c.json({ success: false, error: "Crediti esauriti.", credits }, 402);
 
   const body = await c.req.json().catch(() => null);
-  if (!body?.message || typeof body.message !== "string") {
-    return c.json({ success: false, error: "Message is required" }, 400);
-  }
+  if (!body?.message || typeof body.message !== "string") return c.json({ success: false, error: "Message is required" }, 400);
 
   const userMessage = body.message as string;
   const conversationHistory = (body.history ?? []) as MessageParam[];
 
-  // Load client and website data
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    include: { website: true },
-  });
-
-  if (!client) {
-    return c.json({ success: false, error: "Client not found" }, 404);
-  }
-
-  // Current website content
-  let currentContent: Record<string, unknown> = {};
-  if (client.website?.pages) {
+  // Load project files from DB
+  let projectFiles: Record<string, string> = {};
+  if (client.website?.files) {
     try {
-      currentContent = typeof client.website.pages === "string"
-        ? JSON.parse(client.website.pages as string)
-        : (client.website.pages as Record<string, unknown>);
-    } catch {
-      currentContent = {};
-    }
+      projectFiles = typeof client.website.files === "string"
+        ? JSON.parse(client.website.files as string)
+        : (client.website.files as Record<string, string>);
+    } catch { projectFiles = {}; }
   }
 
-  const systemPrompt = buildSystemPrompt(
-    client.companyName,
-    client.sector,
-    client.language,
-    currentContent
-  );
+  const systemPrompt = buildSystemPrompt(client.companyName, client.sector, client.language, projectFiles);
+  const messages: MessageParam[] = [...conversationHistory.slice(-30), { role: "user", content: userMessage }];
 
-  const messages: MessageParam[] = [
-    ...conversationHistory.slice(-20),
-    { role: "user", content: userMessage },
-  ];
-
-  const isFullBuild = /\b(crea|costruisci|build|make|genera|fai)\b.*\b(sito|site|website|pagina)\b/i.test(userMessage);
-  const editorModel = isFullBuild ? "claude-opus-4-5" as const : "claude-haiku-4-5" as const;
+  // Use Opus for full builds, Sonnet for edits
+  const isFullBuild = /\b(crea|costruisci|build|make|genera|fai|create)\b.*\b(sito|site|website|pagina|page|app|ecommerce|e-commerce|shop|negozio|blog|portfolio|dashboard)\b/i.test(userMessage);
+  const editorModel = isFullBuild ? "claude-sonnet-4-6" as const : "claude-sonnet-4-6" as const;
 
   const claude = getClaudeClient();
-  const contentUpdates: Record<string, unknown> = {};
+  const fileUpdates: Record<string, string | null> = {};
 
   c.header("X-Accel-Buffering", "no");
 
@@ -902,202 +413,227 @@ app.post("/stream", async (c) => {
         messages,
         async (toolName, toolInput) => {
           toolNames.push(toolName);
-          const handler = buildToolHandler(claude, currentContent, contentUpdates);
+          const handler = buildToolHandler(projectFiles, fileUpdates);
           const result = await handler(toolName, toolInput);
 
-          // Stream content updates immediately after each tool mutates state
-          if (Object.keys(contentUpdates).length > 0) {
-            await stream.writeSSE({ data: JSON.stringify({ type: "content_update", updates: { ...contentUpdates } }) });
+          // Stream file updates to frontend for real-time Sandpack preview
+          if (toolName === "write_file" || toolName === "edit_file") {
+            const path = toolInput["path"] as string;
+            await stream.writeSSE({ data: JSON.stringify({
+              type: "file_update",
+              path,
+              content: projectFiles[path],
+            }) });
           }
 
           return result;
         },
-        {
-          system: systemPrompt,
-          tools: EDITOR_TOOLS,
-          model: editorModel,
-          maxTokens: 4096,
-        }
+        { system: systemPrompt, tools: EDITOR_TOOLS, model: editorModel, maxTokens: 16384 }
       );
 
       for await (const event of generator) {
         if (event.type === "done") {
-          // Persist to DB and deploy
+          // Persist file updates to DB
           let deployUrl: string | null = client.website?.deployUrl ?? null;
 
-          if (Object.keys(contentUpdates).length > 0 && !client.website) {
-            const { slugify } = await import("../../lib/deploy-site.js");
-            const slug = slugify(client.companyName);
-            client.website = await prisma.clientWebsite.create({
-              data: {
-                clientId,
-                domain: `${slug}.madecreative.pro`,
-                subdomain: slug,
-                pages: contentUpdates as object,
-                deployStatus: "NONE",
-              },
-            });
-          }
+          if (Object.keys(fileUpdates).length > 0) {
+            // Auto-create website if needed
+            if (!client.website) {
+              const slug = client.companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+              client.website = await prisma.clientWebsite.create({
+                data: { clientId, domain: `${slug}.madecreative.pro`, subdomain: slug, pages: {}, files: projectFiles as unknown as object, deployStatus: "NONE" },
+              });
+            }
 
-          if (Object.keys(contentUpdates).length > 0 && client.website) {
-            const previousContent = JSON.parse(JSON.stringify(currentContent));
-            const snapshots = ((client.website.designTokens as { _snapshots?: Array<{ ts: string; data: object }> })?._snapshots ?? []).slice(-19);
-            snapshots.push({ ts: new Date().toISOString(), data: previousContent });
+            // Snapshot previous state for rollback
+            const previousFiles = client.website.files ?? {};
+            const tokens = (client.website.designTokens ?? {}) as Record<string, unknown>;
+            const snapshots = ((tokens._snapshots as Array<{ ts: string; data: object }>) ?? []).slice(-19);
+            snapshots.push({ ts: new Date().toISOString(), data: previousFiles as object });
 
-            const mergedContent = { ...currentContent, ...contentUpdates };
+            // Save updated project files
             await prisma.clientWebsite.update({
               where: { id: client.website.id },
               data: {
-                pages: mergedContent as object,
-                designTokens: { ...(client.website.designTokens as object ?? {}), _snapshots: snapshots },
+                files: projectFiles as unknown as object,
+                designTokens: { ...tokens, _snapshots: snapshots },
                 deployStatus: "DEPLOYING",
               },
             });
 
+            // Deploy to Vercel
             try {
-              const { deploySite, slugify } = await import("../../lib/deploy-site.js");
-              const { generateProjectFiles } = await import("../../lib/generate-project.js");
+              const { deploySite } = await import("../../lib/deploy-site.js");
+              const subdomain = client.website.subdomain ?? client.companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
 
-              const subdomain =
-                (client.website.subdomain as string | null | undefined) ??
-                (slugify(client.companyName) || clientId.slice(0, 12));
-
-              // Generate real Next.js project from content
-              const projectBundle = generateProjectFiles({
-                companyName: client.companyName,
-                sector: client.sector,
-                content: mergedContent,
-                subdomain,
-                primaryColor: (mergedContent.primaryColor as string) ?? undefined,
-              });
-
-              // Store project files in DB
-              await prisma.clientWebsite.update({
-                where: { id: client.website.id },
-                data: { files: projectBundle as unknown as object },
-              });
-
+              // Deploy the actual project files
               const deployResult = await deploySite({
                 clientId,
                 companyName: client.companyName,
                 sector: client.sector,
-                content: mergedContent,
+                content: projectFiles,
                 subdomain,
               });
+
               deployUrl = deployResult.deployUrl;
               await prisma.clientWebsite.update({
                 where: { id: client.website.id },
-                data: {
-                  deployUrl: deployResult.deployUrl,
-                  vercelProjectId: deployResult.vercelProjectId,
-                  deployStatus: "DEPLOYED",
-                  lastDeployedAt: new Date(),
-                },
+                data: { deployUrl: deployResult.deployUrl, vercelProjectId: deployResult.vercelProjectId, deployStatus: "DEPLOYED", lastDeployedAt: new Date() },
               });
             } catch (deployErr) {
-              const errMsg = deployErr instanceof Error ? deployErr.message : String(deployErr);
-              console.warn("[EditorChat/stream] Deploy failed (non-fatal):", errMsg);
-              await prisma.clientWebsite.update({
-                where: { id: client.website.id },
-                data: { deployStatus: "FAILED" },
-              }).catch(() => {});
+              console.warn("[EditorChat] Deploy failed:", deployErr instanceof Error ? deployErr.message : String(deployErr));
+              await prisma.clientWebsite.update({ where: { id: client.website.id }, data: { deployStatus: "FAILED" } }).catch(() => {});
             }
           }
 
           const creditCost = estimateCreditCost(toolNames, isFullBuild);
           deductCredits(clientId, creditCost);
 
-          await stream.writeSSE({
-            data: JSON.stringify({
-              type: "complete",
-              deployUrl,
-              credits: getCredits(clientId),
-              contentUpdates: Object.keys(contentUpdates).length > 0 ? contentUpdates : null,
-              usage: event.usage,
-            }),
-          });
+          await stream.writeSSE({ data: JSON.stringify({
+            type: "complete",
+            deployUrl,
+            credits: getCredits(clientId, client.plan),
+            files: Object.keys(projectFiles),
+            updatedFiles: Object.keys(fileUpdates),
+            usage: event.usage,
+          }) });
         } else {
           await stream.writeSSE({ data: JSON.stringify(event) });
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error("[EditorChat/stream] Error:", message);
+      console.error("[EditorChat] Error:", err instanceof Error ? err.message : String(err));
       await stream.writeSSE({ data: JSON.stringify({ type: "error", message: "AI editor error. Please try again." }) });
     }
   });
 });
 
-// GET /portal/editor/chat/history — get version history (snapshots)
+// POST /portal/editor/chat — non-streaming fallback
+app.post("/", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { getClaudeClient } = await import("@madecreative/ai");
+  const clientId = c.get("jwtPayload").sub;
+
+  const client = await prisma.client.findUnique({ where: { id: clientId }, include: { website: true } });
+  if (!client) return c.json({ success: false, error: "Client not found" }, 404);
+
+  const credits = getCredits(clientId, client.plan);
+  if (credits.remaining < 0.5) return c.json({ success: false, error: "Crediti esauriti.", credits }, 402);
+
+  const body = await c.req.json().catch(() => null);
+  if (!body?.message) return c.json({ success: false, error: "Message is required" }, 400);
+
+  const userMessage = body.message as string;
+  const conversationHistory = (body.history ?? []) as MessageParam[];
+
+  let projectFiles: Record<string, string> = {};
+  if (client.website?.files) {
+    try { projectFiles = client.website.files as Record<string, string>; } catch { projectFiles = {}; }
+  }
+
+  const systemPrompt = buildSystemPrompt(client.companyName, client.sector, client.language, projectFiles);
+  const messages: MessageParam[] = [...conversationHistory.slice(-30), { role: "user", content: userMessage }];
+
+  const isFullBuild = /\b(crea|costruisci|build|make|genera|fai|create)\b/i.test(userMessage);
+  const claude = getClaudeClient();
+  const fileUpdates: Record<string, string | null> = {};
+
+  try {
+    const result = await claude.toolUseLoop(
+      messages,
+      buildToolHandler(projectFiles, fileUpdates),
+      { system: systemPrompt, tools: EDITOR_TOOLS, model: "claude-sonnet-4-6" as const, maxTokens: 16384 }
+    );
+
+    // Save if files changed
+    if (Object.keys(fileUpdates).length > 0) {
+      if (!client.website) {
+        const slug = client.companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+        client.website = await prisma.clientWebsite.create({
+          data: { clientId, domain: `${slug}.madecreative.pro`, subdomain: slug, pages: {}, files: projectFiles as unknown as object, deployStatus: "NONE" },
+        });
+      }
+      await prisma.clientWebsite.update({
+        where: { id: client.website.id },
+        data: { files: projectFiles as unknown as object },
+      });
+    }
+
+    const toolNames: string[] = [];
+    for (const m of result.messages) {
+      if (m.role === "assistant" && Array.isArray(m.content)) {
+        for (const b of m.content) {
+          if (typeof b === "object" && "type" in b && b.type === "tool_use" && "name" in b) toolNames.push(b.name as string);
+        }
+      }
+    }
+    deductCredits(clientId, estimateCreditCost(toolNames, isFullBuild));
+
+    const assistantText = result.finalContent.filter((b) => b.type === "text").map((b) => (b as { type: "text"; text: string }).text).join("\n");
+
+    return c.json({
+      success: true,
+      data: {
+        response: assistantText,
+        files: projectFiles,
+        updatedFiles: Object.keys(fileUpdates),
+        deployUrl: client.website?.deployUrl ?? null,
+        credits: getCredits(clientId, client.plan),
+      },
+    });
+  } catch (err) {
+    console.error("[EditorChat] Error:", err instanceof Error ? err.message : String(err));
+    return c.json({ success: false, error: "AI editor error" }, 500);
+  }
+});
+
+// GET /portal/editor/chat/history — version history
 app.get("/history", async (c) => {
   const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
-  const website = await prisma.clientWebsite.findUnique({
-    where: { clientId },
-    select: { designTokens: true },
-  });
-  const snapshots = ((website?.designTokens as { _snapshots?: Array<{ ts: string }> })?._snapshots ?? [])
-    .map((s, i) => ({ index: i, timestamp: s.ts }))
-    .reverse();
+  const website = await prisma.clientWebsite.findUnique({ where: { clientId }, select: { designTokens: true } });
+  const snapshots = ((website?.designTokens as { _snapshots?: Array<{ ts: string }> })?._snapshots ?? []).map((s, i) => ({ index: i, timestamp: s.ts })).reverse();
   return c.json({ success: true, data: { versions: snapshots, count: snapshots.length } });
 });
 
-// POST /portal/editor/chat/rollback — restore a previous version
+// POST /portal/editor/chat/rollback — restore previous version
 app.post("/rollback", async (c) => {
   const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const body = await c.req.json().catch(() => null);
   const index = body?.index as number | undefined;
 
-  const website = await prisma.clientWebsite.findUnique({
-    where: { clientId },
-    select: { id: true, designTokens: true, pages: true },
-  });
-
+  const website = await prisma.clientWebsite.findUnique({ where: { clientId }, select: { id: true, designTokens: true, files: true } });
   if (!website) return c.json({ success: false, error: "Website not found" }, 404);
 
   const snapshots = ((website.designTokens as { _snapshots?: Array<{ ts: string; data: object }> })?._snapshots ?? []).slice();
-
-  // Default: rollback to most recent snapshot
   const targetIndex = index ?? snapshots.length - 1;
   const snapshot = snapshots[targetIndex];
-
   if (!snapshot) return c.json({ success: false, error: "No version to restore" }, 404);
 
-  // Save current state as a new snapshot BEFORE restoring (so undo is itself undoable)
-  const currentPages = website.pages ?? {};
+  // Save current as new snapshot before restoring
+  const currentFiles = website.files ?? {};
   const updatedSnapshots = snapshots.filter((_, i) => i !== targetIndex);
-  updatedSnapshots.push({ ts: new Date().toISOString(), data: currentPages as object });
+  updatedSnapshots.push({ ts: new Date().toISOString(), data: currentFiles as object });
 
-  // Restore content and update snapshots
   await prisma.clientWebsite.update({
     where: { id: website.id },
     data: {
-      pages: snapshot.data,
+      files: snapshot.data,
       designTokens: { ...(website.designTokens as object ?? {}), _snapshots: updatedSnapshots },
     },
   });
 
-  // Queue rebuild
-  try {
-    await prisma.agentJob.create({
-      data: {
-        agentType: "BUILDER",
-        status: "QUEUED",
-        clientId,
-        input: { clientId, trigger: "rollback" },
-      },
-    });
-  } catch { /* non-critical */ }
+  return c.json({ success: true, data: { restoredTo: snapshot.ts, files: snapshot.data } });
+});
 
-  return c.json({
-    success: true,
-    data: {
-      restoredTo: snapshot.ts,
-      content: snapshot.data,
-      message: "Versione precedente ripristinata. Il sito si aggiornera in circa 2 minuti.",
-    },
-  });
+// GET /portal/editor/chat/files — get current project files (for code panel)
+app.get("/files", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
+  const website = await prisma.clientWebsite.findUnique({ where: { clientId }, select: { files: true, deployUrl: true } });
+  if (!website) return c.json({ success: true, data: { files: {}, deployUrl: null } });
+  return c.json({ success: true, data: { files: website.files ?? {}, deployUrl: website.deployUrl } });
 });
 
 export default app;

@@ -109,6 +109,21 @@ export const analyzerTools: Tool[] = [
     },
   },
   {
+    name: "evaluate_photos",
+    description:
+      "Evaluate the quality of photos scraped from the prospect's Google Maps listing and website. Checks image resolution and accessibility via HEAD requests. Returns quality score 0-100 and recommendation: USE_ORIGINALS (score >= 60), MIX_WITH_STOCK (30-59), or REPLACE_WITH_STOCK (< 30).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        prospectId: {
+          type: "string",
+          description: "The prospect CUID to evaluate photos for",
+        },
+      },
+      required: ["prospectId"],
+    },
+  },
+  {
     name: "update_prospect_status",
     description:
       "Persist the final analysis results to the database and update the prospect status.",

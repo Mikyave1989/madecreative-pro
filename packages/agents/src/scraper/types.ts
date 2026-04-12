@@ -33,6 +33,7 @@ export const BusinessDataSchema = z.object({
   sector: z.string(),
   hasWebsite: z.boolean(),
   photoUrls: z.array(z.string()).optional(),
+  logoUrl: z.string().url().optional(),
   address: z.string().optional(),
   openingHours: z.string().optional(),
   // kept for backward compat

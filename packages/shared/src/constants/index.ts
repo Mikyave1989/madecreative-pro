@@ -184,14 +184,18 @@ export const LEAD_SCORE = {
 // ─── AI Model Config ──────────────────────────────────────────────────────────
 
 export const AI_MODELS = {
-  DEFAULT: "claude-opus-4-5",
+  DEFAULT: "claude-sonnet-4-6",
   FAST: "claude-haiku-4-5",
-  ANALYSIS: "claude-opus-4-5",
-  GENERATION: "claude-opus-4-5",
+  POWERFUL: "claude-opus-4-6",
+  ANALYSIS: "claude-sonnet-4-6",
+  GENERATION: "claude-sonnet-4-6",
+  EDITOR: "claude-sonnet-4-6",
 } as const;
 
 export const AI_COST_PER_MILLION_TOKENS = {
+  "claude-opus-4-6": { input: 15, output: 75 },
   "claude-opus-4-5": { input: 15, output: 75 },
+  "claude-sonnet-4-6": { input: 3, output: 15 },
   "claude-haiku-4-5": { input: 0.8, output: 4 },
 } as const;
 

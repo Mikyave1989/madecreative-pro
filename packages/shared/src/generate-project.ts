@@ -29,9 +29,11 @@
  * Stack: Next.js 14, React 18, Framer Motion 11, TypeScript
  */
 
-import { getTemplateConfig } from "@madecreative/shared";
-import type { TemplateConfig } from "@madecreative/shared";
-import type { ColorPalette } from "./types.js";
+import { getTemplateConfig } from "./templates.js";
+import type { TemplateConfig, TemplateColors } from "./templates.js";
+
+/** Color palette for the project — matches TemplateColors subset */
+export type ColorPalette = Pick<TemplateColors, "primary" | "accent" | "background" | "text">;
 
 export interface ProjectData {
   businessName: string;

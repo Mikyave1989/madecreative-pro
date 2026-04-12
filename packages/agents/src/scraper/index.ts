@@ -514,6 +514,51 @@ export class ScraperAgent extends BaseAgent {
       }
     }
 
+    // Extract logo + extra photos from the business website
+    let logoUrl: string | undefined;
+    if (website) {
+      try {
+        await page.goto(website, { waitUntil: "domcontentloaded", timeout: 10_000 });
+        // Try multiple logo sources in priority order
+        logoUrl = await page.evaluate(() => {
+          /* eslint-disable @typescript-eslint/no-explicit-any */
+          const icons: any[] = Array.from(document.querySelectorAll(
+            'link[rel="apple-touch-icon"], link[rel="icon"][sizes], link[rel="shortcut icon"]'
+          ));
+          const best = icons
+            .filter((l: any) => l.href && l.href.startsWith("http"))
+            .sort((a: any, b: any) => {
+              const sA = parseInt(a.sizes?.toString()?.split("x")[0] ?? "0");
+              const sB = parseInt(b.sizes?.toString()?.split("x")[0] ?? "0");
+              return sB - sA;
+            })[0];
+          if (best?.href) return best.href as string;
+          const og: any = document.querySelector('meta[property="og:image"]');
+          if (og?.content?.startsWith("http")) return og.content as string;
+          const headerImgs: any[] = Array.from(document.querySelectorAll("header img, nav img, .logo img, img.logo, [class*='logo'] img, img[alt*='logo' i], img[src*='logo' i]"));
+          const logoImg = headerImgs.find((i: any) => i.src?.startsWith("http") && i.naturalWidth > 30);
+          if (logoImg) return logoImg.src as string;
+          return null;
+        }) ?? undefined;
+
+        // Extract additional photos from the website (up to 6 total)
+        if (photoUrls.length < 6) {
+          const sitePhotos = await page.evaluate((existingCount: number) => {
+            /* eslint-disable @typescript-eslint/no-explicit-any */
+            const imgs: any[] = Array.from(document.querySelectorAll("img"));
+            return imgs
+              .filter((i: any) => i.src?.startsWith("http") && i.naturalWidth >= 300 && i.naturalHeight >= 200)
+              .filter((i: any) => !/logo|icon|avatar|sprite|badge|banner-ad/i.test(i.src + (i.alt ?? "") + (i.className ?? "")))
+              .map((i: any) => i.src as string)
+              .slice(0, 6 - existingCount);
+          }, photoUrls.length).catch(() => [] as string[]);
+          photoUrls.push(...sitePhotos);
+        }
+      } catch {
+        // Non-fatal — website might be slow or down
+      }
+    }
+
     return {
       companyName,
       address: address ?? undefined,
@@ -529,6 +574,7 @@ export class ScraperAgent extends BaseAgent {
       city,
       country: this.currentCountry,
       photoUrls: photoUrls.length > 0 ? photoUrls : undefined,
+      logoUrl,
       openingHours: openingHours ?? undefined,
     };
   }
@@ -683,6 +729,8 @@ export class ScraperAgent extends BaseAgent {
           sector: data.sector,
           employeeEstimate: data.employeeEstimate ?? null,
           hasWebsite: data.hasWebsite,
+          photoUrls: data.photoUrls ?? [],
+          logoUrl: data.logoUrl ?? null,
           status: "SCRAPED",
           source: "GOOGLE_MAPS",
           scrapeJobId: this.jobId,
