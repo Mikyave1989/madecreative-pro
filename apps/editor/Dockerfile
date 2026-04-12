@@ -14,8 +14,8 @@ RUN pnpm install --no-frozen-lockfile
 COPY . .
 RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm run build
 
-# Prune dev deps
-RUN pnpm prune --prod
+# Prune dev deps (disable husky prepare script)
+RUN npm pkg delete scripts.prepare && pnpm prune --prod --ignore-scripts
 
 # Production
 FROM node:22-bookworm-slim
