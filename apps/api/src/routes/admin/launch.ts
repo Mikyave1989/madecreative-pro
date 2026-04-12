@@ -6,44 +6,62 @@ const app = new Hono();
 
 const WARMING_LIMITS = [5, 10, 20, 50, 100, 200];
 
-// In-memory fallback when Redis is unavailable
-let memWarmingDay = -1; // -1 = not initialized
-const memDailySent = new Map<string, number>(); // "YYYY-MM-DD" → count
+// DB-backed warming state (works on serverless — no Redis needed)
 
-async function getRedis(): Promise<{ get: (k: string) => Promise<string | null>; set: (k: string, v: string) => Promise<unknown> } | null> {
+const WARMING_CONFIG_NAME = "__warming_state__";
+
+async function getWarmingDay(): Promise<number> {
+  // Try Redis first, fallback to DB
   try {
     const { getRedisConnection } = await import("../../lib/queue.js");
     const r = getRedisConnection();
     await r.ping();
-    return r;
-  } catch {
-    return null;
-  }
-}
+    const val = await r.get("outreach:warming:day");
+    if (val !== null) return parseInt(val, 10);
+  } catch { /* Redis unavailable */ }
 
-async function getWarmingDay(): Promise<number> {
-  const redis = await getRedis();
-  if (redis) {
-    const val = await redis.get("outreach:warming:day");
-    return val !== null ? parseInt(val, 10) : -1;
-  }
-  return memWarmingDay;
+  // Fallback: read from DB (ScrapeConfig marker)
+  const { prisma } = await import("@madecreative/db");
+  const config = await prisma.scrapeConfig.findFirst({ where: { name: WARMING_CONFIG_NAME } });
+  if (!config) return -1;
+  // Store warming day in maxResults field and sentToday in totalFound
+  return config.maxResults;
 }
 
 async function setWarmingDay(day: number): Promise<void> {
-  memWarmingDay = day;
-  const redis = await getRedis();
-  if (redis) await redis.set("outreach:warming:day", String(day));
+  // Save to Redis if available
+  try {
+    const { getRedisConnection } = await import("../../lib/queue.js");
+    const r = getRedisConnection();
+    await r.ping();
+    await r.set("outreach:warming:day", String(day));
+  } catch { /* Redis unavailable */ }
+
+  // Always save to DB as persistent fallback
+  const { prisma } = await import("@madecreative/db");
+  await prisma.scrapeConfig.upsert({
+    where: { id: (await prisma.scrapeConfig.findFirst({ where: { name: WARMING_CONFIG_NAME } }))?.id ?? "nonexistent" },
+    update: { maxResults: day },
+    create: { name: WARMING_CONFIG_NAME, sector: "system", countries: [], keywords: [], maxResults: day, isActive: false },
+  });
 }
 
 async function getSentToday(): Promise<number> {
   const today = new Date().toISOString().slice(0, 10);
-  const redis = await getRedis();
-  if (redis) {
-    const val = await redis.get(`outreach:daily:${today}`);
-    return parseInt(val ?? "0", 10);
-  }
-  return memDailySent.get(today) ?? 0;
+  // Try Redis
+  try {
+    const { getRedisConnection } = await import("../../lib/queue.js");
+    const r = getRedisConnection();
+    await r.ping();
+    const val = await r.get(`outreach:daily:${today}`);
+    if (val !== null) return parseInt(val, 10);
+  } catch { /* Redis unavailable */ }
+
+  // Fallback: count today's outreach emails from DB
+  const { prisma } = await import("@madecreative/db");
+  const startOfDay = new Date(today + "T00:00:00Z");
+  const endOfDay = new Date(today + "T23:59:59Z");
+  return prisma.outreachEmail.count({ where: { sentAt: { gte: startOfDay, lte: endOfDay } } });
 }
 
 function getWarmingLimit(day: number): number {

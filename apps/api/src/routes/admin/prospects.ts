@@ -252,38 +252,24 @@ app.delete("/:id", async (c) => {
 app.get("/stats", async (c) => {
   const { prisma } = await import("@madecreative/db");
   try {
-    const [byStatus, avgScore, topSectors, topCountries] = await Promise.all([
-      prisma.prospect.groupBy({
-        by: ["status"],
-        _count: { id: true },
-      }),
-      prisma.prospect.aggregate({
-        where: { leadScore: { gt: 0 } },
-        _avg: { leadScore: true },
-        _count: { id: true },
-      }),
-      prisma.prospect.groupBy({
-        by: ["sector"],
-        _count: { id: true },
-        orderBy: { _count: { id: "desc" } },
-        take: 10,
-      }),
-      prisma.prospect.groupBy({
-        by: ["country"],
-        _count: { id: true },
-        orderBy: { _count: { id: "desc" } },
-        take: 10,
-      }),
-    ]);
+    // Use raw queries for reliable aggregation on Vercel serverless
+    const byStatus = await prisma.$queryRaw<Array<{ status: string; count: bigint }>>`
+      SELECT status, COUNT(*)::bigint as count FROM "Prospect" GROUP BY status`;
+    const avgScore = await prisma.$queryRaw<Array<{ avg: number | null; count: bigint }>>`
+      SELECT AVG("leadScore")::float as avg, COUNT(*)::bigint as count FROM "Prospect" WHERE "leadScore" > 0`;
+    const topSectors = await prisma.$queryRaw<Array<{ sector: string; count: bigint }>>`
+      SELECT sector, COUNT(*)::bigint as count FROM "Prospect" GROUP BY sector ORDER BY count DESC LIMIT 10`;
+    const topCountries = await prisma.$queryRaw<Array<{ country: string; count: bigint }>>`
+      SELECT country, COUNT(*)::bigint as count FROM "Prospect" GROUP BY country ORDER BY count DESC LIMIT 10`;
 
     return c.json({
       success: true,
       data: {
-        byStatus: byStatus.map((s) => ({ status: (s as Record<string, unknown>).status, count: (s._count as Record<string, number>).id })),
-        averageLeadScore: avgScore._avg.leadScore ?? 0,
-        scoredProspects: avgScore._count.id,
-        topSectors: topSectors.map((s) => ({ sector: (s as Record<string, unknown>).sector, count: (s._count as Record<string, number>).id })),
-        topCountries: topCountries.map((row) => ({ country: (row as Record<string, unknown>).country, count: (row._count as Record<string, number>).id })),
+        byStatus: byStatus.map(s => ({ status: s.status, count: Number(s.count) })),
+        averageLeadScore: avgScore[0]?.avg ?? 0,
+        scoredProspects: Number(avgScore[0]?.count ?? 0),
+        topSectors: topSectors.map(s => ({ sector: s.sector, count: Number(s.count) })),
+        topCountries: topCountries.map(r => ({ country: r.country, count: Number(r.count) })),
       },
     });
   } catch (err) {
