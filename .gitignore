@@ -54,3 +54,8 @@ scripts/
 
 .vercel
 .claude/settings.local.json
+*.tmp
+tmp-*
+test-output/
+test-*.mjs
+.claude/settings.local.json
