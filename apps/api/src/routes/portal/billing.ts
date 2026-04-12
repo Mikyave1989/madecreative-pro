@@ -7,10 +7,10 @@ type Variables = { jwtPayload: JwtPayload };
 
 const app = new Hono<{ Variables: Variables }>();
 
-function getStripe(): Stripe {
-  return new Stripe(process.env["STRIPE_SECRET_KEY"]!, {
-    apiVersion: "2025-02-24.acacia",
-  });
+function getStripe(): Stripe | null {
+  const key = process.env["STRIPE_SECRET_KEY"];
+  if (!key) return null;
+  return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
 }
 
 // GET /portal/billing — summary
@@ -54,39 +54,24 @@ app.get("/", async (c) => {
     expiryYear: number;
   } | null = null;
 
-  if (client.stripeSubId || client.stripeCustomerId) {
-    const stripe = getStripe();
-
-    // Fetch next billing date from subscription
+  const stripe = getStripe();
+  if (stripe && (client.stripeSubId || client.stripeCustomerId)) {
     if (client.stripeSubId) {
       try {
         const sub = await stripe.subscriptions.retrieve(client.stripeSubId);
         nextChargeDate = new Date(sub.current_period_end * 1000).toISOString();
-      } catch {
-        // Ignore
-      }
+      } catch { /* ignore */ }
     }
-
-    // Fetch default payment method
     if (client.stripeCustomerId) {
       try {
         const customer = await stripe.customers.retrieve(client.stripeCustomerId);
         if (!("deleted" in customer) && customer.invoice_settings?.default_payment_method) {
-          const pm = await stripe.paymentMethods.retrieve(
-            customer.invoice_settings.default_payment_method as string
-          );
+          const pm = await stripe.paymentMethods.retrieve(customer.invoice_settings.default_payment_method as string);
           if (pm.card) {
-            paymentMethod = {
-              brand: pm.card.brand,
-              last4: pm.card.last4,
-              expiryMonth: pm.card.exp_month,
-              expiryYear: pm.card.exp_year,
-            };
+            paymentMethod = { brand: pm.card.brand, last4: pm.card.last4, expiryMonth: pm.card.exp_month, expiryYear: pm.card.exp_year };
           }
         }
-      } catch {
-        // Non-critical — just show "no payment method"
-      }
+      } catch { /* non-critical */ }
     }
   }
 
@@ -161,17 +146,19 @@ app.post("/portal", async (c) => {
   });
 
   if (!client?.stripeCustomerId) {
-    return c.json({ success: false, error: "No billing account found" }, 404);
+    return c.json({ success: false, error: "Nessun account di pagamento collegato. Il portale billing sarà disponibile dopo il primo pagamento." }, 400);
   }
 
-  const portalUrl = process.env["PORTAL_URL"] ?? "https://app.madecreative.pro";
-
-  const session = await createBillingPortalSession({
-    stripeCustomerId: client.stripeCustomerId,
-    returnUrl: `${portalUrl}/billing`,
-  });
-
-  return c.json({ success: true, data: { url: session.url } });
+  try {
+    const portalUrl = process.env["PORTAL_URL"] ?? "https://app.madecreative.pro";
+    const session = await createBillingPortalSession({
+      stripeCustomerId: client.stripeCustomerId,
+      returnUrl: `${portalUrl}/billing`,
+    });
+    return c.json({ success: true, data: { url: session.url } });
+  } catch (err) {
+    return c.json({ success: false, error: "Stripe non configurato. Contatta il supporto." }, 503);
+  }
 });
 
 // POST /portal/billing/cancel — cancel subscription
@@ -189,12 +176,12 @@ app.post("/cancel", async (c) => {
   }
 
   if (!client.stripeSubId) {
-    return c.json({ success: false, error: "No subscription found" }, 404);
+    return c.json({ success: false, error: "Nessun abbonamento trovato." }, 404);
   }
 
   const stripe = getStripe();
+  if (!stripe) return c.json({ success: false, error: "Stripe non configurato." }, 503);
 
-  // Cancel at period end (site stays live until end of billing period)
   await stripe.subscriptions.update(client.stripeSubId, {
     cancel_at_period_end: true,
   });
@@ -248,21 +235,17 @@ app.post("/refund", async (c) => {
 
   const stripe = getStripe();
 
-  // Cancel subscription immediately
-  if (client.stripeSubId) {
-    await stripe.subscriptions.cancel(client.stripeSubId);
-  }
-
-  // Find and refund the most recent paid invoice
-  if (client.stripeCustomerId) {
-    const charges = await stripe.charges.list({
-      customer: client.stripeCustomerId,
-      limit: 1,
-    });
-
-    if (charges.data.length > 0 && charges.data[0]?.status === "succeeded") {
-      const charge = charges.data[0];
-      await stripe.refunds.create({ charge: charge.id });
+  if (stripe) {
+    if (client.stripeSubId) {
+      try { await stripe.subscriptions.cancel(client.stripeSubId); } catch { /* may already be cancelled */ }
+    }
+    if (client.stripeCustomerId) {
+      try {
+        const charges = await stripe.charges.list({ customer: client.stripeCustomerId, limit: 1 });
+        if (charges.data.length > 0 && charges.data[0]?.status === "succeeded") {
+          await stripe.refunds.create({ charge: charges.data[0].id });
+        }
+      } catch { /* non-critical */ }
     }
   }
 

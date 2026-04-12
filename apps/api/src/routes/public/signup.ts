@@ -98,29 +98,36 @@ app.post("/checkout", async (c) => {
     );
   }
 
-  const stripe = getStripeClient();
+  let stripe: ReturnType<typeof getStripeClient>;
+  try {
+    stripe = getStripeClient();
+  } catch {
+    return c.json({ success: false, error: "Pagamenti non ancora configurati. Riprova tra poco." }, 503);
+  }
 
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
-    mode: "subscription",
-    customer_email: email.toLowerCase(),
-    line_items: [{ price: priceId, quantity: 1 }],
-    metadata: {
-      plan,
-      websiteUrl: websiteUrl ?? "",
-      companyName: companyName ?? "",
-      locale: locale ?? "de",
-    },
-    subscription_data: { metadata: { plan } },
-    success_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/${locale ?? "de"}#pricing`,
-    allow_promotion_codes: true,
-  });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "subscription",
+      customer_email: email.toLowerCase(),
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: {
+        plan,
+        websiteUrl: websiteUrl ?? "",
+        companyName: companyName ?? "",
+        locale: locale ?? "de",
+      },
+      subscription_data: { metadata: { plan } },
+      success_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/${locale ?? "de"}#pricing`,
+      allow_promotion_codes: true,
+    });
 
-  return c.json({
-    success: true,
-    data: { checkoutUrl: session.url },
-  });
+    return c.json({ success: true, data: { checkoutUrl: session.url } });
+  } catch (err) {
+    console.error("[Checkout] Stripe error:", err instanceof Error ? err.message : String(err));
+    return c.json({ success: false, error: "Errore nella creazione del pagamento." }, 500);
+  }
 });
 
 // ─── POST /verify-session — Verify Stripe session & auto-login ──────────────

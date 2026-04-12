@@ -251,49 +251,45 @@ app.delete("/:id", async (c) => {
 // GET /admin/prospects/stats — must be registered BEFORE /:id to avoid param conflict
 app.get("/stats", async (c) => {
   const { prisma } = await import("@madecreative/db");
-  const [byStatus, avgScore, topSectors, topCountries] = await Promise.all([
-    prisma.prospect.groupBy({
-      by: ["status"],
-      _count: { id: true },
-    }),
-    prisma.prospect.aggregate({
-      where: { leadScore: { gt: 0 } },
-      _avg: { leadScore: true },
-      _count: { id: true },
-    }),
-    prisma.prospect.groupBy({
-      by: ["sector"],
-      _count: { id: true },
-      orderBy: { _count: { id: "desc" } },
-      take: 10,
-    }),
-    prisma.prospect.groupBy({
-      by: ["country"],
-      _count: { id: true },
-      orderBy: { _count: { id: "desc" } },
-      take: 10,
-    }),
-  ]);
+  try {
+    const [byStatus, avgScore, topSectors, topCountries] = await Promise.all([
+      prisma.prospect.groupBy({
+        by: ["status"],
+        _count: { id: true },
+      }),
+      prisma.prospect.aggregate({
+        where: { leadScore: { gt: 0 } },
+        _avg: { leadScore: true },
+        _count: { id: true },
+      }),
+      prisma.prospect.groupBy({
+        by: ["sector"],
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+        take: 10,
+      }),
+      prisma.prospect.groupBy({
+        by: ["country"],
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+        take: 10,
+      }),
+    ]);
 
-  return c.json({
-    success: true,
-    data: {
-      byStatus: byStatus.map((s: { status: string; _count: { id: number } }) => ({
-        status: s.status,
-        count: s._count.id,
-      })),
-      averageLeadScore: avgScore._avg.leadScore ?? 0,
-      scoredProspects: avgScore._count.id,
-      topSectors: topSectors.map((s: { sector: string; _count: { id: number } }) => ({
-        sector: s.sector,
-        count: s._count.id,
-      })),
-      topCountries: topCountries.map((c: { country: string; _count: { id: number } }) => ({
-        country: c.country,
-        count: c._count.id,
-      })),
-    },
-  });
+    return c.json({
+      success: true,
+      data: {
+        byStatus: byStatus.map((s) => ({ status: (s as Record<string, unknown>).status, count: (s._count as Record<string, number>).id })),
+        averageLeadScore: avgScore._avg.leadScore ?? 0,
+        scoredProspects: avgScore._count.id,
+        topSectors: topSectors.map((s) => ({ sector: (s as Record<string, unknown>).sector, count: (s._count as Record<string, number>).id })),
+        topCountries: topCountries.map((row) => ({ country: (row as Record<string, unknown>).country, count: (row._count as Record<string, number>).id })),
+      },
+    });
+  } catch (err) {
+    console.error("[prospects/stats] Error:", err instanceof Error ? err.message : String(err));
+    return c.json({ success: false, error: "Stats query failed" }, 500);
+  }
 });
 
 // POST /admin/prospects/:id/build-preview — Avvia Builder Agent per un prospect

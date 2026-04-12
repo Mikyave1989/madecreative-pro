@@ -83,6 +83,8 @@ app.get("/health", async (c) => {
 
 app.route("/public/webhook", webhookRoutes);
 app.route("/public/chatbot", chatbotWidgetRoutes);
+// Alias: /public/chatbot-widget.js → redirect to correct path
+app.get("/public/chatbot-widget.js", (c) => c.redirect("/public/chatbot/chatbot-widget.js", 301));
 app.route("/public/unsubscribe", unsubscribeRoutes);
 app.route("/public/signup", signupRoutes);
 app.route("/track", trackRoutes);
