@@ -74,6 +74,28 @@ function addPurchasedCredits(clientId: string, amount: number): void {
   }
 }
 
+// ─── Extract project files from DB (handles old wrapper format) ─────────────
+
+function extractProjectFiles(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object") return {};
+  const obj = raw as Record<string, unknown>;
+  // New format: flat Record<string, string> where keys are file paths
+  // Old format: { files: Record<string, string>, version: "...", framework: "..." }
+  if (obj["files"] && typeof obj["files"] === "object" && !obj["app/page.tsx"]) {
+    return obj["files"] as Record<string, string>;
+  }
+  // Check if it's already a flat file map (has file-path-looking keys)
+  const keys = Object.keys(obj);
+  if (keys.some(k => k.includes("/") || k.endsWith(".tsx") || k.endsWith(".ts") || k.endsWith(".css") || k.endsWith(".json"))) {
+    const result: Record<string, string> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v === "string") result[k] = v;
+    }
+    return result;
+  }
+  return {};
+}
+
 // ─── Universal file tools ───────────────────────────────────────────────────
 
 const EDITOR_TOOLS: Tool[] = [
@@ -387,9 +409,10 @@ app.post("/stream", async (c) => {
   let projectFiles: Record<string, string> = {};
   if (client.website?.files) {
     try {
-      projectFiles = typeof client.website.files === "string"
+      const raw = typeof client.website.files === "string"
         ? JSON.parse(client.website.files as string)
-        : (client.website.files as Record<string, string>);
+        : client.website.files;
+      projectFiles = extractProjectFiles(raw);
     } catch { projectFiles = {}; }
   }
 
@@ -633,7 +656,7 @@ app.get("/files", async (c) => {
   const clientId = c.get("jwtPayload").sub;
   const website = await prisma.clientWebsite.findUnique({ where: { clientId }, select: { files: true, deployUrl: true } });
   if (!website) return c.json({ success: true, data: { files: {}, deployUrl: null } });
-  return c.json({ success: true, data: { files: website.files ?? {}, deployUrl: website.deployUrl } });
+  return c.json({ success: true, data: { files: extractProjectFiles(website.files), deployUrl: website.deployUrl } });
 });
 
 export default app;
