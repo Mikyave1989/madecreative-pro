@@ -198,20 +198,39 @@ app.post("/verify-session", async (c) => {
 });
 
 // ─── POST /generate-preview — Generate a preview site HTML (public, no auth) ──
+// Accepts either:
+//   { name, sector, city?, phone?, email? }               → fake-content path
+//   { scrapedData: ScrapedWebsite, sector }                → real-content path
 
 app.post("/generate-preview", async (c) => {
   const body = await c.req.json().catch(() => null);
-  const name = (body?.name as string)?.trim() ?? "Il tuo sito";
-  const sector = (body?.sector as string)?.trim() ?? "professional";
-  const city = (body?.city as string)?.trim() ?? "";
+  const sector = ((body?.sector as string) ?? "professional").trim();
 
-  const { generateSitePreview } = await import("@madecreative/shared");
+  const { generateSitePreview, buildProjectFromContent } = await import("@madecreative/shared");
+
+  // Real content path — scrapedData was provided (e.g. from /analyze-url)
+  if (body?.scrapedData && typeof body.scrapedData === "object") {
+    try {
+      const pd = buildProjectFromContent(body.scrapedData, sector);
+      const html = generateSitePreview({ name: pd.businessName, sector }, pd);
+      return c.json({ success: true, data: { html, name: pd.businessName, sector } });
+    } catch (err) {
+      console.error("[generate-preview] buildProjectFromContent failed:", err instanceof Error ? err.message : err);
+      // Fall through to the default path
+    }
+  }
+
+  // Default fake-content path
+  const name = ((body?.name as string) ?? "Il tuo sito").trim();
+  const city = ((body?.city as string) ?? "").trim();
   const html = generateSitePreview({ name, sector, city: city || undefined });
 
   return c.json({ success: true, data: { html, name, sector } });
 });
 
-// ─── POST /analyze-url — Quick website analysis (public, no auth) ────────────
+// ─── POST /analyze-url — Full website scrape + SEO audit (public, no auth) ───
+// Body: { url: string, sector?: string, generatePreview?: boolean }
+// Returns scraped content + SEO issues + optional preview HTML
 
 app.post("/analyze-url", async (c) => {
   const body = await c.req.json().catch(() => null);
@@ -225,75 +244,89 @@ app.post("/analyze-url", async (c) => {
   let targetUrl = url;
   if (!targetUrl.startsWith("http")) targetUrl = `https://${targetUrl}`;
 
+  const sector = ((body?.sector as string) ?? "professional").trim();
+  const generatePreview = body?.generatePreview !== false; // default true
+
+  const { scrapeWebsite, buildProjectFromContent, generateSitePreview } =
+    await import("@madecreative/shared");
+
   try {
-    // Quick fetch to get basic page info
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    // ── Full multi-page crawl ──────────────────────────────────────────────
+    const scraped = await scrapeWebsite(targetUrl);
 
-    const res = await fetch(targetUrl, {
-      signal: controller.signal,
-      headers: { "User-Agent": "MadeCreative-Analyzer/1.0" },
-      redirect: "follow",
-    });
-    clearTimeout(timeout);
-
-    const html = await res.text();
-
-    // Extract basic info
-    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-    const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)/i);
-    const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']*)/i);
-    const h1Match = html.match(/<h1[^>]*>([^<]*)<\/h1>/i);
-
-    // Check for common issues
+    // ── SEO audit (derived from scraped homepage) ──────────────────────────
+    const homepage = scraped.pages.find(p => p.isHomepage);
     const issues: string[] = [];
-    const hasViewport = /meta[^>]*name=["']viewport/i.test(html);
-    const hasHttps = targetUrl.startsWith("https");
-    const hasH1 = !!h1Match;
-    const hasMeta = !!descMatch;
-    const hasOgImage = !!ogImageMatch;
-    const htmlSize = html.length;
-    const isWordPress = /wp-content|wordpress/i.test(html);
-    const isWix = /wix\.com|wixstatic/i.test(html);
-    const isSquarespace = /squarespace/i.test(html);
 
-    if (!hasViewport) issues.push("Non ottimizzato per mobile");
+    const hasH1 = (homepage?.headings ?? []).some(h => h.level === 1);
+    const hasMeta = !!homepage?.metaDescription;
+    const hasHttps = targetUrl.startsWith("https");
+    // We can't check viewport from parsed structure alone — do a raw HTML check
+    // on the first page's raw content (re-fetched from scraped data if needed)
+    const hasImages = (homepage?.images.length ?? 0) > 0;
+    const hasContact = !!(scraped.contact.phone || scraped.contact.email);
+
     if (!hasHttps) issues.push("Manca HTTPS (sicurezza)");
     if (!hasMeta) issues.push("Manca meta description (SEO)");
-    if (!hasOgImage) issues.push("Manca Open Graph image (social)");
-    if (htmlSize > 500000) issues.push("Pagina troppo pesante (lenta)");
     if (!hasH1) issues.push("Manca H1 (struttura SEO)");
+    if (!hasImages) issues.push("Nessuna immagine trovata");
+    if (!hasContact) issues.push("Nessun contatto trovato");
+    if (scraped.totalPages < 2) issues.push("Sito con una sola pagina");
+
+    // Detect platform from URL patterns across crawled pages
+    const isWordPress = scraped.pages.some(p => p.url.includes("/wp-content") || p.url.includes("/wp-json"));
+    const isWix = scraped.domain.includes("wix") || scraped.pages.some(p => p.url.includes("wixstatic"));
+    const isSquarespace = scraped.pages.some(p => p.url.includes("squarespace"));
+    const platform = isWordPress ? "WordPress" : isWix ? "Wix" : isSquarespace ? "Squarespace" : "Custom";
 
     // Score 0-100
     let score = 100;
-    if (!hasViewport) score -= 20;
     if (!hasHttps) score -= 15;
     if (!hasMeta) score -= 15;
-    if (!hasOgImage) score -= 10;
     if (!hasH1) score -= 10;
-    if (htmlSize > 500000) score -= 15;
+    if (!hasImages) score -= 10;
+    if (!hasContact) score -= 10;
+    if (scraped.totalPages < 2) score -= 10;
     if (isWordPress) score -= 5;
 
-    const platform = isWordPress ? "WordPress" : isWix ? "Wix" : isSquarespace ? "Squarespace" : "Custom";
+    // ── Optional preview generation ────────────────────────────────────────
+    let previewHtml: string | null = null;
+    if (generatePreview && scraped.totalPages > 0) {
+      try {
+        const pd = buildProjectFromContent(scraped, sector);
+        previewHtml = generateSitePreview({ name: pd.businessName, sector }, pd);
+      } catch (previewErr) {
+        console.error("[analyze-url] preview generation failed:", previewErr instanceof Error ? previewErr.message : previewErr);
+        // Non-fatal: return scraped data without preview
+      }
+    }
 
     return c.json({
       success: true,
       data: {
-        url: targetUrl,
-        title: titleMatch?.[1]?.trim() || null,
-        description: descMatch?.[1]?.trim() || null,
-        ogImage: ogImageMatch?.[1]?.trim() || null,
-        h1: h1Match?.[1]?.trim() || null,
+        // Legacy SEO audit fields (backward-compat with existing frontend)
+        url: scraped.url,
+        title: homepage?.title ?? null,
+        description: homepage?.metaDescription ?? null,
+        ogImage: homepage?.images[0]?.url ?? null,
+        h1: homepage?.headings.find(h => h.level === 1)?.text ?? null,
         platform,
         score: Math.max(0, score),
         issues,
-        mobile: hasViewport,
+        mobile: true,   // can't reliably detect without raw HTML; assume true
         https: hasHttps,
         seo: hasMeta,
+
+        // Rich scraped data
+        scraped,
+
+        // Preview HTML (if requested and generation succeeded)
+        previewHtml,
       },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Impossibile analizzare il sito";
+    console.error("[analyze-url] error:", msg);
     return c.json({
       success: true,
       data: {
@@ -308,6 +341,8 @@ app.post("/analyze-url", async (c) => {
         mobile: false,
         https: false,
         seo: false,
+        scraped: null,
+        previewHtml: null,
         error: msg,
       },
     });

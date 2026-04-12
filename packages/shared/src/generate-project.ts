@@ -1390,12 +1390,24 @@ const SECTOR_HERO: Record<string, string> = {
   realestate: "photo-1560518883-ce09059eeffa", professional: "photo-1497366216548-37526070297c",
 };
 
-/** Generate site preview from simple business data — uses Next.js generator internally */
-export function generateSitePreview(data: {
-  name: string; sector: string; city?: string; phone?: string; email?: string;
-  tagline?: string; description?: string; googleRating?: number; reviewCount?: number;
-  logoUrl?: string; whatsapp?: string;
-}): string {
+/** Generate site preview from simple business data — uses Next.js generator internally.
+ *  When `projectData` is provided it is used directly (real scraped content path).
+ *  Otherwise a full ProjectData is synthesised from the simple `data` fields.
+ */
+export function generateSitePreview(
+  data: {
+    name: string; sector: string; city?: string; phone?: string; email?: string;
+    tagline?: string; description?: string; googleRating?: number; reviewCount?: number;
+    logoUrl?: string; whatsapp?: string;
+  },
+  projectData?: ProjectData
+): string {
+  // Fast path: caller already has a fully-built ProjectData (from buildProjectFromContent)
+  if (projectData) {
+    return projectToPreviewHtml(generateNextJsProject(projectData));
+  }
+
+  // Default path: synthesise from the simple data object
   const cfg = getTemplateConfig(data.sector);
   const about = cfg.aboutText.replace(/\{name\}/g, data.name).replace(/\{city\}/g, data.city ?? "");
   const heroId = SECTOR_HERO[data.sector] ?? SECTOR_HERO["professional"]!;

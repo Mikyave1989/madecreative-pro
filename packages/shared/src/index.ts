@@ -5,3 +5,5 @@ export * from "./utils/phone.js";
 export * from "./templates.js";
 export * from "./site-generator.js"; // legacy — kept for backward compat, uses generatePremiumSite
 export * from "./generate-project.js"; // PRIMARY — generateNextJsProject, projectToPreviewHtml, generateSitePreview
+export * from "./website-scraper.js"; // scrapeWebsite, ScrapedWebsite, ScrapedPage
+export * from "./content-to-project.js"; // buildProjectFromContent
