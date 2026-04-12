@@ -9,6 +9,7 @@
  */
 
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 
 const app = new Hono();
@@ -195,6 +196,87 @@ app.post("/", async (c) => {
     console.error("[ai-generate] Error:", err instanceof Error ? err.message : String(err));
     return c.json({ success: false, error: "AI generation failed" }, 500);
   }
+});
+
+// POST /public/ai-generate/stream — SSE streaming version (no timeout issues)
+app.post("/stream", async (c) => {
+  const body = await c.req.json().catch(() => null);
+  if (!body?.name) return c.json({ success: false, error: "name is required" }, 400);
+
+  const name = (body.name as string).trim();
+  const sector = ((body.sector as string) ?? "professional").trim();
+  const language = ((body.language as string) ?? "de").trim();
+
+  const scraped = body.scrapedData as Record<string, unknown> | undefined;
+  const promptData: Parameters<typeof buildGenerationPrompt>[0] = {
+    name, sector, language,
+    description: (scraped?.pages as Array<Record<string, unknown>>)?.[0]?.metaDescription as string | undefined,
+    images: (scraped?.pages as Array<Record<string, unknown>>)?.flatMap(
+      (p: Record<string, unknown>) => (p.images as Array<{ url: string; alt: string }>) ?? []
+    )?.filter((img: { url: string }) => !img.url.includes("icon") && !img.url.includes("logo")),
+    headings: (scraped?.pages as Array<Record<string, unknown>>)?.flatMap(
+      (p: Record<string, unknown>) => ((p.headings as Array<{ text: string }>) ?? []).map(h => h.text)
+    ),
+    paragraphs: (scraped?.pages as Array<Record<string, unknown>>)?.flatMap(
+      (p: Record<string, unknown>) => (p.paragraphs as string[]) ?? []
+    ),
+    contact: scraped?.contact as { phone?: string | null; email?: string | null; address?: string | null } | undefined,
+    logo: scraped?.logo as string | null | undefined,
+    navigation: scraped?.navigation as Array<{ label: string; url: string }> | undefined,
+    googleRating: body.googleRating as number | undefined,
+    reviewCount: body.reviewCount as number | undefined,
+  };
+
+  const prompt = buildGenerationPrompt(promptData);
+
+  c.header("X-Accel-Buffering", "no");
+
+  return streamSSE(c, async (stream) => {
+    const { getClaudeClient } = await import("@madecreative/ai");
+    const claude = getClaudeClient();
+    const projectFiles: Record<string, string> = {};
+    let fileCount = 0;
+
+    try {
+      const generator = claude.streamToolUseLoop(
+        [{ role: "user", content: prompt }],
+        async (toolName, toolInput) => {
+          if (toolName === "write_file") {
+            const path = toolInput["path"] as string;
+            const content = toolInput["content"] as string;
+            if (path && content) {
+              projectFiles[path] = content;
+              fileCount++;
+              await stream.writeSSE({ data: JSON.stringify({ type: "file_created", path, fileCount }) });
+              return { success: true, path, size: content.length };
+            }
+          }
+          return { error: "Unknown tool" };
+        },
+        {
+          system: `You are a world-class AI full-stack developer. Build stunning €10k+ websites with Next.js 14, Tailwind CSS, Framer Motion. Use premium effects: Magic Card, animated gradient text, blur-fade, number ticker, parallax. Use the REAL content provided (images, text, headings). NEVER ask questions — build immediately using write_file.`,
+          tools: TOOLS,
+          model: "claude-sonnet-4-6" as const,
+          maxTokens: 16384,
+        }
+      );
+
+      for await (const event of generator) {
+        if (event.type === "done") {
+          // Generate preview HTML
+          const { projectToPreviewHtml } = await import("@madecreative/shared");
+          const previewHtml = projectToPreviewHtml(projectFiles);
+          await stream.writeSSE({ data: JSON.stringify({ type: "complete", previewHtml, fileCount, files: Object.keys(projectFiles) }) });
+        } else if (event.type === "text_delta") {
+          // Stream AI thinking text (optional, for UX)
+          await stream.writeSSE({ data: JSON.stringify({ type: "text", text: event.text }) });
+        }
+      }
+    } catch (err) {
+      console.error("[ai-generate/stream] Error:", err instanceof Error ? err.message : String(err));
+      await stream.writeSSE({ data: JSON.stringify({ type: "error", message: "AI generation failed" }) });
+    }
+  });
 });
 
 export default app;

@@ -287,13 +287,13 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         setResult(json.data);
         setAnalyzing(false);
 
-        // Now call AI to build premium site with real content
+        // Call AI via SSE streaming — no timeout, real-time progress
         setBuilding(true);
         setShowPreview(true);
         const siteName = json.data.title?.split(/[|\u2013\u2014\u00b7]/).shift()?.trim() || url.replace(/https?:\/\//, "").split("/")[0]?.replace("www.", "") || "Il tuo sito";
         const sector = detectSector(json.data.title ?? "", url);
         try {
-          const aiRes = await fetch(`${API_URL}/public/ai-generate`, {
+          const aiRes = await fetch(`${API_URL}/public/ai-generate/stream`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -304,17 +304,40 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
               googleRating: json.data.score,
             }),
           });
-          const aiJson = (await aiRes.json()) as { success: boolean; data?: { previewHtml: string } };
-          if (aiJson.success && aiJson.data?.previewHtml) {
-            setPreviewHtml(aiJson.data.previewHtml);
-          } else {
-            // Fallback to template preview if AI fails
-            if (json.data.previewHtml) setPreviewHtml(json.data.previewHtml);
+
+          if (!aiRes.ok || !aiRes.body) throw new Error("Stream failed");
+
+          const reader = aiRes.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+              if (!line.startsWith("data:")) continue;
+              const raw = line.slice(5).trim();
+              if (!raw) continue;
+              try {
+                const ev = JSON.parse(raw);
+                if (ev.type === "complete" && ev.previewHtml) {
+                  setPreviewHtml(ev.previewHtml);
+                  setBuilding(false);
+                } else if (ev.type === "error") {
+                  throw new Error(ev.message);
+                }
+              } catch { /* skip malformed */ }
+            }
           }
+          // If building still true after stream ends, fallback
+          setBuilding(false);
         } catch {
           // Fallback to template preview
           if (json.data.previewHtml) setPreviewHtml(json.data.previewHtml);
-        } finally {
           setBuilding(false);
         }
       } else {
