@@ -197,6 +197,20 @@ app.post("/verify-session", async (c) => {
   });
 });
 
+// ─── POST /generate-preview — Generate a preview site HTML (public, no auth) ──
+
+app.post("/generate-preview", async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const name = (body?.name as string)?.trim() ?? "Il tuo sito";
+  const sector = (body?.sector as string)?.trim() ?? "professional";
+  const city = (body?.city as string)?.trim() ?? "";
+
+  const { generatePremiumSite } = await import("@madecreative/shared");
+  const html = generatePremiumSite({ name, sector, city: city || undefined });
+
+  return c.json({ success: true, data: { html, name, sector } });
+});
+
 // ─── POST /analyze-url — Quick website analysis (public, no auth) ────────────
 
 app.post("/analyze-url", async (c) => {

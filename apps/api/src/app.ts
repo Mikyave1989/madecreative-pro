@@ -89,6 +89,62 @@ app.route("/public/unsubscribe", unsubscribeRoutes);
 app.route("/public/signup", signupRoutes);
 app.route("/track", trackRoutes);
 
+// ─── Public Preview (serves generated site HTML) ─────────────────────────────
+
+app.get("/preview/:prospectId", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const id = c.req.param("prospectId");
+
+  const prospect = await prisma.prospect.findUnique({
+    where: { id },
+    select: { companyName: true, sector: true, city: true, contactPhone: true, contactEmail: true, googleRating: true, reviewCount: true, website: true, photoUrls: true, logoUrl: true },
+  });
+
+  if (!prospect) {
+    return c.text("Preview not found", 404);
+  }
+
+  const { generatePremiumSite } = await import("@madecreative/shared");
+  const html = generatePremiumSite({
+    name: prospect.companyName,
+    sector: prospect.sector,
+    city: prospect.city ?? undefined,
+    phone: prospect.contactPhone ?? undefined,
+    email: prospect.contactEmail ?? undefined,
+    googleRating: prospect.googleRating ?? undefined,
+    reviewCount: prospect.reviewCount ?? undefined,
+    logoUrl: prospect.logoUrl ?? undefined,
+  });
+
+  return c.html(html);
+});
+
+// Also support slug-based preview
+app.get("/preview/site/:slug", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const slug = c.req.param("slug");
+
+  // Try to find by subdomain or by company name slug
+  const website = await prisma.clientWebsite.findFirst({
+    where: { OR: [{ subdomain: slug }, { domain: { contains: slug } }] },
+    include: { client: true },
+  });
+
+  if (website?.client) {
+    const { generatePremiumSite } = await import("@madecreative/shared");
+    const html = generatePremiumSite({
+      name: website.client.companyName,
+      sector: website.client.sector,
+      city: website.client.city ?? undefined,
+      phone: website.client.phone ?? undefined,
+      email: website.client.email ?? undefined,
+    });
+    return c.html(html);
+  }
+
+  return c.text("Site not found", 404);
+});
+
 // ─── Admin Auth Routes ───────────────────────────────────────────────────────
 
 app.route("/admin/auth", adminAuthRoutes);

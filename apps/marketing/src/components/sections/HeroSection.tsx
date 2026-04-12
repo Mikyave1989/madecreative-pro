@@ -284,11 +284,24 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
       const json = (await res.json()) as { success: boolean; data?: AnalysisResult; error?: string };
       if (json.success && json.data) {
         setResult(json.data);
-        // Generate preview site based on detected sector
+        // Generate preview via server API (avoid heavy client-side generation)
         const siteName = json.data.title?.split(/[|–—·]/).shift()?.trim() || url.replace(/https?:\/\//, "").split("/")[0]?.replace("www.", "") || "Il tuo sito";
         const sector = detectSector(json.data.title ?? "", url);
-        const html = generatePremiumSite({ name: siteName, sector });
-        setPreviewHtml(html);
+        try {
+          const previewRes = await fetch(`${API_URL}/public/signup/generate-preview`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: siteName, sector }),
+          });
+          const previewJson = (await previewRes.json()) as { success: boolean; data?: { html: string } };
+          if (previewJson.success && previewJson.data?.html) {
+            setPreviewHtml(previewJson.data.html);
+          }
+        } catch {
+          // Fallback: generate client-side
+          const html = generatePremiumSite({ name: siteName, sector });
+          setPreviewHtml(html);
+        }
         setShowPreview(false);
       } else {
         setError(json.error ?? "Errore nell'analisi");

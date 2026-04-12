@@ -774,7 +774,9 @@ app.post("/:id/send-preview-email", async (c) => {
   const lang = body.language ?? (prospect.country === "DE" || prospect.country === "AT" || prospect.country === "CH" ? "de" : prospect.country === "IT" ? "it" : prospect.country === "ES" ? "es" : prospect.country === "FR" ? "fr" : "en");
 
   const name = prospect.companyName;
-  const previewUrl = prospect.previewSiteUrl;
+  const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
+  // Use our own API to serve preview (no Vercel login required)
+  const previewUrl = `${apiBase}/preview/${prospect.id}`;
   const city = prospect.city ?? "";
 
   // Language-specific email templates (no Claude needed — instant)
