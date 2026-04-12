@@ -390,9 +390,10 @@ async function generateMonthlyReport(
       where: { id: clientId },
       select: { companyName: true, sector: true, email: true, plan: true },
     }),
-    prisma.clientWebsite.findUnique({
-      where: { clientId },
+    prisma.clientWebsite.findFirst({
+      where: { clientId, isActive: true },
       select: { monthlyVisits: true },
+      orderBy: { updatedAt: "desc" },
     }),
     prisma.clientChatbot.findUnique({
       where: { clientId },

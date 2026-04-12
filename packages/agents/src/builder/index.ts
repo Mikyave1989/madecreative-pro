@@ -809,16 +809,15 @@ export class BuilderAgent extends BaseAgent {
               select: { clientId: true },
             });
             if (prospect?.clientId) {
-              await prisma.clientWebsite.upsert({
-                where: { clientId: prospect.clientId },
-                update: { files: projectFiles },
-                create: {
-                  clientId: prospect.clientId,
-                  files: projectFiles,
-                  domain: slug,
-                  pages: projectFiles,
-                },
+              const existing = await prisma.clientWebsite.findFirst({
+                where: { clientId: prospect.clientId, isActive: true },
+                select: { id: true },
               });
+              if (existing) {
+                await prisma.clientWebsite.update({ where: { id: existing.id }, data: { files: projectFiles } });
+              } else {
+                await prisma.clientWebsite.create({ data: { clientId: prospect.clientId, files: projectFiles, domain: slug, pages: projectFiles, name: slug } });
+              }
             }
           } catch {
             // Non-critical — project files saved but client record may not exist yet
