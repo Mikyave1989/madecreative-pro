@@ -270,6 +270,78 @@ DESIGN PRINCIPLES
 - **Accessibility**: proper heading hierarchy, focus states, color contrast
 
 ═══════════════════════════════════════════════
+PREMIUM UI PATTERNS (Magic UI / Aceternity-style)
+═══════════════════════════════════════════════
+
+When building premium sites, use these animation patterns (implement directly with Framer Motion + Tailwind — no external library needed):
+
+**Text Effects:**
+- **Animated Gradient Text**: bg-gradient with animate background-position
+- **Aurora Text**: multi-color gradient with blur behind
+- **Hyper Text**: letters scramble then resolve on hover
+- **Typing Animation**: typewriter effect with cursor blink
+- **Blur Fade**: text fades in with blur-to-sharp transition
+- **Number Ticker**: counts from 0 to target number on scroll
+
+**Background Effects:**
+- **Dot Pattern**: subtle SVG dot grid background
+- **Grid Pattern**: animated grid lines
+- **Flickering Grid**: grid cells that flicker randomly
+- **Retro Grid**: perspective grid fading into distance
+- **Particles**: floating particle effect with framer-motion
+- **Meteors**: animated streaks across background
+- **Aurora/Warp Background**: flowing gradient blobs
+
+**Card & Container Effects:**
+- **Magic Card**: spotlight follows mouse on hover (radial-gradient)
+- **Bento Grid**: asymmetric grid layout (col-span-2, row-span-2)
+- **Neon Gradient Card**: glowing border animation
+- **Border Beam**: light beam traveling along card border
+- **Shine Border**: shimmering border effect
+- **Lens**: magnifying glass effect on hover
+
+**Interactive Elements:**
+- **Marquee**: infinite scroll ticker (logos, testimonials)
+- **Orbiting Circles**: items orbiting a center point
+- **Dock**: macOS-style dock with magnification on hover
+- **Pulsating Button**: CTA with pulse ring animation
+- **Rainbow Button**: animated rainbow gradient border
+- **Shimmer Button**: shimmer sweep effect
+
+**Scroll Effects:**
+- **Scroll Progress**: progress bar tied to scroll position
+- **Scroll-Based Velocity**: text speed changes with scroll
+- **Blur Fade In**: elements fade in from blur on scroll
+- **Parallax Sections**: different scroll speeds via useTransform
+
+**Implementation pattern** (example — Magic Card):
+\`\`\`tsx
+function MagicCard({ children }: { children: React.ReactNode }) {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const handleMouse = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+  return (
+    <div onMouseMove={handleMouse} className="relative overflow-hidden rounded-xl border border-white/10 bg-gray-900 p-6">
+      <div className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition duration-300 group-hover:opacity-100"
+        style={{ background: \`radial-gradient(400px circle at \${mousePos.x}px \${mousePos.y}px, rgba(99,102,241,.15), transparent 40%)\` }} />
+      {children}
+    </div>
+  );
+}
+\`\`\`
+
+**When to use which effect:**
+- Hero sections: Aurora/Warp background, Animated Gradient Text, Particles
+- Feature cards: Magic Card, Bento Grid, Border Beam
+- CTAs: Pulsating Button, Rainbow Button, Shimmer Button
+- Testimonials: Marquee (infinite scroll), Blur Fade in
+- Stats: Number Ticker, Animated Circular Progress
+- E-commerce: Lens (product zoom), Dock (quick actions)
+- SaaS: Orbiting Circles (integrations), Grid Pattern background
+
+═══════════════════════════════════════════════
 PREMIUM EFFECTS (use when building high-end sites)
 ═══════════════════════════════════════════════
 
