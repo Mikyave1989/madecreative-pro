@@ -1,5 +1,4 @@
 # MadeCreative Editor — built from bolt.diy
-# Cache bust: v2
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
@@ -15,13 +14,16 @@ RUN pnpm install --no-frozen-lockfile
 COPY . .
 RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm run build
 
-# Production stage
+# Prune dev deps
+RUN pnpm prune --prod
+
+# Production
 FROM node:22-bookworm-slim
 WORKDIR /app
 
-RUN npm install express@4 @remix-run/express@2 @remix-run/node@2 --no-optional --ignore-scripts
-
 COPY --from=build /app/build ./build
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./
 COPY server.mjs ./
 
 ENV PORT=5173
