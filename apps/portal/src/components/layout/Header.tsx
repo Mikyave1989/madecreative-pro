@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { LogOut } from "lucide-react";
+import { useLocaleContext } from "@/lib/locale-context";
+import { LanguageSelector } from "@/components/ui/LanguageSelector";
 
 export function Header() {
   const { user, logout } = useAuth();
-  const firstName = user?.contactName?.split(" ")[0] ?? "Cliente";
+  const { t } = useLocaleContext();
+  const firstName = user?.contactName?.split(" ")[0] ?? t.header.account;
 
   return (
     <header className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
@@ -23,16 +26,17 @@ export function Header() {
           )}
         </Link>
 
-        {/* User + logout */}
+        {/* User + language + logout */}
         <div className="flex items-center gap-3">
           <span className="text-sm text-slate-400 hidden sm:inline">
-            Ciao, {firstName}
+            {t.dashboard.greeting}, {firstName}
           </span>
+          <LanguageSelector variant="dropdown" />
           <button
             onClick={logout}
             className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-            aria-label="Esci"
-            title="Esci"
+            aria-label={t.nav.logout}
+            title={t.nav.logout}
           >
             <LogOut className="w-4 h-4" />
           </button>

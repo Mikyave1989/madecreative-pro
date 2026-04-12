@@ -13,8 +13,9 @@ app.get("/", async (c) => {
   const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
-  const website = await prisma.clientWebsite.findUnique({
-    where: { clientId },
+  const website = await prisma.clientWebsite.findFirst({
+    where: { clientId, isActive: true },
+    orderBy: { updatedAt: "desc" as const },
     select: { id: true, domain: true, pages: true, designTokens: true, deployUrl: true, files: true },
   });
 
@@ -48,8 +49,9 @@ app.patch("/pages", async (c) => {
     return c.json({ success: false, error: "Validation error", details: parsed.error.flatten() }, 400);
   }
 
-  const website = await prisma.clientWebsite.findUnique({
-    where: { clientId },
+  const website = await prisma.clientWebsite.findFirst({
+    where: { clientId, isActive: true },
+    orderBy: { updatedAt: "desc" as const },
   });
 
   if (!website) {
@@ -106,8 +108,9 @@ app.post("/rebuild", async (c) => {
   const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
 
-  const website = await prisma.clientWebsite.findUnique({
-    where: { clientId },
+  const website = await prisma.clientWebsite.findFirst({
+    where: { clientId, isActive: true },
+    orderBy: { updatedAt: "desc" as const },
     select: { id: true, domain: true },
   });
 

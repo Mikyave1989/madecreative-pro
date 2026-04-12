@@ -108,7 +108,7 @@ model Client {
   stripeSubId      String?        @unique
   lastLoginAt      DateTime?
   prospect         Prospect?
-  website          ClientWebsite?
+  websites         ClientWebsite[]
   chatbot          ClientChatbot?
   invoices         ClientInvoice[]
   reports          MonthlyReport[]
@@ -118,8 +118,10 @@ model Client {
 
 model ClientWebsite {
   id               String    @id @default(cuid())
-  clientId         String    @unique
+  clientId         String
   client           Client    @relation(fields: [clientId], references: [id])
+  name             String    @default("My Website")
+  isActive         Boolean   @default(true)
   domain           String
   subdomain        String?
   designTokens     Json?
@@ -135,6 +137,9 @@ model ClientWebsite {
   monthlyVisits    Int       @default(0)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  @@index([clientId])
+  @@index([clientId, isActive])
 }
 
 model ClientChatbot {

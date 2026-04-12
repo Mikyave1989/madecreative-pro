@@ -28,6 +28,7 @@ import portalReportsRoutes from "./routes/portal/reports.js";
 import portalEditorRoutes from "./routes/portal/editor.js";
 import portalEditorChatRoutes from "./routes/portal/editor-chat.js";
 import portalSettingsRoutes from "./routes/portal/settings.js";
+import portalProjectsRoutes from "./routes/portal/projects.js";
 
 // Public Routes
 import webhookRoutes from "./routes/public/webhook.js";
@@ -185,6 +186,9 @@ app.route("/portal/editor", portalEditorRoutes);
 app.route("/portal/editor/chat", portalEditorChatRoutes);
 app.use("/portal/settings/*", clientAuthMiddleware);
 app.route("/portal/settings", portalSettingsRoutes);
+
+app.use("/portal/projects/*", clientAuthMiddleware);
+app.route("/portal/projects", portalProjectsRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 

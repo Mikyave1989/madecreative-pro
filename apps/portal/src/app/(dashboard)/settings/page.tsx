@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { useLocaleContext } from "@/lib/locale-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,6 +104,7 @@ function DnsRecord({ type, name, value }: { type: string; name: string; value: s
 // ─── Connector card ───────────────────────────────────────────────────────────
 
 function ConnectorCard({ connector, onSave }: { connector: Connector; onSave: (key: string, value: string) => void }) {
+  const { t } = useLocaleContext();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -125,9 +127,9 @@ function ConnectorCard({ connector, onSave }: { connector: Connector; onSave: (k
           <p className="text-xs text-slate-400">{connector.description}</p>
         </div>
         {connector.connected ? (
-          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/15 text-emerald-400 rounded-full">Connesso</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/15 text-emerald-400 rounded-full">{t.settings.connectorConnected}</span>
         ) : (
-          <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-700 text-slate-400 rounded-full">Non connesso</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-700 text-slate-400 rounded-full">{t.settings.connectorNotConnected}</span>
         )}
         {open ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
       </button>
@@ -142,7 +144,7 @@ function ConnectorCard({ connector, onSave }: { connector: Connector; onSave: (k
           />
           <div className="flex items-center justify-between">
             <a href={connector.helpUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-              <ExternalLink className="w-3 h-3" /> Come ottenere la chiave
+              <ExternalLink className="w-3 h-3" /> {t.settings.getKeyLink}
             </a>
             <button
               onClick={() => void save()}
@@ -150,7 +152,7 @@ function ConnectorCard({ connector, onSave }: { connector: Connector; onSave: (k
               className="px-4 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-500 disabled:opacity-50 transition-colors flex items-center gap-1"
             >
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-              Salva
+              {t.settings.saveSetting}
             </button>
           </div>
         </div>
@@ -162,6 +164,7 @@ function ConnectorCard({ connector, onSave }: { connector: Connector; onSave: (k
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const { t } = useLocaleContext();
   const [domain, setDomain] = useState("");
   const [domainStatus, setDomainStatus] = useState<DomainStatus | null>(null);
   const [addingDomain, setAddingDomain] = useState(false);
@@ -171,7 +174,7 @@ export default function SettingsPage() {
     {
       id: "google_analytics",
       name: "Google Analytics",
-      description: "Traccia le visite e il comportamento degli utenti",
+      description: t.settings.connDescAnalytics,
       icon: <BarChart3 className="w-4 h-4" />,
       color: "#F9AB00",
       connected: false,
@@ -182,7 +185,7 @@ export default function SettingsPage() {
     {
       id: "google_maps",
       name: "Google Maps",
-      description: "Mostra la tua posizione con una mappa interattiva",
+      description: t.settings.connDescMaps,
       icon: <Globe className="w-4 h-4" />,
       color: "#4285F4",
       connected: false,
@@ -193,7 +196,7 @@ export default function SettingsPage() {
     {
       id: "meta_pixel",
       name: "Meta Pixel",
-      description: "Traccia le conversioni da Facebook e Instagram",
+      description: t.settings.connDescMeta,
       icon: <Database className="w-4 h-4" />,
       color: "#1877F2",
       connected: false,
@@ -203,35 +206,35 @@ export default function SettingsPage() {
     },
     {
       id: "custom_email",
-      name: "Email personalizzata",
-      description: "Usa il tuo dominio email per le notifiche (es. info@tuodominio.it)",
+      name: t.settings.connEmailLabel,
+      description: t.settings.connDescEmail,
       icon: <Mail className="w-4 h-4" />,
       color: "#EA4335",
       connected: false,
       configKey: "customEmailFrom",
-      placeholder: "info@tuodominio.it",
+      placeholder: t.settings.connEmailPlaceholder,
       helpUrl: "https://resend.com/docs/send-with-custom-domain",
     },
     {
       id: "tawk_to",
       name: "Tawk.to / Crisp",
-      description: "Livechat alternativa al chatbot AI",
+      description: t.settings.connDescChat,
       icon: <MessageSquare className="w-4 h-4" />,
       color: "#03C75A",
       connected: false,
       configKey: "livechatWidgetId",
-      placeholder: "Widget ID o snippet code",
+      placeholder: "Widget ID",
       helpUrl: "https://www.tawk.to/knowledgebase/getting-started/adding-a-widget-to-your-website/",
     },
     {
       id: "ssl_custom",
-      name: "SSL Certificato custom",
-      description: "Usa un certificato SSL personalizzato per il tuo dominio",
+      name: "SSL",
+      description: t.settings.connDescSsl,
       icon: <Shield className="w-4 h-4" />,
       color: "#10B981",
       connected: false,
       configKey: "customSslCert",
-      placeholder: "Certificato fornito automaticamente con il dominio",
+      placeholder: "—",
       helpUrl: "https://vercel.com/docs/security/encryption",
     },
   ];
@@ -251,7 +254,7 @@ export default function SettingsPage() {
       if (!json.success) throw new Error(json.error ?? "Errore");
       setDomainStatus(json.data ?? null);
     } catch (e) {
-      setDomainError(e instanceof Error ? e.message : "Errore nella configurazione del dominio");
+      setDomainError(e instanceof Error ? e.message : t.settings.errorDomain);
     } finally {
       setAddingDomain(false);
     }
@@ -272,14 +275,14 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h2 className="text-xl font-bold text-white">Impostazioni</h2>
-        <p className="text-sm text-slate-400 mt-1">Dominio personalizzato, integrazioni e connettori</p>
+        <h2 className="text-xl font-bold text-white">{t.settings.pageTitle}</h2>
+        <p className="text-sm text-slate-400 mt-1">{t.settings.pageSubtitle}</p>
       </div>
 
       {/* ─── Custom Domain ─────────────────────────────────────────────── */}
       <Section
-        title="Dominio personalizzato"
-        description="Connetti il tuo dominio al sito (es. www.tuodominio.it)"
+        title={t.settings.customDomain}
+        description={t.settings.customDomainDesc}
         icon={Globe}
       >
         <div className="flex gap-2">
@@ -287,7 +290,7 @@ export default function SettingsPage() {
             type="text"
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
-            placeholder="www.tuodominio.it"
+            placeholder={t.settings.domainPlaceholder}
             className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
             onKeyDown={(e) => { if (e.key === "Enter") void handleAddDomain(); }}
           />
@@ -297,7 +300,7 @@ export default function SettingsPage() {
             className="px-6 py-3 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 disabled:opacity-50 transition-colors flex items-center gap-2"
           >
             {addingDomain ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
-            Connetti
+            {t.settings.connectButton}
           </button>
         </div>
 
@@ -313,9 +316,9 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
               <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <div>
-                <p className="text-xs font-semibold text-amber-300">Configura i record DNS</p>
+                <p className="text-xs font-semibold text-amber-300">{t.settings.configureDns}</p>
                 <p className="text-xs text-amber-300/80 mt-0.5">
-                  Aggiungi questi record nel pannello DNS del tuo provider di dominio (GoDaddy, Namecheap, Aruba, ecc.)
+                  {t.settings.configureDnsDesc}
                 </p>
               </div>
             </div>
@@ -329,11 +332,11 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               {domainStatus.verified ? (
                 <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> Dominio verificato e attivo
+                  <Check className="w-3.5 h-3.5" /> {t.settings.domainVerified}
                 </span>
               ) : (
                 <span className="text-xs text-slate-400">
-                  Dopo aver configurato i DNS, la verifica avviene automaticamente entro 24h.
+                  {t.settings.domainPending}
                 </span>
               )}
             </div>
@@ -343,7 +346,7 @@ export default function SettingsPage() {
         {!domainStatus && (
           <div className="p-3 bg-slate-800/60 border border-slate-700 rounded-xl">
             <p className="text-xs text-slate-400">
-              Il tuo sito e attualmente su <span className="text-indigo-400 font-mono">tuonome.madecreative.pro</span>. Connetti un dominio personalizzato per un aspetto piu professionale.
+              {t.settings.noCustomDomain.replace("{domain}", "tuonome.madecreative.pro")}
             </p>
           </div>
         )}
@@ -351,8 +354,8 @@ export default function SettingsPage() {
 
       {/* ─── Connectors ────────────────────────────────────────────────── */}
       <Section
-        title="Integrazioni e Connettori"
-        description="Collega servizi esterni al tuo sito"
+        title={t.settings.integrationsTitle}
+        description={t.settings.integrationsDesc}
         icon={Plug}
       >
         <div className="space-y-2">

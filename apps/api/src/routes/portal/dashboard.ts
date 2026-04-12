@@ -21,14 +21,18 @@ app.get("/", async (c) => {
         language: true,
         sector: true,
         createdAt: true,
-        website: {
+        websites: {
+          where: { isActive: true },
           select: {
             id: true,
+            name: true,
             domain: true,
             monthlyVisits: true,
             lighthouseScore: true,
             deployUrl: true,
           },
+          orderBy: { updatedAt: "desc" as const },
+          take: 1,
         },
         chatbot: {
           select: {
@@ -75,10 +79,10 @@ app.get("/", async (c) => {
         totalRevenue,
         chatbotConversations: client.chatbot?.totalConversations ?? 0,
         chatbotResolvedRate: client.chatbot?.resolvedRate ?? 0,
-        monthlyVisits: client.website?.monthlyVisits ?? 0,
-        lighthouseScore: client.website?.lighthouseScore ?? null,
+        monthlyVisits: client.websites[0]?.monthlyVisits ?? 0,
+        lighthouseScore: client.websites[0]?.lighthouseScore ?? null,
       },
-      website: client.website ?? null,
+      website: client.websites[0] ?? null,
       chatbot: client.chatbot ?? null,
       lastReport,
     },

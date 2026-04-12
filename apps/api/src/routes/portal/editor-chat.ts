@@ -453,7 +453,7 @@ app.post("/stream", async (c) => {
   const { getClaudeClient } = await import("@madecreative/ai");
   const clientId = c.get("jwtPayload").sub;
 
-  const client = await prisma.client.findUnique({ where: { id: clientId }, include: { website: true } });
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyName: true, sector: true, language: true, plan: true } });
   if (!client) return c.json({ success: false, error: "Client not found" }, 404);
 
   const credits = getCredits(clientId, client.plan);
@@ -464,14 +464,20 @@ app.post("/stream", async (c) => {
 
   const userMessage = body.message as string;
   const conversationHistory = (body.history ?? []) as MessageParam[];
+  const projectId = body.projectId as string | undefined;
+
+  // Load specific project by ID, or fall back to most recently updated one
+  let website = projectId
+    ? await prisma.clientWebsite.findFirst({ where: { id: projectId, clientId, isActive: true } })
+    : await prisma.clientWebsite.findFirst({ where: { clientId, isActive: true }, orderBy: { updatedAt: "desc" } });
 
   // Load project files from DB
   let projectFiles: Record<string, string> = {};
-  if (client.website?.files) {
+  if (website?.files) {
     try {
-      const raw = typeof client.website.files === "string"
-        ? JSON.parse(client.website.files as string)
-        : client.website.files;
+      const raw = typeof website.files === "string"
+        ? JSON.parse(website.files as string)
+        : website.files;
       projectFiles = extractProjectFiles(raw);
     } catch { projectFiles = {}; }
   }
@@ -517,26 +523,28 @@ app.post("/stream", async (c) => {
       for await (const event of generator) {
         if (event.type === "done") {
           // Persist file updates to DB
-          let deployUrl: string | null = client.website?.deployUrl ?? null;
+          let deployUrl: string | null = website?.deployUrl ?? null;
 
           if (Object.keys(fileUpdates).length > 0) {
-            // Auto-create website if needed
-            if (!client.website) {
+            // Auto-create project if needed (e.g., first chat with no projectId)
+            if (!website) {
               const slug = client.companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
-              client.website = await prisma.clientWebsite.create({
-                data: { clientId, domain: `${slug}.madecreative.pro`, subdomain: slug, pages: {}, files: projectFiles as unknown as object, deployStatus: "NONE" },
+              const suffix = Math.random().toString(36).slice(2, 7);
+              const subdomain = `${slug}-${suffix}`;
+              website = await prisma.clientWebsite.create({
+                data: { clientId, name: client.companyName, domain: `${subdomain}.madecreative.pro`, subdomain, pages: {}, files: projectFiles as unknown as object, deployStatus: "NONE" },
               });
             }
 
             // Snapshot previous state for rollback
-            const previousFiles = client.website.files ?? {};
-            const tokens = (client.website.designTokens ?? {}) as Record<string, unknown>;
+            const previousFiles = website.files ?? {};
+            const tokens = (website.designTokens ?? {}) as Record<string, unknown>;
             const snapshots = ((tokens._snapshots as Array<{ ts: string; data: object }>) ?? []).slice(-19);
             snapshots.push({ ts: new Date().toISOString(), data: previousFiles as object });
 
             // Save updated project files
             await prisma.clientWebsite.update({
-              where: { id: client.website.id },
+              where: { id: website.id },
               data: {
                 files: projectFiles as unknown as object,
                 designTokens: { ...tokens, _snapshots: snapshots },
@@ -547,9 +555,8 @@ app.post("/stream", async (c) => {
             // Deploy to Vercel
             try {
               const { deploySite } = await import("../../lib/deploy-site.js");
-              const subdomain = client.website.subdomain ?? client.companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+              const subdomain = website.subdomain ?? client.companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
 
-              // Deploy the actual project files
               const deployResult = await deploySite({
                 clientId,
                 companyName: client.companyName,
@@ -560,12 +567,12 @@ app.post("/stream", async (c) => {
 
               deployUrl = deployResult.deployUrl;
               await prisma.clientWebsite.update({
-                where: { id: client.website.id },
+                where: { id: website.id },
                 data: { deployUrl: deployResult.deployUrl, vercelProjectId: deployResult.vercelProjectId, deployStatus: "DEPLOYED", lastDeployedAt: new Date() },
               });
             } catch (deployErr) {
               console.warn("[EditorChat] Deploy failed:", deployErr instanceof Error ? deployErr.message : String(deployErr));
-              await prisma.clientWebsite.update({ where: { id: client.website.id }, data: { deployStatus: "FAILED" } }).catch(() => {});
+              await prisma.clientWebsite.update({ where: { id: website.id }, data: { deployStatus: "FAILED" } }).catch(() => {});
             }
           }
 
@@ -575,6 +582,7 @@ app.post("/stream", async (c) => {
           await stream.writeSSE({ data: JSON.stringify({
             type: "complete",
             deployUrl,
+            projectId: website?.id ?? null,
             credits: getCredits(clientId, client.plan),
             files: Object.keys(projectFiles),
             updatedFiles: Object.keys(fileUpdates),
@@ -597,7 +605,7 @@ app.post("/", async (c) => {
   const { getClaudeClient } = await import("@madecreative/ai");
   const clientId = c.get("jwtPayload").sub;
 
-  const client = await prisma.client.findUnique({ where: { id: clientId }, include: { website: true } });
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyName: true, sector: true, language: true, plan: true } });
   if (!client) return c.json({ success: false, error: "Client not found" }, 404);
 
   const credits = getCredits(clientId, client.plan);
@@ -608,10 +616,15 @@ app.post("/", async (c) => {
 
   const userMessage = body.message as string;
   const conversationHistory = (body.history ?? []) as MessageParam[];
+  const projectId = body.projectId as string | undefined;
+
+  let website = projectId
+    ? await prisma.clientWebsite.findFirst({ where: { id: projectId, clientId, isActive: true } })
+    : await prisma.clientWebsite.findFirst({ where: { clientId, isActive: true }, orderBy: { updatedAt: "desc" } });
 
   let projectFiles: Record<string, string> = {};
-  if (client.website?.files) {
-    try { projectFiles = extractProjectFiles(client.website.files); } catch { projectFiles = {}; }
+  if (website?.files) {
+    try { projectFiles = extractProjectFiles(website.files); } catch { projectFiles = {}; }
   }
 
   const systemPrompt = buildSystemPrompt(client.companyName, client.sector, client.language, projectFiles);
@@ -630,14 +643,16 @@ app.post("/", async (c) => {
 
     // Save if files changed
     if (Object.keys(fileUpdates).length > 0) {
-      if (!client.website) {
+      if (!website) {
         const slug = client.companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
-        client.website = await prisma.clientWebsite.create({
-          data: { clientId, domain: `${slug}.madecreative.pro`, subdomain: slug, pages: {}, files: projectFiles as unknown as object, deployStatus: "NONE" },
+        const suffix = Math.random().toString(36).slice(2, 7);
+        const subdomain = `${slug}-${suffix}`;
+        website = await prisma.clientWebsite.create({
+          data: { clientId, name: client.companyName, domain: `${subdomain}.madecreative.pro`, subdomain, pages: {}, files: projectFiles as unknown as object, deployStatus: "NONE" },
         });
       }
       await prisma.clientWebsite.update({
-        where: { id: client.website.id },
+        where: { id: website.id },
         data: { files: projectFiles as unknown as object },
       });
     }
@@ -660,7 +675,8 @@ app.post("/", async (c) => {
         response: assistantText,
         files: projectFiles,
         updatedFiles: Object.keys(fileUpdates),
-        deployUrl: client.website?.deployUrl ?? null,
+        deployUrl: website?.deployUrl ?? null,
+        projectId: website?.id ?? null,
         credits: getCredits(clientId, client.plan),
       },
     });
@@ -674,7 +690,16 @@ app.post("/", async (c) => {
 app.get("/history", async (c) => {
   const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
-  const website = await prisma.clientWebsite.findUnique({ where: { clientId }, select: { designTokens: true } });
+  const projectId = c.req.query("projectId");
+
+  let website;
+  if (projectId) {
+    website = await prisma.clientWebsite.findFirst({ where: { id: projectId, clientId }, select: { designTokens: true } });
+  } else {
+    // Fallback: most recently updated project
+    website = await prisma.clientWebsite.findFirst({ where: { clientId, isActive: true }, orderBy: { updatedAt: "desc" }, select: { designTokens: true } });
+  }
+
   const snapshots = ((website?.designTokens as { _snapshots?: Array<{ ts: string }> })?._snapshots ?? []).map((s, i) => ({ index: i, timestamp: s.ts })).reverse();
   return c.json({ success: true, data: { versions: snapshots, count: snapshots.length } });
 });
@@ -685,8 +710,14 @@ app.post("/rollback", async (c) => {
   const clientId = c.get("jwtPayload").sub;
   const body = await c.req.json().catch(() => null);
   const index = body?.index as number | undefined;
+  const projectId = body?.projectId as string | undefined;
 
-  const website = await prisma.clientWebsite.findUnique({ where: { clientId }, select: { id: true, designTokens: true, files: true } });
+  let website;
+  if (projectId) {
+    website = await prisma.clientWebsite.findFirst({ where: { id: projectId, clientId }, select: { id: true, designTokens: true, files: true } });
+  } else {
+    website = await prisma.clientWebsite.findFirst({ where: { clientId, isActive: true }, orderBy: { updatedAt: "desc" }, select: { id: true, designTokens: true, files: true } });
+  }
   if (!website) return c.json({ success: false, error: "Website not found" }, 404);
 
   const snapshots = ((website.designTokens as { _snapshots?: Array<{ ts: string; data: object }> })?._snapshots ?? []).slice();
@@ -714,9 +745,18 @@ app.post("/rollback", async (c) => {
 app.get("/files", async (c) => {
   const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
-  const website = await prisma.clientWebsite.findUnique({ where: { clientId }, select: { files: true, deployUrl: true } });
-  if (!website) return c.json({ success: true, data: { files: {}, deployUrl: null } });
-  return c.json({ success: true, data: { files: extractProjectFiles(website.files), deployUrl: website.deployUrl } });
+  const projectId = c.req.query("projectId");
+
+  let website;
+  if (projectId) {
+    website = await prisma.clientWebsite.findFirst({ where: { id: projectId, clientId }, select: { id: true, name: true, files: true, deployUrl: true } });
+  } else {
+    // Fallback: most recently updated project
+    website = await prisma.clientWebsite.findFirst({ where: { clientId, isActive: true }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, files: true, deployUrl: true } });
+  }
+
+  if (!website) return c.json({ success: true, data: { files: {}, deployUrl: null, projectId: null, projectName: null } });
+  return c.json({ success: true, data: { files: extractProjectFiles(website.files), deployUrl: website.deployUrl, projectId: website.id, projectName: website.name } });
 });
 
 export default app;

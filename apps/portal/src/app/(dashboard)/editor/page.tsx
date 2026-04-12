@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
-  Bot, Check, ChevronDown, ChevronRight, Code2, Copy, Eye, ExternalLink,
-  File, FileCode2, FileJson, FileText, FolderClosed, FolderOpen, Loader2,
+  ArrowLeft, Bot, Check, ChevronDown, ChevronRight, Code2, Copy, Eye, ExternalLink,
+  File, FileCode2, FileJson, FileText, FolderClosed, FolderOpen, Layers, Loader2,
   MessageSquare, Monitor, PanelLeftClose, PanelLeftOpen, Play, Plus,
   RefreshCw, Search, Send, Share2, Smartphone, Sparkles, Tablet, Undo2, User, Zap,
 } from "lucide-react";
@@ -162,6 +164,8 @@ function toSandpack(files: Record<string, string>): Record<string, string> {
 export default function EditorPage() {
   const { token } = useAuth();
   const { t } = useLocaleContext();
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("project");
 
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -177,25 +181,34 @@ export default function EditorPage() {
   const [mobileView, setMobileView] = useState<"chat" | "right">("chat");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["app", "components", "lib"]));
   const [copied, setCopied] = useState(false);
+  const [projectName, setProjectName] = useState<string | null>(null);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(projectId);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load files + credits on mount
+  // Load files + credits on mount (or when projectId changes)
   useEffect(() => {
     if (!token) return;
-    apiFetch("/portal/editor/chat/files", token).then(r => r.json()).then(d => {
-      if (d.success && d.data?.files) {
-        setFiles(d.data.files);
+    const filesUrl = projectId
+      ? `/portal/editor/chat/files?projectId=${projectId}`
+      : "/portal/editor/chat/files";
+    apiFetch(filesUrl, token).then(r => r.json()).then(d => {
+      if (d.success && d.data) {
+        if (d.data.files) {
+          setFiles(d.data.files);
+          const keys = Object.keys(d.data.files);
+          if (keys.length > 0) setSelectedFile(keys.find(k => k === "app/page.tsx") ?? keys[0]!);
+        }
         if (d.data.deployUrl) setDeployUrl(d.data.deployUrl);
-        const keys = Object.keys(d.data.files);
-        if (keys.length > 0) setSelectedFile(keys.find(k => k === "app/page.tsx") ?? keys[0]!);
+        if (d.data.projectId) setActiveProjectId(d.data.projectId);
+        if (d.data.projectName) setProjectName(d.data.projectName);
       }
     }).catch(() => {});
     apiFetch("/portal/editor/chat/credits", token).then(r => r.json()).then(d => {
       if (d.success && d.data) setCredits(d.data);
     }).catch(() => {});
-  }, [token]);
+  }, [token, projectId]);
 
   // Auto-scroll
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -213,19 +226,21 @@ export default function EditorPage() {
 
     try {
       const history = messages.slice(-30).map(m => ({ role: m.role, content: m.content }));
+      const chatPayload = { message: msg, history, ...(activeProjectId ? { projectId: activeProjectId } : {}) };
       const res = await apiFetch("/portal/editor/chat/stream", token, {
         method: "POST",
-        body: JSON.stringify({ message: msg, history }),
+        body: JSON.stringify(chatPayload),
       });
 
       if (!res.ok || !res.body) {
-        const fb = await apiFetch("/portal/editor/chat", token, { method: "POST", body: JSON.stringify({ message: msg, history }) });
+        const fb = await apiFetch("/portal/editor/chat", token, { method: "POST", body: JSON.stringify(chatPayload) });
         const data = await fb.json();
         if (data.success) {
           setMessages(prev => { const c = [...prev]; c[c.length - 1] = { ...botMsg, content: data.data.response }; return c; });
           if (data.data.files) setFiles(data.data.files);
           if (data.data.deployUrl) setDeployUrl(data.data.deployUrl);
           if (data.data.credits) setCredits(data.data.credits);
+          if (data.data.projectId && !activeProjectId) setActiveProjectId(data.data.projectId);
         }
         setStreaming(false);
         return;
@@ -260,6 +275,7 @@ export default function EditorPage() {
             } else if (ev.type === "complete") {
               if (ev.deployUrl) setDeployUrl(ev.deployUrl);
               if (ev.credits) setCredits(ev.credits);
+              if (ev.projectId && !activeProjectId) setActiveProjectId(ev.projectId);
             } else if (ev.type === "error") {
               setMessages(prev => { const c = [...prev]; c[c.length - 1] = { ...botMsg, content: ev.message ?? t.editor.errorGeneric }; return c; });
             }
@@ -297,14 +313,23 @@ export default function EditorPage() {
 
       {/* ═══ TOP BAR ═══ */}
       <div style={{ height: 48, borderBottom: "1px solid #1c1c22", display: "flex", alignItems: "center", padding: "0 12px", gap: 8, flexShrink: 0, background: "#0c0c10" }}>
-        {/* Left: Logo + project name */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 200 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg, #6366f1, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Sparkles style={{ width: 14, height: 14, color: "#fff" }} />
+        {/* Left: Back link + project name */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 220 }}>
+          <Link href="/projects"
+            style={{ width: 28, height: 28, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", color: "#52525b", textDecoration: "none", transition: "all 0.15s" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "#18181b"; (e.currentTarget as HTMLAnchorElement).style.color = "#a1a1aa"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; (e.currentTarget as HTMLAnchorElement).style.color = "#52525b"; }}
+            title="Back to projects"
+          >
+            <ArrowLeft style={{ width: 15, height: 15 }} />
+          </Link>
+          <div style={{ width: 1, height: 20, background: "#1c1c22" }} />
+          <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg, #6366f1, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Sparkles style={{ width: 12, height: 12, color: "#fff" }} />
           </div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e7" }}>MadeCreative</span>
-          <span style={{ fontSize: 11, color: "#3f3f46", margin: "0 4px" }}>/</span>
-          <span style={{ fontSize: 13, color: "#a1a1aa" }}>{t.editor.projectName}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e7", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 160 }}>
+            {projectName ?? t.editor.projectName}
+          </span>
         </div>
 
         {/* Center: Panel tabs */}

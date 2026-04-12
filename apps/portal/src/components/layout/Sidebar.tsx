@@ -4,11 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Pencil,
+  Layers,
   FileText,
   CreditCard,
   Settings,
-  Globe,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -16,21 +15,25 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  matchPrefix?: string;
 }
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/editor", label: "Editor", icon: Pencil },
-  { href: "/website", label: "Sito", icon: Globe },
+  { href: "/projects", label: "Projects", icon: Layers, matchPrefix: "/projects" },
   { href: "/reports", label: "Report", icon: FileText },
   { href: "/billing", label: "Account", icon: CreditCard },
-  { href: "/settings", label: "Altro", icon: Settings },
+  { href: "/settings", label: "More", icon: Settings },
 ];
 
 function NavLink({ item }: { item: NavItem }) {
   const pathname = usePathname();
+  const prefix = item.matchPrefix ?? item.href;
   const isActive =
-    pathname === item.href || pathname.startsWith(`${item.href}/`);
+    pathname === item.href ||
+    pathname.startsWith(`${prefix}/`) ||
+    // Mark Projects as active when the editor is open with a project param
+    (item.href === "/projects" && pathname === "/editor");
   const Icon = item.icon;
 
   return (

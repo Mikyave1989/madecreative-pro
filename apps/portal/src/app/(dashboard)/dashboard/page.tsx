@@ -14,6 +14,7 @@ import {
   BarChart3,
   Gauge,
 } from "lucide-react";
+import { useLocaleContext } from "@/lib/locale-context";
 
 // ─── Types matching real API response ────────────────────────────────────────
 
@@ -61,27 +62,27 @@ interface ApiDashboard {
 const API_URL =
   process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.madecreative.pro";
 
-const MONTH_NAMES = [
-  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
-];
-
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("mc_token");
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("it-IT", {
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
 }
 
+function getMonthName(month: number, locale: string): string {
+  return new Date(2000, month - 1, 1).toLocaleDateString(locale, { month: "long" });
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const { t, locale } = useLocaleContext();
   const [data, setData] = useState<ApiDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,10 +102,10 @@ export default function DashboardPage() {
       const res = await fetch(`${API_URL}/portal/dashboard`, { headers });
       const json = (await res.json()) as { success: boolean; data?: ApiDashboard; error?: string };
 
-      if (!json.success) throw new Error(json.error ?? "Errore dashboard");
+      if (!json.success) throw new Error(json.error ?? t.dashboard.errorDashboard);
       setData(json.data!);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore di caricamento");
+      setError(err instanceof Error ? err.message : t.common.error);
     } finally {
       setLoading(false);
     }
@@ -122,12 +123,12 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-64 gap-4">
         <AlertCircle className="w-10 h-10 text-red-400" />
-        <p className="text-slate-400">{error ?? "Dati non disponibili"}</p>
+        <p className="text-slate-400">{error ?? t.common.dataUnavailable}</p>
         <button
           onClick={() => void load()}
           className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
         >
-          Riprova
+          {t.common.retry}
         </button>
       </div>
     );
@@ -140,10 +141,10 @@ export default function DashboardPage() {
       {/* Page header */}
       <div>
         <h2 className="text-xl font-bold text-white">
-          Ciao, {client.contactName ?? client.companyName}
+          {t.dashboard.greeting}, {client.contactName ?? client.companyName}
         </h2>
         <p className="text-sm text-slate-400 mt-1">
-          Panoramica di {client.companyName}
+          {t.dashboard.overview} {client.companyName}
         </p>
       </div>
 
@@ -157,7 +158,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">
-                  Il tuo sito
+                  {t.dashboard.yourSite}
                 </p>
                 {website ? (
                   <a
@@ -170,7 +171,7 @@ export default function DashboardPage() {
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 ) : (
-                  <p className="text-sm text-slate-500">Sito non ancora generato</p>
+                  <p className="text-sm text-slate-500">{t.dashboard.siteNotGenerated}</p>
                 )}
               </div>
             </div>
@@ -180,7 +181,7 @@ export default function DashboardPage() {
                 : "bg-amber-500/20 text-amber-400 border-amber-500/30"
             }`}>
               <span className={`w-1.5 h-1.5 rounded-full ${website ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
-              {website ? "Live" : "In preparazione"}
+              {website ? t.dashboard.statusLive : t.dashboard.statusPreparation}
             </span>
           </div>
 
@@ -189,7 +190,7 @@ export default function DashboardPage() {
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 transition-colors self-start"
           >
             <Pencil className="w-4 h-4" />
-            Modifica il tuo sito
+            {t.dashboard.editSite}
           </Link>
         </div>
       </div>
@@ -202,10 +203,10 @@ export default function DashboardPage() {
             <div className="w-8 h-8 bg-violet-600/20 rounded-lg flex items-center justify-center">
               <BarChart3 className="w-4 h-4 text-violet-400" />
             </div>
-            <span className="text-xs text-slate-400 font-medium">Visite / mese</span>
+            <span className="text-xs text-slate-400 font-medium">{t.dashboard.visitsPerMonth}</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
-            {stats.monthlyVisits.toLocaleString("it-IT")}
+            {stats.monthlyVisits.toLocaleString(locale)}
           </p>
         </div>
 
@@ -215,7 +216,7 @@ export default function DashboardPage() {
             <div className="w-8 h-8 bg-emerald-600/20 rounded-lg flex items-center justify-center">
               <Gauge className="w-4 h-4 text-emerald-400" />
             </div>
-            <span className="text-xs text-slate-400 font-medium">Lighthouse</span>
+            <span className="text-xs text-slate-400 font-medium">{t.dashboard.lighthouse}</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
             {stats.lighthouseScore != null ? `${stats.lighthouseScore}/100` : "—"}
@@ -228,7 +229,7 @@ export default function DashboardPage() {
             <div className="w-8 h-8 bg-indigo-600/20 rounded-lg flex items-center justify-center">
               <Bot className="w-4 h-4 text-indigo-400" />
             </div>
-            <span className="text-xs text-slate-400 font-medium">Conversazioni</span>
+            <span className="text-xs text-slate-400 font-medium">{t.dashboard.conversations}</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
             {chatbot?.totalConversations ?? stats.chatbotConversations}
@@ -241,7 +242,7 @@ export default function DashboardPage() {
             <div className="w-8 h-8 bg-emerald-600/20 rounded-lg flex items-center justify-center">
               <Bot className="w-4 h-4 text-emerald-400" />
             </div>
-            <span className="text-xs text-slate-400 font-medium">Tasso risoluzione</span>
+            <span className="text-xs text-slate-400 font-medium">{t.dashboard.resolutionRate}</span>
           </div>
           <p className="text-2xl sm:text-3xl font-bold text-emerald-400 tabular-nums">
             {chatbot?.resolvedRate ?? stats.chatbotResolvedRate}%
@@ -266,13 +267,13 @@ export default function DashboardPage() {
               <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center">
                 <FileText className="w-4 h-4 text-slate-300" />
               </div>
-              <span className="text-sm font-semibold text-white">Report mensili</span>
+              <span className="text-sm font-semibold text-white">{t.dashboard.monthlyReports}</span>
             </div>
             <Link
               href="/reports"
               className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
             >
-              Vedi tutti
+              {t.dashboard.seeAll}
             </Link>
           </div>
 
@@ -280,7 +281,7 @@ export default function DashboardPage() {
             <div className="text-center py-8">
               <FileText className="w-8 h-8 text-slate-700 mx-auto mb-2" />
               <p className="text-sm text-slate-500">
-                Nessun report ancora. Il primo arrivera a fine mese.
+                {t.dashboard.noReportsYet}
               </p>
             </div>
           ) : (
@@ -291,10 +292,10 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-white">
-                    {MONTH_NAMES[(lastReport.month - 1) % 12]} {lastReport.year}
+                    {getMonthName(lastReport.month, locale)} {lastReport.year}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {lastReport.sentAt ? formatDate(lastReport.sentAt) : "In preparazione"}
+                    {lastReport.sentAt ? formatDate(lastReport.sentAt, locale) : t.dashboard.inPreparation}
                   </p>
                 </div>
               </div>
@@ -317,29 +318,29 @@ export default function DashboardPage() {
             <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center">
               <CreditCard className="w-4 h-4 text-slate-300" />
             </div>
-            <span className="text-sm font-semibold text-white">Account</span>
+            <span className="text-sm font-semibold text-white">{t.dashboard.account}</span>
           </div>
 
           <div className="space-y-4 flex-1">
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Stato</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">{t.dashboard.status}</p>
               <span className={`inline-flex items-center px-2.5 py-1 text-sm font-bold rounded-lg border ${
                 client.status === "ACTIVE"
                   ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                   : "bg-red-500/20 text-red-400 border-red-500/30"
               }`}>
-                {client.status === "ACTIVE" ? "Attivo" : client.status}
+                {client.status === "ACTIVE" ? t.dashboard.statusActive : client.status}
               </span>
             </div>
 
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Settore</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">{t.dashboard.sector}</p>
               <p className="text-sm font-semibold text-white capitalize">{client.sector}</p>
             </div>
 
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Cliente dal</p>
-              <p className="text-sm font-semibold text-white">{formatDate(client.createdAt)}</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">{t.dashboard.clientSince}</p>
+              <p className="text-sm font-semibold text-white">{formatDate(client.createdAt, locale)}</p>
             </div>
           </div>
 
@@ -348,7 +349,7 @@ export default function DashboardPage() {
             className="mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-700 hover:text-white transition-colors"
           >
             <CreditCard className="w-4 h-4" />
-            Gestisci account
+            {t.dashboard.manageAccount}
           </Link>
         </div>
       </div>

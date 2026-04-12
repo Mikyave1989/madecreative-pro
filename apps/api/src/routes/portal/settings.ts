@@ -22,7 +22,7 @@ app.post("/domain", async (c) => {
     .replace(/^https?:\/\//, "")
     .replace(/\/$/, "");
 
-  const website = await prisma.clientWebsite.findUnique({ where: { clientId } });
+  const website = await prisma.clientWebsite.findFirst({ where: { clientId, isActive: true }, orderBy: { updatedAt: "desc" } });
   if (!website) {
     return c.json({ success: false, error: "Website not found" }, 404);
   }
@@ -82,8 +82,9 @@ app.post("/domain", async (c) => {
 app.get("/domain", async (c) => {
   const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
-  const website = await prisma.clientWebsite.findUnique({
-    where: { clientId },
+  const website = await prisma.clientWebsite.findFirst({
+    where: { clientId, isActive: true },
+    orderBy: { updatedAt: "desc" },
     select: { domain: true },
   });
 
@@ -147,7 +148,7 @@ app.post("/connectors", async (c) => {
     return c.json({ success: false, error: "Invalid connector key" }, 400);
   }
 
-  const website = await prisma.clientWebsite.findUnique({ where: { clientId } });
+  const website = await prisma.clientWebsite.findFirst({ where: { clientId, isActive: true }, orderBy: { updatedAt: "desc" } });
   if (!website) {
     return c.json({ success: false, error: "Website not found" }, 404);
   }
@@ -169,8 +170,9 @@ app.post("/connectors", async (c) => {
 app.get("/connectors", async (c) => {
   const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
-  const website = await prisma.clientWebsite.findUnique({
-    where: { clientId },
+  const website = await prisma.clientWebsite.findFirst({
+    where: { clientId, isActive: true },
+    orderBy: { updatedAt: "desc" },
     select: { designTokens: true },
   });
 

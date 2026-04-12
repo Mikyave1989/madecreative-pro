@@ -6,6 +6,8 @@ import { ArrowRight } from "lucide-react";
 import { createCheckout } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Suspense } from "react";
+import { useLocaleContext } from "@/lib/locale-context";
+import { LanguageSelector } from "@/components/ui/LanguageSelector";
 
 const PLAN_LABELS: Record<string, string> = {
   starter: "Starter",
@@ -14,6 +16,7 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 function SignupForm() {
+  const { t } = useLocaleContext();
   const searchParams = useSearchParams();
 
   const plan = searchParams.get("plan") ?? "starter";
@@ -45,7 +48,7 @@ function SignupForm() {
       window.location.href = data.checkoutUrl;
     } catch (err) {
       const msg =
-        err instanceof Error ? err.message : "Errore durante la registrazione";
+        err instanceof Error ? err.message : t.signup.errorDefault;
       setError(msg);
     } finally {
       setLoading(false);
@@ -64,26 +67,26 @@ function SignupForm() {
           <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-2 mb-8">
             <span className="w-2 h-2 bg-green-400 rounded-full" />
             <span className="text-sm text-white/90 font-medium">
-              Piano {planLabel}
+              {t.signup.plan} {planLabel}
             </span>
           </div>
 
           <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
-            Crea il tuo sito
+            {t.signup.heroHeadlineA}
             <br />
-            in{" "}
-            <span className="text-indigo-200">60 secondi</span>
+            {t.signup.heroHeadlineB}{" "}
+            <span className="text-indigo-200">{t.signup.heroHeadlineHighlight}</span>
           </h2>
           <p className="text-indigo-200 text-lg max-w-sm mx-auto">
-            Completa la registrazione per attivare il tuo piano.
+            {t.signup.heroSubtitle}
           </p>
 
           <div className="mt-12 grid grid-cols-2 gap-4 max-w-xs mx-auto">
             {[
-              { label: "Siti creati", value: "5k+" },
-              { label: "Tempo medio", value: "60s" },
-              { label: "Uptime", value: "99.9%" },
-              { label: "Soddisfazione", value: "4.9/5" },
+              { label: t.signup.heroStatSites, value: "5k+" },
+              { label: t.signup.heroStatTime, value: "60s" },
+              { label: t.signup.heroStatUptime, value: "99.9%" },
+              { label: t.signup.heroStatSatisfaction, value: "4.9/5" },
             ].map((s) => (
               <div
                 key={s.label}
@@ -100,20 +103,23 @@ function SignupForm() {
       {/* Right panel -- form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-slate-50">
         <div className="w-full max-w-sm">
-          {/* Logo */}
-          <div className="mb-8">
-            <span className="text-2xl font-bold text-gray-900">
-              made<span className="text-indigo-600">creative</span>
-            </span>
-            <p className="text-sm text-gray-500 mt-1">Il tuo partner digitale</p>
+          {/* Logo + Language selector */}
+          <div className="mb-8 flex items-start justify-between">
+            <div>
+              <span className="text-2xl font-bold text-gray-900">
+                made<span className="text-indigo-600">creative</span>
+              </span>
+              <p className="text-sm text-gray-500 mt-1">{t.login.tagline}</p>
+            </div>
+            <LanguageSelector variant="dropdown" />
           </div>
 
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">
-              Registrati — Piano {planLabel}
+              {t.signup.formTitle} {planLabel}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              Completa la registrazione per procedere al pagamento
+              {t.signup.formSubtitle}
             </p>
           </div>
 
@@ -124,7 +130,7 @@ function SignupForm() {
                 htmlFor="email"
                 className="block text-sm font-medium text-gray-700 mb-1.5"
               >
-                Indirizzo email
+                {t.signup.emailLabel}
               </label>
               <input
                 id="email"
@@ -133,7 +139,7 @@ function SignupForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="tu@azienda.it"
+                placeholder={t.signup.emailPlaceholder}
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
               />
             </div>
@@ -144,7 +150,7 @@ function SignupForm() {
                 htmlFor="companyName"
                 className="block text-sm font-medium text-gray-700 mb-1.5"
               >
-                Nome azienda
+                {t.signup.companyLabel}
               </label>
               <input
                 id="companyName"
@@ -152,7 +158,7 @@ function SignupForm() {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 required
-                placeholder="La tua azienda"
+                placeholder={t.signup.companyPlaceholder}
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
               />
             </div>
@@ -163,15 +169,15 @@ function SignupForm() {
                 htmlFor="websiteUrl"
                 className="block text-sm font-medium text-gray-700 mb-1.5"
               >
-                URL sito web{" "}
-                <span className="text-gray-400 font-normal">(opzionale)</span>
+                {t.signup.websiteLabel}{" "}
+                <span className="text-gray-400 font-normal">({t.common.optional})</span>
               </label>
               <input
                 id="websiteUrl"
                 type="url"
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://www.esempio.it"
+                placeholder={t.signup.websitePlaceholder}
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
               />
             </div>
@@ -192,17 +198,17 @@ function SignupForm() {
               icon={<ArrowRight className="w-4 h-4" />}
               iconPosition="right"
             >
-              Procedi al pagamento
+              {t.signup.submitButton}
             </Button>
           </form>
 
           <p className="mt-8 text-center text-xs text-gray-400">
-            Hai già un account?{" "}
+            {t.signup.alreadyHaveAccount}{" "}
             <a
               href="/login"
               className="text-indigo-600 hover:underline"
             >
-              Accedi
+              {t.signup.signIn}
             </a>
           </p>
         </div>

@@ -79,7 +79,7 @@ app.get("/:id", async (c) => {
   const client = await prisma.client.findUnique({
     where: { id },
     include: {
-      website: true,
+      websites: true,
       chatbot: true,
       invoices: { orderBy: { createdAt: "desc" }, take: 12 },
       reports: { orderBy: { createdAt: "desc" }, take: 3 },
@@ -141,8 +141,11 @@ app.get("/:id/metrics", async (c) => {
         orderBy: { createdAt: "desc" },
         take: 12,
       },
-      website: {
-        select: { id: true, domain: true, monthlyVisits: true, lighthouseScore: true, deployUrl: true },
+      websites: {
+        where: { isActive: true },
+        select: { id: true, name: true, domain: true, monthlyVisits: true, lighthouseScore: true, deployUrl: true },
+        orderBy: { updatedAt: "desc" as const },
+        take: 1,
       },
       chatbot: {
         select: { id: true, isActive: true, totalConversations: true, resolvedRate: true },
@@ -160,7 +163,7 @@ app.get("/:id/metrics", async (c) => {
     success: true,
     data: {
       totalRevenue,
-      website: client.website ?? null,
+      website: client.websites[0] ?? null,
       chatbot: client.chatbot ?? null,
       recentInvoices: client.invoices,
     },

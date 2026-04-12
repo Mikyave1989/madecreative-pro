@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { useLocaleContext } from "@/lib/locale-context";
 
 export default function DashboardLayout({
   children,
@@ -14,6 +15,7 @@ export default function DashboardLayout({
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useLocaleContext();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -26,7 +28,7 @@ export default function DashboardLayout({
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-400">Caricamento...</p>
+          <p className="text-sm text-slate-400">{t.layout.loadingApp}</p>
         </div>
       </div>
     );
@@ -37,7 +39,7 @@ export default function DashboardLayout({
   }
 
   // Editor page gets full screen (no header, no padding, just bottom nav)
-  const isEditor = pathname === "/editor";
+  const isEditor = pathname === "/editor" || pathname.startsWith("/editor");
 
   if (isEditor) {
     return (

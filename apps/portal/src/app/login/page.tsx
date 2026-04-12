@@ -9,10 +9,13 @@ import { useAuth } from "@/lib/auth";
 import type { AuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import type { Metadata } from "next";
+import { useLocaleContext } from "@/lib/locale-context";
+import { LanguageSelector } from "@/components/ui/LanguageSelector";
 
 export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuth();
+  const { t } = useLocaleContext();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,11 +41,11 @@ export default function LoginPage() {
       };
 
       setAuth(data.accessToken, data.refreshToken, user);
-      toast.success(`Benvenuto, ${user.contactName.split(" ")[0]}!`);
+      toast.success(`${t.login.welcomeBack}, ${user.contactName.split(" ")[0]}!`);
       router.push("/dashboard");
     } catch (err) {
       const msg =
-        err instanceof Error ? err.message : "Credenziali non valide";
+        err instanceof Error ? err.message : t.login.invalidCredentials;
       setError(msg);
     } finally {
       setLoading(false);
@@ -61,28 +64,23 @@ export default function LoginPage() {
           <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-2 mb-8">
             <span className="w-2 h-2 bg-green-400 rounded-full" />
             <span className="text-sm text-white/90 font-medium">
-              Portale Cliente
+              {t.login.clientPortal}
             </span>
           </div>
 
-          <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
-            La tua presenza
-            <br />
-            digitale, sotto
-            <br />
-            controllo.
+          <h2 className="text-4xl font-bold text-white mb-4 leading-tight whitespace-pre-line">
+            {t.login.heroHeadline}
           </h2>
           <p className="text-indigo-200 text-lg max-w-sm mx-auto">
-            Monitora visite, lead, chatbot e fatturazione — tutto in un unico
-            pannello.
+            {t.login.heroSubtitle}
           </p>
 
           <div className="mt-12 grid grid-cols-2 gap-4 max-w-xs mx-auto">
             {[
-              { label: "Clienti attivi", value: "200+" },
-              { label: "Lead generati", value: "12k+" },
-              { label: "Uptime", value: "99.9%" },
-              { label: "Soddisfazione", value: "4.9/5" },
+              { label: t.login.heroStatClients, value: "200+" },
+              { label: t.login.heroStatLeads, value: "12k+" },
+              { label: t.login.heroStatUptime, value: "99.9%" },
+              { label: t.login.heroStatSatisfaction, value: "4.9/5" },
             ].map((s) => (
               <div
                 key={s.label}
@@ -99,18 +97,21 @@ export default function LoginPage() {
       {/* Right panel — form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-slate-50">
         <div className="w-full max-w-sm">
-          {/* Logo */}
-          <div className="mb-8">
-            <span className="text-2xl font-bold text-gray-900">
-              made<span className="text-indigo-600">creative</span>
-            </span>
-            <p className="text-sm text-gray-500 mt-1">Il tuo partner digitale</p>
+          {/* Logo + Language selector */}
+          <div className="mb-8 flex items-start justify-between">
+            <div>
+              <span className="text-2xl font-bold text-gray-900">
+                made<span className="text-indigo-600">creative</span>
+              </span>
+              <p className="text-sm text-gray-500 mt-1">{t.login.tagline}</p>
+            </div>
+            <LanguageSelector variant="dropdown" />
           </div>
 
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Accedi al portale</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t.login.pageTitle}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Inserisci le credenziali inviate via email
+              {t.login.heroSubtitle}
             </p>
           </div>
 
@@ -121,7 +122,7 @@ export default function LoginPage() {
                 htmlFor="email"
                 className="block text-sm font-medium text-gray-700 mb-1.5"
               >
-                Indirizzo email
+                {t.login.emailLabel}
               </label>
               <input
                 id="email"
@@ -130,7 +131,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="tu@azienda.it"
+                placeholder={t.login.emailPlaceholder}
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
               />
             </div>
@@ -142,13 +143,13 @@ export default function LoginPage() {
                   htmlFor="password"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Password
+                  {t.login.passwordLabel}
                 </label>
                 <a
                   href="/forgot-password"
                   className="text-xs text-indigo-600 hover:text-indigo-700 hover:underline"
                 >
-                  Hai dimenticato la password?
+                  {t.login.forgotPassword}
                 </a>
               </div>
               <div className="relative">
@@ -159,16 +160,14 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="••••••••"
+                  placeholder={t.login.passwordPlaceholder}
                   className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  aria-label={
-                    showPassword ? "Nascondi password" : "Mostra password"
-                  }
+                  aria-label={showPassword ? t.login.hidePassword : t.login.showPassword}
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4" />
@@ -195,17 +194,17 @@ export default function LoginPage() {
               icon={<ArrowRight className="w-4 h-4" />}
               iconPosition="right"
             >
-              Accedi
+              {t.login.submitButton}
             </Button>
           </form>
 
           <p className="mt-8 text-center text-xs text-gray-400">
-            Problemi di accesso?{" "}
+            {t.login.supportText}{" "}
             <a
               href="mailto:support@madecreative.pro"
               className="text-indigo-600 hover:underline"
             >
-              Contatta il supporto
+              {t.login.supportLink}
             </a>
           </p>
         </div>
