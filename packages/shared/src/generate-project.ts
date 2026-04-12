@@ -118,9 +118,15 @@ function genPackageJson(d: ProjectData): string {
     dependencies: {
       next: "^14.2.0", react: "^18.3.0", "react-dom": "^18.3.0",
       "framer-motion": "^11.0.0",
+      "gsap": "^3.12.0",
+      "@react-three/fiber": "^8.16.0",
+      "@react-three/drei": "^9.105.0",
+      "three": "^0.164.0",
+      "lucide-react": "^0.378.0",
     },
     devDependencies: {
       typescript: "^5.4.0", "@types/node": "^20.0.0", "@types/react": "^18.3.0", "@types/react-dom": "^18.3.0",
+      "@types/three": "^0.164.0",
     },
   }, null, 2);
 }
