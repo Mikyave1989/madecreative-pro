@@ -1170,28 +1170,13 @@ export function Preloader() {
 // Single source of truth: generateNextJsProject() → projectToPreviewHtml()
 // ═══════════════════════════════════════════════════════════════════════════
 
-function stripTs(code: string): string {
+function stripModules(code: string): string {
+  // Only strip ES module syntax — Babel handles JSX + TypeScript
   return code
     .replace(/^"use client";\s*/gm, "")
-    // Remove all imports
     .replace(/^import\s+[^;]*;\s*/gm, "")
-    // Remove 'export' keyword but keep the declaration
-    .replace(/^export\s+const\s+/gm, "const ")
-    .replace(/^export\s+function\s+/gm, "function ")
-    .replace(/^export\s+default\s+function\s+/gm, "function ")
-    .replace(/^export\s+default\s+/gm, "const _default = ")
-    .replace(/^export\s+\{[^}]*\};\s*/gm, "")
-    // Strip TypeScript type annotations ONLY after identifiers (not in JSON objects)
-    // Match: param: Type, variable: Type — but NOT "key": value
-    .replace(/(\w)\s*:\s*(string|number|boolean|any|void|null|undefined|never|unknown|React\.[\w.]+|Array<[^>]*>|Record<[^>]*>|[\w]+\[\])\s*(?=[,)={;])/g, "$1")
-    // Strip generic type params <Type>
-    .replace(/<(string|number|boolean|any|[\w]+)>/g, "")
-    // Strip 'as Type' casts
-    .replace(/\bas\s+(const|string|number|boolean|any|[\w.]+)/g, "")
-    // Strip non-null assertions
-    .replace(/!\./g, ".")
-    // Strip interface/type declarations
-    .replace(/^(interface|type)\s+\w+[\s\S]*?^\}/gm, "");
+    .replace(/^export\s+default\s+/gm, "")
+    .replace(/^export\s+/gm, "");
 }
 
 export function projectToPreviewHtml(files: Record<string, string>): string {
@@ -1208,11 +1193,11 @@ export function projectToPreviewHtml(files: Record<string, string>): string {
   const fontsUrl = (layout.match(/href=["'](https:\/\/fonts\.googleapis\.com[^"']+)["']/) ?? [])[1] ?? "";
   const title = (layout.match(/default:\s*["']([^"']+)["']/) ?? layout.match(/title:\s*["']([^"']+)["']/) ?? [])[1] ?? "MadeCreative";
 
-  // stripTs already handles export removal — just need to rename default exports
-  const processedLibs = libs.map(stripTs);
-  const processedComps = comps.map(c => stripTs(c));
+  // Babel handles TS+JSX — we only strip import/export module syntax
+  const processedLibs = libs.map(stripModules);
+  const processedComps = comps.map(c => stripModules(c));
   // Rename the page's default function to PageContent
-  let processedPage = stripTs(page);
+  let processedPage = stripModules(page);
   // Match "function Home()" or "function Page()" etc — rename to PageContent
   processedPage = processedPage.replace(/^function\s+\w+\s*\(/m, "function PageContent(");
   // If there was "const _default = function" from export default
@@ -1230,7 +1215,7 @@ ${fontsUrl ? `<link rel="preconnect" href="https://fonts.googleapis.com"><link r
 <script crossorigin src="https://unpkg.com/framer-motion@11/dist/framer-motion.js"><\/script>
 <script src="https://cdn.tailwindcss.com"><\/script>
 <style>${css}</style></head><body><div id="root"></div>
-<script type="text/babel" data-type="module">
+<script type="text/babel" data-presets="typescript,react">
 const Link = ({href, children, ...props}) => <a href={href} {...props}>{children}</a>;
 const usePathname = () => "/";
 const _fm = window["framer-motion"] || {};
