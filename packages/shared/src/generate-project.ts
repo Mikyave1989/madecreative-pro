@@ -1171,7 +1171,6 @@ export function Preloader() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function stripModules(code: string): string {
-  // Only strip ES module syntax — Babel handles JSX + TypeScript
   return code
     .replace(/^"use client";\s*/gm, "")
     .replace(/^import\s+[^;]*;\s*/gm, "")
@@ -1179,53 +1178,184 @@ function stripModules(code: string): string {
     .replace(/^export\s+/gm, "");
 }
 
+/**
+ * Convert Next.js project to self-contained HTML preview.
+ * Strategy: extract data + CSS from the project and build a clean static HTML
+ * page that looks identical but doesn't require React/Babel at runtime.
+ * This loads instantly — no 1.5MB Babel download needed.
+ */
 export function projectToPreviewHtml(files: Record<string, string>): string {
-  const css = (files["app/globals.css"] ?? "").replace(/@tailwind\s+\w+;\s*/g, "").replace(/@import\s+[^;]*;\s*/g, "");
   const layout = files["app/layout.tsx"] ?? "";
-  const page = files["app/page.tsx"] ?? "";
+  const dataTs = files["lib/data.ts"] ?? "";
+  const css = (files["app/globals.css"] ?? "").replace(/@tailwind\s+\w+;\s*/g, "").replace(/@import\s+[^;]*;\s*/g, "");
 
-  const comps: string[] = [], libs: string[] = [];
-  for (const [p, c] of Object.entries(files)) {
-    if (p.startsWith("components/") && p.endsWith(".tsx")) comps.push(c);
-    if (p.startsWith("lib/") && (p.endsWith(".ts") || p.endsWith(".tsx"))) libs.push(c);
-  }
+  // Extract data from lib/data.ts using regex
+  const extract = (key: string): string => {
+    const m = dataTs.match(new RegExp(`${key}\\s*=\\s*({[\\s\\S]*?})\\s*;`, "m"));
+    if (m) try { return m[1]!; } catch { /* */ }
+    // Try simple string
+    const s = dataTs.match(new RegExp(`${key}\\s*=\\s*"([^"]*)"\\s*;`));
+    if (s) return `"${s[1]}"`;
+    return "{}";
+  };
 
   const fontsUrl = (layout.match(/href=["'](https:\/\/fonts\.googleapis\.com[^"']+)["']/) ?? [])[1] ?? "";
   const title = (layout.match(/default:\s*["']([^"']+)["']/) ?? layout.match(/title:\s*["']([^"']+)["']/) ?? [])[1] ?? "MadeCreative";
 
-  // Babel handles TS+JSX — we only strip import/export module syntax
-  const processedLibs = libs.map(stripModules);
-  const processedComps = comps.map(c => stripModules(c));
-  // Rename the page's default function to PageContent
-  let processedPage = stripModules(page);
-  // Match "function Home()" or "function Page()" etc — rename to PageContent
-  processedPage = processedPage.replace(/^function\s+\w+\s*\(/m, "function PageContent(");
-  // If there was "const _default = function" from export default
-  processedPage = processedPage.replace(/const\s+_default\s*=\s*/, "function PageContent");
+  // Parse business data
+  let biz = { name: title, tagline: "", description: "", aboutText: "", heroImage: "", cta: "", ctaSecondary: "", address: "", phone: "", email: "", city: "", googleRating: 4.9, reviewCount: 127 };
+  try {
+    const bizMatch = dataTs.match(/BUSINESS\s*=\s*(\{[\s\S]*?\})\s*(?:as\s+const)?\s*;/);
+    if (bizMatch) biz = { ...biz, ...JSON.parse(bizMatch[1]!.replace(/\/\/.*$/gm, "").replace(/,\s*}/g, "}")) };
+  } catch { /* use defaults */ }
 
-  const js = [...processedLibs, ...processedComps, processedPage].join("\n\n");
+  let colors = { primary: "#1a1a2e", accent: "#6366f1", background: "#f8f9fc", text: "#2d2d44", textLight: "#6b6b85", border: "#e2e4ea", surface: "#ffffff" };
+  try {
+    const colMatch = dataTs.match(/COLORS\s*=\s*(\{[\s\S]*?\})\s*(?:as\s+const)?\s*;/);
+    if (colMatch) colors = { ...colors, ...JSON.parse(colMatch[1]!.replace(/\/\/.*$/gm, "").replace(/,\s*}/g, "}")) };
+  } catch { /* use defaults */ }
 
-  return `<!DOCTYPE html><html lang="it"><head>
+  let stats: Array<{ value: string; label: string; dark?: boolean }> = [];
+  try {
+    const stMatch = dataTs.match(/STATS\s*=\s*(\[[\s\S]*?\])\s*;/);
+    if (stMatch) stats = JSON.parse(stMatch[1]!.replace(/\/\/.*$/gm, "").replace(/,\s*]/g, "]"));
+  } catch { /* empty */ }
+
+  let testimonials: Array<{ name: string; text: string; rating: number }> = [];
+  try {
+    const tMatch = dataTs.match(/TESTIMONIALS\s*=\s*(\[[\s\S]*?\])\s*;/);
+    if (tMatch) testimonials = JSON.parse(tMatch[1]!.replace(/\/\/.*$/gm, "").replace(/,\s*]/g, "]"));
+  } catch { /* empty */ }
+
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const starStr = (n: number) => "\u2605".repeat(Math.round(n)) + "\u2606".repeat(5 - Math.round(n));
+  const c = colors;
+  const b = biz;
+  const ini = (b.name[0] ?? "M").toUpperCase();
+
+  return `<!DOCTYPE html>
+<html lang="it">
+<head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title.replace(/</g, "&lt;")}</title>
+<title>${esc(title)}</title>
 ${fontsUrl ? `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="${fontsUrl}" rel="stylesheet">` : ""}
-<script crossorigin src="https://unpkg.com/react@18/umd/react.development.min.js"><\/script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.min.js"><\/script>
-<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-<script crossorigin src="https://unpkg.com/framer-motion@11/dist/framer-motion.js"><\/script>
 <script src="https://cdn.tailwindcss.com"><\/script>
-<style>${css}</style></head><body><div id="root"></div>
-<script type="text/babel" data-presets="typescript,react">
-const Link = ({href, children, ...props}) => <a href={href} {...props}>{children}</a>;
-const usePathname = () => "/";
-const _fm = window["framer-motion"] || {};
-const { motion, AnimatePresence, useScroll, useTransform, useInView } = _fm;
-const { useState, useEffect, useRef, useCallback } = React;
+<script>tailwind.config={theme:{extend:{colors:{p:"${c.primary}",a:"${c.accent}",bg:"${c.background}",tx:"${c.text}",tl:"${c.textLight}",bd:"${c.border}",sf:"${c.surface}"}}}}<\/script>
+<style>
+${css}
+@keyframes up{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.anim{animation:up .8s ease both}
+.anim-d1{animation-delay:.1s}.anim-d2{animation-delay:.2s}.anim-d3{animation-delay:.3s}.anim-d4{animation-delay:.4s}
+</style>
+</head>
+<body class="bg-bg text-tx antialiased">
 
-${js}
+<!-- Nav -->
+<nav class="fixed top-0 inset-x-0 z-50 h-16 flex items-center px-6 bg-white/90 backdrop-blur-xl border-b border-bd shadow-sm">
+  <div class="max-w-7xl mx-auto w-full flex items-center justify-between">
+    <a href="#" class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-a flex items-center justify-center text-white font-bold text-sm">${ini}</div>
+      <span class="font-bold text-lg text-p">${esc(b.name)}</span>
+    </a>
+    <div class="hidden md:flex items-center gap-8">
+      <a href="#about" class="text-sm text-tl hover:text-p transition-colors">Chi siamo</a>
+      <a href="#services" class="text-sm text-tl hover:text-p transition-colors">Servizi</a>
+      <a href="#reviews" class="text-sm text-tl hover:text-p transition-colors">Recensioni</a>
+      <a href="#contact" class="text-sm text-tl hover:text-p transition-colors">Contatti</a>
+      <a href="#contact" class="bg-a text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition">${esc(b.cta || "Contattaci")}</a>
+    </div>
+  </div>
+</nav>
 
-ReactDOM.createRoot(document.getElementById("root")).render(<PageContent />);
-<\/script></body></html>`;
+<!-- Hero -->
+<section class="relative min-h-screen flex items-center overflow-hidden" style="background:${c.primary}">
+  <div class="absolute inset-0">
+    <img src="${esc(b.heroImage)}" alt="${esc(b.name)}" class="w-full h-full object-cover opacity-40">
+  </div>
+  <div class="relative z-10 max-w-7xl mx-auto px-6 py-32 w-full">
+    <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/15 rounded-full px-5 py-2 mb-8 anim">
+      <span class="w-2 h-2 rounded-full bg-a shadow-lg shadow-a/50"></span>
+      <span class="text-xs font-semibold text-white/90 tracking-wide uppercase">${esc(b.tagline)}</span>
+    </div>
+    <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light text-white leading-tight tracking-tight mb-6 anim anim-d1">${esc(b.name)}.<br><span class="bg-gradient-to-r from-a to-white/80 bg-clip-text text-transparent">${esc(b.tagline)}.</span></h1>
+    <p class="text-lg text-white/50 max-w-xl leading-relaxed mb-10 anim anim-d2">${esc(b.description || b.aboutText)}</p>
+    <div class="flex gap-4 flex-wrap anim anim-d3">
+      <a href="#contact" class="bg-a text-white px-8 py-4 rounded-2xl font-bold text-sm hover:shadow-xl hover:shadow-a/30 hover:-translate-y-0.5 transition-all">${esc(b.cta || "Contattaci")} \u2192</a>
+      <a href="#services" class="bg-white/10 backdrop-blur text-white border border-white/20 px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-white/20 transition">${esc(b.ctaSecondary || "Servizi")}</a>
+    </div>
+    ${b.googleRating ? `<div class="mt-12 inline-flex items-center gap-3 bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl px-6 py-4 anim anim-d4">
+      <div class="text-3xl font-bold text-white">${b.googleRating}</div>
+      <div><div class="text-a text-sm tracking-wider">${starStr(b.googleRating)}</div><div class="text-xs text-white/40">${b.reviewCount}+ recensioni</div></div>
+    </div>` : ""}
+  </div>
+</section>
+
+<!-- About -->
+<section id="about" class="py-24 px-6 bg-sf">
+  <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+    <div class="anim">
+      <p class="text-xs font-bold text-a tracking-widest uppercase mb-3">La nostra storia</p>
+      <h2 class="text-3xl md:text-4xl font-light text-p tracking-tight mb-2">Chi Siamo</h2>
+      <div class="w-14 h-0.5 bg-a mb-6"></div>
+      <p class="text-base text-tx leading-relaxed">${esc(b.aboutText || b.description)}</p>
+    </div>
+    <div class="grid grid-cols-2 gap-3 anim anim-d2">
+      ${stats.map((s, i) => `<div class="p-6 rounded-2xl text-center ${s.dark ? "bg-p" : "bg-bg border border-bd"} hover:-translate-y-1 transition">
+        <p class="text-2xl font-semibold ${s.dark ? "text-a" : "text-p"}">${esc(s.value)}</p>
+        <p class="text-xs mt-1 ${s.dark ? "text-white/50" : "text-tl"}">${esc(s.label)}</p>
+      </div>`).join("\n      ")}
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+${testimonials.length > 0 ? `<section id="reviews" class="py-24 px-6 bg-bg">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16 anim">
+      <p class="text-xs font-bold text-a tracking-widest uppercase mb-3">Recensioni</p>
+      <h2 class="text-3xl md:text-4xl font-light text-p tracking-tight">Cosa dicono i nostri clienti</h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      ${testimonials.map((t, i) => `<div class="bg-sf border border-bd rounded-2xl p-8 hover:-translate-y-1 transition anim anim-d${Math.min(i + 1, 4)}">
+        <div class="text-a text-sm tracking-widest mb-4">${starStr(t.rating)}</div>
+        <p class="text-sm text-tx leading-relaxed mb-5 italic">\u201C${esc(t.text)}\u201D</p>
+        <p class="font-bold text-sm text-p">${esc(t.name)}</p>
+      </div>`).join("\n      ")}
+    </div>
+  </div>
+</section>` : ""}
+
+<!-- Contact -->
+<section id="contact" class="py-24 px-6" style="background:${c.primary}">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16 anim">
+      <p class="text-xs font-bold text-a tracking-widest uppercase mb-3">Contatti</p>
+      <h2 class="text-3xl md:text-4xl font-light text-white tracking-tight">Siamo qui per te</h2>
+    </div>
+    <div class="grid md:grid-cols-3 gap-8 text-center anim anim-d1">
+      <div><p class="text-2xl mb-2">\ud83d\udccd</p><p class="text-xs text-a uppercase tracking-wider mb-1 font-semibold">Indirizzo</p><p class="text-white/80">${esc(b.address || "Su richiesta")}</p></div>
+      <div><p class="text-2xl mb-2">\ud83d\udcde</p><p class="text-xs text-a uppercase tracking-wider mb-1 font-semibold">Telefono</p><p class="text-white/80">${b.phone ? `<a href="tel:${esc(b.phone)}" class="hover:text-a transition">${esc(b.phone)}</a>` : "Su richiesta"}</p></div>
+      <div><p class="text-2xl mb-2">\u2709\ufe0f</p><p class="text-xs text-a uppercase tracking-wider mb-1 font-semibold">Email</p><p class="text-white/80">${b.email ? `<a href="mailto:${esc(b.email)}" class="hover:text-a transition">${esc(b.email)}</a>` : "Su richiesta"}</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-8 px-6 border-t border-white/5" style="background:${c.primary}">
+  <div class="max-w-7xl mx-auto flex justify-between items-center flex-wrap gap-4">
+    <span class="text-white/50 font-semibold">${esc(b.name)}</span>
+    <span class="text-xs text-white/20">&copy; ${new Date().getFullYear()} ${esc(b.name)} &middot; Sito creato con MadeCreative</span>
+  </div>
+</footer>
+
+<!-- Scroll animations -->
+<script>
+const obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.style.animationPlayState="running";obs.unobserve(e.target)}})},{threshold:0.1});
+document.querySelectorAll(".anim").forEach(function(el){el.style.animationPlayState="paused";obs.observe(el)});
+<\/script>
+</body>
+</html>`;
 }
 
 /** Generate site preview from simple business data — uses Next.js generator internally */
