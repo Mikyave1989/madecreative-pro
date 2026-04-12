@@ -18,7 +18,9 @@ const SandpackPreview = dynamic(
     return function SandpackWrapper({ files, theme }: { files: Record<string, string>; theme?: string }) {
       return (
         <SandpackProvider template="react" files={files} theme={theme as "dark"} options={{ autorun: true, recompileMode: "delayed", recompileDelay: 400 }}>
-          <Frame style={{ height: "100%", border: "none" }} />
+          <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+            <Frame style={{ flex: 1, border: "none" }} />
+          </div>
         </SandpackProvider>
       );
     };
@@ -557,10 +559,14 @@ export default function EditorPage() {
                 )}
               </div>
 
-              {/* Preview iframe */}
-              <div style={{ flex: 1, display: "flex", justifyContent: "center", background: "#18181b", overflow: "auto" }}>
-                <div style={{ width: deviceW, height: "100%", background: "#fff", transition: "width 0.3s ease" }}>
-                  <SandpackPreview files={sandpackFiles} theme="dark" />
+              {/* Preview iframe — full height */}
+              <div style={{ flex: 1, display: "flex", justifyContent: "center", background: "#18181b", overflow: "hidden" }}>
+                <div style={{ width: deviceW, height: "100%", background: "#fff", transition: "width 0.3s ease", display: "flex", flexDirection: "column" }}>
+                  <div style={{ flex: 1, position: "relative" }}>
+                    <div style={{ position: "absolute", inset: 0 }}>
+                      <SandpackPreview files={sandpackFiles} theme="dark" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -579,6 +585,12 @@ export default function EditorPage() {
         *::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
         *::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
         textarea::placeholder { color: #52525b; }
+        /* Force Sandpack to fill container */
+        .sp-wrapper, .sp-layout, .sp-preview-container, .sp-preview-iframe,
+        .sp-stack { height: 100% !important; }
+        .sp-preview-container { border: none !important; }
+        .sp-preview-iframe { border: none !important; border-radius: 0 !important; }
+        .sp-layout { border: none !important; border-radius: 0 !important; }
       `}</style>
     </div>
   );
