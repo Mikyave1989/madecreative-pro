@@ -181,7 +181,7 @@ const EDITOR_TOOLS: Tool[] = [
   },
   {
     name: "search_photos",
-    description: "Search for professional stock photos via Pexels. Returns URLs. Use descriptive queries in English.",
+    description: "Search for professional stock photos via Pexels. Returns URLs. Use descriptive queries in English. ONLY use this when the website has no original images or they are low quality.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -189,6 +189,17 @@ const EDITOR_TOOLS: Tool[] = [
         count: { type: "number", description: "Number of photos (1-8, default 4)" },
       },
       required: ["query"],
+    },
+  },
+  {
+    name: "scrape_website",
+    description: "Crawl a website and extract ALL content: images, text, headings, contact info, logo, navigation, colors. Use this FIRST when the user provides a URL to rebuild or improve. Returns all pages with their content so you can use the REAL images and text.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        url: { type: "string", description: "The website URL to scrape (e.g. 'https://www.pizzeria-example.com')" },
+      },
+      required: ["url"],
     },
   },
 ];
@@ -246,17 +257,26 @@ CRITICAL RULES
 1. **NEVER ask questions. NEVER say you can't. BUILD IMMEDIATELY.**
    If the user says "build me an e-commerce", you create ALL the files right now.
 
-2. **ALWAYS use Tailwind CSS classes.** Never use inline styles. Use responsive prefixes (sm:, md:, lg:). Use dark: for dark mode support.
+2. **When the user provides a URL to rebuild/improve**, ALWAYS call scrape_website FIRST:
+   - scrape_website extracts ALL images, text, headings, contact info, logo, colors from the original site
+   - Use the REAL images from the scraped site (the "images" array in the response) — these are the original photos
+   - Use the REAL text (headings, paragraphs) to write the content
+   - Use the REAL contact info (phone, email, address)
+   - Use the REAL logo URL
+   - ONLY use search_photos from Pexels if the scraped site has LESS THAN 3 images or they are icons/logos
+   - The rebuilt site must look BETTER than the original but use the SAME content
 
-3. **Use "use client" directive** on components that use hooks, event handlers, or browser APIs. Server components by default.
+3. **ALWAYS use Tailwind CSS classes.** Never use inline styles. Use responsive prefixes (sm:, md:, lg:). Use dark: for dark mode support.
 
-4. **For images**, use the search_photos tool to find real photos, then use <img> with the URL. Use Tailwind classes for sizing/styling.
+4. **Use "use client" directive** on components that use hooks, event handlers, or browser APIs. Server components by default.
 
-5. **File-first approach:** Each component in its own file. Import and compose in page.tsx.
+5. **For images**: FIRST use images from scrape_website (original photos). ONLY use search_photos as fallback when originals are missing or low quality.
 
-6. **When editing existing code**, use edit_file for small changes (swap a text, change a color). Use write_file to rewrite entire files when making big structural changes.
+6. **File-first approach:** Each component in its own file. Import and compose in page.tsx.
 
-7. **When building a full site from scratch**, create files in this order:
+7. **When editing existing code**, use edit_file for small changes (swap a text, change a color). Use write_file to rewrite entire files when making big structural changes.
+
+8. **When building a full site from scratch**, create files in this order:
    a) tailwind.config.ts
    b) app/globals.css (with @tailwind directives)
    c) lib/data.ts (business data, content)
@@ -265,7 +285,7 @@ CRITICAL RULES
    f) app/page.tsx (imports components)
    g) Additional pages (app/about/page.tsx, etc.)
 
-8. **Code quality:** Production-ready. Proper TypeScript types. Accessible (aria labels, semantic HTML). Mobile-first responsive. Performance-optimized (lazy loading, proper image sizes).
+9. **Code quality:** Production-ready. Proper TypeScript types. Accessible (aria labels, semantic HTML). Mobile-first responsive. Performance-optimized (lazy loading, proper image sizes).
 
 9. **You can build ANYTHING:** Landing pages, multi-page sites, e-commerce with product grids and cart, dashboards, blogs, portfolios, SaaS landing pages, booking systems — ANYTHING the user asks for.
 
@@ -488,6 +508,37 @@ function buildToolHandler(
           return { photos: (data.photos ?? []).map(p => ({ url: p.src.large, alt: p.alt || input.query })) };
         } catch {
           return { photos: [], error: "Search failed" };
+        }
+      }
+
+      case "scrape_website": {
+        const url = toolInput["url"] as string;
+        if (!url) return { error: "url is required" };
+        try {
+          const { scrapeWebsite } = await import("@madecreative/shared");
+          const scraped = await scrapeWebsite(url);
+          // Return structured content for the AI to use
+          const allImages = scraped.pages.flatMap(p => p.images).filter(img => !img.url.includes("icon") && !img.url.includes("sprite"));
+          const allHeadings = scraped.pages.flatMap(p => p.headings);
+          const allParagraphs = scraped.pages.flatMap(p => p.paragraphs);
+          return {
+            success: true,
+            domain: scraped.domain,
+            totalPages: scraped.totalPages,
+            logo: scraped.logo,
+            contact: scraped.contact,
+            navigation: scraped.navigation,
+            colors: scraped.colors,
+            fonts: scraped.fonts,
+            socialLinks: scraped.socialLinks,
+            googleMapsEmbed: scraped.googleMapsEmbed,
+            images: allImages.slice(0, 20).map(img => ({ url: img.url, alt: img.alt })),
+            headings: allHeadings.slice(0, 30).map(h => `h${h.level}: ${h.text}`),
+            paragraphs: allParagraphs.slice(0, 15),
+            pages: scraped.pages.map(p => ({ url: p.url, title: p.title, isHomepage: p.isHomepage, imageCount: p.images.length })),
+          };
+        } catch (err) {
+          return { error: `Scraping failed: ${err instanceof Error ? err.message : String(err)}` };
         }
       }
 
