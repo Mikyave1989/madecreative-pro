@@ -378,8 +378,8 @@ app.post("/:id/send-outreach", async (c) => {
 
   const readyStatuses = ["ANALYZED", "PREVIEW_GENERATED", "PREVIEW_READY"];
   const allStatuses = [
-    "SCRAPED", "ANALYZED", "PREVIEW_GENERATED", "EMAIL_QUEUED",
-    "EMAIL_SENT", "REPLIED", "CALL_SCHEDULED", "CONVERTED", "LOST", "BLACKLISTED"
+    "SCRAPED", "QUALIFIED", "ANALYZED", "PREVIEW_READY", "PREVIEW_GENERATED", "EMAIL_QUEUED",
+    "CONTACTED", "EMAIL_SENT", "FOLLOWED_UP", "REPLIED", "CALL_SCHEDULED", "CONVERTED", "LOST", "BLACKLISTED"
   ];
   const statusIndex = allStatuses.indexOf(prospect.status);
   if (statusIndex < 1) {
