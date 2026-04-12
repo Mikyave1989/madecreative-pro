@@ -1228,7 +1228,7 @@ ${cleanData}
 function App() {
   var r = useState(false), menuOpen = r[0], setMenuOpen = r[1];
   var B = BUSINESS, C = COLORS;
-  var star = function(n) { return "\\u2605".repeat(Math.round(n)) + "\\u2606".repeat(5 - Math.round(n)); };
+  var star = function(n) { return "\u2605".repeat(Math.round(n)) + "\u2606".repeat(5 - Math.round(n)); };
 
   return html\`
     <div style=\${{ background: C.background, color: C.text }}>
@@ -1273,7 +1273,7 @@ function App() {
           <h1 class="text-4xl sm:text-5xl md:text-7xl font-light text-white leading-tight mb-6">\${B.name}</h1>
           <p class="text-lg text-white/50 max-w-xl leading-relaxed mb-10">\${B.description}</p>
           <div class="flex gap-4 flex-wrap">
-            <a href="#contact" class="text-white px-8 py-4 rounded-2xl font-bold text-sm hover:shadow-xl transition-all" style=\${{ background: C.accent }}>\${B.cta} \\u2192</a>
+            <a href="#contact" class="text-white px-8 py-4 rounded-2xl font-bold text-sm hover:shadow-xl transition-all" style=\${{ background: C.accent }}>\${B.cta} \u2192</a>
             <a href="#about" class="bg-white/10 backdrop-blur text-white border border-white/20 px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-white/20 transition">\${B.ctaSecondary || "Scopri"}</a>
           </div>
           \${B.googleRating > 0 && html\`
@@ -1332,7 +1332,7 @@ function App() {
               \${TESTIMONIALS.map(function(t, i) {
                 return html\`<div key=\${i} class="rounded-2xl p-8 border hover:-translate-y-1 transition" style=\${{ background: C.surface, borderColor: C.border }}>
                   <div class="text-sm tracking-widest mb-4" style=\${{ color: C.accent }}>\${star(t.rating)}</div>
-                  <p class="text-sm italic leading-relaxed mb-4">\\u201C\${t.text}\\u201D</p>
+                  <p class="text-sm italic leading-relaxed mb-4">\u201C\${t.text}\u201D</p>
                   <p class="font-bold text-sm" style=\${{ color: C.primary }}>\${t.name}</p>
                 </div>\`;
               })}
@@ -1346,9 +1346,9 @@ function App() {
           <p class="text-xs font-bold tracking-widest uppercase mb-3" style=\${{ color: C.accent }}>Contatti</p>
           <h2 class="text-3xl font-light text-white mb-12">Siamo qui per te</h2>
           <div class="grid md:grid-cols-3 gap-8">
-            <div><p class="text-2xl mb-2">\\ud83d\\udccd</p><p class="text-xs uppercase tracking-wider mb-1 font-semibold" style=\${{ color: C.accent }}>Indirizzo</p><p class="text-white/80">\${B.address || "Su richiesta"}</p></div>
-            <div><p class="text-2xl mb-2">\\ud83d\\udcde</p><p class="text-xs uppercase tracking-wider mb-1 font-semibold" style=\${{ color: C.accent }}>Telefono</p><p class="text-white/80">\${B.phone || "Su richiesta"}</p></div>
-            <div><p class="text-2xl mb-2">\\u2709\\ufe0f</p><p class="text-xs uppercase tracking-wider mb-1 font-semibold" style=\${{ color: C.accent }}>Email</p><p class="text-white/80">\${B.email || "Su richiesta"}</p></div>
+            <div><p class="text-2xl mb-2">\ud83d\udccd</p><p class="text-xs uppercase tracking-wider mb-1 font-semibold" style=\${{ color: C.accent }}>Indirizzo</p><p class="text-white/80">\${B.address || "Su richiesta"}</p></div>
+            <div><p class="text-2xl mb-2">\ud83d\udcde</p><p class="text-xs uppercase tracking-wider mb-1 font-semibold" style=\${{ color: C.accent }}>Telefono</p><p class="text-white/80">\${B.phone || "Su richiesta"}</p></div>
+            <div><p class="text-2xl mb-2">\u2709\ufe0f</p><p class="text-xs uppercase tracking-wider mb-1 font-semibold" style=\${{ color: C.accent }}>Email</p><p class="text-white/80">\${B.email || "Su richiesta"}</p></div>
           </div>
         </div>
       </section>
@@ -1356,7 +1356,7 @@ function App() {
       <footer class="py-8 px-6 border-t border-white/5" style=\${{ background: C.primary }}>
         <div class="max-w-7xl mx-auto flex justify-between items-center flex-wrap gap-4">
           <span class="text-white/50 font-semibold">\${B.name}</span>
-          <span class="text-xs text-white/20">\\u00a9 ${new Date().getFullYear()} \${B.name} \\u00b7 Sito creato con MadeCreative</span>
+          <span class="text-xs text-white/20">\u00a9 ${new Date().getFullYear()} \${B.name} \u00b7 Sito creato con MadeCreative</span>
         </div>
       </footer>
     </div>
