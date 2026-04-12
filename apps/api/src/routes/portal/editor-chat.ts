@@ -551,7 +551,7 @@ app.post("/", async (c) => {
 
   let projectFiles: Record<string, string> = {};
   if (client.website?.files) {
-    try { projectFiles = client.website.files as Record<string, string>; } catch { projectFiles = {}; }
+    try { projectFiles = extractProjectFiles(client.website.files); } catch { projectFiles = {}; }
   }
 
   const systemPrompt = buildSystemPrompt(client.companyName, client.sector, client.language, projectFiles);
