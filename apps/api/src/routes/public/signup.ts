@@ -205,8 +205,8 @@ app.post("/generate-preview", async (c) => {
   const sector = (body?.sector as string)?.trim() ?? "professional";
   const city = (body?.city as string)?.trim() ?? "";
 
-  const { generatePremiumSite } = await import("@madecreative/shared");
-  const html = generatePremiumSite({ name, sector, city: city || undefined });
+  const { generateSitePreview } = await import("@madecreative/shared");
+  const html = generateSitePreview({ name, sector, city: city || undefined });
 
   return c.json({ success: true, data: { html, name, sector } });
 });

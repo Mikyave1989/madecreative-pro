@@ -1,7 +1,7 @@
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 import { BaseAgent, type AgentContext } from "../base-agent.js";
 import type { AgentResult } from "@madecreative/shared";
-import { getTemplateConfig, generatePremiumSite, generateNextJsProject } from "@madecreative/shared";
+import { getTemplateConfig, generateSitePreview, generateNextJsProject, projectToPreviewHtml } from "@madecreative/shared";
 import type { ProjectData } from "@madecreative/shared";
 import { prisma } from "@madecreative/db";
 import { builderTools } from "./tools.js";
@@ -825,25 +825,8 @@ export class BuilderAgent extends BaseAgent {
           }
         }
 
-        // Generate premium HTML via shared universal generator (same quality everywhere)
-        const htmlContent = generatePremiumSite({
-          name: projectData.businessName,
-          sector,
-          tagline: projectData.tagline,
-          description: projectData.description,
-          heroImage: heroImageUrl,
-          address: projectData.address,
-          phone: projectData.phone,
-          email: projectData.email,
-          city: (businessData["city"] as string) ?? undefined,
-          googleRating: projectData.googleRating,
-          reviewCount: projectData.reviewCount,
-          logoUrl: (businessData["logoUrl"] as string) ?? undefined,
-          services: projectData.menuItems?.flatMap(cat =>
-            cat.items.map(item => ({ icon: "\u2728", name: item.name, desc: item.description }))
-          ),
-          galleryImages: projectData.galleryImages,
-        });
+        // Generate preview HTML from the Next.js project (single source of truth)
+        const htmlContent = projectToPreviewHtml(projectFiles);
 
         // Save to temp dir
         const outputDir = `/tmp/preview-${slug}`;

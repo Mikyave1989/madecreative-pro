@@ -1164,3 +1164,87 @@ export function Preloader() {
 }
 `;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROJECT TO PREVIEW HTML — renders Next.js project via React CDN + Tailwind CDN
+// Single source of truth: generateNextJsProject() → projectToPreviewHtml()
+// ═══════════════════════════════════════════════════════════════════════════
+
+function stripTs(code: string): string {
+  return code
+    .replace(/^"use client";\s*/gm, "")
+    .replace(/import\s+type\s+[^;]*;\s*/g, "")
+    .replace(/import\s+[^;]*from\s+["']next\/[^"']*["'];\s*/g, "")
+    .replace(/import\s+[^;]*from\s+["']@\/[^"']*["'];\s*/g, "")
+    .replace(/import\s+[^;]*from\s+["']framer-motion["'];\s*/g, "")
+    .replace(/import\s+[^;]*from\s+["']lucide-react["'];\s*/g, "")
+    .replace(/export\s+const\s+metadata[\s\S]*?;\s*/g, "")
+    .replace(/:\s*[\w.]+(\[\])?\s*(?=[,)={])/g, "")
+    .replace(/<[\w.]+>/g, "")
+    .replace(/\bas\s+[\w.]+/g, "")
+    .replace(/!\./g, ".");
+}
+
+export function projectToPreviewHtml(files: Record<string, string>): string {
+  const css = (files["app/globals.css"] ?? "").replace(/@tailwind\s+\w+;\s*/g, "").replace(/@import\s+[^;]*;\s*/g, "");
+  const layout = files["app/layout.tsx"] ?? "";
+  const page = files["app/page.tsx"] ?? "";
+
+  const comps: string[] = [], libs: string[] = [];
+  for (const [p, c] of Object.entries(files)) {
+    if (p.startsWith("components/") && p.endsWith(".tsx")) comps.push(c);
+    if (p.startsWith("lib/") && (p.endsWith(".ts") || p.endsWith(".tsx"))) libs.push(c);
+  }
+
+  const fontsUrl = (layout.match(/href=["'](https:\/\/fonts\.googleapis\.com[^"']+)["']/) ?? [])[1] ?? "";
+  const title = (layout.match(/default:\s*["']([^"']+)["']/) ?? layout.match(/title:\s*["']([^"']+)["']/) ?? [])[1] ?? "MadeCreative";
+
+  const js = [
+    ...libs.map(stripTs),
+    ...comps.map(c => stripTs(c).replace(/^export\s+(default\s+)?function/gm, "function").replace(/^export\s+/gm, "")),
+    stripTs(page).replace(/^export\s+default\s+function\s+\w+/m, "function PageContent"),
+  ].join("\n\n");
+
+  return `<!DOCTYPE html><html lang="it"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title.replace(/</g, "&lt;")}</title>
+${fontsUrl ? `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="${fontsUrl}" rel="stylesheet">` : ""}
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>
+<script crossorigin src="https://unpkg.com/framer-motion@11/dist/framer-motion.js"><\/script>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<style>${css}</style></head><body><div id="root"></div>
+<script>
+var Link=function(p){return React.createElement("a",Object.assign({},p,{href:p.href}),p.children)};
+var usePathname=function(){return"/"};
+var _fm=window["framer-motion"]||{};var motion=_fm.motion,AnimatePresence=_fm.AnimatePresence||function(p){return p.children};
+var useScroll=_fm.useScroll||function(){return{scrollYProgress:0}};var useTransform=_fm.useTransform||function(){return 0};
+var useInView=_fm.useInView||function(){return true};
+var useState=React.useState,useEffect=React.useEffect,useRef=React.useRef,useCallback=React.useCallback;
+try{
+${js}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(PageContent));
+}catch(e){console.error(e);document.getElementById("root").innerHTML="<div style='padding:60px;text-align:center;font-family:system-ui;color:#666'><p>"+e.message+"</p></div>";}
+<\/script></body></html>`;
+}
+
+/** Generate site preview from simple business data — uses Next.js generator internally */
+export function generateSitePreview(data: {
+  name: string; sector: string; city?: string; phone?: string; email?: string;
+  tagline?: string; description?: string; googleRating?: number; reviewCount?: number;
+  logoUrl?: string; whatsapp?: string;
+}): string {
+  const cfg = getTemplateConfig(data.sector);
+  const about = cfg.aboutText.replace(/\{name\}/g, data.name).replace(/\{city\}/g, data.city ?? "");
+  const pd: ProjectData = {
+    businessName: data.name, tagline: data.tagline ?? cfg.ctaLabel, description: data.description ?? about,
+    aboutText: about, heroTitle: data.name, heroSubtitle: data.tagline ?? cfg.ctaLabel,
+    heroImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80",
+    cta: cfg.ctaLabel, metaTitle: data.name, metaDescription: data.description ?? about,
+    address: "", phone: data.phone ?? "", email: data.email ?? "", sector: data.sector, language: "it",
+    colors: { primary: cfg.colors.primary, accent: cfg.colors.accent, background: cfg.colors.background, text: cfg.colors.text },
+    galleryImages: [], googleRating: data.googleRating, reviewCount: data.reviewCount,
+    logoUrl: data.logoUrl, whatsapp: data.whatsapp, city: data.city,
+  };
+  return projectToPreviewHtml(generateNextJsProject(pd));
+}

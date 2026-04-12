@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { Translations } from "@/lib/i18n";
-import { generatePremiumSite } from "@madecreative/shared";
+import { generateSitePreview } from "@madecreative/shared";
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -215,12 +215,11 @@ export function DemoSection({ t, locale }: DemoSectionProps) {
 
   /* Generate HTML once on mount (and each loop) */
   useEffect(() => {
-    const html = generatePremiumSite({
+    const html = generateSitePreview({
       name: "Trattoria da Luigi",
       sector: "restaurant",
       city: "Munich",
       phone: "+49 89 1234 5678",
-      address: "Maximilianstraße 12, 80539 München",
     });
     setPreviewHtml(html);
   }, [loopKey]);

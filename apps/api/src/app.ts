@@ -104,8 +104,8 @@ app.get("/preview/:prospectId", async (c) => {
     return c.text("Preview not found", 404);
   }
 
-  const { generatePremiumSite } = await import("@madecreative/shared");
-  const html = generatePremiumSite({
+  const { generateSitePreview } = await import("@madecreative/shared");
+  const html = generateSitePreview({
     name: prospect.companyName,
     sector: prospect.sector,
     city: prospect.city ?? undefined,
@@ -131,8 +131,8 @@ app.get("/preview/site/:slug", async (c) => {
   });
 
   if (website?.client) {
-    const { generatePremiumSite } = await import("@madecreative/shared");
-    const html = generatePremiumSite({
+    const { generateSitePreview } = await import("@madecreative/shared");
+    const html = generateSitePreview({
       name: website.client.companyName,
       sector: website.client.sector,
       city: website.client.city ?? undefined,

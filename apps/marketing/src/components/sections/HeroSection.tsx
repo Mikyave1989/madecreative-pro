@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Translations } from "@/lib/i18n";
-import { generatePremiumSite } from "@madecreative/shared";
+// generatePremiumSite removed — preview now generated server-side via generateSitePreview
 
 const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "https://api.madecreative.pro";
 
@@ -298,9 +298,8 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
             setPreviewHtml(previewJson.data.html);
           }
         } catch {
-          // Fallback: generate client-side
-          const html = generatePremiumSite({ name: siteName, sector });
-          setPreviewHtml(html);
+          // Server failed — show empty state
+          setPreviewHtml("");
         }
         setShowPreview(false);
       } else {
