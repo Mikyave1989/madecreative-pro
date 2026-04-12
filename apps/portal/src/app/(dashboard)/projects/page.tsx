@@ -302,7 +302,7 @@ function ProjectCard({
     <div
       style={{
         background: "#18181b", border: "1px solid #27272a", borderRadius: 14,
-        overflow: "hidden", transition: "border-color 0.15s, transform 0.15s",
+        transition: "border-color 0.15s, transform 0.15s",
         cursor: "pointer", position: "relative",
       }}
       onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#3f3f46"; e.currentTarget.style.transform = "translateY(-1px)"; }}
@@ -315,6 +315,7 @@ function ProjectCard({
           height: 140, background: `linear-gradient(135deg, ${accent}18, ${accent}08)`,
           display: "flex", alignItems: "center", justifyContent: "center",
           position: "relative", borderBottom: "1px solid #27272a",
+          overflow: "hidden", borderRadius: "14px 14px 0 0",
         }}
       >
         <Globe style={{ width: 40, height: 40, color: accent, opacity: 0.3 }} />

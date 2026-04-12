@@ -92,35 +92,39 @@ function toSandpack(files: Record<string, string>): Record<string, string> {
   }
 
   function strip(code: string): string {
-    return code
-      // Remove "use client" directive
-      .replace(/^"use client";\s*/gm, "")
-      // Remove all import statements
-      .replace(/^import\s+[^;]*;\s*/gm, "")
-      // Remove export const metadata block
-      .replace(/export\s+const\s+metadata[\s\S]*?;\s*/g, "")
-      // Remove 'export' keyword but keep declaration
-      .replace(/^export\s+default\s+/gm, "")
-      .replace(/^export\s+/gm, "")
-      // Remove TypeScript type annotations carefully:
-      // 1. Function return types: ): string { → ) {
-      .replace(/\)\s*:\s*[\w<>\[\]|&{},\s.]+\s*(?=\{|=>)/g, ")")
-      // 2. Variable type annotations: const x: Type = → const x =
-      .replace(/(const|let|var)\s+(\w+)\s*:\s*[\w<>\[\]|&{},\s.]+\s*=/g, "$1 $2 =")
-      // 3. Parameter types in destructured objects: { x: Type } — but NOT { x: value }
-      //    Only strip if after a known type keyword
-      .replace(/:\s*(string|number|boolean|any|void|null|undefined|never|unknown|React\.[\w.]+)\s*(?=[,)}\]=;])/g, "")
-      // 4. Generic type params: <string>, <T>, but not JSX tags
-      .replace(/<(string|number|boolean|any|unknown|void|never)>/g, "")
-      // 5. 'as Type' casts
-      .replace(/\s+as\s+(const|string|number|boolean|any|unknown|[\w.]+(\[\])?)\s*/g, " ")
-      // 6. Non-null assertions
-      .replace(/!\./g, ".")
-      .replace(/!;/g, ";")
-      // 7. interface/type declarations (standalone lines)
-      .replace(/^(interface|type)\s+\w+[\s\S]*?^\}\s*$/gm, "")
-      // 8. Remove remaining complex type annotations like Record<string, X>, Array<X>
-      .replace(/:\s*(?:Record|Map|Set|Array|Promise|Partial|Required|Omit|Pick)<[^>]+>\s*(?=[=,);\]}])/g, "");
+    // Process line by line for safer TypeScript removal
+    const lines = code.split("\n");
+    const result: string[] = [];
+    let skipBlock = false;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Skip "use client"
+      if (trimmed === '"use client";' || trimmed === "'use client';") continue;
+      // Skip import lines
+      if (trimmed.startsWith("import ")) continue;
+      // Skip type/interface declarations (multi-line: track opening/closing braces)
+      if (/^(export\s+)?(interface|type)\s+\w+/.test(trimmed) && !trimmed.includes("=")) { skipBlock = true; continue; }
+      if (skipBlock) { if (trimmed === "}") { skipBlock = false; } continue; }
+      // Skip export const metadata
+      if (/^export\s+const\s+metadata/.test(trimmed)) continue;
+
+      let l = line;
+      // Remove 'export default' and 'export' keywords
+      l = l.replace(/^export\s+default\s+/, "");
+      l = l.replace(/^export\s+/, "");
+      // Remove 'as const' at end
+      l = l.replace(/\s+as\s+const\s*([;,)])/g, "$1");
+      // Remove 'as Type' casts (only known safe types)
+      l = l.replace(/\s+as\s+(string|number|boolean|any|unknown)\b/g, "");
+      // Remove non-null assertions
+      l = l.replace(/!\./g, ".").replace(/!;/g, ";").replace(/!\)/g, ")").replace(/!,/g, ",");
+      // Remove generic type params on function calls: func<Type>( → func(
+      l = l.replace(/(\w)<(string|number|boolean|any|unknown|void|never|\w+)>\(/g, "$1(");
+
+      result.push(l);
+    }
+    return result.join("\n");
   }
 
   // Polyfills for libraries the AI might use (zustand, lucide-react)
