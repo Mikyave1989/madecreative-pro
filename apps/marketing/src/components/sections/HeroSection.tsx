@@ -301,25 +301,33 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
   }
 
   return (
+    <>
+    {/* ═══ VIDEO HERO — full screen, no text ═══ */}
+    <section className="relative w-full h-screen overflow-hidden" style={{ background: "#05070f" }}>
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+      >
+        <source src="/videos/hero-demo.webm" type="video/webm" />
+      </video>
+      {/* Subtle bottom fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32" style={{ background: "linear-gradient(0deg, #05070f 0%, transparent 100%)" }} />
+      {/* Scroll indicator */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce opacity-60">
+        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </div>
+    </section>
+
+    {/* ═══ CONTENT SECTION — below video ═══ */}
     <section
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
       style={{ background: "#05070f" }}
     >
-      {/* Hero video — full-width background */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover"
-          style={{ opacity: 0.3 }}
-        >
-          <source src="/videos/hero-demo.webm" type="video/webm" />
-        </video>
-        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, #05070f 0%, rgba(5,7,15,0.6) 40%, #05070f 100%)" }} />
-      </div>
-
       {/* Background */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
@@ -551,12 +559,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce opacity-40">
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} style={{ color: "white" }}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-        </svg>
-      </div>
     </section>
+    </>
   );
 }
