@@ -14,21 +14,10 @@ import { useAuth } from "@/lib/auth";
 import { useLocaleContext } from "@/lib/locale-context";
 import { LanguageSelector } from "@/components/ui/LanguageSelector";
 
-// ─── Sandpack (dynamic) ─────────────────────────────────────────────────────
+// ─── WebContainer Preview (dynamic, no SSR) ─────────────────────────────────
 
-const SandpackPreview = dynamic(
-  () => import("@codesandbox/sandpack-react").then((mod) => {
-    const { SandpackProvider, SandpackPreview: Frame } = mod;
-    return function SandpackWrapper({ files, theme }: { files: Record<string, string>; theme?: string }) {
-      return (
-        <SandpackProvider template="react" files={files} theme={theme as "dark"} options={{ autorun: true, recompileMode: "delayed", recompileDelay: 400 }}>
-          <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            <Frame style={{ flex: 1, border: "none" }} />
-          </div>
-        </SandpackProvider>
-      );
-    };
-  }),
+const WebContainerPreview = dynamic(
+  () => import("@/components/WebContainerPreview").then((mod) => mod.WebContainerPreview),
   { ssr: false, loading: () => <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#52525b" }}>Loading preview...</div> }
 );
 
@@ -78,90 +67,6 @@ function buildTree(paths: string[]): Record<string, string[]> {
   return tree;
 }
 
-// Convert project files → Sandpack-compatible format
-function toSandpack(files: Record<string, string>): Record<string, string> {
-  const pageTsx = files["app/page.tsx"] ?? "";
-  const globalsCss = files["app/globals.css"] ?? "";
-
-  const components: string[] = [];
-  const libs: string[] = [];
-
-  for (const [path, content] of Object.entries(files)) {
-    if (path.startsWith("components/") && path.endsWith(".tsx")) components.push(`// ── ${path} ──\n${content}`);
-    if (path.startsWith("lib/") && (path.endsWith(".ts") || path.endsWith(".tsx"))) libs.push(`// ── ${path} ──\n${content}`);
-  }
-
-  function strip(code: string): string {
-    // Process line by line for safer TypeScript removal
-    const lines = code.split("\n");
-    const result: string[] = [];
-    let skipBlock = false;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      // Skip "use client"
-      if (trimmed === '"use client";' || trimmed === "'use client';") continue;
-      // Skip import lines
-      if (trimmed.startsWith("import ")) continue;
-      // Skip type/interface declarations (multi-line: track opening/closing braces)
-      if (/^(export\s+)?(interface|type)\s+\w+/.test(trimmed) && !trimmed.includes("=")) { skipBlock = true; continue; }
-      if (skipBlock) { if (trimmed === "}") { skipBlock = false; } continue; }
-      // Skip export const metadata
-      if (/^export\s+const\s+metadata/.test(trimmed)) continue;
-
-      let l = line;
-      // Remove 'export default' and 'export' keywords
-      l = l.replace(/^export\s+default\s+/, "");
-      l = l.replace(/^export\s+/, "");
-      // Remove 'as const' at end
-      l = l.replace(/\s+as\s+const\s*([;,)])/g, "$1");
-      // Remove 'as Type' casts (only known safe types)
-      l = l.replace(/\s+as\s+(string|number|boolean|any|unknown)\b/g, "");
-      // Remove non-null assertions
-      l = l.replace(/!\./g, ".").replace(/!;/g, ";").replace(/!\)/g, ")").replace(/!,/g, ",");
-      // Remove generic type params on function calls: func<Type>( → func(
-      l = l.replace(/(\w)<(string|number|boolean|any|unknown|void|never|\w+)>\(/g, "$1(");
-
-      result.push(l);
-    }
-    return result.join("\n");
-  }
-
-  // Polyfills for libraries the AI might use (zustand, lucide-react)
-  const allSrc = Object.values(files).join("\n");
-  const polyfills: string[] = [];
-  if (allSrc.includes("zustand")) {
-    polyfills.push(`var create = function(fn) { var state = {}; var listeners = []; var set = function(updater) { var next = typeof updater === "function" ? updater(state) : updater; Object.assign(state, next); listeners.forEach(function(l){l()}); }; var get = function(){return state}; fn(set, get); return function useStore(selector) { var _r = React.useReducer(function(x){return x+1}, 0), forceUpdate = _r[1]; React.useEffect(function(){ listeners.push(forceUpdate); return function(){ listeners = listeners.filter(function(l){return l !== forceUpdate}); }; }, []); return selector ? selector(state) : state; }; };`);
-  }
-  if (allSrc.includes("lucide-react")) {
-    polyfills.push(`var ShoppingCart=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("path",{d:"M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"}))};`);
-    polyfills.push(`var Heart=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("path",{d:"M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"}))};`);
-    polyfills.push(`var Star=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("polygon",{points:"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"}))};`);
-    polyfills.push(`var Search=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("circle",{cx:11,cy:11,r:8}),React.createElement("line",{x1:21,y1:21,x2:16.65,y2:16.65}))};`);
-    polyfills.push(`var Menu=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("line",{x1:3,y1:12,x2:21,y2:12}),React.createElement("line",{x1:3,y1:6,x2:21,y2:6}),React.createElement("line",{x1:3,y1:18,x2:21,y2:18}))};`);
-    polyfills.push(`var X=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("line",{x1:18,y1:6,x2:6,y2:18}),React.createElement("line",{x1:6,y1:6,x2:18,y2:18}))};`);
-    polyfills.push(`var ChevronRight=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("polyline",{points:"9 18 15 12 9 6"}))};`);
-    polyfills.push(`var Minus=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("line",{x1:5,y1:12,x2:19,y2:12}))};`);
-    polyfills.push(`var Plus=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("line",{x1:12,y1:5,x2:12,y2:19}),React.createElement("line",{x1:5,y1:12,x2:19,y2:12}))};`);
-    polyfills.push(`var Trash2=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("polyline",{points:"3 6 5 6 21 6"}),React.createElement("path",{d:"M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"}))};`);
-  }
-
-  const code = [
-    `import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";`,
-    `import { motion, AnimatePresence, useScroll, useTransform, useInView } from "framer-motion";`,
-    `import "./styles.css";`,
-    ...polyfills,
-    "", ...libs.map(strip),
-    "", ...components.map(strip),
-    "", strip(pageTsx).replace(/^function\s+\w+\s*\(/m, "function PageContent("),
-    "", "export default function App() { return <PageContent />; }",
-  ].join("\n");
-
-  return {
-    "/App.js": code,
-    "/styles.css": `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');\n${strip(globalsCss).replace(/@tailwind\s+\w+;\s*/g, "")}`,
-  };
-}
 
 // ─── Editor Page ─────────────────────────────────────────────────────────────
 
@@ -302,11 +207,8 @@ export default function EditorPage() {
     if (deployUrl) { navigator.clipboard.writeText(deployUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }
   };
 
-  // Derived
-  const sandpackFiles = Object.keys(files).length > 0 ? toSandpack(files) : {
-    "/App.js": `export default function App() {\n  return (\n    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#09090b",color:"#fff",fontFamily:"system-ui",flexDirection:"column",gap:"16px"}}>\n      <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>✨</div>\n      <h1 style={{fontSize:"1.5rem",fontWeight:600}}>MadeCreative</h1>\n      <p style={{color:"#71717a",fontSize:"0.875rem"}}>{t.editor.inputPlaceholder}</p>\n    </div>\n  );\n}`,
-    "/styles.css": "body{margin:0}",
-  };
+  // WebContainers uses the project files directly — no conversion needed
+  const hasProject = Object.keys(files).length > 0;
 
   const fileList = Object.keys(files).sort();
   const tree = buildTree(fileList);
@@ -634,12 +536,15 @@ export default function EditorPage() {
 
               {/* Preview iframe — full height */}
               <div style={{ flex: 1, display: "flex", justifyContent: "center", background: "#18181b", overflow: "hidden" }}>
-                <div style={{ width: deviceW, height: "100%", background: "#fff", transition: "width 0.3s ease", display: "flex", flexDirection: "column" }}>
-                  <div style={{ flex: 1, position: "relative" }}>
-                    <div style={{ position: "absolute", inset: 0 }}>
-                      <SandpackPreview files={sandpackFiles} theme="dark" />
+                <div style={{ width: deviceW, height: "100%", background: "#fff", transition: "width 0.3s ease" }}>
+                  {hasProject ? (
+                    <WebContainerPreview files={files} />
+                  ) : (
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#09090b", flexDirection: "column", gap: 16 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 16, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>✨</div>
+                      <p style={{ color: "#71717a", fontSize: 14 }}>{t.editor.emptyStateSubtitle}</p>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
