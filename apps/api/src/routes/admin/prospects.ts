@@ -159,6 +159,34 @@ app.get("/pipeline", async (c) => {
   return c.json({ success: true, data: { columns, counts } });
 });
 
+// GET /admin/prospects/stats — MUST be before /:id
+app.get("/stats", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  try {
+    const byStatus = await prisma.$queryRaw<Array<{ status: string; count: bigint }>>`
+      SELECT status, COUNT(*)::bigint as count FROM "Prospect" GROUP BY status`;
+    const avgScore = await prisma.$queryRaw<Array<{ avg: number | null; count: bigint }>>`
+      SELECT AVG("leadScore")::float as avg, COUNT(*)::bigint as count FROM "Prospect" WHERE "leadScore" > 0`;
+    const topSectors = await prisma.$queryRaw<Array<{ sector: string; count: bigint }>>`
+      SELECT sector, COUNT(*)::bigint as count FROM "Prospect" GROUP BY sector ORDER BY count DESC LIMIT 10`;
+    const topCountries = await prisma.$queryRaw<Array<{ country: string; count: bigint }>>`
+      SELECT country, COUNT(*)::bigint as count FROM "Prospect" GROUP BY country ORDER BY count DESC LIMIT 10`;
+    return c.json({
+      success: true,
+      data: {
+        byStatus: byStatus.map(s => ({ status: s.status, count: Number(s.count) })),
+        averageLeadScore: avgScore[0]?.avg ?? 0,
+        scoredProspects: Number(avgScore[0]?.count ?? 0),
+        topSectors: topSectors.map(s => ({ sector: s.sector, count: Number(s.count) })),
+        topCountries: topCountries.map(r => ({ country: r.country, count: Number(r.count) })),
+      },
+    });
+  } catch (err) {
+    console.error("[prospects/stats]", err instanceof Error ? err.message : String(err));
+    return c.json({ success: false, error: "Stats query failed" }, 500);
+  }
+});
+
 // GET /admin/prospects/:id
 app.get("/:id", async (c) => {
   const { prisma } = await import("@madecreative/db");
@@ -246,36 +274,6 @@ app.delete("/:id", async (c) => {
   await prisma.prospect.delete({ where: { id } });
 
   return c.json({ success: true, message: "Prospect deleted" });
-});
-
-// GET /admin/prospects/stats — must be registered BEFORE /:id to avoid param conflict
-app.get("/stats", async (c) => {
-  const { prisma } = await import("@madecreative/db");
-  try {
-    // Use raw queries for reliable aggregation on Vercel serverless
-    const byStatus = await prisma.$queryRaw<Array<{ status: string; count: bigint }>>`
-      SELECT status, COUNT(*)::bigint as count FROM "Prospect" GROUP BY status`;
-    const avgScore = await prisma.$queryRaw<Array<{ avg: number | null; count: bigint }>>`
-      SELECT AVG("leadScore")::float as avg, COUNT(*)::bigint as count FROM "Prospect" WHERE "leadScore" > 0`;
-    const topSectors = await prisma.$queryRaw<Array<{ sector: string; count: bigint }>>`
-      SELECT sector, COUNT(*)::bigint as count FROM "Prospect" GROUP BY sector ORDER BY count DESC LIMIT 10`;
-    const topCountries = await prisma.$queryRaw<Array<{ country: string; count: bigint }>>`
-      SELECT country, COUNT(*)::bigint as count FROM "Prospect" GROUP BY country ORDER BY count DESC LIMIT 10`;
-
-    return c.json({
-      success: true,
-      data: {
-        byStatus: byStatus.map(s => ({ status: s.status, count: Number(s.count) })),
-        averageLeadScore: avgScore[0]?.avg ?? 0,
-        scoredProspects: Number(avgScore[0]?.count ?? 0),
-        topSectors: topSectors.map(s => ({ sector: s.sector, count: Number(s.count) })),
-        topCountries: topCountries.map(r => ({ country: r.country, count: Number(r.count) })),
-      },
-    });
-  } catch (err) {
-    console.error("[prospects/stats] Error:", err instanceof Error ? err.message : String(err));
-    return c.json({ success: false, error: "Stats query failed" }, 500);
-  }
 });
 
 // POST /admin/prospects/:id/build-preview — Avvia Builder Agent per un prospect
