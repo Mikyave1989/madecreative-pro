@@ -281,25 +281,13 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
       });
-      const json = (await res.json()) as { success: boolean; data?: AnalysisResult; error?: string };
+      const json = (await res.json()) as { success: boolean; data?: AnalysisResult & { previewHtml?: string }; error?: string };
       if (json.success && json.data) {
         setResult(json.data);
-        // Generate preview via server API (avoid heavy client-side generation)
-        const siteName = json.data.title?.split(/[|–—·]/).shift()?.trim() || url.replace(/https?:\/\//, "").split("/")[0]?.replace("www.", "") || "Il tuo sito";
-        const sector = detectSector(json.data.title ?? "", url);
-        try {
-          const previewRes = await fetch(`${API_URL}/public/signup/generate-preview`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: siteName, sector }),
-          });
-          const previewJson = (await previewRes.json()) as { success: boolean; data?: { html: string } };
-          if (previewJson.success && previewJson.data?.html) {
-            setPreviewHtml(previewJson.data.html);
-            setShowPreview(true); // Show preview automatically
-          }
-        } catch {
-          setPreviewHtml("");
+        // The new /analyze-url returns previewHtml directly (built with REAL content)
+        if (json.data.previewHtml) {
+          setPreviewHtml(json.data.previewHtml);
+          setShowPreview(true);
         }
       } else {
         setError(json.error ?? "Errore nell'analisi");
