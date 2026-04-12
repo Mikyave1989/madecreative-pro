@@ -403,9 +403,9 @@ export class OutreachAgent extends BaseAgent {
     const domain = process.env["EMAIL_DOMAIN"] ?? "madecreative.pro";
     const fromAddress = `${fromName} <${fromEmail}@${domain}>`;
 
-    // ② Inject tracking pixel & link tracking
+    // ② Inject tracking pixel, click tracking & unsubscribe link
     const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
-    const trackedHtml = injectTracking(bodyHtml, emailId, apiBase);
+    const trackedHtml = await injectTracking(bodyHtml, emailId, apiBase, prospectId, toEmail);
 
     try {
       const result = await sendViaResend({
@@ -1015,7 +1015,7 @@ Sentiment values:
 
 // ─── Tracking injection helper ────────────────────────────────────────────────
 
-function injectTracking(html: string, emailId: string, apiBase: string): string {
+async function injectTracking(html: string, emailId: string, apiBase: string, prospectId: string, toEmail: string): Promise<string> {
   // Replace tracking pixel placeholder
   let result = html.replace(
     /https:\/\/api\.madecreative\.pro\/track\/open\/\{\{EMAIL_ID\}\}/g,
@@ -1028,13 +1028,36 @@ function injectTracking(html: string, emailId: string, apiBase: string): string 
     `${apiBase}/track/click/${emailId}`
   );
 
+  // Generate and inject unsubscribe link (GDPR compliance)
+  try {
+    const { SignJWT } = await import("jose");
+    const secret = process.env["UNSUBSCRIBE_JWT_SECRET"] ?? process.env["JWT_SECRET"] ?? "madecreative-unsub-secret";
+    const token = await new SignJWT({ prospectId, email: toEmail })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("90d")
+      .sign(new TextEncoder().encode(secret));
+    const unsubscribeUrl = `${apiBase}/public/unsubscribe?token=${encodeURIComponent(token)}`;
+
+    // Replace all unsubscribe placeholders
+    result = result.replace(/\[unsubscribe_link\]/g, unsubscribeUrl);
+    result = result.replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl);
+    result = result.replace(/\{\{UNSUBSCRIBE_URL\}\}/g, unsubscribeUrl);
+
+    // If no placeholder was found, append unsubscribe footer
+    if (!result.includes(unsubscribeUrl)) {
+      const footer = `<br/><hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0"/><p style="font-size:11px;color:#999;text-align:center">Per non ricevere pi\u00f9 email: <a href="${unsubscribeUrl}" style="color:#999">unsubscribe</a></p>`;
+      result = result.replace(/<\/body>/i, `${footer}</body>`);
+      if (!result.includes("</body>")) result += footer;
+    }
+  } catch (err) {
+    console.warn("[Outreach] Failed to generate unsubscribe link:", err instanceof Error ? err.message : String(err));
+  }
+
   // Inject tracking pixel before </body> if not already present
   if (!result.includes(`/track/open/${emailId}`)) {
     const pixel = `<img src="${apiBase}/track/open/${emailId}" width="1" height="1" alt="" style="display:none;border:0;outline:none;text-decoration:none" />`;
     result = result.replace(/<\/body>/i, `${pixel}</body>`);
-    if (!result.includes("</body>")) {
-      result += pixel;
-    }
+    if (!result.includes("</body>")) result += pixel;
   }
 
   return result;
