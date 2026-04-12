@@ -281,14 +281,34 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
       });
-      const json = (await res.json()) as { success: boolean; data?: AnalysisResult & { previewHtml?: string }; error?: string };
+      const json = (await res.json()) as { success: boolean; data?: AnalysisResult & { previewHtml?: string; scraped?: Record<string, unknown> }; error?: string };
       if (json.success && json.data) {
         setResult(json.data);
-        // The new /analyze-url returns previewHtml directly (built with REAL content)
+
+        // Show template preview immediately (from scraper)
         if (json.data.previewHtml) {
           setPreviewHtml(json.data.previewHtml);
           setShowPreview(true);
         }
+
+        // Then upgrade to AI-generated premium preview in background
+        const siteName = json.data.title?.split(/[|\u2013\u2014\u00b7]/).shift()?.trim() || url.replace(/https?:\/\//, "").split("/")[0]?.replace("www.", "") || "Il tuo sito";
+        const sector = detectSector(json.data.title ?? "", url);
+        fetch(`${API_URL}/public/ai-generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: siteName,
+            sector,
+            language: locale,
+            scrapedData: json.data.scraped ?? null,
+            googleRating: json.data.score,
+          }),
+        }).then(r => r.json()).then((aiJson: { success: boolean; data?: { previewHtml: string } }) => {
+          if (aiJson.success && aiJson.data?.previewHtml) {
+            setPreviewHtml(aiJson.data.previewHtml);
+          }
+        }).catch(() => { /* keep template preview */ });
       } else {
         setError(json.error ?? "Errore nell'analisi");
       }

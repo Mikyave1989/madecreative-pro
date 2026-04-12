@@ -798,8 +798,39 @@ export class BuilderAgent extends BaseAgent {
           googleMapsEmbedUrl: (businessData["googleMapsEmbedUrl"] as string) ?? undefined,
         };
 
-        const projectFiles = generateNextJsProject(projectData);
-        this.log("info", `build_preview_site: generated Next.js project with ${Object.keys(projectFiles).length} files`);
+        // Generate premium site using AI (same quality as portal Stitch)
+        let projectFiles: Record<string, string> = {};
+        try {
+          const aiPrompt = `Build a COMPLETE premium website for "${projectData.businessName}" (sector: ${sector}). Use the following REAL content:\n\nHero title: ${projectData.heroTitle}\nDescription: ${projectData.description}\nHero image: ${projectData.heroImage}\nAddress: ${projectData.address}\nPhone: ${projectData.phone}\nEmail: ${projectData.email}\n${projectData.galleryImages.length > 0 ? `Gallery images:\n${projectData.galleryImages.map(g => `  - ${g.url}`).join("\n")}` : ""}\n${projectData.googleRating ? `Google Rating: ${projectData.googleRating}/5 (${projectData.reviewCount ?? 0}+ reviews)` : ""}\n\nCreate a stunning Next.js 14 + Tailwind site with: animated gradient text, magic card effects, blur-fade scroll reveals, parallax hero, glassmorphism nav with hamburger, stats with number ticker, gallery grid, testimonials, contact form, WhatsApp widget, footer. Use write_file for each file.`;
+
+          const aiResult = await this.client.toolUseLoop(
+            [{ role: "user", content: aiPrompt }],
+            async (toolName, toolInput) => {
+              if (toolName === "write_file") {
+                const path = toolInput["path"] as string;
+                const content = toolInput["content"] as string;
+                if (path && content) { projectFiles[path] = content; return { success: true, path }; }
+              }
+              return { error: "Unknown tool" };
+            },
+            {
+              system: "You are a world-class AI full-stack developer. Build stunning €10k+ websites with Next.js 14, Tailwind CSS, Framer Motion. Use premium effects: Magic Card, animated gradient text, blur-fade, number ticker, parallax. NEVER ask questions — build immediately using write_file.",
+              tools: [{ name: "write_file", description: "Create a project file", input_schema: { type: "object" as const, properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } }],
+              model: "claude-sonnet-4-6" as const,
+              maxTokens: 16384,
+            }
+          );
+          this.log("info", `build_preview_site: AI generated ${Object.keys(projectFiles).length} files (${aiResult.totalOutputTokens} tokens)`);
+        } catch (aiErr) {
+          this.log("warn", `build_preview_site: AI generation failed, falling back to template: ${aiErr instanceof Error ? aiErr.message : String(aiErr)}`);
+          // Fallback to static template if AI fails
+          projectFiles = generateNextJsProject(projectData);
+        }
+
+        if (Object.keys(projectFiles).length === 0) {
+          projectFiles = generateNextJsProject(projectData);
+          this.log("info", `build_preview_site: used template fallback (${Object.keys(projectFiles).length} files)`);
+        }
 
         // Save project files to ClientWebsite if prospect has one
         if (this.agentType === "BUILDER") {

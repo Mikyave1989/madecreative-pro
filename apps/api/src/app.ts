@@ -36,6 +36,7 @@ import chatbotWidgetRoutes from "./routes/public/chatbot-widget.js";
 import unsubscribeRoutes from "./routes/public/unsubscribe.js";
 import trackRoutes from "./routes/public/track.js";
 import signupRoutes from "./routes/public/signup.js";
+import aiGenerateRoutes from "./routes/public/ai-generate.js";
 
 const app = new Hono();
 
@@ -89,6 +90,7 @@ app.get("/public/chatbot-widget.js", (c) => c.redirect("/public/chatbot/chatbot-
 app.route("/public/unsubscribe", unsubscribeRoutes);
 app.route("/public/signup", signupRoutes);
 app.route("/track", trackRoutes);
+app.route("/public/ai-generate", aiGenerateRoutes);
 
 // ─── Public Preview (serves generated site HTML) ─────────────────────────────
 
