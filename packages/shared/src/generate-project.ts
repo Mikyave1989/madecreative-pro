@@ -1216,11 +1216,12 @@ ${fontsUrl ? `<link href="${fontsUrl}" rel="stylesheet">` : ""}
 ${cleanData}
 
 function App() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const B = BUSINESS;
   const C = COLORS;
   return (
     <div style={{background:C.background,color:C.text}}>
-      <nav className="fixed top-0 inset-x-0 z-50 h-16 flex items-center px-6 bg-white/90 backdrop-blur-xl border-b" style={{borderColor:C.border}}>
+      <nav className="fixed top-0 inset-x-0 z-50 h-16 flex items-center px-4 md:px-6 bg-white/90 backdrop-blur-xl border-b" style={{borderColor:C.border}}>
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold" style={{background:C.accent}}>{B.name[0]}</div>
@@ -1232,8 +1233,24 @@ function App() {
             <a href="#reviews" className="text-sm" style={{color:C.textLight}}>Recensioni</a>
             <a href="#contact" className="text-white px-5 py-2 rounded-xl text-sm font-semibold" style={{background:C.accent}}>{B.cta}</a>
           </div>
+          <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={()=>setMenuOpen(!menuOpen)}>
+            <span className={"block w-6 h-0.5 transition-all "+(menuOpen?"rotate-45 translate-y-2":"")} style={{background:C.primary}}></span>
+            <span className={"block w-6 h-0.5 transition-all "+(menuOpen?"opacity-0":"")} style={{background:C.primary}}></span>
+            <span className={"block w-6 h-0.5 transition-all "+(menuOpen?"-rotate-45 -translate-y-2":"")} style={{background:C.primary}}></span>
+          </button>
         </div>
       </nav>
+      {menuOpen && (
+        <div className="fixed inset-0 z-40" onClick={()=>setMenuOpen(false)}>
+          <div className="absolute inset-0 bg-black/40"></div>
+          <div className="absolute top-0 right-0 w-72 h-full bg-white shadow-2xl pt-20 px-6 flex flex-col gap-2" onClick={e=>e.stopPropagation()}>
+            {["Chi siamo","Galleria","Recensioni","Contatti"].map(label=>(
+              <a key={label} href={"#"+label.toLowerCase().replace(" ","-")} onClick={()=>setMenuOpen(false)} className="py-3 border-b text-lg font-semibold" style={{color:C.primary,borderColor:C.border}}>{label}</a>
+            ))}
+            <a href="#contact" onClick={()=>setMenuOpen(false)} className="mt-auto mb-6 text-center text-white py-3 rounded-xl font-bold" style={{background:C.accent}}>{B.cta}</a>
+          </div>
+        </div>
+      )}
       <section className="relative min-h-screen flex items-center" style={{background:C.primary}}>
         <div className="absolute inset-0"><img src={B.heroImage} className="w-full h-full object-cover opacity-40" /></div>
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-32 w-full">
@@ -1329,6 +1346,27 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 }
 
 
+// Stock gallery photos per sector (Unsplash IDs)
+const SECTOR_GALLERY: Record<string, string[]> = {
+  restaurant: ["photo-1414235077428-338989a2e8c0","photo-1504674900247-0877df9cc836","photo-1476224203421-9ac39bcb3327","photo-1555396273-367ea4eb4db5","photo-1424847651672-bf20a4b0982b","photo-1540189549336-e6e99c3679fe"],
+  dental: ["photo-1606811841689-23dfddce3e95","photo-1588776814546-1ffcf47267a5","photo-1579684385127-1ef15d508118","photo-1606265752439-1f18756aa5fc"],
+  beauty: ["photo-1560066984-138dadb4c035","photo-1522337360788-8b13dee7a37e","photo-1487412947147-5cebf100ffc2","photo-1516975080664-ed2fc6a32937"],
+  fitness: ["photo-1534438327276-14e5300c3a48","photo-1571019614242-c5c5dee9f50b","photo-1517836357463-d25dfeac3438","photo-1574680096145-d05b474e2155"],
+  hotel: ["photo-1566073771259-6a8506099945","photo-1551882547-ff40c63fe5fa","photo-1618773928121-c32f2e6c4e8a","photo-1582719478250-c89cae4dc85b"],
+  professional: ["photo-1497366216548-37526070297c","photo-1552664730-d307ca884978","photo-1531482615713-2adb69a1a5c3","photo-1521737711867-e3b97375f902"],
+  legal: ["photo-1589829545856-d10d557cf95f","photo-1450101499163-c8848e66ad64","photo-1507003211169-0a1dd7228f2d"],
+  medical: ["photo-1576091160550-2173dba999ef","photo-1530497610245-94d3c16cda28","photo-1579684453423-f84349ef60b0"],
+  ecommerce: ["photo-1556742049-0cfed4f6a45d","photo-1472851294608-062f824d29cc","photo-1441986300917-64674bd600d8"],
+  realestate: ["photo-1560518883-ce09059eeffa","photo-1600596542815-ffad4c1539a9","photo-1600585154340-be6161a56a0c"],
+};
+const SECTOR_HERO: Record<string, string> = {
+  restaurant: "photo-1517248135467-4c7edcad34c4", dental: "photo-1629909613654-28e377c37b09",
+  beauty: "photo-1560066984-138dadb4c035", fitness: "photo-1534438327276-14e5300c3a48",
+  hotel: "photo-1566073771259-6a8506099945", legal: "photo-1589829545856-d10d557cf95f",
+  medical: "photo-1576091160550-2173dba999ef", ecommerce: "photo-1556742049-0cfed4f6a45d",
+  realestate: "photo-1560518883-ce09059eeffa", professional: "photo-1497366216548-37526070297c",
+};
+
 /** Generate site preview from simple business data — uses Next.js generator internally */
 export function generateSitePreview(data: {
   name: string; sector: string; city?: string; phone?: string; email?: string;
@@ -1337,14 +1375,17 @@ export function generateSitePreview(data: {
 }): string {
   const cfg = getTemplateConfig(data.sector);
   const about = cfg.aboutText.replace(/\{name\}/g, data.name).replace(/\{city\}/g, data.city ?? "");
+  const heroId = SECTOR_HERO[data.sector] ?? SECTOR_HERO["professional"]!;
+  const galleryIds = SECTOR_GALLERY[data.sector] ?? SECTOR_GALLERY["professional"]!;
   const pd: ProjectData = {
     businessName: data.name, tagline: data.tagline ?? cfg.ctaLabel, description: data.description ?? about,
     aboutText: about, heroTitle: data.name, heroSubtitle: data.tagline ?? cfg.ctaLabel,
-    heroImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80",
+    heroImage: `https://images.unsplash.com/${heroId}?auto=format&fit=crop&w=1600&q=80`,
     cta: cfg.ctaLabel, metaTitle: data.name, metaDescription: data.description ?? about,
-    address: "", phone: data.phone ?? "", email: data.email ?? "", sector: data.sector, language: "it",
+    address: data.phone ? "" : "", phone: data.phone ?? "", email: data.email ?? "", sector: data.sector, language: "it",
     colors: { primary: cfg.colors.primary, accent: cfg.colors.accent, background: cfg.colors.background, text: cfg.colors.text },
-    galleryImages: [], googleRating: data.googleRating, reviewCount: data.reviewCount,
+    galleryImages: galleryIds.map(id => ({ url: `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=80`, alt: data.name })),
+    googleRating: data.googleRating, reviewCount: data.reviewCount,
     logoUrl: data.logoUrl, whatsapp: data.whatsapp, city: data.city,
   };
   return projectToPreviewHtml(generateNextJsProject(pd));
