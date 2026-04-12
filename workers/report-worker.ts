@@ -2,6 +2,7 @@ import "dotenv/config";
 import cron from "node-cron";
 import { prisma } from "@madecreative/db";
 import type { ReportData } from "@madecreative/shared";
+import { PLANS } from "@madecreative/shared";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -13,6 +14,7 @@ async function generatePdf(params: {
   month: number;
   year: number;
   reportData: ReportData;
+  plan: string;
 }): Promise<string> {
   const PDFDocumentModule = await import("pdfkit").catch(() => null);
   if (!PDFDocumentModule) {
@@ -281,7 +283,7 @@ async function generatePdf(params: {
     doc.moveDown(1);
     sectionTitle("ROI — Valore generato");
 
-    const monthlyAmount = 297;
+    const monthlyAmount = PLANS[params.plan as keyof typeof PLANS]?.price ?? 25;
     const estimatedValue =
       params.reportData.metrics.leadsGenerated * 150 +
       (params.reportData.metrics.websiteVisits / 1000) * 50;
@@ -386,7 +388,7 @@ async function generateMonthlyReport(
   const [client, websiteVisits, chatbotStats] = await Promise.all([
     prisma.client.findUnique({
       where: { id: clientId },
-      select: { companyName: true, sector: true, email: true },
+      select: { companyName: true, sector: true, email: true, plan: true },
     }),
     prisma.clientWebsite.findUnique({
       where: { clientId },
@@ -444,6 +446,7 @@ async function generateMonthlyReport(
     month,
     year,
     reportData,
+    plan: client.plan,
   });
 
   let pdfUrl: string | null = null;

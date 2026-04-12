@@ -70,7 +70,7 @@ async function collectMetrics(): Promise<MetricSnapshot> {
   return {
     totalClients,
     activeClients,
-    mrr: activeClients * 297,
+    mrr: activeClients * 25,
     totalProspects,
     totalAgentJobs,
     failedJobsLast24h: failedJobs,

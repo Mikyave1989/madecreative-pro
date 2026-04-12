@@ -33,7 +33,7 @@ app.get("/", async (c) => {
     prisma.prospect.count(),
     prisma.prospect.count({ where: { createdAt: { gte: startOfMonth } } }),
     prisma.prospect.count({ where: { status: "CONVERTED" } }),
-    // MRR: activeClients × €197
+    // MRR: activeClients × plan price
     prisma.client.count({ where: { status: "ACTIVE" } }),
     // Revenue from paid invoices this month
     prisma.clientInvoice.findMany({
@@ -51,7 +51,7 @@ app.get("/", async (c) => {
     }),
   ]);
 
-  const PLAN_PRICE = 197;
+  const { PLAN_PRICE } = await import("@madecreative/shared");
   const monthlyRevenue = recentInvoices.reduce((sum: number, inv: { amount: number }) => sum + inv.amount, 0);
   const conversionPct =
     totalProspects > 0

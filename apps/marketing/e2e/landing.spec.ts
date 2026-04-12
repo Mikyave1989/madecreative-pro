@@ -89,8 +89,10 @@ test.describe("Marketing Pricing page — billing toggle", () => {
     await page.goto(`${BASE_URL}/de/prezzi`);
 
     // Monthly prices should be visible by default
-    // Starter plan monthly: 297, annual: 238
-    await expect(page.getByText("297")).toBeVisible();
+    // Starter €25, Growth €50, Pro €99
+    await expect(page.getByText("€25")).toBeVisible();
+    await expect(page.getByText("€50")).toBeVisible();
+    await expect(page.getByText("€99")).toBeVisible();
 
     // Click the annual toggle button
     const annualBtn = page.getByRole("button", { name: /jährlich/i });
@@ -98,12 +100,13 @@ test.describe("Marketing Pricing page — billing toggle", () => {
     await annualBtn.click();
 
     // Annual prices should now be visible
-    await expect(page.getByText("238")).toBeVisible();
+    // Starter €250, Growth €500, Pro €990
+    await expect(page.getByText("€250")).toBeVisible();
 
     // Click back to monthly
     const monthlyBtn = page.getByRole("button", { name: /monatlich/i });
     await monthlyBtn.click();
-    await expect(page.getByText("297")).toBeVisible();
+    await expect(page.getByText("€25")).toBeVisible();
   });
 
   test("shows -20% badge on annual toggle option", async ({ page }) => {

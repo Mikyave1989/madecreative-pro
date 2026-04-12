@@ -197,13 +197,14 @@ app.post("/cancel", async (c) => {
 // POST /portal/billing/refund — automatic 14-day refund
 app.post("/refund", async (c) => {
   const { prisma } = await import("@madecreative/db");
-  const { REFUND_POLICY } = await import("@madecreative/shared");
+  const { REFUND_POLICY, PLANS } = await import("@madecreative/shared");
   const clientId = c.get("jwtPayload").sub;
 
   const client = await prisma.client.findUnique({
     where: { id: clientId },
     select: {
       status: true,
+      plan: true,
       stripeSubId: true,
       stripeCustomerId: true,
       createdAt: true,
@@ -255,10 +256,12 @@ app.post("/refund", async (c) => {
     data: { status: "REFUNDED" },
   });
 
+  const planPrice = PLANS[client.plan as keyof typeof PLANS]?.price ?? 25;
+
   return c.json({
     success: true,
     data: {
-      message: "Rimborso processato automaticamente. Riceverai €197 entro 5-10 giorni lavorativi.",
+      message: `Rimborso processato automaticamente. Riceverai €${planPrice} entro 5-10 giorni lavorativi.`,
       refunded: true,
     },
   });

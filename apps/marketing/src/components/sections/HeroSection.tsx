@@ -305,6 +305,21 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
       style={{ background: "#05070f" }}
     >
+      {/* Hero video — full-width background */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+          style={{ opacity: 0.3 }}
+        >
+          <source src="/videos/hero-demo.webm" type="video/webm" />
+        </video>
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, #05070f 0%, rgba(5,7,15,0.6) 40%, #05070f 100%)" }} />
+      </div>
+
       {/* Background */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
@@ -520,19 +535,6 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
         <p className="animate-fade-up delay-400 text-xs" style={{ color: "rgba(248,250,252,0.3)" }}>
           {t.hero.trustNote}
         </p>
-
-        {/* Hero video */}
-        <div className="animate-fade-up delay-400 mt-12 max-w-3xl mx-auto rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 40px rgba(99,102,241,0.15)" }}>
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-auto block"
-          >
-            <source src="/videos/hero-demo.webm" type="video/webm" />
-          </video>
-        </div>
 
         {/* Social proof */}
         <div className="animate-fade-up delay-400 mt-14 grid grid-cols-2 gap-4 sm:gap-8 max-w-md mx-auto">
