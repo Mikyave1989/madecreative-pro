@@ -1173,16 +1173,25 @@ export function Preloader() {
 function stripTs(code: string): string {
   return code
     .replace(/^"use client";\s*/gm, "")
-    .replace(/import\s+type\s+[^;]*;\s*/g, "")
-    .replace(/import\s+[^;]*from\s+["']next\/[^"']*["'];\s*/g, "")
-    .replace(/import\s+[^;]*from\s+["']@\/[^"']*["'];\s*/g, "")
-    .replace(/import\s+[^;]*from\s+["']framer-motion["'];\s*/g, "")
-    .replace(/import\s+[^;]*from\s+["']lucide-react["'];\s*/g, "")
-    .replace(/export\s+const\s+metadata[\s\S]*?;\s*/g, "")
-    .replace(/:\s*[\w.]+(\[\])?\s*(?=[,)={])/g, "")
-    .replace(/<[\w.]+>/g, "")
-    .replace(/\bas\s+[\w.]+/g, "")
-    .replace(/!\./g, ".");
+    // Remove all imports
+    .replace(/^import\s+[^;]*;\s*/gm, "")
+    // Remove 'export' keyword but keep the declaration
+    .replace(/^export\s+const\s+/gm, "const ")
+    .replace(/^export\s+function\s+/gm, "function ")
+    .replace(/^export\s+default\s+function\s+/gm, "function ")
+    .replace(/^export\s+default\s+/gm, "const _default = ")
+    .replace(/^export\s+\{[^}]*\};\s*/gm, "")
+    // Strip TypeScript type annotations ONLY after identifiers (not in JSON objects)
+    // Match: param: Type, variable: Type — but NOT "key": value
+    .replace(/(\w)\s*:\s*(string|number|boolean|any|void|null|undefined|never|unknown|React\.[\w.]+|Array<[^>]*>|Record<[^>]*>|[\w]+\[\])\s*(?=[,)={;])/g, "$1")
+    // Strip generic type params <Type>
+    .replace(/<(string|number|boolean|any|[\w]+)>/g, "")
+    // Strip 'as Type' casts
+    .replace(/\bas\s+(const|string|number|boolean|any|[\w.]+)/g, "")
+    // Strip non-null assertions
+    .replace(/!\./g, ".")
+    // Strip interface/type declarations
+    .replace(/^(interface|type)\s+\w+[\s\S]*?^\}/gm, "");
 }
 
 export function projectToPreviewHtml(files: Record<string, string>): string {
@@ -1199,32 +1208,38 @@ export function projectToPreviewHtml(files: Record<string, string>): string {
   const fontsUrl = (layout.match(/href=["'](https:\/\/fonts\.googleapis\.com[^"']+)["']/) ?? [])[1] ?? "";
   const title = (layout.match(/default:\s*["']([^"']+)["']/) ?? layout.match(/title:\s*["']([^"']+)["']/) ?? [])[1] ?? "MadeCreative";
 
-  const js = [
-    ...libs.map(stripTs),
-    ...comps.map(c => stripTs(c).replace(/^export\s+(default\s+)?function/gm, "function").replace(/^export\s+/gm, "")),
-    stripTs(page).replace(/^export\s+default\s+function\s+\w+/m, "function PageContent"),
-  ].join("\n\n");
+  // stripTs already handles export removal — just need to rename default exports
+  const processedLibs = libs.map(stripTs);
+  const processedComps = comps.map(c => stripTs(c));
+  // Rename the page's default function to PageContent
+  let processedPage = stripTs(page);
+  // Match "function Home()" or "function Page()" etc — rename to PageContent
+  processedPage = processedPage.replace(/^function\s+\w+\s*\(/m, "function PageContent(");
+  // If there was "const _default = function" from export default
+  processedPage = processedPage.replace(/const\s+_default\s*=\s*/, "function PageContent");
+
+  const js = [...processedLibs, ...processedComps, processedPage].join("\n\n");
 
   return `<!DOCTYPE html><html lang="it"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title.replace(/</g, "&lt;")}</title>
 ${fontsUrl ? `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="${fontsUrl}" rel="stylesheet">` : ""}
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.min.js"><\/script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.min.js"><\/script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
 <script crossorigin src="https://unpkg.com/framer-motion@11/dist/framer-motion.js"><\/script>
 <script src="https://cdn.tailwindcss.com"><\/script>
 <style>${css}</style></head><body><div id="root"></div>
-<script>
-var Link=function(p){return React.createElement("a",Object.assign({},p,{href:p.href}),p.children)};
-var usePathname=function(){return"/"};
-var _fm=window["framer-motion"]||{};var motion=_fm.motion,AnimatePresence=_fm.AnimatePresence||function(p){return p.children};
-var useScroll=_fm.useScroll||function(){return{scrollYProgress:0}};var useTransform=_fm.useTransform||function(){return 0};
-var useInView=_fm.useInView||function(){return true};
-var useState=React.useState,useEffect=React.useEffect,useRef=React.useRef,useCallback=React.useCallback;
-try{
+<script type="text/babel" data-type="module">
+const Link = ({href, children, ...props}) => <a href={href} {...props}>{children}</a>;
+const usePathname = () => "/";
+const _fm = window["framer-motion"] || {};
+const { motion, AnimatePresence, useScroll, useTransform, useInView } = _fm;
+const { useState, useEffect, useRef, useCallback } = React;
+
 ${js}
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(PageContent));
-}catch(e){console.error(e);document.getElementById("root").innerHTML="<div style='padding:60px;text-align:center;font-family:system-ui;color:#666'><p>"+e.message+"</p></div>";}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<PageContent />);
 <\/script></body></html>`;
 }
 
