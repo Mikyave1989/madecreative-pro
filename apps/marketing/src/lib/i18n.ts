@@ -50,6 +50,8 @@ export interface Translations {
     sectionLabel: string;
     title: string;
     subtitle: string;
+    worksForAnyIndustry: string;
+    responsiveOnEveryDevice: string;
     items: Array<{
       title: string;
       description: string;
@@ -170,6 +172,36 @@ export interface Translations {
       features: string[];
     }>;
   };
+  useCases: {
+    sectionLabel: string;
+    title: string;
+    titleHighlight: string;
+    subtitle: string;
+    ctaNote: string;
+    ctaLink: string;
+    items: Array<{ name: string; tagline: string; description: string; stats: string }>;
+  };
+  comparison: {
+    sectionLabel: string;
+    title: string;
+    titleHighlight: string;
+    subtitle: string;
+    headers: { feature: string; madecreative: string; wix: string; wordpress: string; custom: string };
+    best: string;
+    partial: string;
+    footnote: string;
+    features: Array<{ name: string }>;
+    highlights: Array<{ title: string }>;
+  };
+  testimonials: {
+    sectionLabel: string;
+    title: string;
+    titleHighlight: string;
+    subtitle: string;
+    items: Array<{ name: string; role: string; location: string; quote: string; result: string }>;
+    stats: Array<{ value: string; label: string }>;
+    trust: Array<{ icon: string; text: string }>;
+  };
 }
 
 export const translations: Record<Locale, Translations> = {
@@ -226,6 +258,8 @@ export const translations: Record<Locale, Translations> = {
       sectionLabel: "Was enthalten ist",
       title: "Alles, was du brauchst",
       subtitle: "Eine KI. Echter Code. Unendliche Websites.",
+      worksForAnyIndustry: "Für jede Branche geeignet",
+      responsiveOnEveryDevice: "Responsiv auf jedem Gerät",
       items: [
         {
           title: "KI-Code-Generierung",
@@ -459,6 +493,78 @@ export const translations: Record<Locale, Translations> = {
         },
       ],
     },
+    useCases: {
+      sectionLabel: "Für jedes Unternehmen",
+      title: "Egal welches Unternehmen —",
+      titleHighlight: "MadeCreative baut es.",
+      subtitle:
+        "Vom Familienrestaurant bis zum Series-A-Startup — die KI versteht Ihre Branche und erstellt eine Website, die Ihren spezifischen Anforderungen entspricht.",
+      ctaNote: "Ihre Branche nicht dabei?",
+      ctaLink: "Kostenlos testen — beschreiben Sie, was Sie brauchen.",
+      items: [
+        { name: "Restaurants & Gastronomie", tagline: "Menü, Reservierungen und Atmosphäre — in Minuten live.", description: "Menüseiten, Online-Buchungs-Widgets, Öffnungszeiten, Lagepläne und Galerie-Bereiche. Die KI weiß, was Restaurants brauchen, und baut es automatisch.", stats: "Beliebteste Kategorie" },
+        { name: "Medizin & Zahnarztpraxen", tagline: "Professionelle Websites, denen Patienten sofort vertrauen.", description: "Terminbuchungsformulare, Leistungsbeschreibungen, Team-Profile, Kasseninformationen und Patienten-FAQs. Standardmäßig vollständig DSGVO-konform.", stats: "Zweitbeliebteste" },
+        { name: "Beauty & Fitnessstudios", tagline: "Buchungen, Preise und Marke — wunderschön präsentiert.", description: "Leistungsmenüs, Kurszeiten, Vorher/Nachher-Galerien, Trainer-Biografien und Online-Buchung. Mobile-first für Kunden, die unterwegs buchen.", stats: "Wachsendes Segment" },
+        { name: "Immobilienmakler", tagline: "Objekte, Lead-Erfassung und Makler-Profile.", description: "Immobilien-Suchseiten, Kontaktformulare, Maklerverzeichnisse, Stadtteilführer und virtuelle Besichtigungen. Für lokales SEO optimiert.", stats: "Hochwertige Konversionen" },
+        { name: "E-Commerce-Shops", tagline: "Produktseiten, Warenkorb und Checkout — für Konversionen gebaut.", description: "Produktgalerien, Kategorieseiten, Warenkorb, Stripe-Integration und Bestellbestätigungsseiten. Die KI übernimmt den gesamten Kaufprozess.", stats: "Vollständiger Checkout enthalten" },
+        { name: "Professionelle Dienstleistungen", tagline: "Anwälte, Steuerberater, Berater — Glaubwürdigkeit ab Tag eins.", description: "Leistungsseiten, Fallstudien, Team-Biografien, Beratungsbuchung und Kontaktformulare. Die KI schreibt professionelle Texte, die Autorität ausstrahlen.", stats: "B2B-Lead-Generierung" },
+        { name: "Startups & SaaS", tagline: "Launch-Seiten, die Besucher zu Anmeldungen konvertieren.", description: "Hero-Bereiche, Feature-Vergleiche, Preistabellen, Testimonials und E-Mail-Erfassungsformulare. A/B-Test-Varianten mit einem einzigen KI-Prompt.", stats: "Schnellste Time-to-Live" },
+        { name: "Portfolios & Kreative", tagline: "Zeigen Sie Ihre Arbeit. Werden Sie beauftragt. Kein Code nötig.", description: "Projekt-Galerien, Fallstudien-Seiten, Skills-Bereiche, Kontaktformulare und herunterladbare Lebensläufe. Die KI lässt Kreative so gut aussehen wie ihre Arbeit.", stats: "Von Designern geliebt" },
+      ],
+    },
+    comparison: {
+      sectionLabel: "Der Vergleich",
+      title: "Warum MadeCreative wählen",
+      titleHighlight: "statt der Alternativen?",
+      subtitle:
+        "Wix sperrt Sie in seinen Builder. WordPress braucht Plugins, Hosting und einen Entwickler. Custom Dev kostet Tausende. MadeCreative gibt Ihnen echten Code, KI-Geschwindigkeit und null Setup.",
+      headers: { feature: "Funktion", madecreative: "MadeCreative", wix: "Wix", wordpress: "WordPress", custom: "Custom Dev" },
+      best: "Beste Wahl",
+      partial: "Eingeschränkt",
+      footnote: 'Preise und Funktionen aktuell per April 2026. "Eingeschränkt" bedeutet, dass die Funktion Plugins, manuelle Einrichtung oder Drittanbieter-Tools erfordert.',
+      features: [
+        { name: "KI-Code-Generierung" },
+        { name: "Echter React / Next.js-Output" },
+        { name: "Chat-basiertes Bearbeiten" },
+        { name: "Live-Vorschau" },
+        { name: "Startpreis" },
+        { name: "Sofortiges Deployen" },
+        { name: "Eingebautes SEO" },
+        { name: "Mobile Responsive" },
+        { name: "Versionsverlauf" },
+        { name: "Kein Code erforderlich" },
+        { name: "Sie besitzen den Code" },
+        { name: "Eigene Domain + SSL" },
+      ],
+      highlights: [
+        { title: "Einziger KI-Builder mit echtem React-Output" },
+        { title: "Keine Plugins. Kein Hosting-Ärger. Kein Code." },
+        { title: "€25/Monat vs. €5.000+ für Custom Dev" },
+      ],
+    },
+    testimonials: {
+      sectionLabel: "Kundenstimmen",
+      title: "Echte Unternehmen.",
+      titleHighlight: "Echte Ergebnisse.",
+      subtitle:
+        "Von Restaurantbesitzern bis zu Startup-Gründern — erleben Sie, was passiert, wenn Sie €5.000-Agenturangebote durch ein 2-minütiges KI-Gespräch ersetzen.",
+      items: [
+        { name: "Marco R.", role: "Restaurantbesitzer", location: "Mailand, Italien", quote: "In 2 Minuten hatte ich eine Website, die mich mit einer Agentur €5.000 gekostet hätte. Ich tippte 'Erstelle eine Website für meine Trattoria in Mailand mit Online-Reservierungen' — und sie baute genau das: Menü, Fotos, Buchungs-Widget, alles. Meine Kunden können jetzt direkt über Google buchen.", result: "Reservierungen im ersten Monat +40 %" },
+        { name: "Dr. Sarah B.", role: "Zahnärztin / Praxisinhaberin", location: "Wien, Österreich", quote: "Die KI hat genau verstanden, was meine Praxis braucht: Patientenvertrauen, professionelles Design, Terminbuchung und DSGVO-konforme Formulare. Ich war skeptisch wegen des medizinischen Bereichs, aber sie hat korrektes Schema.org-Markup generiert. Meine Patienten kommentieren immer, wie professionell es aussieht.", result: "Neue Patientenanfragen verdoppelt" },
+        { name: "Thomas K.", role: "Startup-Gründer", location: "Berlin, Deutschland", quote: "Ich beschrieb meine SaaS-Landing-Page und sie baute genau das, was ich vor Augen hatte — Feature-Bereiche, Preistabelle, Testimonials, alles. Dann bat ich sie, ein Wartelisten-Formular hinzuzufügen, und sie tat es in 30 Sekunden. Was einem Freelancer eine Woche gedauert hätte, dauerte mir einen Nachmittag. Der Code ist sogar sauber.", result: "€0 für Entwicklung ausgegeben" },
+        { name: "Lucia M.", role: "Beauty-Studio-Inhaberin", location: "Barcelona, Spanien", quote: "Ich habe null technisches Wissen und hatte Angst, es zu versuchen. Aber ich tippte, was ich wollte, und es hat einfach funktioniert. Schöne Galerie, Servicepreise, Instagram-Feed-Integration, ein Buchungs-Button. Meine Kunden sagen mir, dass es besser aussieht als das meiner Mitbewerber, die Agenturen Tausende bezahlt haben.", result: "In unter 1 Stunde vollständig live" },
+      ],
+      stats: [
+        { value: "< 2 min", label: "Durchschnittliche Bauzeit" },
+        { value: "€25/Mo.", label: "Startpreis" },
+        { value: "95+", label: "PageSpeed-Wertung" },
+      ],
+      trust: [
+        { icon: "★", text: "4,9/5 Durchschnittsbewertung" },
+        { icon: "✓", text: "Keine Kreditkarte erforderlich" },
+        { icon: "↺", text: "Jederzeit kündbar" },
+      ],
+    },
   },
 
   it: {
@@ -514,6 +620,8 @@ export const translations: Record<Locale, Translations> = {
       sectionLabel: "Cosa Include",
       title: "Tutto ciò di cui hai bisogno",
       subtitle: "Un'AI. Codice vero. Siti infiniti.",
+      worksForAnyIndustry: "Adatto a qualsiasi settore",
+      responsiveOnEveryDevice: "Responsive su ogni dispositivo",
       items: [
         {
           title: "Generazione di Codice AI",
@@ -747,6 +855,78 @@ export const translations: Record<Locale, Translations> = {
         },
       ],
     },
+    useCases: {
+      sectionLabel: "Per ogni attività",
+      title: "Qualunque sia la tua attività —",
+      titleHighlight: "MadeCreative la costruisce.",
+      subtitle:
+        "Dal ristorante di famiglia alla startup in crescita — l'AI comprende il tuo settore e genera un sito che risponde alle tue esigenze specifiche.",
+      ctaNote: "Non vedi il tuo settore?",
+      ctaLink: "Provalo gratis — descrivi quello di cui hai bisogno.",
+      items: [
+        { name: "Ristoranti & Ospitalità", tagline: "Menu, prenotazioni e atmosfera — live in pochi minuti.", description: "Pagine menu, widget di prenotazione online, orari di apertura, mappe e sezioni galleria. L'AI sa cosa serve ai ristoranti e lo costruisce automaticamente.", stats: "Categoria più popolare" },
+        { name: "Studi Medici & Dentistici", tagline: "Siti professionali di cui i pazienti si fidano subito.", description: "Moduli di prenotazione, descrizioni dei servizi, profili del team, info assicurative e FAQ. Completamente conforme al GDPR per impostazione predefinita.", stats: "Seconda più popolare" },
+        { name: "Beauty & Fitness", tagline: "Prenotazioni, prezzi e brand — presentati in modo splendido.", description: "Menu servizi, orari corsi, gallerie prima/dopo, biografie istruttori e prenotazione online. Mobile-first per clienti che prenotano in mobilità.", stats: "Segmento in forte crescita" },
+        { name: "Agenzie Immobiliari", tagline: "Annunci, acquisizione lead e profili agenti.", description: "Pagine di ricerca immobiliare, moduli di contatto, directory agenti, guide quartieri e virtual tour. Ottimizzato per la SEO locale.", stats: "Conversioni di alto valore" },
+        { name: "E-commerce", tagline: "Schede prodotto, carrello e checkout — costruiti per convertire.", description: "Gallerie prodotti, pagine categoria, carrello, integrazione Stripe e pagine di conferma ordine. L'AI gestisce l'intero funnel di acquisto.", stats: "Checkout completo incluso" },
+        { name: "Professionisti & Consulenti", tagline: "Avvocati, commercialisti, consulenti — credibilità dal giorno uno.", description: "Pagine servizi, case study, biografie del team, prenotazione consulenze e moduli di contatto. L'AI scrive testi professionali che stabiliscono autorità.", stats: "Generazione lead B2B" },
+        { name: "Startup & SaaS", tagline: "Pagine di lancio che convertono i visitatori in iscritti.", description: "Hero section, confronto funzionalità, tabelle prezzi, testimonianze e moduli di cattura email. Varianti A/B con un singolo prompt AI.", stats: "Time-to-live più rapido" },
+        { name: "Portfolio & Creativi", tagline: "Mostra il tuo lavoro. Ottieni clienti. Nessun codice.", description: "Gallerie progetti, pagine case study, sezioni competenze, moduli contatto e CV scaricabili. L'AI fa sembrare i creativi bravi quanto il loro lavoro.", stats: "Amato dai designer" },
+      ],
+    },
+    comparison: {
+      sectionLabel: "Il confronto",
+      title: "Perché scegliere MadeCreative",
+      titleHighlight: "rispetto alle alternative?",
+      subtitle:
+        "Wix ti blocca nel suo builder. WordPress richiede plugin, hosting e uno sviluppatore. Il custom dev costa migliaia. MadeCreative ti dà codice vero, velocità AI e zero configurazione.",
+      headers: { feature: "Funzionalità", madecreative: "MadeCreative", wix: "Wix", wordpress: "WordPress", custom: "Custom Dev" },
+      best: "Il migliore",
+      partial: "Parziale",
+      footnote: 'Prezzi e funzionalità aggiornati ad aprile 2026. "Parziale" indica che la funzione richiede plugin, configurazione manuale o strumenti di terze parti.',
+      features: [
+        { name: "Generazione codice AI" },
+        { name: "Output React / Next.js vero" },
+        { name: "Editing via chat" },
+        { name: "Anteprima live" },
+        { name: "Prezzo di partenza" },
+        { name: "Deploy istantaneo" },
+        { name: "SEO integrato" },
+        { name: "Responsive mobile" },
+        { name: "Cronologia versioni" },
+        { name: "Nessun codice richiesto" },
+        { name: "Sei proprietario del codice" },
+        { name: "Dominio personalizzato + SSL" },
+      ],
+      highlights: [
+        { title: "L'unico AI builder con output React reale" },
+        { title: "Nessun plugin. Nessun problema di hosting. Nessun codice." },
+        { title: "€25/mese vs €5.000+ per il custom dev" },
+      ],
+    },
+    testimonials: {
+      sectionLabel: "Storie dei clienti",
+      title: "Aziende reali.",
+      titleHighlight: "Risultati reali.",
+      subtitle:
+        "Da ristoratori a fondatori di startup — scopri cosa succede quando sostituisci i preventivi da €5.000 delle agenzie con una conversazione AI di 2 minuti.",
+      items: [
+        { name: "Marco R.", role: "Titolare di ristorante", location: "Milano, Italia", quote: "In 2 minuti avevo un sito che con un'agenzia mi sarebbe costato €5.000. Ho scritto 'crea un sito per la mia trattoria a Milano con prenotazioni online' e ha costruito esattamente quello — menù, foto, widget prenotazione, tutto. I miei clienti ora possono prenotare direttamente da Google.", result: "Prenotazioni +40% nel primo mese" },
+        { name: "Dott.ssa Sarah B.", role: "Titolare di studio dentistico", location: "Vienna, Austria", quote: "L'AI ha capito esattamente cosa serviva alla mia clinica — fiducia dei pazienti, design professionale, prenotazione appuntamenti e moduli GDPR-compliant. Ero preoccupata per il settore medico ma ha generato il corretto markup Schema.org e tutto era corretto. I miei pazienti commentano sempre quanto appare professionale.", result: "Nuove richieste pazienti raddoppiate" },
+        { name: "Thomas K.", role: "Founder di startup", location: "Berlino, Germania", quote: "Ho descritto la mia landing page SaaS e ha costruito esattamente quello che avevo in mente — sezioni feature, tabella prezzi, testimonianze, tutto. Poi le ho chiesto di aggiungere un modulo di waitlist e lo ha fatto in 30 secondi. Quello che avrebbe impiegato una settimana a un freelance mi ha preso un pomeriggio. Il codice è anche pulito.", result: "€0 spesi in sviluppo" },
+        { name: "Lucia M.", role: "Titolare di beauty studio", location: "Barcellona, Spagna", quote: "Ho zero conoscenze tecniche e avevo paura di provare. Ma ho digitato quello che volevo e ha funzionato. Galleria bellissima, prezzi servizi, integrazione feed Instagram, un pulsante di prenotazione. I miei clienti mi dicono che sembra meglio di quello dei miei concorrenti che hanno pagato migliaia alle agenzie.", result: "Online in meno di 1 ora" },
+      ],
+      stats: [
+        { value: "< 2 min", label: "Tempo medio di costruzione" },
+        { value: "€25/mese", label: "Prezzo di partenza" },
+        { value: "95+", label: "Punteggio PageSpeed" },
+      ],
+      trust: [
+        { icon: "★", text: "4,9/5 valutazione media" },
+        { icon: "✓", text: "Nessuna carta di credito richiesta" },
+        { icon: "↺", text: "Cancella quando vuoi" },
+      ],
+    },
   },
 
   es: {
@@ -802,6 +982,8 @@ export const translations: Record<Locale, Translations> = {
       sectionLabel: "Qué Incluye",
       title: "Todo lo que necesitas",
       subtitle: "Una IA. Código real. Webs infinitas.",
+      worksForAnyIndustry: "Funciona para cualquier sector",
+      responsiveOnEveryDevice: "Responsive en todos los dispositivos",
       items: [
         {
           title: "Generación de Código IA",
@@ -1035,6 +1217,78 @@ export const translations: Record<Locale, Translations> = {
         },
       ],
     },
+    useCases: {
+      sectionLabel: "Para cada negocio",
+      title: "Sea cual sea tu negocio —",
+      titleHighlight: "MadeCreative lo construye.",
+      subtitle:
+        "Desde el restaurante familiar hasta la startup en crecimiento — la IA entiende tu sector y genera un sitio que se adapta a tus necesidades específicas.",
+      ctaNote: "¿No ves tu sector?",
+      ctaLink: "Pruébalo gratis — describe lo que necesitas.",
+      items: [
+        { name: "Restaurantes & Hostelería", tagline: "Menús, reservas y ambiente — en vivo en minutos.", description: "Páginas de menú, widgets de reserva online, horarios, mapas y galerías. La IA sabe lo que necesitan los restaurantes y lo construye automáticamente.", stats: "Categoría más popular" },
+        { name: "Clínicas Médicas & Dentales", tagline: "Sitios profesionales en los que los pacientes confían al instante.", description: "Formularios de cita, descripciones de servicios, perfiles del equipo, info de seguros y FAQs. Totalmente compatible con GDPR por defecto.", stats: "Segunda más popular" },
+        { name: "Belleza & Fitness", tagline: "Reservas, precios y marca — presentados de forma impecable.", description: "Menús de servicios, horarios de clases, galerías antes/después, bios de instructores y reserva online. Mobile-first para clientes que reservan desde el móvil.", stats: "Segmento en rápido crecimiento" },
+        { name: "Agencias Inmobiliarias", tagline: "Listados, captación de leads y perfiles de agentes.", description: "Páginas de búsqueda inmobiliaria, formularios de contacto, directorios de agentes, guías de barrios y tours virtuales. Optimizado para SEO local.", stats: "Conversiones de alto valor" },
+        { name: "Tiendas E-commerce", tagline: "Fichas de producto, carrito y checkout — construidos para convertir.", description: "Galerías de productos, páginas de categoría, carrito de compra, integración Stripe y páginas de confirmación. La IA gestiona todo el embudo de compra.", stats: "Checkout completo incluido" },
+        { name: "Servicios Profesionales", tagline: "Abogados, asesores, consultores — credibilidad desde el día uno.", description: "Páginas de servicios, casos de éxito, bios del equipo, reserva de consultas y formularios de contacto. La IA escribe textos profesionales que generan autoridad.", stats: "Generación de leads B2B" },
+        { name: "Startups & SaaS", tagline: "Landing pages que convierten visitantes en registros.", description: "Secciones hero, comparativas de funcionalidades, tablas de precios, testimonios y formularios de captación de email. Variantes A/B con un solo prompt de IA.", stats: "Time-to-live más rápido" },
+        { name: "Portfolios & Creativos", tagline: "Muestra tu trabajo. Consigue clientes. Sin código.", description: "Galerías de proyectos, páginas de casos de estudio, secciones de habilidades, formularios de contacto y CVs descargables. La IA hace que los creativos luzcan tan bien como su trabajo.", stats: "Amado por diseñadores" },
+      ],
+    },
+    comparison: {
+      sectionLabel: "La comparativa",
+      title: "¿Por qué elegir MadeCreative",
+      titleHighlight: "en lugar de las alternativas?",
+      subtitle:
+        "Wix te ata a su constructor. WordPress necesita plugins, hosting y un desarrollador. El desarrollo a medida cuesta miles. MadeCreative te da código real, velocidad de IA y cero configuración.",
+      headers: { feature: "Funcionalidad", madecreative: "MadeCreative", wix: "Wix", wordpress: "WordPress", custom: "Desarrollo a medida" },
+      best: "La mejor opción",
+      partial: "Parcial",
+      footnote: 'Precios y funcionalidades actualizados a abril de 2026. "Parcial" indica que la función requiere plugins, configuración manual o herramientas de terceros.',
+      features: [
+        { name: "Generación de código IA" },
+        { name: "Output React / Next.js real" },
+        { name: "Edición por chat" },
+        { name: "Preview en vivo" },
+        { name: "Precio de entrada" },
+        { name: "Deploy instantáneo" },
+        { name: "SEO integrado" },
+        { name: "Responsive en móvil" },
+        { name: "Historial de versiones" },
+        { name: "Sin código necesario" },
+        { name: "Tú eres dueño del código" },
+        { name: "Dominio propio + SSL" },
+      ],
+      highlights: [
+        { title: "El único AI builder con output React real" },
+        { title: "Sin plugins. Sin líos de hosting. Sin código." },
+        { title: "€25/mes vs €5.000+ en desarrollo a medida" },
+      ],
+    },
+    testimonials: {
+      sectionLabel: "Historias de clientes",
+      title: "Negocios reales.",
+      titleHighlight: "Resultados reales.",
+      subtitle:
+        "Desde dueños de restaurantes hasta fundadores de startups — descubre qué pasa cuando sustituyes los presupuestos de €5.000 de agencia por una conversación de 2 minutos con IA.",
+      items: [
+        { name: "Marco R.", role: "Dueño de restaurante", location: "Milán, Italia", quote: "En 2 minutos tenía un sitio que con una agencia me habría costado €5.000. Escribí 'crea un sitio para mi trattoria en Milán con reservas online' y construyó exactamente eso — menú, fotos, widget de reservas, todo. Mis clientes ahora pueden reservar directamente desde Google.", result: "Reservas +40% en el primer mes" },
+        { name: "Dra. Sarah B.", role: "Propietaria de clínica dental", location: "Viena, Austria", quote: "La IA entendió exactamente lo que necesitaba mi clínica — confianza del paciente, diseño profesional, reserva de citas y formularios GDPR-compliant. Estaba preocupada por el sector médico pero generó el markup Schema.org correcto y todo estaba bien. Mis pacientes siempre comentan lo profesional que se ve.", result: "Nuevas consultas de pacientes duplicadas" },
+        { name: "Thomas K.", role: "Fundador de startup", location: "Berlín, Alemania", quote: "Describí mi landing page SaaS y construyó exactamente lo que tenía en mente — secciones de features, tabla de precios, testimonios, todo. Luego le pedí que añadiera un formulario de lista de espera y lo hizo en 30 segundos. Lo que le habría llevado una semana a un freelance me llevó una tarde. El código encima está limpio.", result: "€0 gastado en desarrollo" },
+        { name: "Lucia M.", role: "Propietaria de estudio de belleza", location: "Barcelona, España", quote: "No tengo conocimientos técnicos y tenía miedo de intentarlo. Pero escribí lo que quería y simplemente funcionó. Galería preciosa, precios de servicios, integración del feed de Instagram, un botón de reserva. Mis clientes me dicen que se ve mejor que el de mis competidores que pagaron miles a agencias.", result: "Completamente live en menos de 1 hora" },
+      ],
+      stats: [
+        { value: "< 2 min", label: "Tiempo medio de construcción" },
+        { value: "€25/mes", label: "Precio de entrada" },
+        { value: "95+", label: "Puntuación PageSpeed" },
+      ],
+      trust: [
+        { icon: "★", text: "4,9/5 valoración media" },
+        { icon: "✓", text: "Sin tarjeta de crédito" },
+        { icon: "↺", text: "Cancela cuando quieras" },
+      ],
+    },
   },
 
   fr: {
@@ -1090,6 +1344,8 @@ export const translations: Record<Locale, Translations> = {
       sectionLabel: "Ce Qui Est Inclus",
       title: "Tout ce dont vous avez besoin",
       subtitle: "Une IA. Du vrai code. Des sites infinis.",
+      worksForAnyIndustry: "Fonctionne pour tous les secteurs",
+      responsiveOnEveryDevice: "Responsive sur tous les appareils",
       items: [
         {
           title: "Génération de Code IA",
@@ -1323,6 +1579,78 @@ export const translations: Record<Locale, Translations> = {
         },
       ],
     },
+    useCases: {
+      sectionLabel: "Pour chaque activité",
+      title: "Quelle que soit votre activité —",
+      titleHighlight: "MadeCreative la construit.",
+      subtitle:
+        "Du restaurant familial à la startup en croissance — l'IA comprend votre secteur et génère un site qui correspond à vos besoins spécifiques.",
+      ctaNote: "Vous ne voyez pas votre secteur ?",
+      ctaLink: "Essayez gratuitement — décrivez ce dont vous avez besoin.",
+      items: [
+        { name: "Restaurants & Hôtellerie", tagline: "Menus, réservations et ambiance — en ligne en minutes.", description: "Pages de menu, widgets de réservation en ligne, horaires d'ouverture, plans d'accès et galeries. L'IA sait ce dont les restaurants ont besoin et le construit automatiquement.", stats: "Catégorie la plus populaire" },
+        { name: "Cabinets Médicaux & Dentaires", tagline: "Sites professionnels auxquels les patients font confiance instantanément.", description: "Formulaires de rendez-vous, descriptions de services, profils de l'équipe, informations sur les mutuelles et FAQ. Entièrement conforme au RGPD par défaut.", stats: "Deuxième plus populaire" },
+        { name: "Beauté & Fitness", tagline: "Réservations, tarifs et image de marque — magnifiquement présentés.", description: "Menus de services, planning des cours, galeries avant/après, biographies des instructeurs et réservation en ligne. Mobile-first pour les clients qui réservent en déplacement.", stats: "Segment en forte croissance" },
+        { name: "Agences Immobilières", tagline: "Annonces, capture de leads et profils d'agents.", description: "Pages de recherche immobilière, formulaires de contact, annuaires d'agents, guides de quartier et visites virtuelles. Optimisé pour le SEO local.", stats: "Conversions à haute valeur" },
+        { name: "Boutiques E-commerce", tagline: "Fiches produits, panier et checkout — conçus pour convertir.", description: "Galeries de produits, pages de catégorie, panier d'achat, intégration Stripe et pages de confirmation de commande. L'IA gère l'intégralité du tunnel d'achat.", stats: "Checkout complet inclus" },
+        { name: "Services Professionnels", tagline: "Avocats, experts-comptables, consultants — crédibilité dès le premier jour.", description: "Pages de services, études de cas, biographies de l'équipe, prise de rendez-vous et formulaires de contact. L'IA rédige des textes professionnels qui établissent l'autorité.", stats: "Génération de leads B2B" },
+        { name: "Startups & SaaS", tagline: "Pages de lancement qui transforment les visiteurs en inscrits.", description: "Sections hero, comparatifs de fonctionnalités, tableaux de tarifs, témoignages et formulaires de capture d'email. Variantes A/B avec un simple prompt IA.", stats: "Time-to-live le plus rapide" },
+        { name: "Portfolios & Créatifs", tagline: "Montrez votre travail. Décrochez des missions. Sans code.", description: "Galeries de projets, pages d'études de cas, sections compétences, formulaires de contact et CV téléchargeables. L'IA met les créatifs en valeur autant que leur travail.", stats: "Plébiscité par les designers" },
+      ],
+    },
+    comparison: {
+      sectionLabel: "La comparaison",
+      title: "Pourquoi choisir MadeCreative",
+      titleHighlight: "plutôt que les alternatives ?",
+      subtitle:
+        "Wix vous enferme dans son éditeur. WordPress nécessite des plugins, un hébergement et un développeur. Le développement sur mesure coûte des milliers. MadeCreative vous offre du vrai code, la vitesse de l'IA et zéro configuration.",
+      headers: { feature: "Fonctionnalité", madecreative: "MadeCreative", wix: "Wix", wordpress: "WordPress", custom: "Dev sur mesure" },
+      best: "Le meilleur",
+      partial: "Partiel",
+      footnote: 'Tarifs et fonctionnalités exacts en avril 2026. "Partiel" signifie que la fonctionnalité nécessite des plugins, une configuration manuelle ou des outils tiers.',
+      features: [
+        { name: "Génération de code par IA" },
+        { name: "Vrai output React / Next.js" },
+        { name: "Édition par chat" },
+        { name: "Aperçu en direct" },
+        { name: "Prix de départ" },
+        { name: "Déploiement instantané" },
+        { name: "SEO intégré" },
+        { name: "Responsive mobile" },
+        { name: "Historique des versions" },
+        { name: "Aucun code requis" },
+        { name: "Vous possédez le code" },
+        { name: "Domaine personnalisé + SSL" },
+      ],
+      highlights: [
+        { title: "Le seul AI builder avec un vrai output React" },
+        { title: "Pas de plugins. Pas de problèmes d'hébergement. Pas de code." },
+        { title: "€25/mois vs €5 000+ pour du dev sur mesure" },
+      ],
+    },
+    testimonials: {
+      sectionLabel: "Témoignages clients",
+      title: "De vraies entreprises.",
+      titleHighlight: "De vrais résultats.",
+      subtitle:
+        "Des propriétaires de restaurant aux fondateurs de startup — voyez ce qui se passe quand vous remplacez les devis d'agence à €5 000 par une conversation IA de 2 minutes.",
+      items: [
+        { name: "Marco R.", role: "Propriétaire de restaurant", location: "Milan, Italie", quote: "En 2 minutes j'avais un site qui m'aurait coûté €5 000 chez une agence. J'ai tapé 'crée un site pour ma trattoria à Milan avec des réservations en ligne' et il a construit exactement ça — menu, photos, widget de réservation, tout. Mes clients peuvent désormais réserver directement depuis Google.", result: "Réservations +40% dès le premier mois" },
+        { name: "Dr Sarah B.", role: "Propriétaire d'une clinique dentaire", location: "Vienne, Autriche", quote: "L'IA a compris exactement ce dont mon cabinet avait besoin — confiance des patients, design professionnel, prise de rendez-vous et formulaires RGPD-conformes. J'étais inquiète pour le secteur médical mais elle a généré le bon balisage Schema.org et tout était correct. Mes patients commentent toujours à quel point c'est professionnel.", result: "Nouvelles demandes de patients doublées" },
+        { name: "Thomas K.", role: "Fondateur de startup", location: "Berlin, Allemagne", quote: "J'ai décrit ma landing page SaaS et elle a construit exactement ce que j'avais en tête — sections features, tableau de tarifs, témoignages, tout. Puis je lui ai demandé d'ajouter un formulaire de liste d'attente et elle l'a fait en 30 secondes. Ce qui aurait pris une semaine à un freelance m'a pris un après-midi. Le code est en plus propre.", result: "€0 dépensé en développement" },
+        { name: "Lucia M.", role: "Propriétaire d'un studio de beauté", location: "Barcelone, Espagne", quote: "J'ai zéro connaissance technique et j'avais peur d'essayer. Mais j'ai tapé ce que je voulais et ça a juste fonctionné. Belle galerie, tarifs des services, intégration du fil Instagram, un bouton de réservation. Mes clients me disent que ça semble mieux que celui de mes concurrents qui ont payé des milliers à des agences.", result: "Entièrement en ligne en moins d'1 heure" },
+      ],
+      stats: [
+        { value: "< 2 min", label: "Durée moyenne de construction" },
+        { value: "€25/mois", label: "Prix de départ" },
+        { value: "95+", label: "Score PageSpeed" },
+      ],
+      trust: [
+        { icon: "★", text: "Note moyenne 4,9/5" },
+        { icon: "✓", text: "Aucune carte de crédit requise" },
+        { icon: "↺", text: "Résiliez quand vous voulez" },
+      ],
+    },
   },
 
   nl: {
@@ -1378,6 +1706,8 @@ export const translations: Record<Locale, Translations> = {
       sectionLabel: "Wat Is Inbegrepen",
       title: "Alles wat u nodig heeft",
       subtitle: "Één AI. Echte code. Eindeloze websites.",
+      worksForAnyIndustry: "Geschikt voor elke branche",
+      responsiveOnEveryDevice: "Responsive op elk apparaat",
       items: [
         {
           title: "AI Code Generatie",
@@ -1611,6 +1941,78 @@ export const translations: Record<Locale, Translations> = {
         },
       ],
     },
+    useCases: {
+      sectionLabel: "Voor elk bedrijf",
+      title: "Wat je bedrijf ook is —",
+      titleHighlight: "MadeCreative bouwt het.",
+      subtitle:
+        "Van het familiérestaurant tot de groeiende startup — de AI begrijpt jouw sector en genereert een site die past bij jouw specifieke behoeften.",
+      ctaNote: "Jouw sector er niet bij?",
+      ctaLink: "Probeer het gratis — beschrijf wat je nodig hebt.",
+      items: [
+        { name: "Restaurants & Horeca", tagline: "Menu's, reserveringen en sfeer — live in minuten.", description: "Menupagina's, online reserveringswidgets, openingstijden, kaarten en galeriesecties. De AI weet wat restaurants nodig hebben en bouwt het automatisch.", stats: "Populairste categorie" },
+        { name: "Medische & Tandartspraktijken", tagline: "Professionele sites waarop patiënten direct vertrouwen.", description: "Afspraakaanvraagformulieren, servicebeschrijvingen, teamprofielen, verzekeringsinfo en patiënten-FAQ's. Standaard volledig AVG-conform.", stats: "Op één na populairst" },
+        { name: "Beauty & Fitness", tagline: "Afspraken, prijzen en merkidentiteit — prachtig gepresenteerd.", description: "Servicemenu's, lesroosters, voor/na-galerijen, instructeursbios en online boeken. Mobile-first voor klanten die onderweg boeken.", stats: "Snelst groeiend segment" },
+        { name: "Makelaardij", tagline: "Woningaanbod, leadgeneratie en makelaarsprofíelen.", description: "Woningzoekpagina's, contactformulieren, makelaarsgidsen, buurtgidsen en virtuele rondleidingen. Geoptimaliseerd voor lokale SEO.", stats: "Hoogwaardige conversies" },
+        { name: "Webwinkels", tagline: "Productpagina's, winkelwagen en checkout — gebouwd om te converteren.", description: "Productgalerijen, categoriepagina's, winkelwagen, Stripe-integratie en orderbevestigingspagina's. De AI verzorgt de volledige aankoopfunnel.", stats: "Volledige checkout inbegrepen" },
+        { name: "Professionele Diensten", tagline: "Advocaten, accountants, consultants — geloofwaardigheid vanaf dag één.", description: "Servicepagina's, casestudy's, teambios, consultatie-afspraken en contactformulieren. De AI schrijft professionele teksten die autoriteit uitstralen.", stats: "B2B-leadgeneratie" },
+        { name: "Startups & SaaS", tagline: "Lanceerpagina's die bezoekers omzetten in aanmeldingen.", description: "Hero-secties, functievergelijkingen, prijstabellen, testimonials en e-mailcaptureformulieren. A/B-testvarianten met één AI-prompt.", stats: "Snelste time-to-live" },
+        { name: "Portfolio's & Creatieven", tagline: "Laat je werk zien. Krijg opdrachten. Geen code nodig.", description: "Projectgalerijen, casestudy-pagina's, vaardighedensecties, contactformulieren en downloadbare cv's. De AI laat creatieven er net zo goed uitzien als hun werk.", stats: "Geliefd bij designers" },
+      ],
+    },
+    comparison: {
+      sectionLabel: "De vergelijking",
+      title: "Waarom kiezen voor MadeCreative",
+      titleHighlight: "boven de alternatieven?",
+      subtitle:
+        "Wix sluit je op in hun builder. WordPress heeft plugins, hosting en een developer nodig. Maatwerk dev kost duizenden euro's. MadeCreative geeft je echte code, AI-snelheid en nul configuratie.",
+      headers: { feature: "Functie", madecreative: "MadeCreative", wix: "Wix", wordpress: "WordPress", custom: "Maatwerk dev" },
+      best: "Beste keuze",
+      partial: "Gedeeltelijk",
+      footnote: 'Prijzen en functies correct per april 2026. "Gedeeltelijk" betekent dat de functie plugins, handmatige configuratie of tools van derden vereist.',
+      features: [
+        { name: "AI-codegeneratie" },
+        { name: "Echte React / Next.js-output" },
+        { name: "Chat-gebaseerde bewerking" },
+        { name: "Live preview" },
+        { name: "Startprijs" },
+        { name: "Direct online" },
+        { name: "Ingebouwde SEO" },
+        { name: "Mobiel responsive" },
+        { name: "Versiegeschiedenis" },
+        { name: "Geen code nodig" },
+        { name: "Jij bezit de code" },
+        { name: "Eigen domein + SSL" },
+      ],
+      highlights: [
+        { title: "Enige AI-builder met echte React-output" },
+        { title: "Geen plugins. Geen hosting-gedoe. Geen code." },
+        { title: "€25/maand vs €5.000+ voor maatwerk dev" },
+      ],
+    },
+    testimonials: {
+      sectionLabel: "Klantverhalen",
+      title: "Echte bedrijven.",
+      titleHighlight: "Echte resultaten.",
+      subtitle:
+        "Van restauranteigenaren tot startup-oprichters — ontdek wat er gebeurt als je offertes van €5.000 van agencies vervangt door een AI-gesprek van 2 minuten.",
+      items: [
+        { name: "Marco R.", role: "Restauranteigenaar", location: "Milaan, Italië", quote: "In 2 minuten had ik een site die me bij een bureau €5.000 had gekost. Ik typte 'bouw een site voor mijn trattoria in Milaan met online reserveringen' en het bouwde precies dat — menu, foto's, boekingswidget, alles. Mijn klanten kunnen nu direct via Google reserveren.", result: "Reserveringen +40% in eerste maand" },
+        { name: "Dr. Sarah B.", role: "Eigenaar tandartspraktijk", location: "Wenen, Oostenrijk", quote: "De AI begreep precies wat mijn praktijk nodig had — patiëntenvertrouwen, professioneel design, afsprakenbeheer en AVG-conforme formulieren. Ik maakte me zorgen over de medische sector maar het genereerde correcte Schema.org-markup en alles klopte. Mijn patiënten benoemen altijd hoe professioneel het eruitziet.", result: "Nieuwe patiëntvragen verdubbeld" },
+        { name: "Thomas K.", role: "Startup-oprichter", location: "Berlijn, Duitsland", quote: "Ik beschreef mijn SaaS-landingspagina en het bouwde precies wat ik voor ogen had — feature-secties, prijstabel, testimonials, alles. Daarna vroeg ik het om een waitlist-formulier toe te voegen en dat deed het in 30 seconden. Wat een freelancer een week had gekost, kostte mij een middag. De code is ook nog eens schoon.", result: "€0 besteed aan development" },
+        { name: "Lucia M.", role: "Eigenaar beautystudio", location: "Barcelona, Spanje", quote: "Ik heb nul technische kennis en was bang om het te proberen. Maar ik typte wat ik wilde en het werkte gewoon. Mooie galerij, serviceprijzen, Instagram-feed-integratie, een boekingsknop. Mijn klanten zeggen me dat het er beter uitziet dan dat van concurrenten die agencies duizenden betaalden.", result: "Volledig live in minder dan 1 uur" },
+      ],
+      stats: [
+        { value: "< 2 min", label: "Gemiddelde bouwtijd" },
+        { value: "€25/mnd", label: "Startprijs" },
+        { value: "95+", label: "PageSpeed-score" },
+      ],
+      trust: [
+        { icon: "★", text: "4,9/5 gemiddelde beoordeling" },
+        { icon: "✓", text: "Geen creditcard nodig" },
+        { icon: "↺", text: "Altijd opzegbaar" },
+      ],
+    },
   },
 
   pt: {
@@ -1666,6 +2068,8 @@ export const translations: Record<Locale, Translations> = {
       sectionLabel: "O Que Está Incluído",
       title: "Tudo o que precisa",
       subtitle: "Uma IA. Código real. Sites infinitos.",
+      worksForAnyIndustry: "Funciona para qualquer setor",
+      responsiveOnEveryDevice: "Responsivo em todos os dispositivos",
       items: [
         {
           title: "Geração de Código IA",
@@ -1899,6 +2303,78 @@ export const translations: Record<Locale, Translations> = {
         },
       ],
     },
+    useCases: {
+      sectionLabel: "Para cada negócio",
+      title: "Seja qual for o seu negócio —",
+      titleHighlight: "MadeCreative constrói.",
+      subtitle:
+        "Do restaurante familiar à startup em crescimento — a IA entende o seu setor e gera um site que corresponde às suas necessidades específicas.",
+      ctaNote: "Não encontrou o seu setor?",
+      ctaLink: "Experimente grátis — descreva o que precisa.",
+      items: [
+        { name: "Restaurantes & Hotelaria", tagline: "Menus, reservas e ambiente — online em minutos.", description: "Páginas de menu, widgets de reserva online, horários, mapas e galerias. A IA sabe o que os restaurantes precisam e constrói automaticamente.", stats: "Categoria mais popular" },
+        { name: "Clínicas Médicas & Dentárias", tagline: "Sites profissionais em que os pacientes confiam imediatamente.", description: "Formulários de marcação, descrições de serviços, perfis da equipa, informações de seguros e FAQs. Totalmente conforme ao RGPD por defeito.", stats: "Segunda mais popular" },
+        { name: "Beleza & Fitness", tagline: "Reservas, preços e marca — apresentados de forma deslumbrante.", description: "Menus de serviços, horários de aulas, galerias antes/depois, biografias de instrutores e marcação online. Mobile-first para clientes que marcam em movimento.", stats: "Segmento em crescimento acelerado" },
+        { name: "Agências Imobiliárias", tagline: "Listagens de imóveis, captação de leads e perfis de agentes.", description: "Páginas de pesquisa de imóveis, formulários de contacto, diretórios de agentes, guias de bairros e visitas virtuais. Otimizado para SEO local.", stats: "Conversões de alto valor" },
+        { name: "Lojas E-commerce", tagline: "Páginas de produto, carrinho e checkout — construídos para converter.", description: "Galerias de produtos, páginas de categoria, carrinho de compras, integração Stripe e páginas de confirmação de encomenda. A IA gere todo o funil de compra.", stats: "Checkout completo incluído" },
+        { name: "Serviços Profissionais", tagline: "Advogados, contabilistas, consultores — credibilidade desde o primeiro dia.", description: "Páginas de serviços, casos de estudo, biografias da equipa, marcação de consultas e formulários de contacto. A IA escreve textos profissionais que estabelecem autoridade.", stats: "Geração de leads B2B" },
+        { name: "Startups & SaaS", tagline: "Páginas de lançamento que convertem visitantes em registos.", description: "Secções hero, comparativos de funcionalidades, tabelas de preços, testemunhos e formulários de captação de email. Variantes A/B com um único prompt de IA.", stats: "Time-to-live mais rápido" },
+        { name: "Portfólios & Criativos", tagline: "Mostre o seu trabalho. Consiga clientes. Sem código.", description: "Galerias de projetos, páginas de casos de estudo, secções de competências, formulários de contacto e CVs para download. A IA faz os criativos parecerem tão bons quanto o seu trabalho.", stats: "Adorado por designers" },
+      ],
+    },
+    comparison: {
+      sectionLabel: "A comparação",
+      title: "Por que escolher o MadeCreative",
+      titleHighlight: "em vez das alternativas?",
+      subtitle:
+        "O Wix prende-o ao seu construtor. O WordPress precisa de plugins, alojamento e um developer. O desenvolvimento personalizado custa milhares. O MadeCreative dá-lhe código real, velocidade de IA e zero configuração.",
+      headers: { feature: "Funcionalidade", madecreative: "MadeCreative", wix: "Wix", wordpress: "WordPress", custom: "Dev personalizado" },
+      best: "A melhor opção",
+      partial: "Parcial",
+      footnote: 'Preços e funcionalidades corretos em abril de 2026. "Parcial" indica que a funcionalidade requer plugins, configuração manual ou ferramentas de terceiros.',
+      features: [
+        { name: "Geração de código por IA" },
+        { name: "Output React / Next.js real" },
+        { name: "Edição por chat" },
+        { name: "Pré-visualização em tempo real" },
+        { name: "Preço de entrada" },
+        { name: "Deploy instantâneo" },
+        { name: "SEO integrado" },
+        { name: "Responsivo em mobile" },
+        { name: "Histórico de versões" },
+        { name: "Sem código necessário" },
+        { name: "Você é dono do código" },
+        { name: "Domínio personalizado + SSL" },
+      ],
+      highlights: [
+        { title: "O único AI builder com output React real" },
+        { title: "Sem plugins. Sem complicações de alojamento. Sem código." },
+        { title: "€25/mês vs €5.000+ em dev personalizado" },
+      ],
+    },
+    testimonials: {
+      sectionLabel: "Histórias de clientes",
+      title: "Negócios reais.",
+      titleHighlight: "Resultados reais.",
+      subtitle:
+        "De donos de restaurantes a fundadores de startups — veja o que acontece quando substitui orçamentos de €5.000 de agências por uma conversa de 2 minutos com IA.",
+      items: [
+        { name: "Marco R.", role: "Dono de restaurante", location: "Milão, Itália", quote: "Em 2 minutos tinha um site que teria custado €5.000 numa agência. Escrevi 'cria um site para a minha trattoria em Milão com reservas online' e construiu exatamente isso — menu, fotos, widget de reservas, tudo. Os meus clientes já conseguem reservar diretamente pelo Google.", result: "Reservas +40% no primeiro mês" },
+        { name: "Dra. Sarah B.", role: "Proprietária de clínica dentária", location: "Viena, Áustria", quote: "A IA percebeu exatamente o que a minha clínica precisava — confiança dos pacientes, design profissional, marcação de consultas e formulários conformes ao RGPD. Estava preocupada com o setor médico mas gerou o markup Schema.org correto e estava tudo certo. Os meus pacientes comentam sempre como parece profissional.", result: "Novos pedidos de pacientes duplicaram" },
+        { name: "Thomas K.", role: "Fundador de startup", location: "Berlim, Alemanha", quote: "Descrevi a minha landing page SaaS e construiu exatamente o que tinha em mente — secções de features, tabela de preços, testemunhos, tudo. Depois pedi para adicionar um formulário de lista de espera e fez isso em 30 segundos. O que teria levado uma semana a um freelancer levou-me uma tarde. O código até está limpo.", result: "€0 gastos em desenvolvimento" },
+        { name: "Lucia M.", role: "Proprietária de estúdio de beleza", location: "Barcelona, Espanha", quote: "Tenho zero conhecimentos técnicos e tinha medo de tentar. Mas escrevi o que queria e simplesmente funcionou. Galeria linda, preços dos serviços, integração do feed do Instagram, um botão de reserva. Os meus clientes dizem-me que parece melhor do que o dos meus concorrentes que pagaram milhares a agências.", result: "Totalmente online em menos de 1 hora" },
+      ],
+      stats: [
+        { value: "< 2 min", label: "Tempo médio de construção" },
+        { value: "€25/mês", label: "Preço de entrada" },
+        { value: "95+", label: "Pontuação PageSpeed" },
+      ],
+      trust: [
+        { icon: "★", text: "Avaliação média 4,9/5" },
+        { icon: "✓", text: "Sem cartão de crédito" },
+        { icon: "↺", text: "Cancele quando quiser" },
+      ],
+    },
   },
 
   en: {
@@ -1954,6 +2430,8 @@ export const translations: Record<Locale, Translations> = {
       sectionLabel: "What's Included",
       title: "Everything you need",
       subtitle: "One AI. Real code. Infinite websites.",
+      worksForAnyIndustry: "Works for any industry",
+      responsiveOnEveryDevice: "Responsive on every device",
       items: [
         {
           title: "AI Code Generation",
@@ -2185,6 +2663,78 @@ export const translations: Record<Locale, Translations> = {
             "99.9% SLA",
           ],
         },
+      ],
+    },
+    useCases: {
+      sectionLabel: "Built for every business",
+      title: "Whatever your business —",
+      titleHighlight: "MadeCreative builds it.",
+      subtitle:
+        "From a family restaurant to a Series A startup — the AI understands your industry and generates a site that matches your specific needs, audience, and goals.",
+      ctaNote: "Don't see your industry?",
+      ctaLink: "Try it free — describe what you need.",
+      items: [
+        { name: "Restaurants & Hospitality", tagline: "Menus, reservations, and ambiance — live in minutes.", description: "Menu pages, online booking widgets, opening hours, location maps, and gallery sections. The AI knows what restaurants need and builds it automatically.", stats: "Most popular category" },
+        { name: "Medical & Dental Clinics", tagline: "Professional sites patients trust instantly.", description: "Appointment booking forms, service descriptions, team profiles, insurance info, and patient FAQs. Fully GDPR-compliant by default.", stats: "2nd most popular" },
+        { name: "Beauty & Fitness Studios", tagline: "Bookings, pricing, and brand — beautifully presented.", description: "Service menus, class schedules, before/after galleries, instructor bios, and online booking. Mobile-first for clients booking on the go.", stats: "Fast growing segment" },
+        { name: "Real Estate Agencies", tagline: "Property listings, lead capture, and agent profiles.", description: "Property search pages, contact forms, agent directories, neighborhood guides, and virtual tour embeds. Optimized for local SEO.", stats: "High-ticket conversions" },
+        { name: "E-commerce Stores", tagline: "Product pages, cart flows, and checkout — built to convert.", description: "Product galleries, category pages, shopping cart, Stripe integration, and order confirmation pages. The AI handles the full purchase funnel.", stats: "Full checkout included" },
+        { name: "Professional Services", tagline: "Law firms, accountants, consultants — credibility on day one.", description: "Service pages, case studies, team bios, consultation booking, and contact forms. The AI writes professional copy that establishes authority.", stats: "B2B lead generation" },
+        { name: "Startups & SaaS", tagline: "Launch pages that convert visitors into signups.", description: "Hero sections, feature comparisons, pricing tables, testimonials, and email capture forms. A/B test variants with a single AI prompt.", stats: "Fastest time-to-live" },
+        { name: "Portfolios & Creatives", tagline: "Show your work. Get hired. No code needed.", description: "Project galleries, case study pages, skills sections, contact forms, and downloadable CVs. The AI makes creatives look as good as their work.", stats: "Loved by designers" },
+      ],
+    },
+    comparison: {
+      sectionLabel: "How we compare",
+      title: "Why choose MadeCreative",
+      titleHighlight: "over the alternatives?",
+      subtitle:
+        "Wix locks you into their builder. WordPress needs plugins, hosting, and a developer. Custom dev costs thousands. MadeCreative gives you real code, AI speed, and zero setup.",
+      headers: { feature: "Feature", madecreative: "MadeCreative", wix: "Wix", wordpress: "WordPress", custom: "Custom Dev" },
+      best: "Best",
+      partial: "Partial",
+      footnote: 'Pricing and features accurate as of April 2026. "Partial" indicates the feature requires plugins, manual setup, or third-party tools.',
+      features: [
+        { name: "AI code generation" },
+        { name: "Real React / Next.js output" },
+        { name: "Chat-based editing" },
+        { name: "Live preview" },
+        { name: "Starting price" },
+        { name: "Instant deploy" },
+        { name: "Built-in SEO" },
+        { name: "Mobile responsive" },
+        { name: "Version history" },
+        { name: "No code required" },
+        { name: "You own the code" },
+        { name: "Custom domain + SSL" },
+      ],
+      highlights: [
+        { title: "Only AI builder with real React output" },
+        { title: "No plugins. No hosting headaches. No code." },
+        { title: "€25/mo vs €5,000+ for custom dev" },
+      ],
+    },
+    testimonials: {
+      sectionLabel: "Customer stories",
+      title: "Real businesses.",
+      titleHighlight: "Real results.",
+      subtitle:
+        "From restaurant owners to startup founders — see what happens when you replace €5,000 agency quotes with a 2-minute AI conversation.",
+      items: [
+        { name: "Marco R.", role: "Restaurant Owner", location: "Milan, Italy", quote: "In 2 minutes I had a site that would have cost me €5,000 with an agency. I typed 'build a site for my trattoria in Milan with online reservations' and it built exactly that — menu, photos, booking widget, everything. My customers can book directly from Google now.", result: "Reservations up 40% in first month" },
+        { name: "Dr. Sarah B.", role: "Dental Clinic Owner", location: "Vienna, Austria", quote: "The AI understood exactly what my practice needed — patient trust, professional design, appointment booking, and GDPR-compliant forms. I was worried about the medical sector but it generated proper Schema.org markup and everything was correct. My patients comment on how professional it looks.", result: "New patient inquiries doubled" },
+        { name: "Thomas K.", role: "Startup Founder", location: "Berlin, Germany", quote: "I described my SaaS landing page and it built exactly what I had in mind — feature sections, pricing table, testimonials, the works. I then asked it to add a waitlist form and it did it in 30 seconds. What would have taken a freelancer a week took me one afternoon. The code is actually clean too.", result: "€0 spent on development" },
+        { name: "Lucia M.", role: "Beauty Studio Owner", location: "Barcelona, Spain", quote: "I have zero technical knowledge and I was scared to try. But I typed what I wanted and it just worked. Beautiful gallery, service prices, Instagram feed integration, a booking button. My clients tell me it looks better than my competitors who paid agencies thousands.", result: "Fully live in under 1 hour" },
+      ],
+      stats: [
+        { value: "< 2 min", label: "Average build time" },
+        { value: "€25/mo", label: "Starting price" },
+        { value: "95+", label: "PageSpeed score" },
+      ],
+      trust: [
+        { icon: "★", text: "4.9/5 average rating" },
+        { icon: "✓", text: "No credit card required" },
+        { icon: "↺", text: "Cancel anytime" },
       ],
     },
   },

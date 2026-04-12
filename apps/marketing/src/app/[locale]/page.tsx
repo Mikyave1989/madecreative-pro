@@ -35,10 +35,10 @@ export default async function LocalePage({ params }: PageProps) {
       <Nav t={t} locale={locale as Locale} />
       <HeroSection t={t} locale={locale} />
       <DemoSection t={t} locale={locale} />
-      <FeaturesSection t={t} />
-      <UseCasesSection />
-      <ComparisonSection />
-      <TestimonialsSection />
+      <FeaturesSection t={t} locale={locale as Locale} />
+      <UseCasesSection t={t} locale={locale as Locale} />
+      <ComparisonSection t={t} locale={locale as Locale} />
+      <TestimonialsSection t={t} locale={locale as Locale} />
       <PricingSection t={t} locale={locale} />
       <FaqSection t={t} />
       <FinalCtaSection t={t} locale={locale} />

@@ -1,63 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import type { Translations } from "@/lib/i18n";
 
-/* ── Data ─────────────────────────────────────────────────────────────────── */
+interface TestimonialsSectionProps {
+  t: Translations;
+  locale: string;
+}
 
-const TESTIMONIALS = [
-  {
-    id: "marco",
-    name: "Marco R.",
-    role: "Restaurant Owner",
-    location: "Milan, Italy",
-    quote:
-      "In 2 minutes I had a site that would have cost me €5,000 with an agency. I typed 'build a site for my trattoria in Milan with online reservations' and it built exactly that — menu, photos, booking widget, everything. My customers can book directly from Google now.",
-    result: "Reservations up 40% in first month",
-    color: "#f97316",
-    stars: 5,
-    initials: "MR",
-    avatarBg: "linear-gradient(135deg, #f97316, #dc2626)",
-  },
-  {
-    id: "sarah",
-    name: "Dr. Sarah B.",
-    role: "Dental Clinic Owner",
-    location: "Vienna, Austria",
-    quote:
-      "The AI understood exactly what my practice needed — patient trust, professional design, appointment booking, and GDPR-compliant forms. I was worried about the medical sector but it generated proper Schema.org markup and everything was correct. My patients comment on how professional it looks.",
-    result: "New patient inquiries doubled",
-    color: "#22d3ee",
-    stars: 5,
-    initials: "SB",
-    avatarBg: "linear-gradient(135deg, #22d3ee, #6366f1)",
-  },
-  {
-    id: "thomas",
-    name: "Thomas K.",
-    role: "Startup Founder",
-    location: "Berlin, Germany",
-    quote:
-      "I described my SaaS landing page and it built exactly what I had in mind — feature sections, pricing table, testimonials, the works. I then asked it to add a waitlist form and it did it in 30 seconds. What would have taken a freelancer a week took me one afternoon. The code is actually clean too.",
-    result: "€0 spent on development",
-    color: "#818cf8",
-    stars: 5,
-    initials: "TK",
-    avatarBg: "linear-gradient(135deg, #818cf8, #ec4899)",
-  },
-  {
-    id: "lucia",
-    name: "Lucia M.",
-    role: "Beauty Studio Owner",
-    location: "Barcelona, Spain",
-    quote:
-      "I have zero technical knowledge and I was scared to try. But I typed what I wanted and it just worked. Beautiful gallery, service prices, Instagram feed integration, a booking button. My clients tell me it looks better than my competitors who paid agencies thousands.",
-    result: "Fully live in under 1 hour",
-    color: "#ec4899",
-    stars: 5,
-    initials: "LM",
-    avatarBg: "linear-gradient(135deg, #ec4899, #f97316)",
-  },
+/* ── Static color/style data tied to item index ──────────────────────────── */
+
+const ITEM_COLORS = ["#f97316", "#22d3ee", "#818cf8", "#ec4899"] as const;
+const ITEM_INITIALS = ["MR", "SB", "TK", "LM"] as const;
+const ITEM_AVATAR_BG = [
+  "linear-gradient(135deg, #f97316, #dc2626)",
+  "linear-gradient(135deg, #22d3ee, #6366f1)",
+  "linear-gradient(135deg, #818cf8, #ec4899)",
+  "linear-gradient(135deg, #ec4899, #f97316)",
 ] as const;
+const ITEM_STARS = [5, 5, 5, 5] as const;
 
 /* ── Star rating ──────────────────────────────────────────────────────────── */
 
@@ -84,16 +45,13 @@ function Stars({ count, color }: { count: number; color: string }) {
 function Avatar({
   initials,
   avatarBg,
-  size = "md",
 }: {
   initials: string;
   avatarBg: string;
-  size?: "md" | "lg";
 }) {
-  const cls = size === "lg" ? "w-14 h-14 text-lg" : "w-11 h-11 text-sm";
   return (
     <div
-      className={`${cls} rounded-full flex items-center justify-center font-bold text-white flex-shrink-0`}
+      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-white flex-shrink-0 text-sm"
       style={{ background: avatarBg }}
     >
       {initials}
@@ -124,16 +82,22 @@ function QuoteIcon({ color }: { color: string }) {
 
 function TestimonialCard({
   item,
+  index,
   featured,
 }: {
-  item: (typeof TESTIMONIALS)[number];
+  item: Translations["testimonials"]["items"][number];
+  index: number;
   featured?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
+  const color = ITEM_COLORS[index % ITEM_COLORS.length];
+  const initials = ITEM_INITIALS[index % ITEM_INITIALS.length];
+  const avatarBg = ITEM_AVATAR_BG[index % ITEM_AVATAR_BG.length];
+  const stars = ITEM_STARS[index % ITEM_STARS.length];
 
   return (
     <div
-      className="relative flex flex-col p-6 sm:p-7 rounded-2xl transition-all duration-300"
+      className="relative flex flex-col p-5 sm:p-6 md:p-7 rounded-2xl transition-all duration-300"
       style={{
         background: hovered
           ? "rgba(255,255,255,0.03)"
@@ -141,7 +105,7 @@ function TestimonialCard({
           ? "rgba(99,102,241,0.05)"
           : "rgba(255,255,255,0.02)",
         border: hovered
-          ? `1px solid ${item.color}30`
+          ? `1px solid ${color}30`
           : featured
           ? "1px solid rgba(99,102,241,0.2)"
           : "1px solid rgba(255,255,255,0.07)",
@@ -152,13 +116,13 @@ function TestimonialCard({
     >
       {/* Top: quote icon + stars */}
       <div className="flex items-start justify-between mb-5">
-        <QuoteIcon color={item.color} />
-        <Stars count={item.stars} color={item.color} />
+        <QuoteIcon color={color} />
+        <Stars count={stars} color={color} />
       </div>
 
       {/* Quote */}
       <p
-        className="text-sm sm:text-base leading-relaxed flex-1 mb-6"
+        className="text-sm sm:text-base leading-relaxed flex-1 mb-5 sm:mb-6"
         style={{ color: "rgba(248,250,252,0.7)" }}
       >
         &ldquo;{item.quote}&rdquo;
@@ -166,14 +130,14 @@ function TestimonialCard({
 
       {/* Result badge */}
       <div
-        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold mb-5 self-start"
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold mb-4 sm:mb-5 self-start"
         style={{
-          background: `${item.color}12`,
-          border: `1px solid ${item.color}25`,
-          color: item.color,
+          background: `${color}12`,
+          border: `1px solid ${color}25`,
+          color,
         }}
       >
-        <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3">
+        <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 flex-shrink-0">
           <path
             d="M3 8l3 3 7-7"
             stroke="currentColor"
@@ -187,13 +151,13 @@ function TestimonialCard({
 
       {/* Divider */}
       <div
-        className="h-px mb-5"
+        className="h-px mb-4 sm:mb-5"
         style={{ background: "rgba(255,255,255,0.06)" }}
       />
 
       {/* Author */}
       <div className="flex items-center gap-3">
-        <Avatar initials={item.initials} avatarBg={item.avatarBg} />
+        <Avatar initials={initials} avatarBg={avatarBg} />
         <div>
           <p className="text-sm font-semibold" style={{ color: "#f8fafc" }}>
             {item.name}
@@ -209,9 +173,9 @@ function TestimonialCard({
 
       {/* Accent line */}
       <div
-        className="absolute bottom-0 left-6 right-6 h-px rounded-full transition-opacity duration-300"
+        className="absolute bottom-0 left-5 right-5 sm:left-6 sm:right-6 h-px rounded-full transition-opacity duration-300"
         style={{
-          background: `linear-gradient(90deg, transparent, ${item.color}50, transparent)`,
+          background: `linear-gradient(90deg, transparent, ${color}50, transparent)`,
           opacity: hovered ? 1 : 0,
         }}
       />
@@ -221,16 +185,18 @@ function TestimonialCard({
 
 /* ── Section ──────────────────────────────────────────────────────────────── */
 
-export function TestimonialsSection() {
+export function TestimonialsSection({ t }: TestimonialsSectionProps) {
+  const { testimonials } = t;
+
   return (
     <section
       id="testimonials"
-      className="py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
+      className="py-20 sm:py-24 md:py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
       style={{ background: "#0a0d18" }}
     >
       {/* Subtle background glow */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full pointer-events-none"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] rounded-full pointer-events-none"
         style={{
           background:
             "radial-gradient(ellipse, rgba(99,102,241,0.06) 0%, transparent 70%)",
@@ -240,74 +206,65 @@ export function TestimonialsSection() {
 
       <div className="relative z-10 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-12 sm:mb-16">
           <span
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-6"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-5 sm:mb-6"
             style={{
               background: "rgba(99,102,241,0.1)",
               border: "1px solid rgba(99,102,241,0.2)",
               color: "#818cf8",
             }}
           >
-            Customer stories
+            {testimonials.sectionLabel}
           </span>
 
           <h2
-            className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mb-6"
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-5 sm:mb-6"
             style={{ color: "#f8fafc" }}
           >
-            Real businesses.
+            {testimonials.title}
             <br />
-            <span style={{ color: "#6366f1" }}>Real results.</span>
+            <span style={{ color: "#6366f1" }}>{testimonials.titleHighlight}</span>
           </h2>
 
           <p
-            className="text-lg max-w-2xl mx-auto leading-relaxed"
+            className="text-base sm:text-lg max-w-2xl mx-auto leading-relaxed"
             style={{ color: "rgba(248,250,252,0.5)" }}
           >
-            From restaurant owners to startup founders — see what happens when you
-            replace €5,000 agency quotes with a 2-minute AI conversation.
+            {testimonials.subtitle}
           </p>
         </div>
 
         {/* Stats strip */}
-        <div className="flex flex-wrap justify-center gap-8 sm:gap-16 mb-16">
-          {[
-            { value: "< 2 min", label: "Average build time" },
-            { value: "€25/mo", label: "Starting price" },
-            { value: "95+", label: "PageSpeed score" },
-          ].map((stat) => (
+        <div className="flex flex-wrap justify-center gap-6 sm:gap-10 md:gap-16 mb-12 sm:mb-16">
+          {testimonials.stats.map((stat) => (
             <div key={stat.label} className="text-center">
               <div
-                className="text-3xl sm:text-4xl font-bold tabular-nums mb-1"
+                className="text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums mb-1"
                 style={{ color: "#f8fafc" }}
               >
                 {stat.value}
               </div>
-              <div className="text-sm" style={{ color: "rgba(248,250,252,0.4)" }}>
+              <div className="text-xs sm:text-sm" style={{ color: "rgba(248,250,252,0.4)" }}>
                 {stat.label}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Cards grid — 2 cols on md, 4 on xl */}
+        {/* Cards grid — 1 col mobile → 2 col sm → 4 col xl */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
-          {TESTIMONIALS.map((item, i) => (
-            <TestimonialCard key={item.id} item={item} featured={i === 0} />
+          {testimonials.items.map((item, i) => (
+            <TestimonialCard key={i} item={item} index={i} featured={i === 0} />
           ))}
         </div>
 
         {/* Trust footer */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-6 sm:gap-10">
-          {[
-            { icon: "★", text: "4.9/5 average rating" },
-            { icon: "✓", text: "No credit card required" },
-            { icon: "↺", text: "Cancel anytime" },
-          ].map((item) => (
+        <div className="mt-10 sm:mt-12 flex flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-10">
+          {testimonials.trust.map((item) => (
             <div
               key={item.text}
-              className="flex items-center gap-2 text-sm"
+              className="flex items-center gap-2 text-xs sm:text-sm"
               style={{ color: "rgba(248,250,252,0.35)" }}
             >
               <span style={{ color: "rgba(248,250,252,0.2)" }}>{item.icon}</span>

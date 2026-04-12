@@ -5,6 +5,7 @@ import type { Translations } from "@/lib/i18n";
 
 interface FeaturesSectionProps {
   t: Translations;
+  locale?: string;
 }
 
 /* ── Feature data ─────────────────────────────────────────────────────────── */
@@ -391,7 +392,17 @@ function DevicePreview({ color }: { color: string }) {
 
 type Feature = (typeof FEATURES)[number];
 
-function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
+function FeatureRow({
+  feature,
+  index,
+  worksForAnyIndustry,
+  responsiveOnEveryDevice,
+}: {
+  feature: Feature;
+  index: number;
+  worksForAnyIndustry: string;
+  responsiveOnEveryDevice: string;
+}) {
   const [hovered, setHovered] = useState(false);
   const isRight = feature.side === "right";
 
@@ -418,7 +429,7 @@ function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
       </div>
 
       <h3
-        className="text-2xl sm:text-3xl font-bold leading-snug mb-4"
+        className="text-xl sm:text-2xl md:text-3xl font-bold leading-snug mb-4"
         style={{ color: "#f8fafc" }}
       >
         {feature.title}
@@ -455,7 +466,7 @@ function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
             className="text-xs font-semibold uppercase tracking-widest mb-4"
             style={{ color: "rgba(248,250,252,0.25)" }}
           >
-            Works for any industry
+            {worksForAnyIndustry}
           </p>
           <UseCasePills items={feature.useCaseGrid} color={feature.color} />
         </div>
@@ -471,7 +482,7 @@ function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
             className="text-xs font-semibold uppercase tracking-widest mb-2 text-center"
             style={{ color: "rgba(248,250,252,0.25)" }}
           >
-            Responsive on every device
+            {responsiveOnEveryDevice}
           </p>
           <DevicePreview color={feature.color} />
         </div>
@@ -481,7 +492,7 @@ function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
 
   return (
     <div
-      className="group relative rounded-3xl p-8 sm:p-10 lg:p-12 transition-all duration-500"
+      className="group relative rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-12 transition-all duration-500"
       style={{
         background: hovered
           ? "rgba(255,255,255,0.025)"
@@ -520,14 +531,14 @@ export function FeaturesSection({ t }: FeaturesSectionProps) {
   return (
     <section
       id="features"
-      className="py-32 px-4 sm:px-6 lg:px-8"
+      className="py-20 sm:py-24 md:py-32 px-4 sm:px-6 lg:px-8"
       style={{ background: "#05070f" }}
     >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-20">
+        <div className="text-center mb-12 sm:mb-16 md:mb-20">
           <span
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-6"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-5 sm:mb-6"
             style={{
               background: "rgba(99,102,241,0.1)",
               border: "1px solid rgba(99,102,241,0.2)",
@@ -538,27 +549,25 @@ export function FeaturesSection({ t }: FeaturesSectionProps) {
           </span>
 
           <h2
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6"
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight mb-4 sm:mb-6"
             style={{ color: "#f8fafc" }}
           >
-            Everything you need.
+            {t.features.title}
             <br />
-            <span style={{ color: "#6366f1" }}>Nothing you don&apos;t.</span>
+            <span style={{ color: "#6366f1" }}>{t.features.subtitle}</span>
           </h2>
-
-          <p
-            className="text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed"
-            style={{ color: "rgba(248,250,252,0.5)" }}
-          >
-            MadeCreative is a complete platform — from AI-powered code generation to global
-            deployment. No stitching together tools. No configuration rabbit holes.
-          </p>
         </div>
 
         {/* Feature rows */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {FEATURES.map((feature, i) => (
-            <FeatureRow key={feature.id} feature={feature} index={i} />
+            <FeatureRow
+              key={feature.id}
+              feature={feature}
+              index={i}
+              worksForAnyIndustry={t.features.worksForAnyIndustry}
+              responsiveOnEveryDevice={t.features.responsiveOnEveryDevice}
+            />
           ))}
         </div>
       </div>
