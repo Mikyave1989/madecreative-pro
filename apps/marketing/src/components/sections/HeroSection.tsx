@@ -296,12 +296,11 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
           const previewJson = (await previewRes.json()) as { success: boolean; data?: { html: string } };
           if (previewJson.success && previewJson.data?.html) {
             setPreviewHtml(previewJson.data.html);
+            setShowPreview(true); // Show preview automatically
           }
         } catch {
-          // Server failed — show empty state
           setPreviewHtml("");
         }
-        setShowPreview(false);
       } else {
         setError(json.error ?? "Errore nell'analisi");
       }
