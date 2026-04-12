@@ -9,7 +9,7 @@ cmds = ["pnpm install --frozen-lockfile"]
 cmds = ["NODE_OPTIONS=--max-old-space-size=4096 pnpm run build"]
 
 [start]
-cmd = "npx wrangler pages dev ./build/client --ip 0.0.0.0 --port 5173 --no-show-interactive-dev-session --compatibility-date 2024-11-01"
+cmd = "node server.mjs"
 
 [variables]
 NODE_ENV = "production"
