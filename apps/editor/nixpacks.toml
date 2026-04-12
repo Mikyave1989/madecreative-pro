@@ -1,3 +1,0 @@
-# Force Railway to use Dockerfile instead of Nixpacks
-# This file is intentionally empty — Railway detects Dockerfile automatically
-# when nixpacks.toml doesn't define phases
