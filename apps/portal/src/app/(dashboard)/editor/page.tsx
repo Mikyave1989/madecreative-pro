@@ -9,6 +9,8 @@ import {
   RefreshCw, Search, Send, Share2, Smartphone, Sparkles, Tablet, Undo2, User, Zap,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useLocaleContext } from "@/lib/locale-context";
+import { LanguageSelector } from "@/components/ui/LanguageSelector";
 
 // ─── Sandpack (dynamic) ─────────────────────────────────────────────────────
 
@@ -89,25 +91,63 @@ function toSandpack(files: Record<string, string>): Record<string, string> {
 
   function strip(code: string): string {
     return code
+      // Remove "use client" directive
       .replace(/^"use client";\s*/gm, "")
-      .replace(/import\s+type\s+.*?;\s*/g, "")
-      .replace(/import\s+.*?\s+from\s+["']next\/.*?["'];\s*/g, "")
-      .replace(/import\s+.*?\s+from\s+["']@\/lib\/.*?["'];\s*/g, "")
-      .replace(/import\s+.*?\s+from\s+["']@\/components\/.*?["'];\s*/g, "")
-      .replace(/import\s+\{[^}]*Metadata[^}]*\}\s+from\s+["']next["'];\s*/g, "")
-      .replace(/export\s+const\s+metadata\s*:\s*Metadata\s*=\s*\{[\s\S]*?\};\s*/g, "")
-      .replace(/:\s*\w+(\[\])?\s*(?=[,)={])/g, "")
-      .replace(/<\w+>/g, "")
-      .replace(/as\s+\w+/g, "")
-      .replace(/!\./g, ".");
+      // Remove all import statements
+      .replace(/^import\s+[^;]*;\s*/gm, "")
+      // Remove export const metadata block
+      .replace(/export\s+const\s+metadata[\s\S]*?;\s*/g, "")
+      // Remove 'export' keyword but keep declaration
+      .replace(/^export\s+default\s+/gm, "")
+      .replace(/^export\s+/gm, "")
+      // Remove TypeScript type annotations carefully:
+      // 1. Function return types: ): string { → ) {
+      .replace(/\)\s*:\s*[\w<>\[\]|&{},\s.]+\s*(?=\{|=>)/g, ")")
+      // 2. Variable type annotations: const x: Type = → const x =
+      .replace(/(const|let|var)\s+(\w+)\s*:\s*[\w<>\[\]|&{},\s.]+\s*=/g, "$1 $2 =")
+      // 3. Parameter types in destructured objects: { x: Type } — but NOT { x: value }
+      //    Only strip if after a known type keyword
+      .replace(/:\s*(string|number|boolean|any|void|null|undefined|never|unknown|React\.[\w.]+)\s*(?=[,)}\]=;])/g, "")
+      // 4. Generic type params: <string>, <T>, but not JSX tags
+      .replace(/<(string|number|boolean|any|unknown|void|never)>/g, "")
+      // 5. 'as Type' casts
+      .replace(/\s+as\s+(const|string|number|boolean|any|unknown|[\w.]+(\[\])?)\s*/g, " ")
+      // 6. Non-null assertions
+      .replace(/!\./g, ".")
+      .replace(/!;/g, ";")
+      // 7. interface/type declarations (standalone lines)
+      .replace(/^(interface|type)\s+\w+[\s\S]*?^\}\s*$/gm, "")
+      // 8. Remove remaining complex type annotations like Record<string, X>, Array<X>
+      .replace(/:\s*(?:Record|Map|Set|Array|Promise|Partial|Required|Omit|Pick)<[^>]+>\s*(?=[=,);\]}])/g, "");
+  }
+
+  // Polyfills for libraries the AI might use (zustand, lucide-react)
+  const allSrc = Object.values(files).join("\n");
+  const polyfills: string[] = [];
+  if (allSrc.includes("zustand")) {
+    polyfills.push(`var create = function(fn) { var state = {}; var listeners = []; var set = function(updater) { var next = typeof updater === "function" ? updater(state) : updater; Object.assign(state, next); listeners.forEach(function(l){l()}); }; var get = function(){return state}; fn(set, get); return function useStore(selector) { var _r = React.useReducer(function(x){return x+1}, 0), forceUpdate = _r[1]; React.useEffect(function(){ listeners.push(forceUpdate); return function(){ listeners = listeners.filter(function(l){return l !== forceUpdate}); }; }, []); return selector ? selector(state) : state; }; };`);
+  }
+  if (allSrc.includes("lucide-react")) {
+    polyfills.push(`var ShoppingCart=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("path",{d:"M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"}))};`);
+    polyfills.push(`var Heart=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("path",{d:"M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"}))};`);
+    polyfills.push(`var Star=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("polygon",{points:"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"}))};`);
+    polyfills.push(`var Search=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("circle",{cx:11,cy:11,r:8}),React.createElement("line",{x1:21,y1:21,x2:16.65,y2:16.65}))};`);
+    polyfills.push(`var Menu=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("line",{x1:3,y1:12,x2:21,y2:12}),React.createElement("line",{x1:3,y1:6,x2:21,y2:6}),React.createElement("line",{x1:3,y1:18,x2:21,y2:18}))};`);
+    polyfills.push(`var X=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("line",{x1:18,y1:6,x2:6,y2:18}),React.createElement("line",{x1:6,y1:6,x2:18,y2:18}))};`);
+    polyfills.push(`var ChevronRight=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("polyline",{points:"9 18 15 12 9 6"}))};`);
+    polyfills.push(`var Minus=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("line",{x1:5,y1:12,x2:19,y2:12}))};`);
+    polyfills.push(`var Plus=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("line",{x1:12,y1:5,x2:12,y2:19}),React.createElement("line",{x1:5,y1:12,x2:19,y2:12}))};`);
+    polyfills.push(`var Trash2=function(p){return React.createElement("svg",Object.assign({width:24,height:24,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},p),React.createElement("polyline",{points:"3 6 5 6 21 6"}),React.createElement("path",{d:"M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"}))};`);
   }
 
   const code = [
-    `import React, { useState, useEffect, useRef, useCallback } from "react";`,
+    `import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";`,
     `import { motion, AnimatePresence, useScroll, useTransform, useInView } from "framer-motion";`,
     `import "./styles.css";`,
-    "", ...libs.map(strip), "", ...components.map(c => strip(c).replace(/^export\s+(default\s+)?function/gm, "function").replace(/^export\s+/gm, "")),
-    "", strip(pageTsx).replace(/^export\s+default\s+function\s+\w+/m, "function PageContent").replace(/^export\s+default\s+/m, "const PageContent = "),
+    ...polyfills,
+    "", ...libs.map(strip),
+    "", ...components.map(strip),
+    "", strip(pageTsx).replace(/^function\s+\w+\s*\(/m, "function PageContent("),
     "", "export default function App() { return <PageContent />; }",
   ].join("\n");
 
@@ -121,6 +161,7 @@ function toSandpack(files: Record<string, string>): Record<string, string> {
 
 export default function EditorPage() {
   const { token } = useAuth();
+  const { t } = useLocaleContext();
 
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -220,13 +261,13 @@ export default function EditorPage() {
               if (ev.deployUrl) setDeployUrl(ev.deployUrl);
               if (ev.credits) setCredits(ev.credits);
             } else if (ev.type === "error") {
-              setMessages(prev => { const c = [...prev]; c[c.length - 1] = { ...botMsg, content: ev.message ?? "Errore. Riprova." }; return c; });
+              setMessages(prev => { const c = [...prev]; c[c.length - 1] = { ...botMsg, content: ev.message ?? t.editor.errorGeneric }; return c; });
             }
           } catch { /* skip */ }
         }
       }
     } catch {
-      setMessages(prev => { const c = [...prev]; c[c.length - 1] = { ...botMsg, content: "Errore di connessione. Riprova." }; return c; });
+      setMessages(prev => { const c = [...prev]; c[c.length - 1] = { ...botMsg, content: t.editor.errorConnection }; return c; });
     }
     setStreaming(false);
   }, [input, streaming, token, messages, selectedFile]);
@@ -243,7 +284,7 @@ export default function EditorPage() {
 
   // Derived
   const sandpackFiles = Object.keys(files).length > 0 ? toSandpack(files) : {
-    "/App.js": `export default function App() {\n  return (\n    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#09090b",color:"#fff",fontFamily:"system-ui",flexDirection:"column",gap:"16px"}}>\n      <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>✨</div>\n      <h1 style={{fontSize:"1.5rem",fontWeight:600}}>MadeCreative</h1>\n      <p style={{color:"#71717a",fontSize:"0.875rem"}}>Descrivi nella chat il sito che vuoi costruire</p>\n    </div>\n  );\n}`,
+    "/App.js": `export default function App() {\n  return (\n    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#09090b",color:"#fff",fontFamily:"system-ui",flexDirection:"column",gap:"16px"}}>\n      <div style={{width:48,height:48,borderRadius:16,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>✨</div>\n      <h1 style={{fontSize:"1.5rem",fontWeight:600}}>MadeCreative</h1>\n      <p style={{color:"#71717a",fontSize:"0.875rem"}}>{t.editor.inputPlaceholder}</p>\n    </div>\n  );\n}`,
     "/styles.css": "body{margin:0}",
   };
 
@@ -263,7 +304,7 @@ export default function EditorPage() {
           </div>
           <span style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e7" }}>MadeCreative</span>
           <span style={{ fontSize: 11, color: "#3f3f46", margin: "0 4px" }}>/</span>
-          <span style={{ fontSize: 13, color: "#a1a1aa" }}>Editor</span>
+          <span style={{ fontSize: 13, color: "#a1a1aa" }}>{t.editor.projectName}</span>
         </div>
 
         {/* Center: Panel tabs */}
@@ -272,12 +313,12 @@ export default function EditorPage() {
             <button onClick={() => setPanel("code")}
               style={{ padding: "5px 14px", borderRadius: 6, fontSize: 12, fontWeight: 500, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
                 background: panel === "code" ? "#27272a" : "transparent", color: panel === "code" ? "#fff" : "#71717a" }}>
-              <Code2 style={{ width: 13, height: 13 }} />Code
+              <Code2 style={{ width: 13, height: 13 }} />{t.editor.tabCode}
             </button>
             <button onClick={() => setPanel("preview")}
               style={{ padding: "5px 14px", borderRadius: 6, fontSize: 12, fontWeight: 500, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
                 background: panel === "preview" ? "#27272a" : "transparent", color: panel === "preview" ? "#fff" : "#71717a" }}>
-              <Eye style={{ width: 13, height: 13 }} />Preview
+              <Eye style={{ width: 13, height: 13 }} />{t.editor.tabPreview}
             </button>
           </div>
         </div>
@@ -299,12 +340,15 @@ export default function EditorPage() {
             </button>
           ))}
 
+          {/* Language selector */}
+          <LanguageSelector variant="topbar" />
+
           {/* Share */}
           {deployUrl && (
             <button onClick={copyUrl}
               style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid #27272a", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: 500, color: "#a1a1aa", display: "flex", alignItems: "center", gap: 5 }}>
               {copied ? <Check style={{ width: 12, height: 12, color: "#22c55e" }} /> : <Share2 style={{ width: 12, height: 12 }} />}
-              {copied ? "Copiato" : "Share"}
+              {copied ? t.editor.copiedButton : t.editor.shareButton}
             </button>
           )}
 
@@ -312,7 +356,7 @@ export default function EditorPage() {
           {deployUrl && (
             <a href={deployUrl} target="_blank" rel="noopener noreferrer"
               style={{ padding: "5px 14px", borderRadius: 6, background: "#6366f1", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
-              <Play style={{ width: 12, height: 12 }} />Publish
+              <Play style={{ width: 12, height: 12 }} />{t.editor.publishButton}
             </a>
           )}
         </div>
@@ -327,7 +371,7 @@ export default function EditorPage() {
           <div style={{ height: 44, borderBottom: "1px solid #1c1c22", display: "flex", alignItems: "center", padding: "0 14px", justifyContent: "space-between", flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <MessageSquare style={{ width: 14, height: 14, color: "#6366f1" }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#d4d4d8" }}>Chat</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#d4d4d8" }}>{t.editor.chatTitle}</span>
             </div>
             <button onClick={() => setChatOpen(false)}
               style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, border: "none", cursor: "pointer", background: "transparent", color: "#52525b" }}>
@@ -342,16 +386,16 @@ export default function EditorPage() {
                 <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
                   <Sparkles style={{ width: 24, height: 24, color: "#818cf8" }} />
                 </div>
-                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: "#e4e4e7" }}>Cosa vuoi costruire?</h2>
+                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: "#e4e4e7" }}>{t.editor.emptyStateHeadline}</h2>
                 <p style={{ fontSize: 13, color: "#52525b", lineHeight: 1.6, marginBottom: 24 }}>
-                  Descrivi il sito che vuoi. Posso creare landing page, e-commerce, portfolio, blog, qualsiasi cosa.
+                  {t.editor.emptyStateSubtitle}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
                   {[
-                    "Crea un sito per il mio ristorante italiano",
-                    "Build me a modern e-commerce store",
-                    "Fammi una landing page SaaS",
-                    "Crea un portfolio fotografico minimalista",
+                    t.editor.suggestionRestaurant,
+                    t.editor.suggestionEcommerce,
+                    t.editor.suggestionLanding,
+                    t.editor.suggestionPortfolio,
                   ].map(s => (
                     <button key={s} onClick={() => { setInput(s); inputRef.current?.focus(); }}
                       style={{ textAlign: "left", padding: "10px 14px", background: "#18181b", border: "1px solid #27272a", borderRadius: 10, fontSize: 12, color: "#a1a1aa", cursor: "pointer", transition: "all 0.15s" }}
@@ -376,13 +420,13 @@ export default function EditorPage() {
                   {/* Tool badges */}
                   {msg.tools && msg.tools.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {msg.tools.map((t, j) => (
+                      {msg.tools.map((tool, j) => (
                         <span key={j} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 6, fontSize: 11, fontWeight: 500, fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                          background: t.status === "running" ? "rgba(234,179,8,0.1)" : "rgba(34,197,94,0.1)",
-                          color: t.status === "running" ? "#eab308" : "#22c55e" }}>
-                          {t.status === "running" ? <Loader2 style={{ width: 10, height: 10, animation: "spin 1s linear infinite" }} /> : <Check style={{ width: 10, height: 10 }} />}
-                          {t.name === "write_file" ? "write" : t.name === "edit_file" ? "edit" : t.name === "read_file" ? "read" : t.name === "search_photos" ? "photos" : t.name}
-                          {t.path && <span style={{ color: t.status === "running" ? "#a16207" : "#16a34a" }}>{t.path.split("/").pop()}</span>}
+                          background: tool.status === "running" ? "rgba(234,179,8,0.1)" : "rgba(34,197,94,0.1)",
+                          color: tool.status === "running" ? "#eab308" : "#22c55e" }}>
+                          {tool.status === "running" ? <Loader2 style={{ width: 10, height: 10, animation: "spin 1s linear infinite" }} /> : <Check style={{ width: 10, height: 10 }} />}
+                          {tool.name === "write_file" ? t.editor.toolWrite : tool.name === "edit_file" ? t.editor.toolEdit : tool.name === "read_file" ? t.editor.toolRead : tool.name === "search_photos" ? t.editor.toolPhotos : tool.name}
+                          {tool.path && <span style={{ color: tool.status === "running" ? "#a16207" : "#16a34a" }}>{tool.path.split("/").pop()}</span>}
                         </span>
                       ))}
                     </div>
@@ -421,7 +465,7 @@ export default function EditorPage() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKey}
-                placeholder="Descrivi cosa vuoi costruire..."
+                placeholder={t.editor.inputPlaceholder}
                 rows={1}
                 style={{ flex: 1, background: "transparent", fontSize: 13, color: "#e4e4e7", resize: "none", outline: "none", border: "none", padding: "4px 6px", maxHeight: 120, minHeight: 22, fontFamily: "inherit", lineHeight: 1.5 }}
               />
@@ -451,7 +495,7 @@ export default function EditorPage() {
               {/* File tree */}
               <div style={{ width: 220, borderRight: "1px solid #1c1c22", overflowY: "auto", background: "#0c0c10", flexShrink: 0 }}>
                 <div style={{ padding: "10px 12px", borderBottom: "1px solid #1c1c22", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "#52525b", letterSpacing: "0.05em", textTransform: "uppercase" }}>Explorer</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#52525b", letterSpacing: "0.05em", textTransform: "uppercase" }}>{t.editor.explorerLabel}</span>
                   <span style={{ fontSize: 10, color: "#3f3f46" }}>{fileList.length}</span>
                 </div>
                 <div style={{ padding: 4 }}>
@@ -483,7 +527,7 @@ export default function EditorPage() {
                   ))}
                   {fileList.length === 0 && (
                     <p style={{ padding: "24px 12px", fontSize: 12, color: "#3f3f46", textAlign: "center" }}>
-                      Nessun file. Chiedi all&apos;AI di costruire qualcosa!
+                      {t.editor.noFiles}
                     </p>
                   )}
                 </div>
@@ -517,7 +561,7 @@ export default function EditorPage() {
                     </div>
                   ) : (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#3f3f46", fontSize: 13 }}>
-                      Seleziona un file per visualizzare il codice
+                      {t.editor.selectFileHint}
                     </div>
                   )}
                 </div>
