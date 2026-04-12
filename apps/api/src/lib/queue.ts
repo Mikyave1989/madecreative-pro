@@ -54,16 +54,22 @@ export async function enqueueAgentJob(params: {
   priority?: number;
   delay?: number;
 }): Promise<void> {
-  const queue = await getQueue(params.agentType);
-  await queue.add(
-    params.agentType,
-    { jobId: params.jobId, input: params.input },
-    {
-      jobId: params.jobId,
-      priority: params.priority,
-      delay: params.delay,
-    }
-  );
+  try {
+    const queue = await getQueue(params.agentType);
+    await queue.add(
+      params.agentType,
+      { jobId: params.jobId, input: params.input },
+      {
+        jobId: params.jobId,
+        priority: params.priority,
+        delay: params.delay,
+      }
+    );
+  } catch (err) {
+    // Redis/BullMQ not available (serverless environment) — job is still in DB as QUEUED
+    // Workers will pick it up via DB polling when available
+    console.warn(`[Queue] enqueue failed for ${params.agentType}/${params.jobId}: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 export async function closeAllQueues(): Promise<void> {
