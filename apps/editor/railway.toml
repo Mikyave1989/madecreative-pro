@@ -1,3 +1,10 @@
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+builder = "NIXPACKS"
+
+[build.nixpacks]
+nixPkgs = ["nodejs_22"]
+installCmd = "echo 'Skipping install — prebuilt'"
+buildCmd = "echo 'Skipping build — prebuilt'"
+
+[start]
+cmd = "node server.mjs"
