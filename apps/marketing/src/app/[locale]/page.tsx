@@ -3,7 +3,7 @@ import { SUPPORTED_LOCALES, getTranslations, type Locale } from "@/lib/i18n";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { HeroSection } from "@/components/sections/HeroSection";
-import { HowItWorksSection } from "@/components/sections/HowItWorksSection";
+// HowItWorksSection removed — replaced by DemoSection + FeaturesSection
 import { DemoSection } from "@/components/sections/DemoSection";
 import { FeaturesSection } from "@/components/sections/FeaturesSection";
 import { UseCasesSection } from "@/components/sections/UseCasesSection";
@@ -34,7 +34,6 @@ export default async function LocalePage({ params }: PageProps) {
     <main>
       <Nav t={t} locale={locale as Locale} />
       <HeroSection t={t} locale={locale} />
-      <HowItWorksSection t={t} />
       <DemoSection t={t} locale={locale} />
       <FeaturesSection t={t} />
       <UseCasesSection />

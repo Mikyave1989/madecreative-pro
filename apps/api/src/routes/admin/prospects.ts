@@ -302,35 +302,45 @@ app.post("/:id/build-preview", async (c) => {
   const templateSlug = (body["templateSlug"] as string | undefined) ?? prospect.sector;
   const customizations = body["customizations"] as Record<string, unknown> | undefined;
 
+  const agentInput = { prospectId: id, templateSlug, ...(customizations ? { customizations } : {}) };
+
   const job = await prisma.agentJob.create({
     data: {
       agentType: "BUILDER",
-      status: "QUEUED",
-      input: JSON.parse(JSON.stringify({
-        prospectId: id,
-        templateSlug,
-        ...(customizations ? { customizations } : {}),
-      })),
+      status: "RUNNING",
+      startedAt: new Date(),
+      input: JSON.parse(JSON.stringify(agentInput)),
       prospectId: id,
     },
   });
 
-  await enqueueAgentJob({
-    agentType: "BUILDER",
-    jobId: job.id,
-    input: {
-      prospectId: id,
-      templateSlug,
-      ...(customizations ? { customizations } : {}),
-    },
-  });
+  // Try BullMQ, fallback to inline execution
+  const inlineRun = async () => {
+    try {
+      const { BuilderAgent } = await import("@madecreative/agents");
+      const agent = new BuilderAgent({ jobId: job.id, agentType: "BUILDER", input: agentInput });
+      const result = await agent.run(agentInput);
+      await prisma.agentJob.update({
+        where: { id: job.id },
+        data: { status: result.success ? "COMPLETED" : "FAILED", output: result as object, completedAt: new Date(), apiCost: result.apiCost },
+      });
+    } catch (err) {
+      await prisma.agentJob.update({ where: { id: job.id }, data: { status: "FAILED", error: err instanceof Error ? err.message : String(err), completedAt: new Date() } }).catch(() => {});
+    }
+  };
+
+  try {
+    await enqueueAgentJob({ agentType: "BUILDER", jobId: job.id, input: agentInput });
+  } catch {
+    void inlineRun();
+  }
 
   return c.json(
     {
       success: true,
       data: {
         jobId: job.id,
-        message: `Builder Agent queued for prospect: ${prospect.companyName}`,
+        message: `Builder Agent started for prospect: ${prospect.companyName}`,
         estimatedDuration: "2-5 minutes",
       },
     },
@@ -400,7 +410,8 @@ app.post("/:id/send-outreach", async (c) => {
   const job = await prisma.agentJob.create({
     data: {
       agentType: "OUTREACH",
-      status: "QUEUED",
+      status: "RUNNING",
+      startedAt: new Date(),
       input: {
         prospectId: id,
         stepNumber: 1,
@@ -410,22 +421,48 @@ app.post("/:id/send-outreach", async (c) => {
     },
   });
 
-  await enqueueAgentJob({
-    agentType: "OUTREACH",
-    jobId: job.id,
-    input: {
-      prospectId: id,
-      stepNumber: 1,
-      ...(language ? { language } : {}),
-    },
-  });
+  // Run agent INLINE (no BullMQ worker needed — works on serverless)
+  // Fire-and-forget: respond immediately, agent runs in background
+  const agentInput = { prospectId: id, stepNumber: 1, ...(language ? { language } : {}) };
+
+  // Try BullMQ first (if Redis available), fallback to inline execution
+  const inlineRun = async () => {
+    try {
+      const { OutreachAgent } = await import("@madecreative/agents");
+      const agent = new OutreachAgent({ jobId: job.id, agentType: "OUTREACH", input: agentInput });
+      const result = await agent.run(agentInput);
+      await prisma.agentJob.update({
+        where: { id: job.id },
+        data: {
+          status: result.success ? "COMPLETED" : "FAILED",
+          output: result as object,
+          completedAt: new Date(),
+          apiCost: result.apiCost,
+          error: result.success ? null : "Agent returned failure",
+        },
+      });
+    } catch (err) {
+      await prisma.agentJob.update({
+        where: { id: job.id },
+        data: { status: "FAILED", error: err instanceof Error ? err.message : String(err), completedAt: new Date() },
+      }).catch(() => {});
+    }
+  };
+
+  // Try queue first, if fails run inline
+  try {
+    await enqueueAgentJob({ agentType: "OUTREACH", jobId: job.id, input: agentInput });
+  } catch {
+    // BullMQ unavailable — run inline (fire and forget, don't await in response)
+    void inlineRun();
+  }
 
   return c.json(
     {
       success: true,
       data: {
         jobId: job.id,
-        message: `Outreach sequence queued for ${prospect.companyName}`,
+        message: `Outreach sequence started for ${prospect.companyName}`,
         estimatedDuration: "1-2 minutes",
       },
     },
@@ -569,20 +606,27 @@ app.post("/:id/analyze", async (c) => {
     return c.json({ success: false, error: "Prospect not found" }, 404);
   }
 
+  const agentInput = { prospectId: id };
   const job = await prisma.agentJob.create({
-    data: {
-      agentType: "ANALYZER",
-      status: "QUEUED",
-      input: { prospectId: id },
-      prospectId: id,
-    },
+    data: { agentType: "ANALYZER", status: "RUNNING", startedAt: new Date(), input: agentInput, prospectId: id },
   });
 
-  await enqueueAgentJob({
-    agentType: "ANALYZER",
-    jobId: job.id,
-    input: { prospectId: id },
-  });
+  const inlineRun = async () => {
+    try {
+      const { AnalyzerAgent } = await import("@madecreative/agents");
+      const agent = new AnalyzerAgent({ jobId: job.id, agentType: "ANALYZER", input: agentInput });
+      const result = await agent.run(agentInput);
+      await prisma.agentJob.update({ where: { id: job.id }, data: { status: result.success ? "COMPLETED" : "FAILED", output: result as object, completedAt: new Date(), apiCost: result.apiCost } });
+    } catch (err) {
+      await prisma.agentJob.update({ where: { id: job.id }, data: { status: "FAILED", error: err instanceof Error ? err.message : String(err), completedAt: new Date() } }).catch(() => {});
+    }
+  };
+
+  try {
+    await enqueueAgentJob({ agentType: "ANALYZER", jobId: job.id, input: agentInput });
+  } catch {
+    void inlineRun();
+  }
 
   return c.json({ success: true, data: { jobId: job.id } }, 202);
 });
