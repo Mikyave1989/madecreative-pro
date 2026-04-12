@@ -1186,163 +1186,180 @@ function stripModules(code: string): string {
 export function projectToPreviewHtml(files: Record<string, string>): string {
   const dataTs = files["lib/data.ts"] ?? "";
   const layout = files["app/layout.tsx"] ?? "";
-  const css = (files["app/globals.css"] ?? "").replace(/@tailwind\s+\w+;\s*/g, "").replace(/@import\s+[^;]*;\s*/g, "");
+  const cssRaw = (files["app/globals.css"] ?? "").replace(/@tailwind\s+\w+;\s*/g, "").replace(/@import\s+[^;]*;\s*/g, "");
 
-  // Extract fonts URL and title from layout
   const fontsUrl = (layout.match(/href=["'](https:\/\/fonts\.googleapis\.com[^"']+)["']/) ?? [])[1] ?? "";
   const title = (layout.match(/default:\s*["']([^"']+)["']/) ?? layout.match(/title:\s*["']([^"']+)["']/) ?? [])[1] ?? "MadeCreative";
 
-  // Clean data.ts: strip import/export, keep everything else (Babel handles TS)
+  // Clean data.ts for browser: strip import/export, strip "as const"
   const cleanData = dataTs
     .replace(/^import\s+[^;]*;\s*/gm, "")
     .replace(/^export\s+/gm, "")
     .replace(/\s+as\s+const\s*/g, "");
 
-  // React + Babel CDN approach — renders JSX with real data, photos, gallery
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  // htm approach: 1KB library, no Babel, no JSX transpilation needed
+  // Uses tagged template literals: html`<div>...</div>` instead of JSX
   return `<!DOCTYPE html>
 <html lang="it"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 ${fontsUrl ? `<link href="${fontsUrl}" rel="stylesheet">` : ""}
-<script src="https://cdn.tailwindcss.com"><\/script>
-<style>${css}</style>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>${cssRaw}</style>
 </head><body class="antialiased">
 <div id="root"></div>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>
-<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"><\/script>
-<script type="text/babel">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/htm@3/dist/htm.umd.js"></script>
+<script>
+var html = htm.bind(React.createElement);
+var useState = React.useState;
+
 ${cleanData}
 
 function App() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const B = BUSINESS;
-  const C = COLORS;
-  return (
-    <div style={{background:C.background,color:C.text}}>
-      <nav className="fixed top-0 inset-x-0 z-50 h-16 flex items-center px-4 md:px-6 bg-white/90 backdrop-blur-xl border-b" style={{borderColor:C.border}}>
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold" style={{background:C.accent}}>{B.name[0]}</div>
-            <span className="font-bold text-lg" style={{color:C.primary}}>{B.name}</span>
+  var r = useState(false), menuOpen = r[0], setMenuOpen = r[1];
+  var B = BUSINESS, C = COLORS;
+  var star = function(n) { return "\\u2605".repeat(Math.round(n)) + "\\u2606".repeat(5 - Math.round(n)); };
+
+  return html\`
+    <div style=\${{ background: C.background, color: C.text }}>
+      <nav class="fixed top-0 inset-x-0 z-50 h-16 flex items-center px-4 md:px-6 bg-white/90 backdrop-blur-xl border-b" style=\${{ borderColor: C.border }}>
+        <div class="max-w-7xl mx-auto w-full flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold" style=\${{ background: C.accent }}>\${B.name[0]}</div>
+            <span class="font-bold text-lg" style=\${{ color: C.primary }}>\${B.name}</span>
           </div>
-          <div className="hidden md:flex items-center gap-6">
-            <a href="#about" className="text-sm" style={{color:C.textLight}}>Chi siamo</a>
-            <a href="#gallery" className="text-sm" style={{color:C.textLight}}>Galleria</a>
-            <a href="#reviews" className="text-sm" style={{color:C.textLight}}>Recensioni</a>
-            <a href="#contact" className="text-white px-5 py-2 rounded-xl text-sm font-semibold" style={{background:C.accent}}>{B.cta}</a>
+          <div class="hidden md:flex items-center gap-6">
+            <a href="#about" class="text-sm" style=\${{ color: C.textLight }}>Chi siamo</a>
+            <a href="#gallery" class="text-sm" style=\${{ color: C.textLight }}>Galleria</a>
+            <a href="#reviews" class="text-sm" style=\${{ color: C.textLight }}>Recensioni</a>
+            <a href="#contact" class="text-white px-5 py-2.5 rounded-xl text-sm font-semibold" style=\${{ background: C.accent }}>\${B.cta}</a>
           </div>
-          <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={()=>setMenuOpen(!menuOpen)}>
-            <span className={"block w-6 h-0.5 transition-all "+(menuOpen?"rotate-45 translate-y-2":"")} style={{background:C.primary}}></span>
-            <span className={"block w-6 h-0.5 transition-all "+(menuOpen?"opacity-0":"")} style={{background:C.primary}}></span>
-            <span className={"block w-6 h-0.5 transition-all "+(menuOpen?"-rotate-45 -translate-y-2":"")} style={{background:C.primary}}></span>
+          <button class="md:hidden flex flex-col gap-1.5 p-2" onClick=\${function(){setMenuOpen(!menuOpen)}}>
+            <span class=\${"block w-6 h-0.5 bg-gray-800 transition-all " + (menuOpen ? "rotate-45 translate-y-2" : "")}></span>
+            <span class=\${"block w-6 h-0.5 bg-gray-800 transition-all " + (menuOpen ? "opacity-0" : "")}></span>
+            <span class=\${"block w-6 h-0.5 bg-gray-800 transition-all " + (menuOpen ? "-rotate-45 -translate-y-2" : "")}></span>
           </button>
         </div>
       </nav>
-      {menuOpen && (
-        <div className="fixed inset-0 z-40" onClick={()=>setMenuOpen(false)}>
-          <div className="absolute inset-0 bg-black/40"></div>
-          <div className="absolute top-0 right-0 w-72 h-full bg-white shadow-2xl pt-20 px-6 flex flex-col gap-2" onClick={e=>e.stopPropagation()}>
-            {["Chi siamo","Galleria","Recensioni","Contatti"].map(label=>(
-              <a key={label} href={"#"+label.toLowerCase().replace(" ","-")} onClick={()=>setMenuOpen(false)} className="py-3 border-b text-lg font-semibold" style={{color:C.primary,borderColor:C.border}}>{label}</a>
-            ))}
-            <a href="#contact" onClick={()=>setMenuOpen(false)} className="mt-auto mb-6 text-center text-white py-3 rounded-xl font-bold" style={{background:C.accent}}>{B.cta}</a>
+      \${menuOpen && html\`
+        <div class="fixed inset-0 z-40 bg-black/40" onClick=\${function(){setMenuOpen(false)}}>
+          <div class="absolute right-0 top-0 h-full w-72 bg-white shadow-2xl pt-20 px-6 flex flex-col gap-2" onClick=\${function(e){e.stopPropagation()}}>
+            <a href="#about" onClick=\${function(){setMenuOpen(false)}} class="py-3 border-b text-lg font-semibold" style=\${{ color: C.primary }}>Chi siamo</a>
+            <a href="#gallery" onClick=\${function(){setMenuOpen(false)}} class="py-3 border-b text-lg font-semibold" style=\${{ color: C.primary }}>Galleria</a>
+            <a href="#reviews" onClick=\${function(){setMenuOpen(false)}} class="py-3 border-b text-lg font-semibold" style=\${{ color: C.primary }}>Recensioni</a>
+            <a href="#contact" onClick=\${function(){setMenuOpen(false)}} class="py-3 border-b text-lg font-semibold" style=\${{ color: C.primary }}>Contatti</a>
+            <a href="#contact" class="mt-auto mb-6 text-center text-white py-3 rounded-xl font-bold" style=\${{ background: C.accent }}>\${B.cta}</a>
           </div>
         </div>
-      )}
-      <section className="relative min-h-screen flex items-center" style={{background:C.primary}}>
-        <div className="absolute inset-0"><img src={B.heroImage} className="w-full h-full object-cover opacity-40" /></div>
-        <div className="relative z-10 max-w-7xl mx-auto px-6 py-32 w-full">
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/15 rounded-full px-5 py-2 mb-8">
-            <span className="w-2 h-2 rounded-full" style={{background:C.accent,boxShadow:"0 0 12px "+C.accent}}></span>
-            <span className="text-xs font-semibold text-white/90 tracking-wide uppercase">{B.tagline}</span>
+      \`}
+
+      <section class="relative min-h-screen flex items-center overflow-hidden" style=\${{ background: C.primary }}>
+        <div class="absolute inset-0"><img src=\${B.heroImage} class="w-full h-full object-cover opacity-40" /></div>
+        <div class="relative z-10 max-w-7xl mx-auto px-6 py-32 w-full">
+          <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/15 rounded-full px-5 py-2 mb-8">
+            <span class="w-2 h-2 rounded-full" style=\${{ background: C.accent, boxShadow: "0 0 12px " + C.accent }}></span>
+            <span class="text-xs font-semibold text-white/90 tracking-wide uppercase">\${B.tagline}</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-light text-white leading-tight mb-6">{B.name}</h1>
-          <p className="text-lg text-white/50 max-w-xl leading-relaxed mb-10">{B.description}</p>
-          <div className="flex gap-4 flex-wrap">
-            <a href="#contact" className="text-white px-8 py-4 rounded-2xl font-bold text-sm" style={{background:C.accent}}>{B.cta} \\u2192</a>
-            <a href="#about" className="bg-white/10 backdrop-blur text-white border border-white/20 px-8 py-4 rounded-2xl font-semibold text-sm">{B.ctaSecondary}</a>
+          <h1 class="text-4xl sm:text-5xl md:text-7xl font-light text-white leading-tight mb-6">\${B.name}</h1>
+          <p class="text-lg text-white/50 max-w-xl leading-relaxed mb-10">\${B.description}</p>
+          <div class="flex gap-4 flex-wrap">
+            <a href="#contact" class="text-white px-8 py-4 rounded-2xl font-bold text-sm hover:shadow-xl transition-all" style=\${{ background: C.accent }}>\${B.cta} \\u2192</a>
+            <a href="#about" class="bg-white/10 backdrop-blur text-white border border-white/20 px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-white/20 transition">\${B.ctaSecondary || "Scopri"}</a>
           </div>
-          {B.googleRating > 0 && (
-            <div className="mt-10 inline-flex items-center gap-3 bg-white/10 backdrop-blur border border-white/10 rounded-2xl px-6 py-4">
-              <span className="text-3xl font-bold text-white">{B.googleRating}</span>
-              <div><div className="text-sm tracking-wider" style={{color:C.accent}}>{"\\u2605".repeat(Math.round(B.googleRating))}</div><div className="text-xs text-white/40">{B.reviewCount}+ recensioni</div></div>
-            </div>
-          )}
-        </div>
-      </section>
-      <section id="about" className="py-24 px-6" style={{background:C.surface}}>
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-          <div>
-            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{color:C.accent}}>La nostra storia</p>
-            <h2 className="text-3xl font-light mb-4" style={{color:C.primary}}>Chi Siamo</h2>
-            <div className="w-14 h-0.5 mb-6" style={{background:C.accent}}></div>
-            <p className="leading-relaxed">{B.aboutText}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {STATS.map((s,i)=>(
-              <div key={i} className={"p-6 rounded-2xl text-center "+(s.dark?"":"border")} style={{background:s.dark?C.primary:C.background,borderColor:s.dark?undefined:C.border}}>
-                <p className="text-2xl font-semibold" style={{color:s.dark?C.accent:C.primary}}>{s.value}</p>
-                <p className={"text-xs mt-1 "+(s.dark?"text-white/50":"")} style={{color:s.dark?undefined:C.textLight}}>{s.label}</p>
+          \${B.googleRating > 0 && html\`
+            <div class="mt-10 inline-flex items-center gap-3 bg-white/10 backdrop-blur border border-white/10 rounded-2xl px-6 py-4">
+              <span class="text-3xl font-bold text-white">\${B.googleRating}</span>
+              <div>
+                <div class="text-sm tracking-wider" style=\${{ color: C.accent }}>\${star(B.googleRating)}</div>
+                <div class="text-xs text-white/40">\${B.reviewCount}+ recensioni</div>
               </div>
-            ))}
+            </div>
+          \`}
+        </div>
+      </section>
+
+      <section id="about" class="py-24 px-6" style=\${{ background: C.surface }}>
+        <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            <p class="text-xs font-bold tracking-widest uppercase mb-3" style=\${{ color: C.accent }}>La nostra storia</p>
+            <h2 class="text-3xl md:text-4xl font-light mb-4" style=\${{ color: C.primary }}>Chi Siamo</h2>
+            <div class="w-14 h-0.5 mb-6" style=\${{ background: C.accent }}></div>
+            <p class="leading-relaxed">\${B.aboutText}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            \${STATS.map(function(s, i) {
+              return html\`<div key=\${i} class=\${"p-6 rounded-2xl text-center " + (s.dark ? "" : "border")} style=\${{ background: s.dark ? C.primary : C.background, borderColor: s.dark ? undefined : C.border }}>
+                <p class="text-2xl font-semibold" style=\${{ color: s.dark ? C.accent : C.primary }}>\${s.value}</p>
+                <p class=\${"text-xs mt-1 " + (s.dark ? "text-white/50" : "")} style=\${{ color: s.dark ? undefined : C.textLight }}>\${s.label}</p>
+              </div>\`;
+            })}
           </div>
         </div>
       </section>
-      {GALLERY.length>0&&(
-        <section id="gallery" className="py-24 px-6" style={{background:C.background}}>
-          <div className="max-w-7xl mx-auto">
-            <p className="text-xs font-bold tracking-widest uppercase mb-3 text-center" style={{color:C.accent}}>Galleria</p>
-            <h2 className="text-3xl font-light text-center mb-12" style={{color:C.primary}}>I nostri momenti</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {GALLERY.map((img,i)=>(
-                <div key={i} className={"rounded-2xl overflow-hidden "+(i===0?"col-span-2 aspect-video":"aspect-square")}>
-                  <img src={img.url} alt={img.alt} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" loading="lazy"/>
-                </div>
-              ))}
+
+      \${GALLERY.length > 0 && html\`
+        <section id="gallery" class="py-24 px-6" style=\${{ background: C.background }}>
+          <div class="max-w-7xl mx-auto">
+            <p class="text-xs font-bold tracking-widest uppercase mb-3 text-center" style=\${{ color: C.accent }}>Galleria</p>
+            <h2 class="text-3xl font-light text-center mb-12" style=\${{ color: C.primary }}>I nostri momenti</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+              \${GALLERY.map(function(img, i) {
+                return html\`<div key=\${i} class=\${"rounded-2xl overflow-hidden " + (i === 0 ? "col-span-2 aspect-video" : "aspect-square")}>
+                  <img src=\${img.url} alt=\${img.alt} class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" loading="lazy" />
+                </div>\`;
+              })}
             </div>
           </div>
         </section>
-      )}
-      {TESTIMONIALS.length>0&&(
-        <section id="reviews" className="py-24 px-6" style={{background:C.surface}}>
-          <div className="max-w-7xl mx-auto">
-            <p className="text-xs font-bold tracking-widest uppercase mb-3 text-center" style={{color:C.accent}}>Recensioni</p>
-            <h2 className="text-3xl font-light text-center mb-12" style={{color:C.primary}}>Cosa dicono i clienti</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {TESTIMONIALS.map((t,i)=>(
-                <div key={i} className="rounded-2xl p-8 border hover:-translate-y-1 transition" style={{background:C.surface,borderColor:C.border}}>
-                  <div className="text-sm tracking-widest mb-4" style={{color:C.accent}}>{"\\u2605".repeat(t.rating)}{"\\u2606".repeat(5-t.rating)}</div>
-                  <p className="text-sm italic leading-relaxed mb-4">\\u201C{t.text}\\u201D</p>
-                  <p className="font-bold text-sm" style={{color:C.primary}}>{t.name}</p>
-                </div>
-              ))}
+      \`}
+
+      \${TESTIMONIALS.length > 0 && html\`
+        <section id="reviews" class="py-24 px-6" style=\${{ background: C.surface }}>
+          <div class="max-w-7xl mx-auto">
+            <p class="text-xs font-bold tracking-widest uppercase mb-3 text-center" style=\${{ color: C.accent }}>Recensioni</p>
+            <h2 class="text-3xl font-light text-center mb-12" style=\${{ color: C.primary }}>Cosa dicono i clienti</h2>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              \${TESTIMONIALS.map(function(t, i) {
+                return html\`<div key=\${i} class="rounded-2xl p-8 border hover:-translate-y-1 transition" style=\${{ background: C.surface, borderColor: C.border }}>
+                  <div class="text-sm tracking-widest mb-4" style=\${{ color: C.accent }}>\${star(t.rating)}</div>
+                  <p class="text-sm italic leading-relaxed mb-4">\\u201C\${t.text}\\u201D</p>
+                  <p class="font-bold text-sm" style=\${{ color: C.primary }}>\${t.name}</p>
+                </div>\`;
+              })}
             </div>
           </div>
         </section>
-      )}
-      <section id="contact" className="py-24 px-6" style={{background:C.primary}}>
-        <div className="max-w-7xl mx-auto text-center">
-          <h2 className="text-3xl font-light text-white mb-12">Contatti</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div><p className="text-2xl mb-2">\\ud83d\\udccd</p><p className="text-xs uppercase tracking-wider mb-1 font-semibold" style={{color:C.accent}}>Indirizzo</p><p className="text-white/80">{B.address||"Su richiesta"}</p></div>
-            <div><p className="text-2xl mb-2">\\ud83d\\udcde</p><p className="text-xs uppercase tracking-wider mb-1 font-semibold" style={{color:C.accent}}>Telefono</p><p className="text-white/80">{B.phone||"Su richiesta"}</p></div>
-            <div><p className="text-2xl mb-2">\\u2709\\ufe0f</p><p className="text-xs uppercase tracking-wider mb-1 font-semibold" style={{color:C.accent}}>Email</p><p className="text-white/80">{B.email||"Su richiesta"}</p></div>
+      \`}
+
+      <section id="contact" class="py-24 px-6" style=\${{ background: C.primary }}>
+        <div class="max-w-7xl mx-auto text-center">
+          <p class="text-xs font-bold tracking-widest uppercase mb-3" style=\${{ color: C.accent }}>Contatti</p>
+          <h2 class="text-3xl font-light text-white mb-12">Siamo qui per te</h2>
+          <div class="grid md:grid-cols-3 gap-8">
+            <div><p class="text-2xl mb-2">\\ud83d\\udccd</p><p class="text-xs uppercase tracking-wider mb-1 font-semibold" style=\${{ color: C.accent }}>Indirizzo</p><p class="text-white/80">\${B.address || "Su richiesta"}</p></div>
+            <div><p class="text-2xl mb-2">\\ud83d\\udcde</p><p class="text-xs uppercase tracking-wider mb-1 font-semibold" style=\${{ color: C.accent }}>Telefono</p><p class="text-white/80">\${B.phone || "Su richiesta"}</p></div>
+            <div><p class="text-2xl mb-2">\\u2709\\ufe0f</p><p class="text-xs uppercase tracking-wider mb-1 font-semibold" style=\${{ color: C.accent }}>Email</p><p class="text-white/80">\${B.email || "Su richiesta"}</p></div>
           </div>
         </div>
       </section>
-      <footer className="py-8 px-6 border-t border-white/5" style={{background:C.primary}}>
-        <div className="max-w-7xl mx-auto flex justify-between items-center flex-wrap gap-4">
-          <span className="text-white/50 font-semibold">{B.name}</span>
-          <span className="text-xs text-white/20">\\u00a9 ${new Date().getFullYear()} {B.name} \\u00b7 MadeCreative</span>
+
+      <footer class="py-8 px-6 border-t border-white/5" style=\${{ background: C.primary }}>
+        <div class="max-w-7xl mx-auto flex justify-between items-center flex-wrap gap-4">
+          <span class="text-white/50 font-semibold">\${B.name}</span>
+          <span class="text-xs text-white/20">\\u00a9 ${new Date().getFullYear()} \${B.name} \\u00b7 Sito creato con MadeCreative</span>
         </div>
       </footer>
     </div>
-  );
+  \`;
 }
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-<\/script></body></html>`;
+
+ReactDOM.createRoot(document.getElementById("root")).render(html\`<\${App} />\`);
+</script>
+</body></html>`;
 }
 
 
