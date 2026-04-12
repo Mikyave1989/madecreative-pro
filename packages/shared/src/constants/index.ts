@@ -37,10 +37,15 @@ export const AGENT_QUEUE_NAMES: Record<AgentType, string> = {
 export const PROSPECT_STATUSES = [
   "SCRAPED",
   "QUALIFIED",
+  "ANALYZED",
   "PREVIEW_READY",
+  "PREVIEW_GENERATED",
+  "EMAIL_QUEUED",
   "CONTACTED",
+  "EMAIL_SENT",
   "FOLLOWED_UP",
   "REPLIED",
+  "CALL_SCHEDULED",
   "CONVERTED",
   "LOST",
   "BLACKLISTED",
@@ -48,6 +53,7 @@ export const PROSPECT_STATUSES = [
 
 export const CLIENT_STATUSES = [
   "ACTIVE",
+  "AT_RISK",
   "CHURNED",
   "REFUNDED",
 ] as const;

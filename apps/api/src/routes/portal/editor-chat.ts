@@ -38,17 +38,23 @@ function estimateCreditCost(toolCalls: string[], isFullBuild = false): number {
   return 1.0;
 }
 
+// In-memory cache: fast path to avoid hitting DB on every credit check
 const creditStore = new Map<string, { used: number; purchased: number; resetAt: number }>();
+
+function nextMonthReset(): Date {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1, 1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
 function getCredits(clientId: string, plan = "STARTER"): { remaining: number; used: number; total: number; purchased: number } {
   const now = Date.now();
   let entry = creditStore.get(clientId);
   if (!entry || now > entry.resetAt) {
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
-    nextMonth.setHours(0, 0, 0, 0);
+    // Cache miss — caller must have populated from DB; default to 0 used
     const purchased = entry?.purchased ?? 0;
-    entry = { used: 0, purchased, resetAt: nextMonth.getTime() };
+    entry = { used: 0, purchased, resetAt: nextMonthReset().getTime() };
     creditStore.set(clientId, entry);
   }
   const planCredits = PLAN_CREDITS[plan] ?? 200;
@@ -56,21 +62,50 @@ function getCredits(clientId: string, plan = "STARTER"): { remaining: number; us
   return { remaining: Math.max(0, total - entry.used), used: entry.used, total, purchased: entry.purchased };
 }
 
-function deductCredits(clientId: string, amount: number): boolean {
+/** Populate in-memory cache from DB record. Call once per request after DB load. */
+function hydrateCreditsFromDB(clientId: string, dbUsed: number, dbPurchased: number, dbResetAt: Date | null): void {
+  const now = Date.now();
+  const resetAt = dbResetAt ? dbResetAt.getTime() : nextMonthReset().getTime();
+  // If the DB reset date has passed, treat as fresh period
+  const used = now > resetAt ? 0 : dbUsed;
+  const purchased = dbPurchased;
+  creditStore.set(clientId, { used, purchased, resetAt: now > resetAt ? nextMonthReset().getTime() : resetAt });
+}
+
+async function deductCredits(clientId: string, amount: number): Promise<boolean> {
   const credits = getCredits(clientId);
   if (credits.remaining < amount) return false;
   const entry = creditStore.get(clientId)!;
   entry.used += amount;
+  // Persist to DB asynchronously (fire-and-forget, non-blocking)
+  try {
+    const { prisma } = await import("@madecreative/db");
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { creditsUsed: entry.used, creditsResetAt: new Date(entry.resetAt) },
+    });
+  } catch (err) {
+    console.error("[EditorChat] Failed to persist credits to DB:", err instanceof Error ? err.message : String(err));
+  }
   return true;
 }
 
-function addPurchasedCredits(clientId: string, amount: number): void {
+async function addPurchasedCredits(clientId: string, amount: number): Promise<void> {
   const entry = creditStore.get(clientId);
-  if (entry) { entry.purchased += amount; }
-  else {
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
-    creditStore.set(clientId, { used: 0, purchased: amount, resetAt: nextMonth.getTime() });
+  if (entry) {
+    entry.purchased += amount;
+  } else {
+    creditStore.set(clientId, { used: 0, purchased: amount, resetAt: nextMonthReset().getTime() });
+  }
+  // Persist to DB
+  try {
+    const { prisma } = await import("@madecreative/db");
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { creditsPurchased: { increment: amount } },
+    });
+  } catch (err) {
+    console.error("[EditorChat] Failed to persist purchased credits to DB:", err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -468,7 +503,10 @@ function buildToolHandler(
 app.get("/credits", async (c) => {
   const clientId = c.get("jwtPayload").sub;
   const { prisma } = await import("@madecreative/db");
-  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { plan: true } });
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { plan: true, creditsUsed: true, creditsPurchased: true, creditsResetAt: true } });
+  if (client) {
+    hydrateCreditsFromDB(clientId, client.creditsUsed, client.creditsPurchased, client.creditsResetAt);
+  }
   const credits = getCredits(clientId, client?.plan ?? "STARTER");
   return c.json({ success: true, data: { ...credits, topUpOptions: [
     { credits: 100, price: "\u20ac4.90", priceId: "price_topup_100" },
@@ -496,7 +534,7 @@ app.post("/buy-credits", async (c) => {
 
   const stripeKey = process.env["STRIPE_SECRET_KEY"];
   if (!stripeKey) {
-    addPurchasedCredits(clientId, selected.credits);
+    await addPurchasedCredits(clientId, selected.credits);
     return c.json({ success: true, data: { credits: getCredits(clientId), added: selected.credits } });
   }
 
@@ -525,8 +563,11 @@ app.post("/stream", async (c) => {
   const { getClaudeClient } = await import("@madecreative/ai");
   const clientId = c.get("jwtPayload").sub;
 
-  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyName: true, sector: true, language: true, plan: true } });
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyName: true, sector: true, language: true, plan: true, creditsUsed: true, creditsPurchased: true, creditsResetAt: true } });
   if (!client) return c.json({ success: false, error: "Client not found" }, 404);
+
+  // Hydrate in-memory cache from DB so credits survive cold starts
+  hydrateCreditsFromDB(clientId, client.creditsUsed, client.creditsPurchased, client.creditsResetAt);
 
   const credits = getCredits(clientId, client.plan);
   if (credits.remaining < 0.5) return c.json({ success: false, error: "Crediti esauriti.", credits }, 402);
@@ -551,7 +592,10 @@ app.post("/stream", async (c) => {
         ? JSON.parse(website.files as string)
         : website.files;
       projectFiles = extractProjectFiles(raw);
-    } catch { projectFiles = {}; }
+    } catch (parseErr) {
+      console.error("[EditorChat] Failed to parse website.files JSON for project", website?.id, ":", parseErr instanceof Error ? parseErr.message : String(parseErr));
+      return c.json({ success: false, error: "Dati del progetto corrotti. Crea un nuovo progetto o contatta il supporto." }, 500);
+    }
   }
 
   const systemPrompt = buildSystemPrompt(client.companyName, client.sector, client.language, projectFiles);
@@ -649,7 +693,7 @@ app.post("/stream", async (c) => {
           }
 
           const creditCost = estimateCreditCost(toolNames, isFullBuild);
-          deductCredits(clientId, creditCost);
+          await deductCredits(clientId, creditCost);
 
           await stream.writeSSE({ data: JSON.stringify({
             type: "complete",
@@ -677,8 +721,11 @@ app.post("/", async (c) => {
   const { getClaudeClient } = await import("@madecreative/ai");
   const clientId = c.get("jwtPayload").sub;
 
-  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyName: true, sector: true, language: true, plan: true } });
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyName: true, sector: true, language: true, plan: true, creditsUsed: true, creditsPurchased: true, creditsResetAt: true } });
   if (!client) return c.json({ success: false, error: "Client not found" }, 404);
+
+  // Hydrate in-memory cache from DB so credits survive cold starts
+  hydrateCreditsFromDB(clientId, client.creditsUsed, client.creditsPurchased, client.creditsResetAt);
 
   const credits = getCredits(clientId, client.plan);
   if (credits.remaining < 0.5) return c.json({ success: false, error: "Crediti esauriti.", credits }, 402);
@@ -696,7 +743,12 @@ app.post("/", async (c) => {
 
   let projectFiles: Record<string, string> = {};
   if (website?.files) {
-    try { projectFiles = extractProjectFiles(website.files); } catch { projectFiles = {}; }
+    try {
+      projectFiles = extractProjectFiles(website.files);
+    } catch (parseErr) {
+      console.error("[EditorChat] Failed to parse website.files JSON for project", website?.id, ":", parseErr instanceof Error ? parseErr.message : String(parseErr));
+      return c.json({ success: false, error: "Dati del progetto corrotti. Crea un nuovo progetto o contatta il supporto." }, 500);
+    }
   }
 
   const systemPrompt = buildSystemPrompt(client.companyName, client.sector, client.language, projectFiles);
@@ -737,7 +789,7 @@ app.post("/", async (c) => {
         }
       }
     }
-    deductCredits(clientId, estimateCreditCost(toolNames, isFullBuild));
+    await deductCredits(clientId, estimateCreditCost(toolNames, isFullBuild));
 
     const assistantText = result.finalContent.filter((b) => b.type === "text").map((b) => (b as { type: "text"; text: string }).text).join("\n");
 

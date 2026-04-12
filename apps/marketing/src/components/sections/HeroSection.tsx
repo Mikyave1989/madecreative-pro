@@ -263,6 +263,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
   const proof = SOCIAL_PROOF[locale] ?? SOCIAL_PROOF["en"]!;
   const [url, setUrl] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [building, setBuilding] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
   const [previewHtml, setPreviewHtml] = useState<string>("");
@@ -284,37 +285,44 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
       const json = (await res.json()) as { success: boolean; data?: AnalysisResult & { previewHtml?: string; scraped?: Record<string, unknown> }; error?: string };
       if (json.success && json.data) {
         setResult(json.data);
+        setAnalyzing(false);
 
-        // Show template preview immediately (from scraper)
-        if (json.data.previewHtml) {
-          setPreviewHtml(json.data.previewHtml);
-          setShowPreview(true);
-        }
-
-        // Then upgrade to AI-generated premium preview in background
+        // Now call AI to build premium site with real content
+        setBuilding(true);
+        setShowPreview(true);
         const siteName = json.data.title?.split(/[|\u2013\u2014\u00b7]/).shift()?.trim() || url.replace(/https?:\/\//, "").split("/")[0]?.replace("www.", "") || "Il tuo sito";
         const sector = detectSector(json.data.title ?? "", url);
-        fetch(`${API_URL}/public/ai-generate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: siteName,
-            sector,
-            language: locale,
-            scrapedData: json.data.scraped ?? null,
-            googleRating: json.data.score,
-          }),
-        }).then(r => r.json()).then((aiJson: { success: boolean; data?: { previewHtml: string } }) => {
+        try {
+          const aiRes = await fetch(`${API_URL}/public/ai-generate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: siteName,
+              sector,
+              language: locale,
+              scrapedData: json.data.scraped ?? null,
+              googleRating: json.data.score,
+            }),
+          });
+          const aiJson = (await aiRes.json()) as { success: boolean; data?: { previewHtml: string } };
           if (aiJson.success && aiJson.data?.previewHtml) {
             setPreviewHtml(aiJson.data.previewHtml);
+          } else {
+            // Fallback to template preview if AI fails
+            if (json.data.previewHtml) setPreviewHtml(json.data.previewHtml);
           }
-        }).catch(() => { /* keep template preview */ });
+        } catch {
+          // Fallback to template preview
+          if (json.data.previewHtml) setPreviewHtml(json.data.previewHtml);
+        } finally {
+          setBuilding(false);
+        }
       } else {
         setError(json.error ?? "Errore nell'analisi");
+        setAnalyzing(false);
       }
     } catch {
       setError("Errore di connessione");
-    } finally {
       setAnalyzing(false);
     }
   }
@@ -545,6 +553,29 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
                         <span className="truncate">tuosito.madecreative.pro</span>
                       </div>
                     </div>
+                    {building && !previewHtml ? (
+                      <div className="w-full flex flex-col items-center justify-center gap-4 py-16" style={{ height: "420px", background: "#0d1117" }}>
+                        <div className="relative">
+                          <div className="w-12 h-12 rounded-full border-2 border-indigo-500/20 border-t-indigo-500" style={{ animation: "spin 1s linear infinite" }} />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-white/80">AI sta ricostruendo il tuo sito</p>
+                          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Design premium con i tuoi contenuti reali...</p>
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          {["Analizzando pagine", "Scaricando immagini", "Generando design", "Ottimizzando SEO"].map((step, i) => (
+                            <span key={i} className="px-2.5 py-1 rounded-full text-[10px] font-medium"
+                              style={{ background: "rgba(99,102,241,0.1)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.15)", animation: `pulse 2s ease-in-out ${i * 0.5}s infinite` }}>
+                              {step}
+                            </span>
+                          ))}
+                        </div>
+                        <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}`}</style>
+                      </div>
+                    ) : (
                     <iframe
                       srcDoc={previewHtml}
                       title="Preview sito rifatto"
@@ -553,6 +584,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
                       sandbox="allow-scripts allow-same-origin"
                       loading="lazy"
                     />
+                    )}
                   </div>
 
                   {/* CTA */}

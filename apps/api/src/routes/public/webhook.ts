@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { createHmac, timingSafeEqual } from "crypto";
 import { handleStripeWebhook } from "../../lib/stripe.js";
 import { getRedisConnection } from "../../lib/queue.js";
 
@@ -52,63 +53,37 @@ interface ResendWebhookEvent {
   };
 }
 
-// POST /public/webhook/resend
-app.post("/resend", async (c) => {
-  const { prisma } = await import("@madecreative/db");
-  // Optional: verify Resend webhook signature
-  const webhookSecret = process.env["RESEND_WEBHOOK_SECRET"];
-  if (webhookSecret) {
-    const signature = c.req.header("svix-signature") ?? c.req.header("resend-signature");
-    if (!signature) {
-      return c.json({ error: "Missing webhook signature" }, 401);
-    }
-    // Basic HMAC verification is omitted here; production code should use
-    // the Svix library: https://docs.resend.com/changelog/webhooks
-    // For now we accept all requests when secret is not set.
-  }
+// ─── Resend event handler (shared between verified and dev paths) ─────────────
 
-  let event: ResendWebhookEvent;
-  try {
-    event = await c.req.json<ResendWebhookEvent>();
-  } catch {
-    return c.json({ error: "Invalid JSON body" }, 400);
-  }
-
+async function processResendEvent(
+  prisma: import("@prisma/client").PrismaClient,
+  event: ResendWebhookEvent,
+): Promise<{ received: boolean; skipped?: string }> {
   const { type, data } = event;
   const resendMessageId = data.email_id;
 
   if (!resendMessageId) {
-    return c.json({ received: true, skipped: "no email_id" });
+    return { received: true, skipped: "no email_id" };
   }
 
-  // Find the OutreachEmail by Resend message ID
   const outreachEmail = await prisma.outreachEmail.findUnique({
     where: { resendMessageId },
-    include: {
-      prospect: {
-        select: { id: true, contactEmail: true },
-      },
-    },
+    include: { prospect: { select: { id: true, contactEmail: true } } },
   });
 
   if (!outreachEmail) {
-    // Could be a transactional email — not an outreach email, ignore
     console.log(`[ResendWebhook] email_id ${resendMessageId} not found in outreachEmails — skipping`);
-    return c.json({ received: true, skipped: "email not found" });
+    return { received: true, skipped: "email not found" };
   }
 
   console.log(`[ResendWebhook] Event: ${type} for email ${outreachEmail.id}`);
 
   switch (type) {
     case "email.opened": {
-      // Only set openedAt once
       if (!outreachEmail.openedAt) {
         await prisma.outreachEmail.update({
           where: { id: outreachEmail.id },
-          data: {
-            status: "opened",
-            openedAt: new Date(),
-          },
+          data: { status: "opened", openedAt: new Date() },
         });
         console.log(`[ResendWebhook] Marked email ${outreachEmail.id} as opened`);
       }
@@ -122,7 +97,6 @@ app.post("/resend", async (c) => {
           data: {
             status: "clicked",
             clickedAt: new Date(),
-            // Also mark as opened if not already
             openedAt: outreachEmail.openedAt ?? new Date(),
           },
         });
@@ -134,15 +108,10 @@ app.post("/resend", async (c) => {
     case "email.bounced": {
       await prisma.outreachEmail.update({
         where: { id: outreachEmail.id },
-        data: {
-          status: "bounced",
-          bouncedAt: new Date(),
-        },
+        data: { status: "bounced", bouncedAt: new Date() },
       });
-
       console.log(`[ResendWebhook] Email ${outreachEmail.id} bounced`);
 
-      // Count total bounces for this prospect — auto-blacklist after 2
       const bounceCount = await prisma.outreachEmail.count({
         where: { prospectId: outreachEmail.prospectId, status: "bounced" },
       });
@@ -150,39 +119,28 @@ app.post("/resend", async (c) => {
       if (bounceCount >= 2 && outreachEmail.prospect.contactEmail) {
         const redis = getRedisConnection();
         await redis.sadd("blacklist:emails", outreachEmail.prospect.contactEmail);
-
         await prisma.prospect.update({
           where: { id: outreachEmail.prospectId },
           data: { status: "BLACKLISTED" },
         });
-
-        console.log(
-          `[ResendWebhook] Auto-blacklisted prospect ${outreachEmail.prospectId} (${bounceCount} bounces)`
-        );
+        console.log(`[ResendWebhook] Auto-blacklisted prospect ${outreachEmail.prospectId} (${bounceCount} bounces)`);
       }
       break;
     }
 
     case "email.complained": {
-      // Spam complaint — immediately blacklist
       if (outreachEmail.prospect.contactEmail) {
         const redis = getRedisConnection();
         await redis.sadd("blacklist:emails", outreachEmail.prospect.contactEmail);
-
         await prisma.prospect.update({
           where: { id: outreachEmail.prospectId },
           data: { status: "BLACKLISTED" },
         });
-
-        // Cancel all pending outreach emails for this prospect
         await prisma.outreachEmail.updateMany({
           where: { prospectId: outreachEmail.prospectId, status: "draft" },
           data: { status: "cancelled", cancelledAt: new Date() },
         });
-
-        console.log(
-          `[ResendWebhook] Spam complaint — blacklisted prospect ${outreachEmail.prospectId}`
-        );
+        console.log(`[ResendWebhook] Spam complaint — blacklisted prospect ${outreachEmail.prospectId}`);
       }
       break;
     }
@@ -197,7 +155,71 @@ app.post("/resend", async (c) => {
       console.log(`[ResendWebhook] Unhandled event type: ${type}`);
   }
 
-  return c.json({ received: true });
+  return { received: true };
+}
+
+// POST /public/webhook/resend
+app.post("/resend", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+
+  // HMAC signature verification — required when RESEND_WEBHOOK_SECRET is set.
+  // Resend uses Svix, which signs with: "<svix-id>.<svix-timestamp>.<body>"
+  const webhookSecret = process.env["RESEND_WEBHOOK_SECRET"];
+  if (webhookSecret) {
+    const svixId = c.req.header("svix-id");
+    const svixTimestamp = c.req.header("svix-timestamp");
+    const svixSignature = c.req.header("svix-signature");
+
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      return c.json({ error: "Missing webhook signature headers" }, 401);
+    }
+
+    // Reject timestamps older than 5 minutes to prevent replay attacks
+    const ts = parseInt(svixTimestamp, 10);
+    if (isNaN(ts) || Math.abs(Date.now() / 1000 - ts) > 300) {
+      return c.json({ error: "Webhook timestamp out of range" }, 401);
+    }
+
+    const rawBody = await c.req.text();
+    const signedContent = `${svixId}.${svixTimestamp}.${rawBody}`;
+    const expectedSig = createHmac("sha256", webhookSecret)
+      .update(signedContent)
+      .digest("base64");
+
+    // svix-signature may contain multiple space-separated "v1,<base64>" entries
+    const signatures = svixSignature.split(" ").map(s => s.replace(/^v1,/, ""));
+    const expectedBuf = Buffer.from(expectedSig);
+    const verified = signatures.some(sig => {
+      try {
+        const sigBuf = Buffer.from(sig, "base64");
+        return sigBuf.length === expectedBuf.length && timingSafeEqual(sigBuf, expectedBuf);
+      } catch {
+        return false;
+      }
+    });
+
+    if (!verified) {
+      console.warn("[ResendWebhook] Invalid signature — request rejected");
+      return c.json({ error: "Invalid webhook signature" }, 401);
+    }
+
+    let event: ResendWebhookEvent;
+    try {
+      event = JSON.parse(rawBody) as ResendWebhookEvent;
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
+    return c.json(await processResendEvent(prisma, event));
+  }
+
+  // Development mode — no secret set, skip verification
+  let event: ResendWebhookEvent;
+  try {
+    event = await c.req.json<ResendWebhookEvent>();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  return c.json(await processResendEvent(prisma, event));
 });
 
 export default app;

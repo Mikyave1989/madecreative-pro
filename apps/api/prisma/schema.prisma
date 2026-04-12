@@ -44,7 +44,7 @@ model Prospect {
   previewSiteUrl     String?
   previewGeneratedAt DateTime?
   status             String          @default("SCRAPED")
-  // SCRAPED → QUALIFIED → PREVIEW_READY → CONTACTED → FOLLOWED_UP → REPLIED → CONVERTED → LOST → BLACKLISTED
+  // SCRAPED → QUALIFIED → ANALYZED → PREVIEW_READY | PREVIEW_GENERATED → EMAIL_QUEUED → CONTACTED | EMAIL_SENT → FOLLOWED_UP → REPLIED → CALL_SCHEDULED → CONVERTED → LOST → BLACKLISTED
   source             String
   scrapeJobId        String?
   firstContactedAt   DateTime?
@@ -103,9 +103,12 @@ model Client {
   // STARTER, GROWTH, PRO
   websiteUrl       String?
   status           String         @default("ACTIVE")
-  // ACTIVE, CHURNED, REFUNDED
+  // ACTIVE, AT_RISK, CHURNED, REFUNDED
   stripeCustomerId String?        @unique
   stripeSubId      String?        @unique
+  creditsUsed      Int            @default(0)
+  creditsPurchased Int            @default(0)
+  creditsResetAt   DateTime?
   lastLoginAt      DateTime?
   prospect         Prospect?
   websites         ClientWebsite[]
@@ -191,6 +194,11 @@ model AgentJob {
   startedAt   DateTime?
   completedAt DateTime?
   createdAt   DateTime  @default(now())
+
+  @@index([clientId])
+  @@index([prospectId])
+  @@index([status, createdAt])
+  @@index([agentType, status])
 }
 
 model ScrapeConfig {

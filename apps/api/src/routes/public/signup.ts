@@ -165,13 +165,15 @@ app.post("/verify-session", async (c) => {
     );
   }
 
-  // Retry up to 5 times — the webhook may not have created the client yet
+  // Retry up to 10 times with exponential backoff — the webhook may not have created the client yet
+  // Delays: 500ms, 1s, 2s, 4s, 8s, then capped at 8s for remaining attempts
   let client: Awaited<ReturnType<typeof prisma.client.findUnique>> = null;
 
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 10; attempt++) {
     client = await prisma.client.findUnique({ where: { email } });
     if (client) break;
-    await sleep(2000);
+    const delayMs = Math.min(500 * Math.pow(2, attempt), 8000);
+    await sleep(delayMs);
   }
 
   if (!client) {
