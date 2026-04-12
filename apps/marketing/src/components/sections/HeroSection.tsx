@@ -542,7 +542,7 @@ export function HeroSection({ t, locale }: HeroSectionProps) {
                       title="Preview sito rifatto"
                       className="w-full"
                       style={{ height: "420px", border: "none", display: "block" }}
-                      sandbox="allow-same-origin"
+                      sandbox="allow-scripts allow-same-origin"
                       loading="lazy"
                     />
                   </div>

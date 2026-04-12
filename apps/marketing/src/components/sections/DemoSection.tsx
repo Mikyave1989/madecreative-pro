@@ -602,7 +602,7 @@ export function DemoSection({ t, locale }: DemoSectionProps) {
                         height: "154%",
                         pointerEvents: "none",
                       }}
-                      sandbox="allow-same-origin"
+                      sandbox="allow-scripts allow-same-origin"
                     />
                   )}
                 </div>
