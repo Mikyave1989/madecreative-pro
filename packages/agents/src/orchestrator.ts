@@ -317,5 +317,55 @@ export async function startOrchestrator(): Promise<Worker[]> {
     `[Orchestrator] Started ${workers.length} workers for agent types: ${agentTypes.join(", ")}`
   );
 
+  // ── DB Poller: pick up jobs that were created but never reached BullMQ ──
+  // This handles the case where the API (Vercel) can't connect to Redis
+  // and creates jobs in DB only. We poll every 30s and enqueue them.
+  const pollInterval = setInterval(async () => {
+    try {
+      const stuckJobs = await prisma.agentJob.findMany({
+        where: {
+          status: { in: ["QUEUED", "RUNNING"] },
+          progress: 0,
+          startedAt: { lt: new Date(Date.now() - 60_000) }, // older than 1 min
+        },
+        take: 5,
+        orderBy: { createdAt: "asc" },
+      });
+
+      if (stuckJobs.length === 0) return;
+
+      console.log(`[Orchestrator] DB Poller: found ${stuckJobs.length} stuck jobs, re-enqueueing...`);
+
+      for (const job of stuckJobs) {
+        const agentType = job.agentType as AgentType;
+        const queueName = AGENT_QUEUE_NAMES[agentType];
+        const queue = new (await import("bullmq")).Queue(queueName, { connection: redis });
+
+        try {
+          await queue.add(
+            agentType,
+            { jobId: job.id, input: job.input as Record<string, unknown> },
+            { jobId: job.id }
+          );
+          // Reset startedAt so we don't re-enqueue next cycle
+          await prisma.agentJob.update({
+            where: { id: job.id },
+            data: { startedAt: new Date() },
+          });
+          console.log(`[Orchestrator] DB Poller: re-enqueued ${agentType} job ${job.id}`);
+        } catch (err) {
+          console.error(`[Orchestrator] DB Poller: failed to enqueue ${job.id}:`, (err as Error).message);
+        }
+
+        await queue.close();
+      }
+    } catch (err) {
+      // Non-fatal — will retry next cycle
+    }
+  }, 30_000);
+
+  // Cleanup on process exit
+  process.on("SIGTERM", () => clearInterval(pollInterval));
+
   return workers;
 }
