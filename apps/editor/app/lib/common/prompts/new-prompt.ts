@@ -303,7 +303,14 @@ The year is 2025.
   - Use Tailwind CSS for utility classes
   - Use Framer Motion for animations (or CSS if keeping it lightweight)
   - Use Lucide React for icons
-  - Mobile-first responsive design (test at 375px, 768px, 1440px)
+  - FULLY RESPONSIVE — MANDATORY breakpoints:
+    • Mobile: 320px–480px — single column, large tap targets (min 44px), readable font sizes
+    • Tablet: 481px–1024px — 2-column layouts where applicable, touch-friendly
+    • Laptop: 1025px–1440px — full layout, comfortable spacing
+    • Desktop: 1441px+ — max-width container centered, no content stretching
+    Use CSS: @media (max-width: 480px), @media (max-width: 768px), @media (max-width: 1024px)
+    or Tailwind: sm: md: lg: xl: prefixes on EVERY component
+    Nav collapses to hamburger on mobile. Images scale correctly. Text is readable at all sizes.
   - Add WhatsApp floating button (bottom-right, green, with phone icon)
   - Add complete SEO meta tags (title, description, og:title, og:image, og:description)
   - Add Schema.org JSON-LD markup (LocalBusiness for businesses)
@@ -320,13 +327,17 @@ The year is 2025.
       : ‘None provided — create a bespoke palette and font pairing that matches the brand identity.’
   }
 
-  QUALITY GATE — Before submitting, verify:
+  QUALITY GATE — Before submitting, verify ALL of these:
   □ Does the hero make you say “wow”? Full-screen, animated, with depth?
   □ Are there at least 6 distinct sections with visual variety?
   □ Does EVERY section have scroll-reveal animation?
   □ Is the typography premium (2 Google Fonts, generous sizing, proper hierarchy)?
   □ Are colors rich and consistent (no pure black/white, warm palette)?
-  □ Does it look amazing on mobile (375px)?
+  □ RESPONSIVE — Mobile (375px): single column, hamburger nav, readable, no overflow
+  □ RESPONSIVE — Tablet (768px): 2-col where applicable, touch-friendly
+  □ RESPONSIVE — Desktop (1440px): full layout, max-width container centered
+  □ Nav has hamburger menu on mobile (≤768px)
+  □ All images have max-width: 100% and scale correctly
   □ Would a client happily pay €10,000 for this design?
 </design_instructions>
 

@@ -1061,14 +1061,23 @@ ${uniquePages.length > 1 ? `Site has ${uniquePages.length} pages. Build MULTI-PA
 SCRAPED CONTENT:
 ${pagesContent}
 
-Include EVERY photo. Use exact original text. Include videos if present.`;
+Include EVERY photo. Use exact original text. Include videos if present.
+
+RESPONSIVE — MANDATORY:
+- Mobile (320-480px): single column, hamburger nav, min 44px tap targets
+- Tablet (481-1024px): 2-column layouts where applicable
+- Laptop (1025-1440px): full multi-column layout
+- Desktop (1441px+): max-width container, centered
+Every component must use @media breakpoints or Tailwind sm:/md:/lg:/xl:.
+Nav MUST collapse to hamburger on mobile.`;
           } else {
             const allPhotos = photos.map((p, i) => `${i + 1}. ${(p as Record<string, unknown>).url ?? p}`).join("\n");
             boltMessage = `Build a premium website for "${projectData.businessName}" (${sector}).
 Content: ${projectData.heroTitle}, ${projectData.description}
 Address: ${projectData.address}, Phone: ${projectData.phone}, Email: ${projectData.email}
 ${allPhotos ? `Photos (ALL):\n${allPhotos}` : ""}
-Include ALL photos. NEVER use stock images.`;
+Include ALL photos. NEVER use stock images.
+RESPONSIVE: mobile (320-480px) single column + hamburger, tablet (481-1024px) 2-col, desktop (1441px+) max-width centered. EVERY component must have @media breakpoints.`;
           }
 
           // ── Step 3: Call bolt.diy DIRECTLY (NO timeout — worker runs on Railway) ──
