@@ -214,13 +214,22 @@ function extractImages(html: string, base: string): Array<{ url: string; alt: st
     const w = wM ? parseInt(wM[1] ?? "0", 10) : undefined;
     const h = hM ? parseInt(hM[1] ?? "0", 10) : undefined;
 
-    // Filter icons / tiny images
-    if ((w !== undefined && w < 50) || (h !== undefined && h < 50)) continue;
-    // Filter known icon/logo asset patterns
-    if (/icon|sprite|pixel|tracking|beacon|\.svg$/i.test(resolved) && (!w || w < 100)) continue;
+    // Filter icons / tiny images (min 100px to exclude decorations)
+    if ((w !== undefined && w < 100) || (h !== undefined && h < 80)) continue;
+
+    // Filter known junk patterns: plugin assets, dummy, icons, sprites, tracking pixels
+    if (/icon|sprite|pixel|tracking|beacon|dummy|placeholder|widget|emoji|badge|spinner|loader|admin\/assets/i.test(resolved)) continue;
+    // Filter SVGs (almost always icons/decorations, not photos)
+    if (/\.svg(\?|$)/i.test(resolved)) continue;
 
     seen.add(resolved);
-    images.push({ url: resolved, alt, ...(w !== undefined && { width: w }), ...(h !== undefined && { height: h }) });
+
+    // Score images: .jpg/.webp with alt text are likely real photos; small .png without alt are decorations
+    const isJpg = /\.(jpg|jpeg|webp)/i.test(resolved);
+    const hasAlt = alt.length > 2;
+    const score = (isJpg ? 10 : 0) + (hasAlt ? 5 : 0) + (w && w > 400 ? 5 : 0);
+
+    images.push({ url: resolved, alt, ...(w !== undefined && { width: w }), ...(h !== undefined && { height: h }), score });
   }
 
   // Also grab og:image
@@ -229,10 +238,12 @@ function extractImages(html: string, base: string): Array<{ url: string; alt: st
     const ogUrl = resolveUrl(base, ogM[1].trim());
     if (ogUrl && !seen.has(ogUrl)) {
       seen.add(ogUrl);
-      images.unshift({ url: ogUrl, alt: "og:image" });
+      images.unshift({ url: ogUrl, alt: "og:image", score: 20 });
     }
   }
 
+  // Sort by score (real photos first) then return top 50
+  images.sort((a, b) => ((b as any).score ?? 0) - ((a as any).score ?? 0));
   return images.slice(0, 50);
 }
 
