@@ -593,6 +593,7 @@ app.post("/buy-credits", async (c) => {
     const { default: Stripe } = await import("stripe");
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" });
     const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card", "klarna", "paypal"],
       mode: "payment",
       customer: client.stripeCustomerId ?? undefined,
       customer_email: !client.stripeCustomerId ? client.email : undefined,

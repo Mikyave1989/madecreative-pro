@@ -107,7 +107,7 @@ app.post("/checkout", async (c) => {
 
   try {
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
+      payment_method_types: ["card", "klarna", "paypal"],
       mode: "subscription",
       customer_email: email.toLowerCase(),
       line_items: [{ price: priceId, quantity: 1 }],

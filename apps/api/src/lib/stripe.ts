@@ -19,7 +19,7 @@ export async function createCheckoutSession(params: {
   if (!priceId) throw new Error("STRIPE_PRICE_ID is not set");
 
   const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
+    payment_method_types: ["card", "klarna", "paypal"],
     mode: "subscription",
     customer_email: params.email,
     line_items: [{ price: priceId, quantity: 1 }],
