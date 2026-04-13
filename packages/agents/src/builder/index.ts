@@ -972,7 +972,9 @@ Include ALL photos. NEVER use stock images.`;
           const fileRegex = /<boltAction\s+type="file"\s+filePath="([^"]+)"[^>]*>([\s\S]*?)<\/boltAction>/g;
           let match;
           while ((match = fileRegex.exec(fullText)) !== null) {
-            projectFiles[match[1]!] = match[2]!;
+            // Clean bolt.diy WebContainer paths: /home/project/src/app.tsx → src/app.tsx
+            let filePath = match[1]!.replace(/^\/home\/project\//, "").replace(/^\//, "");
+            projectFiles[filePath] = match[2]!;
           }
 
           this.log("info", `build_preview_site: extracted ${Object.keys(projectFiles).length} files from bolt.diy`);
