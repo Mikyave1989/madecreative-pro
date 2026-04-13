@@ -44,7 +44,7 @@ export interface ScrapedWebsite {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MAX_PAGES = 20;
+const MAX_PAGES = 50; // Scrape up to 50 pages — no important content should be missed
 const PAGE_TIMEOUT_MS = 8_000;
 const TOTAL_TIMEOUT_MS = 30_000;
 const USER_AGENT = "MadeCreative-Analyzer/2.0 (+https://madecreative.pro)";
@@ -186,7 +186,7 @@ function extractParagraphs(html: string): string[] {
       paragraphs.push(text);
     }
   }
-  return [...new Set(paragraphs)].slice(0, 30);
+  return [...new Set(paragraphs)]; // No limit — preserve ALL text content
 }
 
 function extractImages(html: string, base: string): Array<{ url: string; alt: string; width?: number; height?: number }> {
@@ -242,9 +242,23 @@ function extractImages(html: string, base: string): Array<{ url: string; alt: st
     }
   }
 
-  // Sort by score (real photos first) then return top 50
+  // Also grab background-image URLs from inline styles
+  const bgRe = /background(?:-image)?:\s*url\(["']?([^"')]+)["']?\)/gi;
+  let bgM: RegExpExecArray | null;
+  while ((bgM = bgRe.exec(html)) !== null) {
+    const rawUrl = bgM[1]?.trim();
+    if (!rawUrl || rawUrl.startsWith("data:")) continue;
+    const resolved = resolveUrl(base, rawUrl);
+    if (!resolved || seen.has(resolved)) continue;
+    if (/\.(jpg|jpeg|png|webp)/i.test(resolved) && !/icon|sprite|pixel|dummy/i.test(resolved)) {
+      seen.add(resolved);
+      images.push({ url: resolved, alt: "background-image", score: 8 });
+    }
+  }
+
+  // Sort by score (real photos first) — NO LIMIT, return ALL images
   images.sort((a, b) => ((b as any).score ?? 0) - ((a as any).score ?? 0));
-  return images.slice(0, 50);
+  return images;
 }
 
 function extractVideos(html: string, base: string): Array<{ url: string; type: string }> {
@@ -275,7 +289,34 @@ function extractVideos(html: string, base: string): Array<{ url: string; type: s
     }
   }
 
-  return videos;
+  // <source src> inside <video> tags
+  const srcRe = /<source[^>]*\bsrc=["']([^"']+)["'][^>]*\btype=["']([^"']*)["']/gi;
+  while ((m = srcRe.exec(html)) !== null) {
+    const raw = m[1];
+    const mimeType = m[2] ?? "";
+    if (raw && /video/i.test(mimeType)) {
+      const resolved = resolveUrl(base, raw);
+      if (resolved) videos.push({ url: resolved, type: mimeType.replace("video/", "") || "video" });
+    }
+  }
+
+  // Direct .mp4/.webm links in href attributes
+  const mp4Re = /href=["']([^"']+\.(?:mp4|webm|mov|avi))["']/gi;
+  while ((m = mp4Re.exec(html)) !== null) {
+    const raw = m[1];
+    if (raw) {
+      const resolved = resolveUrl(base, raw);
+      if (resolved) videos.push({ url: resolved, type: "video" });
+    }
+  }
+
+  // Deduplicate videos
+  const seenVids = new Set<string>();
+  return videos.filter(v => {
+    if (seenVids.has(v.url)) return false;
+    seenVids.add(v.url);
+    return true;
+  });
 }
 
 function extractContactFromHtml(html: string): {
@@ -393,7 +434,7 @@ function extractNavigation(html: string, base: string): Array<{ label: string; u
     nav.push({ label, url: resolved });
   }
 
-  return nav.slice(0, 12);
+  return nav; // No limit — preserve ALL navigation links
 }
 
 // ─── Site-wide extractors ─────────────────────────────────────────────────────

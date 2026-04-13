@@ -482,10 +482,10 @@ export class ScraperAgent extends BaseAgent {
           els
             .map((el) => ((el as unknown as { src?: string }).src ?? ""))
             .filter((s) => s.startsWith("http"))
-            .slice(0, 3)
+            .slice(0, 10) // Google Maps shows limited photos
         )
         .catch(() => [] as string[]);
-      photoUrls.push(...imgs.slice(0, 3 - photoUrls.length));
+      photoUrls.push(...imgs);
     }
 
     // Parse Google rating
@@ -550,8 +550,7 @@ export class ScraperAgent extends BaseAgent {
             return imgs
               .filter((i: any) => i.src?.startsWith("http") && i.naturalWidth >= 200 && i.naturalHeight >= 150)
               .filter((i: any) => !/logo|icon|avatar|sprite|badge|banner-ad|tracking|pixel/i.test(i.src + (i.alt ?? "") + (i.className ?? "")))
-              .map((i: any) => i.src as string)
-              .slice(0, 15 - existingCount);
+              .map((i: any) => i.src as string); // No limit — save ALL photos
           }, photoUrls.length).catch(() => [] as string[]);
           photoUrls.push(...sitePhotos);
         }
@@ -598,14 +597,14 @@ export class ScraperAgent extends BaseAgent {
           const navigation = Array.from(document.querySelectorAll("nav a, header a, .menu a"))
             .map((a: any) => ({ text: a.textContent?.trim() || "", href: a.href || "" }))
             .filter((n) => n.text.length > 0 && n.text.length < 50)
-            .slice(0, 15);
+            .slice(0, 30); // keep reasonable nav limit
 
           return {
             headings,
             paragraphs,
             images,
-            colors: Array.from(colorSet).slice(0, 20),
-            fonts: Array.from(fontSet).filter(Boolean).slice(0, 5),
+            colors: Array.from(colorSet).slice(0, 30),
+            fonts: Array.from(fontSet).filter(Boolean).slice(0, 10),
             navigation,
             title: document.title || "",
             metaDescription: (document.querySelector('meta[name="description"]') as any)?.content || "",
