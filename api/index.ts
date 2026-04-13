@@ -34,7 +34,7 @@ export default async function handler(req: IncomingMessage & { body?: unknown },
     }
 
     // Build body — use req.body (pre-parsed by Vercel) or rawBody
-    let body: BodyInit | null = null;
+    let body: string | null = null;
     if (req.method !== "GET" && req.method !== "HEAD") {
       if (typeof req.body === "object" && req.body !== null) {
         body = JSON.stringify(req.body);
