@@ -17,6 +17,7 @@ import adminClientsRoutes from "./routes/admin/clients.js";
 import adminAgentsRoutes from "./routes/admin/agents.js";
 import adminMetricsRoutes from "./routes/admin/metrics.js";
 import adminLaunchRoutes from "./routes/admin/launch.js";
+import adminGenerateSiteRoutes from "./routes/admin/generate-site.js";
 
 // Portal Routes
 import portalAuthRoutes from "./routes/portal/auth.js";
@@ -395,6 +396,7 @@ app.route("/admin/clients", adminClientsRoutes);
 app.route("/admin/agents", adminAgentsRoutes);
 app.route("/admin/metrics", adminMetricsRoutes);
 app.route("/admin/launch", adminLaunchRoutes);
+app.route("/admin/generate-site", adminGenerateSiteRoutes);
 
 // ─── Portal Auth Routes (rate limited) ───────────────────────────────────────
 

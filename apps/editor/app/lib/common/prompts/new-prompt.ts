@@ -55,12 +55,23 @@ The year is 2025.
   - scraped.colors — original color palette
 
   CRITICAL RULES FOR REBUILDING:
-  1. ALWAYS use the original images from scraped data — never use placeholder or stock photos when originals exist
-  2. Use the original text content (headings, paragraphs) — improve the wording but keep the meaning
-  3. Use the original contact info exactly as-is
-  4. Use the original logo if available
-  5. Use the original color palette as a starting point, then enhance it
-  6. Only use stock photos (from Pexels) when the original site has FEWER THAN 3 images
+  1. ALWAYS use ALL original images from scraped data — every single photo must appear in the rebuilt site. Never skip photos. Never use placeholder or stock photos when originals exist.
+  2. Use the original text content (headings, paragraphs) — you may improve wording slightly but NEVER invent new text. Keep all original information.
+  3. Use the original contact info exactly as-is (phone, email, address, WhatsApp, opening hours).
+  4. Use the original logo if available — place it in the nav and footer.
+  5. Use the original color palette as a starting point, then enhance it to feel more premium.
+  6. Only use stock photos (from Pexels) when the original site has FEWER THAN 3 images total.
+  7. If original site has VIDEO elements (YouTube embeds, MP4 files, Vimeo), include them in the rebuilt site.
+
+  MULTI-PAGE RULE:
+  If the scraped data shows MULTIPLE pages (scraped.pages has more than 1 unique URL with content), you MUST rebuild a MULTI-PAGE website that mirrors the original structure:
+  - Create separate HTML files for each page (e.g. index.html, la-villa/index.html, matrimoni/index.html, etc.)
+  - Each page must have the SAME navigation menu linking to all other pages
+  - Each page must include ALL photos and text content from the corresponding original page
+  - Use a consistent design system across all pages (same fonts, colors, nav, footer)
+  - The home page (index.html) should preview content from sub-pages with links
+
+  If the original site is a single landing page, build a single-page site with all sections.
 
   SEARCH PHOTOS TOOL (Pexels — FALLBACK ONLY):
   When you need stock photos (only if originals are insufficient), use:

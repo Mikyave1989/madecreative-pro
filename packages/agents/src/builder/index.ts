@@ -841,155 +841,47 @@ export class BuilderAgent extends BaseAgent {
           googleMapsEmbedUrl: (businessData["googleMapsEmbedUrl"] as string) ?? undefined,
         };
 
-        // ── Generate premium site using AI — SAME quality as bolt.diy editor ──
-        // Uses identical design system prompt so campaigns and editor produce
-        // visually consistent €10k+ sites.
-
-        const fontMap: Record<string, [string, string]> = {
-          restaurant: ["Cormorant Garamond", "DM Sans"],
-          dental: ["Outfit", "Nunito Sans"],
-          legal: ["Libre Baskerville", "Source Sans 3"],
-          fitness: ["Bebas Neue", "Barlow"],
-          beauty: ["Playfair Display", "Raleway"],
-          hotel: ["Cormorant Garamond", "DM Sans"],
-          ecommerce: ["Space Grotesk", "Inter"],
-          realestate: ["Syne", "Work Sans"],
-          medical: ["Outfit", "Nunito Sans"],
-          professional: ["Space Grotesk", "Inter"],
-        };
-        const [fontHeading, fontBody] = fontMap[sector] ?? ["Playfair Display", "Raleway"];
-
-        // ── Detect multi-page vs single-page from scraped content ──
-        const scrapedPages = (this._scrapedContent as { pages?: Array<Record<string, unknown>> } | null)?.pages ?? [];
-        // Deduplicate pages by normalized URL
-        const seenUrls = new Set<string>();
-        const uniquePages: Array<Record<string, unknown>> = [];
-        for (const p of scrapedPages) {
-          const norm = ((p.url as string) ?? "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
-          if (!norm || seenUrls.has(norm)) continue;
-          seenUrls.add(norm);
-          if (((p.headings as unknown[])?.length ?? 0) > 0 || ((p.paragraphs as unknown[])?.length ?? 0) > 0) {
-            uniquePages.push(p);
-          }
-        }
-        const isMultiPage = uniquePages.length > 1;
-        this.log("info", `build_preview_site: ${isMultiPage ? "MULTI-PAGE" : "SINGLE-PAGE"} (${uniquePages.length} unique pages from scrape)`);
-
-        const systemPrompt = `You are a world-class web designer who builds €10,000+ quality websites.
-Use ONLY the real content provided — real photos, real text, real contact info.
-NEVER invent text, NEVER use stock/placeholder images. Every <img> must use a provided URL.
-
-DESIGN SYSTEM:
-- Fonts: "${fontHeading}" (headings) + "${fontBody}" (body) via Google Fonts <link>
-- Colors: primary=${colors.primary}, accent=${colors.accent}, background=${colors.background}, text=${colors.text}
-- Hero heading: clamp(3rem, 7vw, 6rem), font-weight 300
-- Nav: fixed, glassmorphism (transparent → solid blur on scroll)
-- Scroll reveal on every section (IntersectionObserver, fade + rise)
-- Scroll progress bar (accent color)
-- All responsive (mobile-first, works at 375px)
-- WhatsApp floating button if number available
-
-OUTPUT: Create files using write_file. Each file is a self-contained HTML with inline CSS + JS. NEVER ask questions — build immediately.`;
+        // ── Generate site via bolt.diy engine (same as editor dashboard) ──
+        // Calls the /admin/generate-site endpoint which forwards to bolt.diy's
+        // /api/chat. This ensures campaigns produce the EXACT same quality as
+        // the editor — same prompt, same engine, same result.
 
         let projectFiles: Record<string, string> = {};
+        const website = (toolInput["website"] as string) ?? (businessData as Record<string, unknown>)?.["website"] as string ?? undefined;
+
         try {
-          if (isMultiPage) {
-            // ── MULTI-PAGE: generate one HTML per scraped page ──
-            const baseUrl = (scrapedPages[0]?.url as string)?.replace(/^https?:\/\/(www\.)?[^/]+/, "") ?? "";
-            const urlToPath = (url: string): string => {
-              let path = url.replace(/^https?:\/\/(www\.)?[^/]+/, "").replace(/\/$/, "");
-              if (!path || path === "") return "index.html";
-              return path.replace(/^\//, "") + "/index.html";
-            };
+          if (website) {
+            // ── Has website → call bolt.diy via generate-site endpoint ──
+            const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
+            this.log("info", `build_preview_site: calling bolt.diy engine for ${website}`);
 
-            // Build nav from top-level pages
-            const navItems = uniquePages
-              .filter(p => (urlToPath(p.url as string).split("/").length <= 2))
-              .map(p => {
-                const h1 = ((p.headings as Array<{ level: number; text: string }>) ?? []).find(h => h.level === 1)?.text || (p.title as string) || "";
-                const href = "/" + urlToPath(p.url as string).replace("/index.html", "/").replace("index.html", "");
-                return `<a href="${href}">${h1}</a>`;
-              }).join("\n");
+            const genRes = await fetch(`${apiBase}/admin/generate-site`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url: website, sector, prospectId: toolInput["prospectId"] }),
+            });
 
-            for (let i = 0; i < uniquePages.length; i++) {
-              const page = uniquePages[i]!;
-              const localPath = urlToPath(page.url as string);
-              const isHome = localPath === "index.html";
-              const pageTitle = ((page.headings as Array<{ level: number; text: string }>) ?? []).find(h => h.level === 1)?.text || (page.title as string) || projectData.businessName;
-
-              // Collect page images
-              const pageImgs = ((page.images as Array<{ url: string; alt?: string }>) ?? [])
-                .filter(img => img.url?.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(img.url) && !/dummy|plugin|admin|icon|sprite/i.test(img.url))
-                .slice(0, 10)
-                .map((img, j) => `${j + 1}. ${img.url}${img.alt ? ` — "${img.alt}"` : ""}`).join("\n");
-
-              const pageHeadings = ((page.headings as Array<{ level: number; text: string }>) ?? [])
-                .filter(h => h.text?.length > 2).slice(0, 10)
-                .map(h => `h${h.level}: ${h.text}`).join("\n");
-
-              const pageParas = ((page.paragraphs as string[]) ?? [])
-                .filter(t => t.length > 20).slice(0, 10)
-                .map((t, j) => `${j + 1}. ${t.slice(0, 300)}`).join("\n");
-
-              const pagePrompt = isHome
-                ? `Build the HOME PAGE for "${projectData.businessName}". Full-screen hero (100vh), intro sections linking to sub-pages, gallery preview, contact section.`
-                : `Build the "${pageTitle}" INTERNAL PAGE. Hero banner (~50vh), page content with real text and photos, gallery if multiple images.`;
-
-              this.log("info", `build_preview_site: generating page ${i + 1}/${uniquePages.length}: ${localPath}`);
-
-              const pageResult = await this.client.toolUseLoop(
-                [{ role: "user", content: `${pagePrompt}
-
-NAVIGATION (include on every page): ${navItems}
-
-REAL CONTENT FOR THIS PAGE:
-PHOTOS: ${pageImgs || "No page-specific photos."}
-HEADINGS: ${pageHeadings}
-TEXT: ${pageParas || "No paragraphs — show photo gallery."}
-CONTACT: Phone: ${projectData.phone}, Email: ${projectData.email}, Address: ${projectData.address}
-Logo: ${projectData.heroImage}
-
-CRITICAL: Use ONLY the provided photo URLs. NEVER use placeholder or stock images.
-Output file path: ${localPath}` }],
-                async (toolName, input) => {
-                  if (toolName === "write_file") {
-                    const path = input["path"] as string;
-                    const content = input["content"] as string;
-                    if (path && content) { projectFiles[path] = content; return { success: true, path }; }
-                  }
-                  return { error: "Unknown tool" };
-                },
-                {
-                  system: systemPrompt,
-                  tools: [{ name: "write_file", description: "Create a project file", input_schema: { type: "object" as const, properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } }],
-                  model: "claude-sonnet-4-6" as const,
-                  maxTokens: 16000,
-                }
-              );
-              this.totalCost += pageResult.cost;
-              this.totalInputTokens += pageResult.inputTokens;
-              this.totalOutputTokens += pageResult.outputTokens;
+            if (genRes.ok) {
+              const genData = (await genRes.json()) as { success: boolean; data?: { files: Record<string, string>; pages: number } };
+              if (genData.success && genData.data?.files) {
+                projectFiles = genData.data.files;
+                this.log("info", `build_preview_site: bolt.diy generated ${genData.data.pages} pages`);
+              }
+            } else {
+              this.log("warn", `build_preview_site: generate-site failed: ${genRes.status}`);
             }
-          } else {
-            // ── SINGLE-PAGE: generate one index.html ──
-            const allPhotos = photos.slice(0, 12).map((p, i) => `${i + 1}. ${(p as Record<string, unknown>).url ?? p}`).join("\n");
+          }
 
-            const aiPrompt = `Build a COMPLETE premium single-page website for "${projectData.businessName}" (sector: ${sector}).
+          // ── Fallback: no website or bolt.diy failed → generate with AI directly ──
+          if (Object.keys(projectFiles).length === 0) {
+            this.log("info", "build_preview_site: using direct AI generation (no website or bolt.diy failed)");
 
-REAL CONTENT (never invent data):
-- Business: ${projectData.businessName}
-- Hero title: ${projectData.heroTitle}
-- Description: ${projectData.description}
-- Hero image: ${projectData.heroImage}
-- Address: ${projectData.address}
-- Phone: ${projectData.phone}
-- Email: ${projectData.email}
-${allPhotos ? `Photos:\n${allPhotos}` : ""}
-${projectData.googleRating ? `Google Rating: ${projectData.googleRating}/5 (${projectData.reviewCount ?? 0}+ reviews)` : ""}
-
-MANDATORY: Hero (100vh), About, Services, Gallery, Testimonials, Contact, Footer.
-CRITICAL: Use ONLY provided photo URLs. NEVER use stock images.
-OUTPUT: write_file with path "index.html".`;
+            const allPhotos = photos.map((p, i) => `${i + 1}. ${(p as Record<string, unknown>).url ?? p}`).join("\n");
+            const aiPrompt = `Build a premium single-page website for "${projectData.businessName}" (sector: ${sector}).
+REAL CONTENT: Hero: ${projectData.heroTitle}, Desc: ${projectData.description}, Address: ${projectData.address}, Phone: ${projectData.phone}, Email: ${projectData.email}
+${allPhotos ? `Photos (use ALL):\n${allPhotos}` : ""}
+${projectData.googleRating ? `Rating: ${projectData.googleRating}/5 (${projectData.reviewCount ?? 0}+ reviews)` : ""}
+CRITICAL: Use ONLY provided photos. NEVER use stock images. Output: write_file "index.html".`;
 
             const aiResult = await this.client.toolUseLoop(
               [{ role: "user", content: aiPrompt }],
@@ -1002,7 +894,7 @@ OUTPUT: write_file with path "index.html".`;
                 return { error: "Unknown tool" };
               },
               {
-                system: systemPrompt,
+                system: "You are a world-class web designer. Build €10k+ sites with real content only. NEVER use stock photos. Output via write_file.",
                 tools: [{ name: "write_file", description: "Create a project file", input_schema: { type: "object" as const, properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } }],
                 model: "claude-sonnet-4-6" as const,
                 maxTokens: 32000,
@@ -1012,7 +904,8 @@ OUTPUT: write_file with path "index.html".`;
             this.totalInputTokens += aiResult.inputTokens;
             this.totalOutputTokens += aiResult.outputTokens;
           }
-          this.log("info", `build_preview_site: AI generated ${Object.keys(projectFiles).length} files`);
+
+          this.log("info", `build_preview_site: generated ${Object.keys(projectFiles).length} files`);
         } catch (aiErr) {
           this.log("warn", `build_preview_site: AI generation failed, falling back to template: ${aiErr instanceof Error ? aiErr.message : String(aiErr)}`);
           // Fallback to static template if AI fails
