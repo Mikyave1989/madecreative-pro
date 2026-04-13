@@ -848,64 +848,134 @@ export class BuilderAgent extends BaseAgent {
 
         let projectFiles: Record<string, string> = {};
         const website = (toolInput["website"] as string) ?? (businessData as Record<string, unknown>)?.["website"] as string ?? undefined;
+        const boltUrl = process.env["EDITOR_URL"] ?? "https://madecreative.pro";
+        const anthropicKey = process.env["ANTHROPIC_API_KEY"] ?? "";
 
         try {
-          if (website) {
-            // ── Has website → call bolt.diy via generate-site endpoint ──
+          // ── Step 1: Scrape website if needed ──
+          let scrapedContent = this._scrapedContent;
+          if (website && !scrapedContent) {
+            this.log("info", `build_preview_site: scraping ${website}`);
             const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
-            this.log("info", `build_preview_site: calling bolt.diy engine for ${website}`);
-
-            const genRes = await fetch(`${apiBase}/admin/generate-site`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url: website, sector, prospectId: toolInput["prospectId"] }),
-            });
-
-            if (genRes.ok) {
-              const genData = (await genRes.json()) as { success: boolean; data?: { files: Record<string, string>; pages: number } };
-              if (genData.success && genData.data?.files) {
-                projectFiles = genData.data.files;
-                this.log("info", `build_preview_site: bolt.diy generated ${genData.data.pages} pages`);
+            try {
+              const scrapeRes = await fetch(`${apiBase}/public/signup/analyze-url`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: website, generatePreview: false }),
+              });
+              if (scrapeRes.ok) {
+                const scrapeJson = await scrapeRes.json() as { data?: { scraped?: Record<string, unknown> } };
+                scrapedContent = scrapeJson.data?.scraped ?? null;
+                this.log("info", `build_preview_site: scraped ${(scrapedContent?.pages as unknown[])?.length ?? 0} pages`);
               }
-            } else {
-              this.log("warn", `build_preview_site: generate-site failed: ${genRes.status}`);
+            } catch (err) {
+              this.log("warn", `build_preview_site: scrape failed: ${err instanceof Error ? err.message : String(err)}`);
             }
           }
 
-          // ── Fallback: no website or bolt.diy failed → generate with AI directly ──
-          if (Object.keys(projectFiles).length === 0) {
-            this.log("info", "build_preview_site: using direct AI generation (no website or bolt.diy failed)");
+          // ── Step 2: Build message with ALL scraped content ──
+          let boltMessage: string;
+          if (scrapedContent) {
+            const scraped = scrapedContent as { pages?: Array<{ url: string; title?: string; headings?: Array<{ level: number; text: string }>; paragraphs?: string[]; images?: Array<{ url: string; alt?: string }>; videos?: Array<{ url: string; type: string }> }>; logo?: string; contact?: Record<string, string>; colors?: Record<string, string>; socialLinks?: Record<string, string> };
+            const seenUrls = new Set<string>();
+            const uniquePages = (scraped.pages ?? []).filter(p => {
+              const norm = (p.url ?? "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+              if (!norm || seenUrls.has(norm)) return false;
+              seenUrls.add(norm);
+              return (p.headings?.length ?? 0) > 0 || (p.paragraphs?.length ?? 0) > 0;
+            });
 
+            let pagesContent = "";
+            for (const p of uniquePages) {
+              const imgs = (p.images ?? [])
+                .filter(i => i.url?.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(i.url) && !/dummy|plugin|admin|icon|sprite|pixel/i.test(i.url))
+                .map((img, i) => `  ${i + 1}. ${img.url}${img.alt ? ` (${img.alt})` : ""}`).join("\n");
+              const headings = (p.headings ?? []).filter(h => h.text?.length > 2).map(h => `  h${h.level}: ${h.text}`).join("\n");
+              const paras = (p.paragraphs ?? []).filter(t => t.length > 20).map(t => `  ${t}`).join("\n");
+              const videos = (p.videos ?? []).map(v => `  VIDEO: ${v.url}`).join("\n");
+              pagesContent += `\n--- PAGE: ${p.url} (${p.title || ""}) ---\nHeadings:\n${headings}\nText:\n${paras}\nPhotos (ALL):\n${imgs || "  none"}\n${videos ? `Videos:\n${videos}` : ""}`;
+            }
+
+            boltMessage = `Rebuild this website with a stunning premium design: ${website}
+
+Use ONLY the real scraped content. NEVER invent text or use stock photos.
+
+BUSINESS:
+- Logo: ${scraped.logo || "none"}
+- Phone: ${scraped.contact?.phone || "N/A"}, Email: ${scraped.contact?.email || "N/A"}, Address: ${scraped.contact?.address || "N/A"}
+- WhatsApp: ${scraped.contact?.whatsapp || "N/A"}
+- Facebook: ${scraped.socialLinks?.facebook || ""}, Instagram: ${scraped.socialLinks?.instagram || ""}
+- Colors: ${JSON.stringify(scraped.colors || {})}
+
+${uniquePages.length > 1 ? `Site has ${uniquePages.length} pages. Build MULTI-PAGE with separate files.` : "Single-page site."}
+
+SCRAPED CONTENT:
+${pagesContent}
+
+Include EVERY photo. Use exact original text. Include videos if present.`;
+          } else {
             const allPhotos = photos.map((p, i) => `${i + 1}. ${(p as Record<string, unknown>).url ?? p}`).join("\n");
-            const aiPrompt = `Build a premium single-page website for "${projectData.businessName}" (sector: ${sector}).
-REAL CONTENT: Hero: ${projectData.heroTitle}, Desc: ${projectData.description}, Address: ${projectData.address}, Phone: ${projectData.phone}, Email: ${projectData.email}
-${allPhotos ? `Photos (use ALL):\n${allPhotos}` : ""}
-${projectData.googleRating ? `Rating: ${projectData.googleRating}/5 (${projectData.reviewCount ?? 0}+ reviews)` : ""}
-CRITICAL: Use ONLY provided photos. NEVER use stock images. Output: write_file "index.html".`;
-
-            const aiResult = await this.client.toolUseLoop(
-              [{ role: "user", content: aiPrompt }],
-              async (toolName, input) => {
-                if (toolName === "write_file") {
-                  const path = input["path"] as string;
-                  const content = input["content"] as string;
-                  if (path && content) { projectFiles[path] = content; return { success: true, path }; }
-                }
-                return { error: "Unknown tool" };
-              },
-              {
-                system: "You are a world-class web designer. Build €10k+ sites with real content only. NEVER use stock photos. Output via write_file.",
-                tools: [{ name: "write_file", description: "Create a project file", input_schema: { type: "object" as const, properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } }],
-                model: "claude-sonnet-4-6" as const,
-                maxTokens: 32000,
-              }
-            );
-            this.totalCost += aiResult.cost;
-            this.totalInputTokens += aiResult.inputTokens;
-            this.totalOutputTokens += aiResult.outputTokens;
+            boltMessage = `Build a premium website for "${projectData.businessName}" (${sector}).
+Content: ${projectData.heroTitle}, ${projectData.description}
+Address: ${projectData.address}, Phone: ${projectData.phone}, Email: ${projectData.email}
+${allPhotos ? `Photos (ALL):\n${allPhotos}` : ""}
+Include ALL photos. NEVER use stock images.`;
           }
 
-          this.log("info", `build_preview_site: generated ${Object.keys(projectFiles).length} files`);
+          // ── Step 3: Call bolt.diy DIRECTLY (NO timeout — worker runs on Railway) ──
+          this.log("info", `build_preview_site: calling bolt.diy at ${boltUrl}/api/chat`);
+
+          const apiKeys = { Anthropic: anthropicKey };
+          const chatRes = await fetch(`${boltUrl}/api/chat`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Cookie: `apiKeys=${encodeURIComponent(JSON.stringify(apiKeys))}`,
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content: `[Model: claude-sonnet-4-6]\n\n[Provider: Anthropic]\n\n${boltMessage}` }],
+              files: {},
+              contextOptimization: false,
+              chatMode: "build",
+              maxLLMSteps: 5,
+            }),
+          });
+
+          if (!chatRes.ok) {
+            throw new Error(`bolt.diy error ${chatRes.status}: ${(await chatRes.text().catch(() => "")).slice(0, 200)}`);
+          }
+
+          // ── Step 4: Parse SSE stream to extract files from boltAction tags ──
+          const reader = chatRes.body?.getReader();
+          if (!reader) throw new Error("No response body from bolt.diy");
+
+          const decoder = new TextDecoder();
+          let fullText = "";
+          let sseBuffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split("\n");
+            sseBuffer = lines.pop() ?? "";
+            for (const line of lines) {
+              if (line.startsWith("0:")) {
+                try { fullText += JSON.parse(line.slice(2)) as string; } catch { /* skip */ }
+              }
+            }
+          }
+
+          this.log("info", `build_preview_site: bolt.diy response ${fullText.length} chars`);
+
+          // Extract files from <boltAction type="file" filePath="...">
+          const fileRegex = /<boltAction\s+type="file"\s+filePath="([^"]+)"[^>]*>([\s\S]*?)<\/boltAction>/g;
+          let match;
+          while ((match = fileRegex.exec(fullText)) !== null) {
+            projectFiles[match[1]!] = match[2]!;
+          }
+
+          this.log("info", `build_preview_site: extracted ${Object.keys(projectFiles).length} files from bolt.diy`);
         } catch (aiErr) {
           this.log("warn", `build_preview_site: AI generation failed, falling back to template: ${aiErr instanceof Error ? aiErr.message : String(aiErr)}`);
           // Fallback to static template if AI fails
