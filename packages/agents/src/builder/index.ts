@@ -854,28 +854,168 @@ export class BuilderAgent extends BaseAgent {
           // ── Step 1: Scrape website if needed ──
           let scrapedContent = this._scrapedContent;
           if (website && !scrapedContent) {
-            this.log("info", `build_preview_site: scraping ${website}`);
-            const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
+            this.log("info", `build_preview_site: deep-scraping ${website} with Playwright`);
             try {
-              const scrapeRes = await fetch(`${apiBase}/public/signup/analyze-url`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: website, generatePreview: false }),
-              });
-              if (scrapeRes.ok) {
-                const scrapeJson = await scrapeRes.json() as { data?: { scraped?: Record<string, unknown> } };
-                scrapedContent = scrapeJson.data?.scraped ?? null;
-                this.log("info", `build_preview_site: scraped ${(scrapedContent?.pages as unknown[])?.length ?? 0} pages`);
+              const { chromium } = await import("playwright");
+              const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+              const context = await browser.newContext({ userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36" });
 
-                // Save scraped content to prospect for future use
-                if (scrapedContent && prospectId) {
-                  try {
-                    await prisma.prospect.update({
-                      where: { id: prospectId },
-                      data: { scrapedContent: scrapedContent as object },
-                    });
-                  } catch { /* non-fatal */ }
+              // ── Discover all internal pages ──
+              const mainPage = await context.newPage();
+              await mainPage.goto(website, { waitUntil: "networkidle", timeout: 30_000 }).catch(() => mainPage.goto(website, { waitUntil: "domcontentloaded", timeout: 15_000 }));
+
+              // Scroll to trigger lazy loading
+              await mainPage.evaluate(async () => {
+                for (let i = 0; i < Math.ceil(document.body.scrollHeight / window.innerHeight); i++) {
+                  window.scrollBy(0, window.innerHeight);
+                  await new Promise(r => setTimeout(r, 300));
                 }
+                window.scrollTo(0, 0);
+              });
+              await mainPage.waitForTimeout(1000);
+
+              // Get all internal links
+              const baseHost = new URL(website).hostname.replace("www.", "");
+              const allLinks = await mainPage.evaluate((host: string) => {
+                return Array.from(document.querySelectorAll("a[href]"))
+                  .map(a => (a as HTMLAnchorElement).href)
+                  .filter(h => { try { return new URL(h).hostname.replace("www.", "") === host; } catch { return false; } })
+                  .filter(h => !h.match(/\.(pdf|zip|jpg|png|gif|svg|css|js)$/i) && !h.includes("#") && !h.includes("?"));
+              }, baseHost);
+              const uniqueLinks = [...new Set([website, ...allLinks])].slice(0, 30);
+              this.log("info", `build_preview_site: found ${uniqueLinks.length} pages to scrape`);
+
+              // ── Scrape each page with Playwright ──
+              const scrapedPages: Array<Record<string, unknown>> = [];
+              let siteLogo: string | null = null;
+              let siteContact: Record<string, string | null> = {};
+              let siteColors: Record<string, string> = {};
+              let siteSocial: Record<string, string> = {};
+
+              for (const pageUrl of uniqueLinks) {
+                try {
+                  const page = await context.newPage();
+                  await page.goto(pageUrl, { waitUntil: "networkidle", timeout: 20_000 }).catch(() => page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 10_000 }));
+
+                  // Scroll to load lazy images
+                  await page.evaluate(async () => {
+                    for (let i = 0; i < Math.ceil(document.body.scrollHeight / window.innerHeight); i++) {
+                      window.scrollBy(0, window.innerHeight);
+                      await new Promise(r => setTimeout(r, 200));
+                    }
+                  });
+                  await page.waitForTimeout(500);
+
+                  // Extract everything from rendered DOM
+                  const pageData = await page.evaluate(() => {
+                    const title = document.title || "";
+                    const metaDesc = (document.querySelector('meta[name="description"]') as HTMLMetaElement)?.content || "";
+
+                    // ALL images from rendered DOM (including lazy-loaded)
+                    const images = Array.from(document.querySelectorAll("img"))
+                      .filter(img => img.src?.startsWith("http") && img.naturalWidth >= 50)
+                      .filter(img => !/icon|sprite|pixel|tracking|logo|badge|spinner|arrow|chevron/i.test(img.className + img.id + (img.alt || "")))
+                      .map(img => ({ url: img.src, alt: img.alt || "", width: img.naturalWidth, height: img.naturalHeight }));
+
+                    // Background images from CSS
+                    const bgImages: Array<{ url: string; alt: string }> = [];
+                    document.querySelectorAll("*").forEach(el => {
+                      const bg = getComputedStyle(el).backgroundImage;
+                      if (bg && bg !== "none") {
+                        const match = bg.match(/url\(["']?([^"')]+)/);
+                        if (match?.[1]?.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(match[1])) {
+                          bgImages.push({ url: match[1], alt: "background" });
+                        }
+                      }
+                    });
+
+                    // Headings
+                    const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"))
+                      .map(h => ({ level: parseInt(h.tagName.slice(1)), text: h.textContent?.trim().slice(0, 300) || "" }))
+                      .filter(h => h.text.length > 2);
+
+                    // Paragraphs + text blocks
+                    const paragraphs = Array.from(document.querySelectorAll("p, li, blockquote, .text, [class*='desc'], [class*='content'], [class*='intro']"))
+                      .map(p => p.textContent?.trim() || "")
+                      .filter(t => t.length > 30 && t.length < 2000);
+
+                    // Videos
+                    const videos: Array<{ url: string; type: string }> = [];
+                    document.querySelectorAll("iframe[src]").forEach(f => {
+                      const src = (f as HTMLIFrameElement).src;
+                      if (/youtube|vimeo/i.test(src)) videos.push({ url: src, type: src.includes("youtube") ? "youtube" : "vimeo" });
+                    });
+                    document.querySelectorAll("video source, video[src]").forEach(v => {
+                      const src = (v as HTMLSourceElement).src || (v as HTMLVideoElement).src;
+                      if (src) videos.push({ url: src, type: "video" });
+                    });
+
+                    // Logo
+                    const logoEl = document.querySelector('header img, nav img, .logo img, img[alt*="logo" i], img[src*="logo" i], [class*="logo"] img') as HTMLImageElement;
+                    const logo = logoEl?.src?.startsWith("http") ? logoEl.src : null;
+
+                    // Contact
+                    const telLink = document.querySelector('a[href^="tel:"]') as HTMLAnchorElement;
+                    const emailLink = document.querySelector('a[href^="mailto:"]') as HTMLAnchorElement;
+                    const phone = telLink?.href?.replace("tel:", "") || null;
+                    const email = emailLink?.href?.replace("mailto:", "") || null;
+
+                    // Social
+                    const social: Record<string, string> = {};
+                    document.querySelectorAll('a[href]').forEach(a => {
+                      const h = (a as HTMLAnchorElement).href;
+                      if (h.includes("facebook.com")) social.facebook = h;
+                      if (h.includes("instagram.com")) social.instagram = h;
+                      if (h.includes("twitter.com") || h.includes("x.com")) social.twitter = h;
+                    });
+
+                    return { title, metaDesc, images: [...images, ...bgImages], headings, paragraphs: [...new Set(paragraphs)], videos, logo, phone, email, social };
+                  });
+
+                  scrapedPages.push({
+                    url: pageUrl,
+                    title: pageData.title,
+                    headings: pageData.headings,
+                    paragraphs: pageData.paragraphs,
+                    images: pageData.images,
+                    videos: pageData.videos,
+                  });
+
+                  // Grab site-wide data from first page
+                  if (scrapedPages.length === 1) {
+                    siteLogo = pageData.logo ?? null;
+                    siteContact = { phone: pageData.phone, email: pageData.email };
+                    siteSocial = pageData.social;
+                  }
+
+                  this.log("info", `build_preview_site: scraped ${pageUrl} — ${pageData.images.length} imgs, ${pageData.headings.length} headings`);
+                  await page.close();
+                } catch (err) {
+                  this.log("warn", `build_preview_site: failed to scrape ${pageUrl}: ${(err as Error).message}`);
+                }
+              }
+
+              await browser.close();
+
+              scrapedContent = {
+                url: website,
+                pages: scrapedPages,
+                logo: siteLogo,
+                contact: siteContact,
+                colors: siteColors,
+                socialLinks: siteSocial,
+              };
+
+              this.log("info", `build_preview_site: Playwright scrape complete — ${scrapedPages.length} pages, ${scrapedPages.reduce((s, p) => s + ((p.images as unknown[])?.length ?? 0), 0)} total images`);
+
+              // Save scraped content to prospect
+              if (scrapedContent && prospectId) {
+                try {
+                  await prisma.prospect.update({
+                    where: { id: prospectId },
+                    data: { scrapedContent: scrapedContent as object },
+                  });
+                } catch { /* non-fatal */ }
               }
             } catch (err) {
               this.log("warn", `build_preview_site: scrape failed: ${err instanceof Error ? err.message : String(err)}`);
