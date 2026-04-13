@@ -1079,7 +1079,18 @@ ${uniquePages.length > 1 ? `Site has ${uniquePages.length} pages. Build MULTI-PA
 SCRAPED CONTENT:
 ${pagesContent}
 
-Include EVERY photo. Use exact original text. Include videos if present.
+Include EVERY photo and video.
+
+VIDEO HERO — CRITICAL RULE:
+If ANY video is found in the scraped content (YouTube, Vimeo, or direct mp4/webm):
+- Use it as a FULL-SCREEN autoplay hero at the very top of the home page
+- Muted, loop, autoplay, playsInline
+- For YouTube/Vimeo: embed as iframe with autoplay&mute=1&loop=1&controls=0&showinfo=0
+- For direct video files: use <video autoplay muted loop playsinline> with object-fit: cover
+- Overlay a dark gradient (rgba 0,0,0,0.4) over the video for text readability
+- Place the hero heading, subtitle and CTA button on top of the video
+- This makes the site look like a €50,000 premium production
+- If no video: use the best full-resolution photo as the hero background
 
 RESPONSIVE — MANDATORY:
 - Mobile (320-480px): single column, hamburger nav, min 44px tap targets

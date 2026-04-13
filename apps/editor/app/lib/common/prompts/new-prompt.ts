@@ -265,7 +265,12 @@ The year is 2025.
 
   MANDATORY HERO SECTION:
   - Full-viewport height (min-height: 100vh)
-  - Background: high-quality image with gradient overlay (dark at bottom for text readability)
+  - VIDEO HERO (highest priority): If a video URL is available from the scraped site, use it as full-screen autoplay background:
+    • YouTube/Vimeo: iframe with autoplay=1&mute=1&loop=1&controls=0&showinfo=0&playlist=VIDEO_ID
+    • Direct mp4/webm: <video autoplay muted loop playsinline style="object-fit:cover;width:100%;height:100%">
+    • Overlay dark gradient rgba(0,0,0,0.45) over video for text readability
+    • This makes the hero feel like a €50,000+ premium production
+  - PHOTO HERO (fallback): If no video, use best full-resolution photo with gradient overlay
   - Animated text reveal (character by character or word by word via CSS or Framer Motion)
   - Eyebrow label above heading (small, uppercase, letter-spacing: 0.2em, accent color)
   - Heading: 2-3 lines max, light weight, with accent color on key word
