@@ -514,8 +514,9 @@ export class ScraperAgent extends BaseAgent {
       }
     }
 
-    // Extract logo + extra photos from the business website
+    // Extract logo + extra photos + full content from the business website
     let logoUrl: string | undefined;
+    let scrapedContent: Record<string, unknown> | null = null;
     if (website) {
       try {
         await page.goto(website, { waitUntil: "domcontentloaded", timeout: 10_000 });
@@ -541,19 +542,75 @@ export class ScraperAgent extends BaseAgent {
           return null;
         }) ?? undefined;
 
-        // Extract additional photos from the website (up to 6 total)
-        if (photoUrls.length < 6) {
+        // Extract additional photos from the website (up to 15 total)
+        if (photoUrls.length < 15) {
           const sitePhotos = await page.evaluate((existingCount: number) => {
             /* eslint-disable @typescript-eslint/no-explicit-any */
             const imgs: any[] = Array.from(document.querySelectorAll("img"));
             return imgs
-              .filter((i: any) => i.src?.startsWith("http") && i.naturalWidth >= 300 && i.naturalHeight >= 200)
-              .filter((i: any) => !/logo|icon|avatar|sprite|badge|banner-ad/i.test(i.src + (i.alt ?? "") + (i.className ?? "")))
+              .filter((i: any) => i.src?.startsWith("http") && i.naturalWidth >= 200 && i.naturalHeight >= 150)
+              .filter((i: any) => !/logo|icon|avatar|sprite|badge|banner-ad|tracking|pixel/i.test(i.src + (i.alt ?? "") + (i.className ?? "")))
               .map((i: any) => i.src as string)
-              .slice(0, 6 - existingCount);
+              .slice(0, 15 - existingCount);
           }, photoUrls.length).catch(() => [] as string[]);
           photoUrls.push(...sitePhotos);
         }
+
+        // ── Scrape FULL website content: headings, paragraphs, colors, fonts ──
+        scrapedContent = await page.evaluate(() => {
+          /* eslint-disable @typescript-eslint/no-explicit-any */
+          const headings = Array.from(document.querySelectorAll("h1, h2, h3")).map((h: any) => ({
+            tag: h.tagName.toLowerCase(),
+            text: h.textContent?.trim().slice(0, 300) || "",
+          })).filter((h) => h.text.length > 2).slice(0, 30);
+
+          const paragraphs = Array.from(document.querySelectorAll("p, li, .text, [class*='desc'], [class*='content']"))
+            .map((p: any) => p.textContent?.trim() || "")
+            .filter((t) => t.length > 30)
+            .slice(0, 40);
+
+          // Extract all images with alt text
+          const images = Array.from(document.querySelectorAll("img"))
+            .filter((i: any) => i.src?.startsWith("http") && i.naturalWidth >= 100)
+            .map((i: any) => ({ url: i.src, alt: i.alt || "", width: i.naturalWidth, height: i.naturalHeight }))
+            .slice(0, 20);
+
+          // Extract colors from computed styles
+          const sampleEls = [document.body, ...Array.from(document.querySelectorAll("header, nav, main, footer, h1, h2, a, button")).slice(0, 10)];
+          const colorSet = new Set<string>();
+          for (const el of sampleEls) {
+            if (!el) continue;
+            const s = getComputedStyle(el);
+            [s.color, s.backgroundColor, s.borderColor].forEach((c) => {
+              if (c && c !== "rgba(0, 0, 0, 0)" && c !== "transparent") colorSet.add(c);
+            });
+          }
+
+          // Extract font families
+          const fontSet = new Set<string>();
+          for (const el of sampleEls) {
+            if (!el) continue;
+            const ff = getComputedStyle(el).fontFamily;
+            if (ff) fontSet.add(ff.split(",")[0]?.trim().replace(/['"]/g, "") || "");
+          }
+
+          // Extract navigation links
+          const navigation = Array.from(document.querySelectorAll("nav a, header a, .menu a"))
+            .map((a: any) => ({ text: a.textContent?.trim() || "", href: a.href || "" }))
+            .filter((n) => n.text.length > 0 && n.text.length < 50)
+            .slice(0, 15);
+
+          return {
+            headings,
+            paragraphs,
+            images,
+            colors: Array.from(colorSet).slice(0, 20),
+            fonts: Array.from(fontSet).filter(Boolean).slice(0, 5),
+            navigation,
+            title: document.title || "",
+            metaDescription: (document.querySelector('meta[name="description"]') as any)?.content || "",
+          };
+        }).catch(() => null);
       } catch {
         // Non-fatal — website might be slow or down
       }
@@ -576,6 +633,7 @@ export class ScraperAgent extends BaseAgent {
       photoUrls: photoUrls.length > 0 ? photoUrls : undefined,
       logoUrl,
       openingHours: openingHours ?? undefined,
+      scrapedContent: scrapedContent ?? undefined,
     };
   }
 
@@ -731,6 +789,8 @@ export class ScraperAgent extends BaseAgent {
           hasWebsite: data.hasWebsite,
           photoUrls: data.photoUrls ?? [],
           logoUrl: data.logoUrl ?? null,
+          photoQuality: (data.photoUrls?.length ?? 0) > 0 ? 70 : 0,
+          scrapedContent: (data as Record<string, unknown>).scrapedContent ?? null,
           status: "SCRAPED",
           source: "GOOGLE_MAPS",
           scrapeJobId: this.jobId,

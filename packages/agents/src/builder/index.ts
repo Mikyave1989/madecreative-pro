@@ -602,28 +602,24 @@ export class BuilderAgent extends BaseAgent {
 
         const photos: Photo[] = [];
 
-        // Decision: use originals based on quality score
-        // >= 60: use all originals, supplement with stock if < 6
-        // 30-59: use originals + stock mix
-        // < 30: skip originals, use only stock
-        if (photoQuality >= 30 && dbPhotos.length > 0) {
-          const originals = dbPhotos.slice(0, photoQuality >= 60 ? 10 : 3).map((url) => ({
+        // RULE: ALWAYS use original photos first. Stock is ONLY for businesses with NO photos at all.
+        if (dbPhotos.length > 0) {
+          const originals = dbPhotos.slice(0, 10).map((url) => ({
             url,
             source: "existing_site" as const,
-            score: photoQuality >= 60 ? 9 : 6,
-            scoreReason: photoQuality >= 60 ? "High quality original photo" : "Acceptable original photo, supplemented with stock",
+            score: 8,
+            scoreReason: "Original business photo — always preferred over stock",
           }));
           photos.push(...originals);
         }
 
-        // Top up with stock photos if needed
-        const needed = 6 - photos.length;
-        if (needed > 0) {
+        // ONLY use stock photos if the business has ZERO original photos
+        if (photos.length === 0) {
           const keyword = SECTOR_STOCK_KEYWORDS[sector] ?? `${sector} ${city}`;
-          const pexels = await fetchPexelsPhotos(keyword, needed);
+          const pexels = await fetchPexelsPhotos(keyword, 6);
           photos.push(...pexels);
 
-          if (photos.length < 6) {
+          if (photos.length < 3) {
             const unsplash = await fetchStockPhotos(keyword, 6 - photos.length);
             photos.push(...unsplash);
           }

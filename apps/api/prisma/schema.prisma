@@ -41,6 +41,7 @@ model Prospect {
   photoUrls          Json?           // string[] — original photos from Google Maps / website
   logoUrl            String?         // original logo URL extracted from website
   photoQuality       Int?            // 0-100 overall quality score of original photos
+  scrapedContent     Json?           // Full scraped website data: { headings, paragraphs, images, colors, fonts, socialLinks, navigation, openingHours }
   previewSiteUrl     String?
   previewGeneratedAt DateTime?
   status             String          @default("SCRAPED")
