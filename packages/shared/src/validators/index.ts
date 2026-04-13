@@ -95,6 +95,7 @@ export const ProspectCreateSchema = z.object({
 export const ProspectUpdateSchema = ProspectCreateSchema.partial().extend({
   status: z.enum(PROSPECT_STATUSES).optional(),
   leadScore: z.number().int().min(0).max(100).optional(),
+  previewSiteUrl: z.string().url().optional().nullable(),
 });
 
 export type ProspectFilterInput = z.infer<typeof ProspectFilterSchema>;
