@@ -256,7 +256,7 @@ app.post("/refund", async (c) => {
     data: { status: "REFUNDED" },
   });
 
-  const planPrice = PLANS[client.plan as keyof typeof PLANS]?.price ?? 25;
+  const planPrice = PLANS[client.plan as keyof typeof PLANS]?.price ?? 29;
 
   return c.json({
     success: true,

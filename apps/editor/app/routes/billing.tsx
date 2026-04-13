@@ -26,9 +26,9 @@ interface Invoice {
 }
 
 const PLANS = [
-  { name: 'STARTER', price: 25, credits: 200, features: ['1 website', '200 AI credits/mo', 'Email support'] },
-  { name: 'GROWTH', price: 50, credits: 500, features: ['3 websites', '500 AI credits/mo', 'Priority support', 'Custom domain'] },
-  { name: 'PRO', price: 99, credits: 1000, features: ['10 websites', '1000 AI credits/mo', 'Dedicated support', 'Custom domain', 'API access'] },
+  { name: 'STARTER', price: 29, setup: 299, credits: 200, features: ['1 website', '200 AI credits/mo', 'Email support'] },
+  { name: 'GROWTH', price: 49, setup: 599, credits: 500, features: ['3 websites', '500 AI credits/mo', 'Priority support', 'Custom domain'] },
+  { name: 'PRO', price: 99, setup: 999, credits: 1000, features: ['10 websites', '1000 AI credits/mo', 'Dedicated support', 'Custom domain', 'API access'] },
 ];
 
 export default function BillingPage() {

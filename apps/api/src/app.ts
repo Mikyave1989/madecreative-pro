@@ -118,7 +118,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Das ist eine Vorschau Ihrer neuen Website — von KI in 60 Sekunden erstellt",
         bottomLabel: `${prospect.companyName} — Ihre neue Website ist fertig!`,
-        cta: "Diese Website erhalten — ab €25/Monat",
+        cta: "Diese Website erhalten — €299 Setup + €29/Monat",
         powered: "Bereitgestellt von MadeCreative",
       };
     }
@@ -126,7 +126,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Questa è un'anteprima del tuo nuovo sito web — creato dall'AI in 60 secondi",
         bottomLabel: `${prospect.companyName} — Il tuo nuovo sito è pronto!`,
-        cta: "Ottieni questo sito — da €25/mese",
+        cta: "Ottieni questo sito — €299 Setup + €29/mese",
         powered: "Offerto da MadeCreative",
       };
     }
@@ -134,7 +134,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Ceci est un aperçu de votre nouveau site web — créé par l'IA en 60 secondes",
         bottomLabel: `${prospect.companyName} — Votre nouveau site est prêt\u00a0!`,
-        cta: "Obtenir ce site — à partir de €25/mois",
+        cta: "Obtenir ce site — €299 Setup + €29/mois",
         powered: "Propulsé par MadeCreative",
       };
     }
@@ -142,7 +142,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Esta es una vista previa de su nuevo sitio web — creado por IA en 60 segundos",
         bottomLabel: `${prospect.companyName} — ¡Tu nuevo sitio está listo!`,
-        cta: "Obtener este sitio — desde €25/mes",
+        cta: "Obtener este sitio — €299 Setup + €29/mes",
         powered: "Ofrecido por MadeCreative",
       };
     }
@@ -150,7 +150,7 @@ app.get("/preview/:prospectId", async (c) => {
     return {
       topBar: "This is a preview of your new website — built by AI in 60 seconds",
       bottomLabel: `${prospect.companyName} — Your new website is ready!`,
-      cta: "Get This Website — from €25/mo",
+      cta: "Get This Website — €299 Setup + €29/mo",
       powered: "Powered by MadeCreative",
     };
   })();

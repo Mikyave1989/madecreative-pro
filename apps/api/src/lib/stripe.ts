@@ -192,7 +192,7 @@ async function handleCheckoutCompleted(
   }
 
   // Record first invoice
-  const planPrice = PLANS[plan as keyof typeof PLANS]?.price ?? 25;
+  const planPrice = PLANS[plan as keyof typeof PLANS]?.price ?? 29;
   await prisma.clientInvoice.create({
     data: {
       clientId: client.id,

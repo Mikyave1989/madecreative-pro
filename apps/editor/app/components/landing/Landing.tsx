@@ -25,7 +25,7 @@ const FEATURES = [
 
 const COMPARISON = [
   { f: 'Time to launch', old: '2-8 weeks', us: '< 5 minutes' },
-  { f: 'Cost', old: '\u20AC2,000 - \u20AC15,000', us: 'From \u20AC25/mo' },
+  { f: 'Cost', old: '\u20AC2,000 - \u20AC15,000', us: 'From \u20AC299 + \u20AC29/mo' },
   { f: 'Technology', old: 'WordPress / Wix', us: 'React + Next.js' },
   { f: 'Edits', old: 'Wait for dev', us: 'Chat with AI' },
   { f: 'Code ownership', old: 'Locked in', us: 'Full source code' },
@@ -35,9 +35,9 @@ const COMPARISON = [
 ];
 
 const PLANS = [
-  { name: 'Starter', slug: 'STARTER', price: 25, desc: 'For small businesses.', features: ['1 website', '200 AI credits/mo', 'Custom subdomain', 'AI chatbot', 'Monthly reports', 'Email support'], hl: false },
-  { name: 'Growth', slug: 'GROWTH', price: 50, desc: 'For growing businesses.', features: ['3 websites', '500 AI credits/mo', 'Custom domain', 'AI chatbot', 'Monthly reports', 'Analytics', 'Priority support', 'Uptime monitoring'], hl: true },
-  { name: 'Pro', slug: 'PRO', price: 99, desc: 'For agencies & power users.', features: ['10 websites', '1,000 AI credits/mo', 'Custom domain', 'AI chatbot', 'Reports + Analytics', 'Dedicated support', 'API access', 'White-label', 'Multi-language'], hl: false },
+  { name: 'Starter', slug: 'STARTER', price: 29, setup: 299, desc: 'For small businesses.', features: ['1 website', '200 AI credits/mo', 'Custom subdomain', 'AI chatbot', 'Monthly reports', 'Email support'], hl: false },
+  { name: 'Growth', slug: 'GROWTH', price: 49, setup: 599, desc: 'For growing businesses.', features: ['3 websites', '500 AI credits/mo', 'Custom domain', 'AI chatbot', 'Monthly reports', 'Analytics', 'Priority support', 'Uptime monitoring'], hl: true },
+  { name: 'Pro', slug: 'PRO', price: 99, setup: 999, desc: 'For agencies & power users.', features: ['10 websites', '1,000 AI credits/mo', 'Custom domain', 'AI chatbot', 'Reports + Analytics', 'Dedicated support', 'API access', 'White-label', 'Multi-language'], hl: false },
 ];
 
 const TESTIMONIALS = [
@@ -145,7 +145,7 @@ export function Landing() {
           <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', maxWidth: 640, margin: '0 auto 40px', lineHeight: 1.6, ...S.t2 }}>
             5 specialized AI agents scrape your data, analyze your market,
             write production code, deploy your site, and grow your business.
-            <span style={S.t1}> Fully automated, from &euro;25/month.</span>
+            <span style={S.t1}> Fully automated, from &euro;299 setup + &euro;29/month.</span>
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
@@ -441,10 +441,10 @@ export function Landing() {
                   <h3 style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{plan.name}</h3>
                   <p style={{ fontSize: 13, ...S.t4, marginTop: 4, marginBottom: 16 }}>{plan.desc}</p>
                   <div style={{ marginBottom: 24 }}>
+                    <div style={{ fontSize: 14, color: '#a1a1aa', marginBottom: 4 }}>&euro;{(plan as any).setup} setup</div>
                     <span style={{ ...S.t4, fontSize: 18 }}>&euro;</span>
                     <span style={{ fontSize: 48, fontWeight: 800, color: '#fff' }}>{price}</span>
                     <span style={S.t4}>/mo</span>
-                    {annual && <div style={{ fontSize: 12, ...S.t4, marginTop: 4 }}><span style={{ textDecoration: 'line-through' }}>&euro;{plan.price * 12}</span> <span style={{ color: '#4ade80' }}>&euro;{price * 12}/yr</span></div>}
                   </div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px' }}>
                     {plan.features.map(f => (
@@ -503,7 +503,7 @@ export function Landing() {
       {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
       <section style={{ padding: '96px 24px', textAlign: 'center' }}>
         <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Stop paying agencies.<br /><span style={S.gt}>Let AI agents build your site.</span></h2>
-        <p style={{ ...S.t2, marginBottom: 32 }}>5 agents. Real code. Live in 60 seconds. From &euro;25/month.</p>
+        <p style={{ ...S.t2, marginBottom: 32 }}>5 agents. Real code. Live in 60 seconds. From &euro;299 setup + &euro;29/month.</p>
         <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started Now</a>
       </section>
 

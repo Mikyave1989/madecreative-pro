@@ -20,22 +20,22 @@ const PLANS: Plan[] = [
   {
     id: 'STARTER',
     label: 'Starter',
-    price: '€25',
-    period: '/mo',
+    price: '€299',
+    period: ' setup + €29/mo',
     features: ['5 active projects', '50 AI generations/mo', 'Basic support'],
   },
   {
     id: 'GROWTH',
     label: 'Growth',
-    price: '€50',
-    period: '/mo',
+    price: '€599',
+    period: ' setup + €49/mo',
     features: ['20 active projects', '200 AI generations/mo', 'Priority support'],
   },
   {
     id: 'PRO',
     label: 'Pro',
-    price: '€99',
-    period: '/mo',
+    price: '€999',
+    period: ' setup + €99/mo',
     features: ['Unlimited projects', 'Unlimited AI generations', 'Dedicated support'],
   },
 ];

@@ -283,7 +283,7 @@ async function generatePdf(params: {
     doc.moveDown(1);
     sectionTitle("ROI — Valore generato");
 
-    const monthlyAmount = PLANS[params.plan as keyof typeof PLANS]?.price ?? 25;
+    const monthlyAmount = PLANS[params.plan as keyof typeof PLANS]?.price ?? 29;
     const estimatedValue =
       params.reportData.metrics.leadsGenerated * 150 +
       (params.reportData.metrics.websiteVisits / 1000) * 50;
