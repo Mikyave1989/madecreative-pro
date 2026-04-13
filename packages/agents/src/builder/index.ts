@@ -602,9 +602,21 @@ export class BuilderAgent extends BaseAgent {
 
         const photos: Photo[] = [];
 
-        // RULE: ALWAYS use original photos first. Stock is ONLY for businesses with NO photos at all.
-        if (dbPhotos.length > 0) {
-          const originals = dbPhotos.slice(0, 10).map((url) => ({
+        // RULE: ALWAYS use ALL original photos. Stock is ONLY for businesses with NO photos at all.
+        // Also collect photos from scrapedContent pages
+        const allOriginalUrls = new Set<string>(dbPhotos);
+        if (this._scrapedContent) {
+          const scrapedPages = (this._scrapedContent as { pages?: Array<{ images?: Array<{ url: string }> }> }).pages ?? [];
+          for (const page of scrapedPages) {
+            for (const img of page.images ?? []) {
+              if (img.url?.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(img.url) && !/icon|sprite|pixel|dummy/i.test(img.url)) {
+                allOriginalUrls.add(img.url);
+              }
+            }
+          }
+        }
+        if (allOriginalUrls.size > 0) {
+          const originals = Array.from(allOriginalUrls).map((url) => ({
             url,
             source: "existing_site" as const,
             score: 8,
@@ -1035,15 +1047,21 @@ export class BuilderAgent extends BaseAgent {
             });
 
             let pagesContent = "";
+            let totalPhotos = 0;
+            let totalVideos = 0;
             for (const p of uniquePages) {
-              const imgs = (p.images ?? [])
-                .filter(i => i.url?.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(i.url) && !/dummy|plugin|admin|icon|sprite|pixel/i.test(i.url))
-                .map((img, i) => `  ${i + 1}. ${img.url}${img.alt ? ` (${img.alt})` : ""}`).join("\n");
+              const pageImgs = (p.images ?? [])
+                .filter(i => i.url?.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(i.url) && !/dummy|plugin|admin|icon|sprite|pixel/i.test(i.url));
+              const imgs = pageImgs.map((img, i) => `  ${i + 1}. ${img.url}${img.alt ? ` (${img.alt})` : ""}`).join("\n");
+              totalPhotos += pageImgs.length;
               const headings = (p.headings ?? []).filter(h => h.text?.length > 2).map(h => `  h${h.level}: ${h.text}`).join("\n");
               const paras = (p.paragraphs ?? []).filter(t => t.length > 20).map(t => `  ${t}`).join("\n");
-              const videos = (p.videos ?? []).map(v => `  VIDEO: ${v.url}`).join("\n");
-              pagesContent += `\n--- PAGE: ${p.url} (${p.title || ""}) ---\nHeadings:\n${headings}\nText:\n${paras}\nPhotos (ALL):\n${imgs || "  none"}\n${videos ? `Videos:\n${videos}` : ""}`;
+              const pageVideos = (p.videos ?? []);
+              totalVideos += pageVideos.length;
+              const videos = pageVideos.map(v => `  VIDEO (${v.type}): ${v.url}`).join("\n");
+              pagesContent += `\n--- PAGE: ${p.url} (${p.title || ""}) ---\nHeadings:\n${headings}\nText:\n${paras}\nPhotos (ALL ${pageImgs.length}):\n${imgs || "  none"}\n${videos ? `Videos:\n${videos}` : ""}`;
             }
+            this.log("info", `build_preview_site: ${uniquePages.length} pages, ${totalPhotos} total photos, ${totalVideos} total videos`);
 
             boltMessage = `Rebuild this website with a stunning premium design: ${website}
 
