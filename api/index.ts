@@ -43,10 +43,10 @@ export default async function handler(req: IncomingMessage & { body?: unknown },
         body = req.body;
       } else {
         const raw = (req as unknown as Record<string, unknown>).rawBody;
-        if (raw instanceof Uint8Array) {
+        if (typeof raw === "string") {
           body = raw;
-        } else if (typeof raw === "string") {
-          body = raw;
+        } else if (raw) {
+          body = String(raw);
         }
       }
     }

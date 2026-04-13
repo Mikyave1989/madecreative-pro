@@ -1,0 +1,18 @@
+# Exclude editor app (deployed on Cloudflare, not needed for API)
+apps/editor
+
+# Exclude workers (deployed on Railway)
+workers
+
+# Exclude reference repos
+reference-repos
+
+# Exclude turbo cache
+.turbo
+
+# Exclude git
+.git
+
+# Exclude dev tools
+.claude
+.cursor
