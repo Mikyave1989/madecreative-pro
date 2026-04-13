@@ -847,7 +847,9 @@ export class BuilderAgent extends BaseAgent {
         // the editor — same prompt, same engine, same result.
 
         let projectFiles: Record<string, string> = {};
-        const website = (toolInput["website"] as string) ?? (businessData as Record<string, unknown>)?.["website"] as string ?? undefined;
+        const bd = (toolInput["businessData"] as Record<string, unknown>) ?? {};
+        const website = (bd["website"] as string) ?? (toolInput["website"] as string) ?? undefined;
+        const prospectId = (toolInput["prospectId"] as string) ?? undefined;
         const boltUrl = process.env["EDITOR_URL"] ?? "https://madecreative.pro";
         const anthropicKey = process.env["ANTHROPIC_API_KEY"] ?? "";
 
@@ -867,6 +869,16 @@ export class BuilderAgent extends BaseAgent {
                 const scrapeJson = await scrapeRes.json() as { data?: { scraped?: Record<string, unknown> } };
                 scrapedContent = scrapeJson.data?.scraped ?? null;
                 this.log("info", `build_preview_site: scraped ${(scrapedContent?.pages as unknown[])?.length ?? 0} pages`);
+
+                // Save scraped content to prospect for future use
+                if (scrapedContent && prospectId) {
+                  try {
+                    await prisma.prospect.update({
+                      where: { id: prospectId },
+                      data: { scrapedContent: scrapedContent as object },
+                    });
+                  } catch { /* non-fatal */ }
+                }
               }
             } catch (err) {
               this.log("warn", `build_preview_site: scrape failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -1044,22 +1056,30 @@ Include ALL photos. NEVER use stock images.`;
           });
         }
 
-        // Deploy to Vercel
-        const { url, warning } = await deployToVercel(slug, deployFiles);
-
-        if (warning) {
-          this.log("warn", "build_preview_site: deployment warning", { warning });
+        // Deploy to Vercel — retry once on failure
+        let deployResult = await deployToVercel(slug, deployFiles);
+        if (!deployResult.url && deployResult.warning) {
+          this.log("warn", "build_preview_site: first deploy failed, retrying...", { warning: deployResult.warning });
+          deployResult = await deployToVercel(slug, deployFiles);
         }
 
+        if (deployResult.warning) {
+          this.log("warn", "build_preview_site: deployment warning", { warning: deployResult.warning });
+        }
+
+        // Use API preview URL as fallback (serves generated HTML via proxy) — NEVER localhost
+        const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
+        const fallbackUrl = `${apiBase}/preview/${prospectId ?? slug}`;
+
         return {
-          previewUrl: url ?? `http://localhost:3000/preview/${slug}`,
+          previewUrl: deployResult.url ?? fallbackUrl,
           outputDir,
-          warning,
+          warning: deployResult.warning,
           slug,
           sector,
           colors,
           photoCount: photos.length,
-          status: url ? "PREVIEW_READY" : "BUILD_ONLY",
+          status: deployResult.url ? "PREVIEW_READY" : "BUILD_ONLY",
         };
       }
 

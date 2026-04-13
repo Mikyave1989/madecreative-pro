@@ -164,7 +164,12 @@ export const builderTools: Tool[] = [
             email: { type: "string" },
             googleRating: { type: "number" },
             reviewCount: { type: "number" },
+            website: { type: "string", description: "Original website URL to scrape and rebuild" },
           },
+        },
+        prospectId: {
+          type: "string",
+          description: "Prospect ID for saving scraped content",
         },
         photos: {
           type: "array",
