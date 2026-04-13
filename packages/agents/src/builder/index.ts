@@ -140,21 +140,18 @@ async function deployToVercel(
   }
 
   try {
-    const { createHash } = await import("crypto");
     const projectName = `mc-preview-${slug}`.slice(0, 52);
     const isNextJs = "package.json" in files;
     const teamQuery = teamId ? `?teamId=${teamId}` : "";
     const teamQueryAmp = teamId ? `&teamId=${teamId}` : "";
 
-    // Build Vercel files array with base64 + SHA-1
+    // Build Vercel files array — base64 only (no sha/size, Vercel v13 rejects them)
     const vercelFiles = Object.entries(files).map(([filePath, content]) => {
       const raw = Buffer.from(content, "utf8");
       return {
         file: filePath.startsWith("/") ? filePath.slice(1) : filePath,
         data: raw.toString("base64"),
         encoding: "base64" as const,
-        sha: createHash("sha1").update(content, "utf8").digest("hex"),
-        size: raw.byteLength,
       };
     });
 
@@ -162,7 +159,7 @@ async function deployToVercel(
       name: projectName,
       files: vercelFiles,
       projectSettings: {
-        framework: isNextJs ? "nextjs" : null,
+        framework: null, // Always static — bolt.diy files don't need Vercel build
       },
       target: "production",
       meta: {
