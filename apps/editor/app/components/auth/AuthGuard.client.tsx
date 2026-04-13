@@ -4,6 +4,7 @@ import { useStore } from '@nanostores/react';
 import { authUser, authLoading, initAuth } from '~/lib/stores/auth';
 
 const PUBLIC_ROUTES = ['/login', '/signup', '/', '/onboarding'];
+const PUBLIC_PREFIXES = ['/admin'];
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const user = useStore(authUser);
@@ -18,7 +19,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
 
-    const isPublic = PUBLIC_ROUTES.some((r) => location.pathname === r);
+    const isPublic =
+      PUBLIC_ROUTES.some((r) => location.pathname === r) ||
+      PUBLIC_PREFIXES.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'));
 
     if (!user && !isPublic) {
       navigate('/login', { replace: true });

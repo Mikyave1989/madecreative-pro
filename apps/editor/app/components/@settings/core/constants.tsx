@@ -90,19 +90,18 @@ export const TAB_DESCRIPTIONS: Record<TabType, string> = {
 };
 
 export const DEFAULT_TAB_CONFIG = [
-  // User Window Tabs (Always visible by default)
+  // MadeCreative: only show relevant tabs to clients
   { id: 'features', visible: true, window: 'user' as const, order: 0 },
   { id: 'data', visible: true, window: 'user' as const, order: 1 },
-  { id: 'cloud-providers', visible: true, window: 'user' as const, order: 2 },
-  { id: 'local-providers', visible: true, window: 'user' as const, order: 3 },
-  { id: 'github', visible: true, window: 'user' as const, order: 4 },
-  { id: 'gitlab', visible: true, window: 'user' as const, order: 5 },
-  { id: 'netlify', visible: true, window: 'user' as const, order: 6 },
-  { id: 'vercel', visible: true, window: 'user' as const, order: 7 },
-  { id: 'supabase', visible: true, window: 'user' as const, order: 8 },
-  { id: 'notifications', visible: true, window: 'user' as const, order: 9 },
-  { id: 'event-logs', visible: true, window: 'user' as const, order: 10 },
-  { id: 'mcp', visible: true, window: 'user' as const, order: 11 },
-
-  // User Window Tabs (In dropdown, initially hidden)
+  { id: 'notifications', visible: true, window: 'user' as const, order: 2 },
+  { id: 'event-logs', visible: true, window: 'user' as const, order: 3 },
+  // Hidden: provider/deploy tabs not needed — MadeCreative handles everything
+  { id: 'cloud-providers', visible: false, window: 'user' as const, order: 10 },
+  { id: 'local-providers', visible: false, window: 'user' as const, order: 11 },
+  { id: 'github', visible: false, window: 'user' as const, order: 12 },
+  { id: 'gitlab', visible: false, window: 'user' as const, order: 13 },
+  { id: 'netlify', visible: false, window: 'user' as const, order: 14 },
+  { id: 'vercel', visible: false, window: 'user' as const, order: 15 },
+  { id: 'supabase', visible: false, window: 'user' as const, order: 16 },
+  { id: 'mcp', visible: false, window: 'user' as const, order: 17 },
 ];

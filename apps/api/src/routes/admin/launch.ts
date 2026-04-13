@@ -299,4 +299,181 @@ app.get("/dns-guide", (c) => {
   });
 });
 
+// ─── POST /admin/launch/campaign — one-click full pipeline launcher ───────────
+//
+// Body: { city, country, sector, maxResults?, minRating?, keywords? }
+//
+// Creates (or finds) a ScrapeConfig for the city+country+sector combo, then
+// creates a SCRAPER AgentJob and enqueues it.  The orchestrator automatically
+// chains: SCRAPER → ANALYZER → BUILDER → OUTREACH + QA.
+
+app.post("/campaign", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { enqueueAgentJob } = await import("../../lib/queue.js");
+
+  const body = (await c.req.json().catch(() => ({}))) as {
+    city?: string;
+    country?: string;
+    sector?: string;
+    maxResults?: number;
+    minRating?: number;
+    keywords?: string[];
+  };
+
+  const city = (body.city ?? "").trim();
+  const country = (body.country ?? "DE").toUpperCase();
+  const sector = (body.sector ?? "restaurant").toLowerCase();
+  const maxResults = Math.min(body.maxResults ?? 50, 5000);
+  const minRating = Math.max(1, Math.min(5, body.minRating ?? 3.5));
+
+  if (!city) {
+    return c.json({ success: false, error: "city is required" }, 422);
+  }
+
+  // Derive default search keywords from city + sector
+  const defaultKeywords = body.keywords ?? [`${sector} ${city}`, `${city} ${sector}`];
+
+  // Find or create the ScrapeConfig for this city+country+sector
+  const configName = `${city} ${sector.charAt(0).toUpperCase() + sector.slice(1)} — ${country}`;
+
+  let config = await prisma.scrapeConfig.findFirst({
+    where: {
+      name: { equals: configName, mode: "insensitive" },
+    },
+  });
+
+  if (!config) {
+    config = await prisma.scrapeConfig.create({
+      data: {
+        name: configName,
+        sector,
+        countries: [country],
+        cities: [city],
+        keywords: defaultKeywords,
+        excludeKeywords: ["mcdonald", "burger king", "subway", "starbucks", "kfc", "dominos"],
+        minRating,
+        maxResults,
+        schedule: null,
+        isActive: true,
+      },
+    });
+  }
+
+  // Create the SCRAPER job — orchestrator handles the rest of the chain
+  const job = await prisma.agentJob.create({
+    data: {
+      agentType: "SCRAPER",
+      status: "QUEUED",
+      input: {
+        scrapeConfigId: config.id,
+        configId: config.id,
+        sector: config.sector,
+        countries: config.countries as string[],
+        cities: (config.cities as string[] | null) ?? [city],
+        keywords: config.keywords as string[],
+        maxResults: config.maxResults,
+        minRating: config.minRating ?? minRating,
+      },
+    },
+  });
+
+  await enqueueAgentJob({
+    agentType: "SCRAPER",
+    jobId: job.id,
+    input: job.input as Record<string, unknown>,
+  });
+
+  return c.json(
+    {
+      success: true,
+      data: {
+        scrapeConfigId: config.id,
+        jobId: job.id,
+        message: `Campaign launched — targeting up to ${maxResults} ${sector} businesses in ${city}, ${country}. Pipeline: SCRAPER → ANALYZER → BUILDER → OUTREACH → QA`,
+      },
+    },
+    202
+  );
+});
+
+// ─── GET /admin/launch/campaigns — list active campaigns with live stats ──────
+//
+// Returns all ScrapeConfigs (excluding the internal warming marker) with
+// counts of currently active/queued jobs and total prospects found.
+
+app.get("/campaigns", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+
+  // Load all real scrape configs (exclude the internal warming state marker)
+  const configs = await prisma.scrapeConfig.findMany({
+    where: {
+      name: { not: { equals: "__warming_state__", mode: "insensitive" } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+
+  if (configs.length === 0) {
+    return c.json({ success: true, data: [] });
+  }
+
+  // For each config, count active/queued jobs whose input references this configId,
+  // and count the prospects that were created by a scraper job for this config.
+  // We do two aggregate queries to keep it efficient.
+
+  const [activeJobRows, prospectCountRows] = await Promise.all([
+    // Count RUNNING or QUEUED SCRAPER jobs per configId stored in input JSON
+    prisma.$queryRaw<{ configId: string; count: bigint }[]>`
+      SELECT
+        input->>'configId' AS "configId",
+        COUNT(*)::bigint      AS count
+      FROM "AgentJob"
+      WHERE status IN ('RUNNING', 'QUEUED')
+        AND "agentType" = 'SCRAPER'
+        AND input->>'configId' IS NOT NULL
+      GROUP BY input->>'configId'
+    `.catch(() => [] as { configId: string; count: bigint }[]),
+
+    // Count prospects per scrapeJobId — we link via the agentJob that has input.configId
+    prisma.$queryRaw<{ configId: string; count: bigint }[]>`
+      SELECT
+        j.input->>'configId' AS "configId",
+        COUNT(DISTINCT p.id)::bigint AS count
+      FROM "Prospect" p
+      JOIN "AgentJob" j
+        ON j.id = p."scrapeJobId"
+      WHERE j.input->>'configId' IS NOT NULL
+      GROUP BY j.input->>'configId'
+    `.catch(() => [] as { configId: string; count: bigint }[]),
+  ]);
+
+  // Build lookup maps
+  const activeJobMap: Record<string, number> = {};
+  for (const row of activeJobRows) {
+    activeJobMap[row.configId] = Number(row.count);
+  }
+
+  const prospectMap: Record<string, number> = {};
+  for (const row of prospectCountRows) {
+    prospectMap[row.configId] = Number(row.count);
+  }
+
+  const data = configs.map((cfg) => ({
+    id: cfg.id,
+    name: cfg.name,
+    sector: cfg.sector,
+    countries: cfg.countries as string[],
+    cities: cfg.cities as string[] | null,
+    maxResults: cfg.maxResults,
+    isActive: cfg.isActive,
+    lastRunAt: cfg.lastRunAt?.toISOString() ?? null,
+    totalFound: cfg.totalFound,
+    createdAt: cfg.createdAt.toISOString(),
+    activeJobs: activeJobMap[cfg.id] ?? 0,
+    prospectsFound: prospectMap[cfg.id] ?? cfg.totalFound,
+  }));
+
+  return c.json({ success: true, data });
+});
+
 export default app;

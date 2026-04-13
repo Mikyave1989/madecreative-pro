@@ -1,616 +1,473 @@
 import { useNavigate } from '@remix-run/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { API_URL } from '~/lib/api/client';
 
-// ─── How It Works ──────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-const STEPS = [
-  {
-    num: '01',
-    icon: 'i-ph:chat-circle-text',
-    title: 'Describe your vision',
-    desc: 'Tell the AI what you need. "A modern restaurant website with an online menu, reservation form, and photo gallery." That\'s it.',
-  },
-  {
-    num: '02',
-    icon: 'i-ph:code',
-    title: 'AI writes real code',
-    desc: 'Our AI generates production-grade React, Next.js, and Tailwind CSS code in real-time. Watch your website come to life in seconds.',
-  },
-  {
-    num: '03',
-    icon: 'i-ph:rocket-launch',
-    title: 'Deploy in one click',
-    desc: 'Hit deploy and your site is live with SSL, CDN, and a custom domain. Edit anytime by chatting with the AI.',
-  },
+const AGENTS = [
+  { id: 'scraper', name: 'SCRAPER', emoji: '\uD83D\uDD0D', role: 'Data Collector', verb: 'Scanning 3 pages...', color: '#3b82f6', x: 5, desc: 'Crawls your website, Google Maps, and social profiles. Extracts photos, reviews, text, and branding.' },
+  { id: 'analyzer', name: 'ANALYZER', emoji: '\uD83E\uDDE0', role: 'Business Intel', verb: 'Lead score: 87/100', color: '#8b5cf6', x: 25, desc: 'Analyzes your market, competitors, and presence. Calculates lead score and identifies what your site needs.' },
+  { id: 'builder', name: 'BUILDER', emoji: '\u26A1', role: 'Code Generator', verb: 'Writing 12 files...', color: '#6366f1', x: 45, desc: 'Writes production React + Next.js + Tailwind code. Multi-page, animated, SEO-optimized in under 60 seconds.' },
+  { id: 'outreach', name: 'OUTREACH', emoji: '\uD83D\uDCE7', role: 'Growth Engine', verb: 'Email opened!', color: '#ec4899', x: 65, desc: 'Generates personalized cold emails with your preview link. Handles follow-ups, tracks opens, warms domain.' },
+  { id: 'qa', name: 'QA', emoji: '\uD83D\uDEE1\uFE0F', role: 'Quality Guard', verb: 'Score: 98/100', color: '#22c55e', x: 85, desc: 'Lighthouse audits, mobile checks, link validation, uptime monitoring 24/7.' },
 ];
-
-// ─── Features ──────────────────────────────────────────────────────────────
 
 const FEATURES = [
-  {
-    icon: 'i-ph:magic-wand',
-    title: 'AI Website Builder',
-    desc: 'Describe your vision in plain language. Our AI creates a complete, premium website with animations, interactions, and responsive design.',
-    color: '#6366f1',
-  },
-  {
-    icon: 'i-ph:globe-simple',
-    title: 'Scrape & Rebuild',
-    desc: 'Already have a site? We analyze it, extract your photos, text, and branding, then rebuild it at 10x quality with modern technology.',
-    color: '#8b5cf6',
-  },
-  {
-    icon: 'i-ph:file-code',
-    title: 'Real Code, Not Templates',
-    desc: 'Every site is built with React, Next.js, Tailwind CSS, and Framer Motion. You own the source code. No lock-in, no drag-and-drop limitations.',
-    color: '#a855f7',
-  },
-  {
-    icon: 'i-ph:rocket-launch',
-    title: 'One-Click Deploy',
-    desc: 'Deploy your site instantly to a global CDN. Custom domains with SSL certificates included. Your site loads fast everywhere.',
-    color: '#ec4899',
-  },
-  {
-    icon: 'i-ph:chat-circle-dots',
-    title: 'Chat to Edit',
-    desc: '"Make the header blue", "Add a testimonials section", "Change the hero image". Just chat and the AI makes changes in seconds.',
-    color: '#f43f5e',
-  },
-  {
-    icon: 'i-ph:devices',
-    title: 'Fully Responsive',
-    desc: 'Every site looks perfect on mobile, tablet, and desktop. We test across all screen sizes automatically — pixel-perfect on every device.',
-    color: '#f97316',
-  },
-  {
-    icon: 'i-ph:robot',
-    title: 'AI Chatbot Included',
-    desc: 'Every site gets a smart chatbot widget that knows your business. It answers customer questions 24/7, generates leads, and books appointments.',
-    color: '#14b8a6',
-  },
-  {
-    icon: 'i-ph:chart-line-up',
-    title: 'Monthly Reports',
-    desc: 'Receive automated monthly PDF reports with visitor stats, chatbot performance, lead generation data, and actionable recommendations.',
-    color: '#3b82f6',
-  },
-  {
-    icon: 'i-ph:shield-check',
-    title: 'Monitoring & Uptime',
-    desc: 'We monitor your site 24/7. If it goes down, we get alerted instantly and fix it before you even notice. 99.9% uptime guaranteed.',
-    color: '#22c55e',
-  },
+  { icon: 'i-ph:chat-circle-dots', t: 'Chat to Build', d: 'Describe what you want in plain language. The AI writes complete websites in real-time.' },
+  { icon: 'i-ph:file-code', t: 'Real Code', d: 'React, Next.js, Tailwind CSS. Production-grade, SEO-optimized. You own every line.' },
+  { icon: 'i-ph:globe-simple', t: 'Scrape & Rebuild', d: 'Paste your URL. We extract everything and rebuild it 10x better.' },
+  { icon: 'i-ph:rocket-launch', t: 'One-Click Deploy', d: 'Live in seconds with SSL, CDN, and custom domain.' },
+  { icon: 'i-ph:robot', t: 'AI Chatbot', d: 'Smart widget that answers customer questions 24/7 and generates leads.' },
+  { icon: 'i-ph:chart-line-up', t: 'Monthly Reports', d: 'Automated PDF reports with visitor stats, leads, and recommendations.' },
 ];
-
-// ─── Comparison ────────────────────────────────────────────────────────────
 
 const COMPARISON = [
-  { feature: 'Time to launch', traditional: '2-8 weeks', madecreative: 'Under 5 minutes' },
-  { feature: 'Cost', traditional: '2,000 - 15,000+', madecreative: 'From 25/month' },
-  { feature: 'Code ownership', traditional: 'Often locked', madecreative: 'Full source code' },
-  { feature: 'Edits & changes', traditional: 'Wait for dev', madecreative: 'Chat with AI, instant' },
-  { feature: 'Technology', traditional: 'WordPress / Wix', madecreative: 'React + Next.js' },
-  { feature: 'Mobile optimization', traditional: 'Sometimes', madecreative: 'Always, auto-tested' },
-  { feature: 'Chatbot', traditional: 'Extra cost', madecreative: 'Included' },
-  { feature: 'Monthly reports', traditional: 'Not included', madecreative: 'Automated PDF' },
+  { f: 'Time to launch', old: '2-8 weeks', us: '< 5 minutes' },
+  { f: 'Cost', old: '\u20AC2,000 - \u20AC15,000', us: 'From \u20AC25/mo' },
+  { f: 'Technology', old: 'WordPress / Wix', us: 'React + Next.js' },
+  { f: 'Edits', old: 'Wait for dev', us: 'Chat with AI' },
+  { f: 'Code ownership', old: 'Locked in', us: 'Full source code' },
+  { f: 'Chatbot', old: 'Extra cost', us: 'Included' },
+  { f: 'Reports', old: 'Not included', us: 'Automated PDF' },
+  { f: 'Monitoring', old: 'Not included', us: '24/7 included' },
 ];
-
-// ─── Pricing ───────────────────────────────────────────────────────────────
 
 const PLANS = [
-  {
-    name: 'Starter',
-    slug: 'STARTER',
-    price: 25,
-    period: '/mo',
-    desc: 'Perfect for small businesses getting started online.',
-    features: [
-      '1 website',
-      '200 AI credits / month',
-      'Custom subdomain (you.madecreative.pro)',
-      'SSL certificate',
-      'One-click deploy',
-      'AI chatbot widget',
-      'Monthly PDF report',
-      'Email support',
-    ],
-    notIncluded: ['Custom domain', 'Analytics dashboard', 'Priority support'],
-    popular: false,
-  },
-  {
-    name: 'Growth',
-    slug: 'GROWTH',
-    price: 50,
-    period: '/mo',
-    desc: 'For growing businesses that need more power and custom branding.',
-    features: [
-      '3 websites',
-      '500 AI credits / month',
-      'Custom domain (yourbrand.com)',
-      'SSL certificate',
-      'One-click deploy',
-      'AI chatbot widget',
-      'Monthly PDF report',
-      'Analytics dashboard',
-      'Priority support',
-      'Uptime monitoring',
-    ],
-    notIncluded: [],
-    popular: true,
-  },
-  {
-    name: 'Pro',
-    slug: 'PRO',
-    price: 99,
-    period: '/mo',
-    desc: 'For agencies and power users. Build unlimited, brand as yours.',
-    features: [
-      '10 websites',
-      '1,000 AI credits / month',
-      'Custom domain',
-      'SSL certificate',
-      'One-click deploy',
-      'AI chatbot widget',
-      'Monthly PDF report',
-      'Analytics dashboard',
-      'Dedicated support',
-      'Uptime monitoring',
-      'API access',
-      'White-label branding',
-      'Multi-language sites',
-    ],
-    notIncluded: [],
-    popular: false,
-  },
+  { name: 'Starter', slug: 'STARTER', price: 25, desc: 'For small businesses.', features: ['1 website', '200 AI credits/mo', 'Custom subdomain', 'AI chatbot', 'Monthly reports', 'Email support'], hl: false },
+  { name: 'Growth', slug: 'GROWTH', price: 50, desc: 'For growing businesses.', features: ['3 websites', '500 AI credits/mo', 'Custom domain', 'AI chatbot', 'Monthly reports', 'Analytics', 'Priority support', 'Uptime monitoring'], hl: true },
+  { name: 'Pro', slug: 'PRO', price: 99, desc: 'For agencies & power users.', features: ['10 websites', '1,000 AI credits/mo', 'Custom domain', 'AI chatbot', 'Reports + Analytics', 'Dedicated support', 'API access', 'White-label', 'Multi-language'], hl: false },
 ];
-
-// ─── Testimonials ──────────────────────────────────────────────────────────
 
 const TESTIMONIALS = [
-  {
-    name: 'Marco R.',
-    role: 'Restaurant Owner, Munich',
-    text: 'I described my restaurant and in 2 minutes I had a website better than what my agency built in 3 weeks. The chatbot already booked 12 reservations this month.',
-    rating: 5,
-    avatar: 'M',
-  },
-  {
-    name: 'Sarah K.',
-    role: 'Freelance Designer, Berlin',
-    text: 'I prototype client sites in minutes now. The AI writes real React code — I just export it and customize. My workflow is 10x faster.',
-    rating: 5,
-    avatar: 'S',
-  },
-  {
-    name: 'Thomas M.',
-    role: 'Startup Founder, Hamburg',
-    text: 'We launched 3 landing pages in one afternoon for A/B testing. Real Next.js code, not some drag-and-drop toy. The monthly reports are a nice bonus too.',
-    rating: 5,
-    avatar: 'T',
-  },
-  {
-    name: 'Anna L.',
-    role: 'Bakery Owner, Vienna',
-    text: 'I was paying 200/month for a WordPress site I couldn\'t even update myself. Now I pay 25 and change anything by chatting. Mind blown.',
-    rating: 5,
-    avatar: 'A',
-  },
+  { name: 'Marco R.', role: 'Restaurant, Munich', text: 'In 2 minutes I had a website better than what my agency built in 3 weeks.', a: 'M' },
+  { name: 'Sarah K.', role: 'Designer, Berlin', text: 'I prototype client sites in minutes now. Real React code. 10x faster.', a: 'S' },
+  { name: 'Thomas M.', role: 'Startup, Hamburg', text: '3 landing pages in one afternoon for A/B testing. Real code.', a: 'T' },
+  { name: 'Anna L.', role: 'Bakery, Vienna', text: 'Was paying \u20AC200/month for WordPress. Now \u20AC25 and I change anything by chatting.', a: 'A' },
 ];
-
-// ─── FAQ ───────────────────────────────────────────────────────────────────
 
 const FAQS = [
-  {
-    q: 'What exactly does the AI build?',
-    a: 'Real, production-grade code using React, Next.js, and Tailwind CSS. Not templates — every site is unique and generated from scratch based on your description. You get full source code ownership.',
-  },
-  {
-    q: 'Can I edit the site after it\'s built?',
-    a: 'Absolutely. Just chat with the AI: "Change the hero text", "Add a gallery section", "Make the buttons green". Changes happen in seconds. You can also edit the code directly in the built-in editor.',
-  },
-  {
-    q: 'Do I need to know how to code?',
-    a: 'Not at all. The entire process is conversational. Describe what you want in plain language and the AI handles all the coding. If you do know code, you can edit it directly.',
-  },
-  {
-    q: 'What are AI credits?',
-    a: 'Each interaction with the AI (generating a site, making edits, chatting) uses credits. A full site build uses about 5 credits. Small edits use 0.5-1 credit. Credits reset monthly.',
-  },
-  {
-    q: 'Can I use my own domain?',
-    a: 'Yes! Growth and Pro plans include custom domain support. Just point your DNS to our servers and we handle SSL certificates automatically.',
-  },
-  {
-    q: 'What about SEO?',
-    a: 'Every site includes proper meta tags, Open Graph data, Schema.org structured data, responsive design, fast loading times, and semantic HTML — all the foundations for great SEO.',
-  },
-  {
-    q: 'Can I cancel anytime?',
-    a: 'Yes. No contracts, no cancellation fees. Cancel anytime from your billing dashboard. Your sites stay live until the end of your billing period.',
-  },
-  {
-    q: 'What\'s included in the chatbot?',
-    a: 'An AI-powered widget that you embed on your site. It learns about your business from a knowledge base you configure, answers customer questions 24/7, and generates leads. Included in all plans.',
-  },
+  { q: 'What does the AI build?', a: 'Real production code: React, Next.js, Tailwind. Not templates. Every site is unique. You own the source.' },
+  { q: 'Can I edit after?', a: 'Yes. Chat: "Change the header", "Add a gallery". Or edit code directly in the built-in editor.' },
+  { q: 'Do I need coding skills?', a: 'Zero. If you can describe what you want, you can build a website.' },
+  { q: 'What are AI credits?', a: 'Each interaction uses credits. Full build = ~5 credits. Small edit = 0.5. Credits reset monthly.' },
+  { q: 'Custom domain?', a: 'Growth + Pro plans. Point your DNS, we handle SSL automatically.' },
+  { q: 'Can I cancel?', a: 'Anytime. No contracts. 14-day money-back guarantee.' },
+  { q: 'How do the 5 agents work?', a: 'Automatic pipeline: SCRAPER collects data, ANALYZER scores, BUILDER creates site, OUTREACH sends emails, QA monitors 24/7.' },
 ];
 
-// ─── Stats ─────────────────────────────────────────────────────────────────
-
-const STATS = [
-  { value: '500+', label: 'Websites built' },
-  { value: '<60s', label: 'Avg. build time' },
-  { value: '99.9%', label: 'Uptime SLA' },
-  { value: '24/7', label: 'AI + Monitoring' },
-];
-
-// ─── Component ─────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 export function Landing() {
   const navigate = useNavigate();
-  const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
-  const [checkoutEmail, setCheckoutEmail] = useState('');
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState('');
+  const [cPlan, setCPlan] = useState<string | null>(null);
+  const [cEmail, setCEmail] = useState('');
+  const [cLoad, setCLoad] = useState(false);
+  const [cErr, setCErr] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [annual, setAnnual] = useState(false);
+  const [activeA, setActiveA] = useState(0);
 
-  async function handleCheckout(planSlug: string) {
-    if (!checkoutEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkoutEmail)) {
-      setCheckoutError('Please enter a valid email address.');
-      return;
-    }
-    setCheckoutLoading(true);
-    setCheckoutError('');
+  useEffect(() => { const t = setInterval(() => setActiveA(i => (i + 1) % AGENTS.length), 3500); return () => clearInterval(t); }, []);
+
+  async function checkout(slug: string) {
+    if (!cEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cEmail)) { setCErr('Enter a valid email.'); return; }
+    setCLoad(true); setCErr('');
     try {
-      const res = await fetch(`${API_URL}/public/signup/checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          plan: planSlug,
-          billing: annual ? 'annual' : 'monthly',
-          email: checkoutEmail.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.data?.checkoutUrl) {
-        window.location.href = data.data.checkoutUrl;
-      } else {
-        setCheckoutError(data.error || 'Something went wrong. Try again.');
-        setCheckoutLoading(false);
-      }
-    } catch {
-      setCheckoutError('Connection error. Please try again.');
-      setCheckoutLoading(false);
-    }
+      const r = await fetch(`${API_URL}/public/signup/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: slug, billing: annual ? 'annual' : 'monthly', email: cEmail.trim() }) });
+      const d = await r.json();
+      if (d.success && d.data?.checkoutUrl) window.location.href = d.data.checkoutUrl;
+      else { setCErr(d.error || 'Error.'); setCLoad(false); }
+    } catch { setCErr('Connection error.'); setCLoad(false); }
   }
 
-  const GradientText = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-    <span
-      className={className}
-      style={{
-        background: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-      }}
-    >
-      {children}
-    </span>
-  );
+  // ── inline style helpers to override bolt-elements theme ──
+  const S = {
+    bg: { backgroundColor: '#050507' } as React.CSSProperties,
+    bg2: { backgroundColor: '#0a0a0f' } as React.CSSProperties,
+    bg3: { backgroundColor: '#0f0f17' } as React.CSSProperties,
+    card: { backgroundColor: '#0d0d14', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16 } as React.CSSProperties,
+    cardHl: { backgroundColor: '#0d0d14', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 16 } as React.CSSProperties,
+    faq: { backgroundColor: '#0d0d14', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 } as React.CSSProperties,
+    t1: { color: '#ffffff' } as React.CSSProperties,
+    t2: { color: '#a1a1aa' } as React.CSSProperties,
+    t3: { color: '#71717a' } as React.CSSProperties,
+    t4: { color: '#52525b' } as React.CSSProperties,
+    gt: { background: 'linear-gradient(135deg,#6366f1,#a855f7,#ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } as React.CSSProperties,
+    gb: { background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' } as React.CSSProperties,
+  };
 
   return (
-    <div className="min-h-screen bg-bolt-elements-background-depth-1 text-bolt-elements-textPrimary">
+    <div style={{ ...S.bg, color: '#ffffff', minHeight: '100vh' }}>
+      <style>{`
+        @keyframes mc-work{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+        @keyframes mc-pulse{0%,100%{opacity:.4}50%{opacity:1}}
+        @keyframes mc-scan{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
+        @keyframes mc-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+        @keyframes mc-orbit{0%{transform:rotate(0deg) translateX(40px) rotate(0deg)}100%{transform:rotate(360deg) translateX(40px) rotate(-360deg)}}
+        @keyframes mc-data-up{0%{transform:translateY(0);opacity:.8}100%{transform:translateY(-30px);opacity:0}}
+        @keyframes mc-typing{0%,100%{width:0}50%{width:60px}}
+        @keyframes mc-dash{0%{stroke-dashoffset:200}100%{stroke-dashoffset:0}}
+        .mc-link:hover{color:#e4e4e7!important}
+      `}</style>
 
-      {/* ─── Navbar ───────────────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-bolt-elements-background-depth-1/80 border-b border-bolt-elements-borderColor">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-xl font-bold" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            MadeCreative
-          </span>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <a href="#how-it-works" className="text-sm text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hidden md:block">How it works</a>
-            <a href="#features" className="text-sm text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hidden md:block">Features</a>
-            <a href="#pricing" className="text-sm text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hidden sm:block">Pricing</a>
-            <button onClick={() => navigate('/login')} className="text-sm text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary">Sign In</button>
-            <button onClick={() => navigate('/signup')} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors">
-              Get Started
-            </button>
+      {/* ── NAV ──────────────────────────────────────────────────────────── */}
+      <nav style={{ position: 'fixed', top: 0, width: '100%', zIndex: 50, backgroundColor: 'rgba(5,5,7,.85)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+        <div style={{ maxWidth: 1152, margin: '0 auto', padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 20, fontWeight: 700, ...S.gt }}>MadeCreative</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <a href="#agents" className="mc-link" style={{ fontSize: 14, ...S.t3, textDecoration: 'none' }}>Agents</a>
+            <a href="#pricing" className="mc-link" style={{ fontSize: 14, ...S.t3, textDecoration: 'none' }}>Pricing</a>
+            <button onClick={() => navigate('/login')} className="mc-link" style={{ fontSize: 14, ...S.t3, background: 'none', border: 'none', cursor: 'pointer' }}>Sign In</button>
+            <a href="#pricing" style={{ ...S.gb, padding: '8px 16px', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Get Started</a>
           </div>
         </div>
       </nav>
 
-      {/* ─── Hero ─────────────────────────────────────────────────────────────── */}
-      <section className="pt-28 sm:pt-36 pb-20 px-6 relative overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute top-40 left-1/4 w-[300px] h-[300px] bg-purple-500/8 rounded-full blur-[100px] pointer-events-none" />
+      {/* ── HERO + VIDEO ─────────────────────────────────────────────────── */}
+      <section style={{ paddingTop: 120, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 40, left: '50%', transform: 'translateX(-50%)', width: 900, height: 600, borderRadius: '50%', filter: 'blur(180px)', background: 'radial-gradient(circle, rgba(99,102,241,.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        <div className="max-w-4xl mx-auto text-center relative">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-medium mb-8 border border-indigo-500/20">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            AI-Powered Website Builder
+        <div style={{ maxWidth: 1152, margin: '0 auto', padding: '64px 24px 32px', position: 'relative', textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 9999, border: '1px solid rgba(255,255,255,.1)', backgroundColor: 'rgba(255,255,255,.03)', fontSize: 12, marginBottom: 32 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#4ade80', animation: 'mc-pulse 2s ease-in-out infinite' }} />
+            <span style={S.t3}>5 AI Agents Working For You</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.1] mb-6 tracking-tight">
-            Your complete website
-            <br />
-            <GradientText>built by AI in minutes</GradientText>
+          <h1 style={{ fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 800, lineHeight: 1.05, marginBottom: 24, letterSpacing: '-0.02em', color: '#fff' }}>
+            Your complete website<br />
+            <span style={S.gt}>built by AI agents</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-bolt-elements-textSecondary max-w-2xl mx-auto mb-10 leading-relaxed">
-            Describe what you want. Our AI writes real React code, deploys it live, and gives you
-            a chatbot, analytics, and monthly reports — all for the price of a pizza.
+          <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', maxWidth: 640, margin: '0 auto 40px', lineHeight: 1.6, ...S.t2 }}>
+            5 specialized AI agents scrape your data, analyze your market,
+            write production code, deploy your site, and grow your business.
+            <span style={S.t1}> Fully automated, from &euro;25/month.</span>
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href="#pricing"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-xl text-white font-semibold transition-all text-lg text-center"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
-            >
-              See Plans & Pricing
-            </a>
-            <button
-              onClick={() => navigate('/login')}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-xl border border-bolt-elements-borderColor text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-2 font-semibold transition-colors text-lg"
-            >
-              Sign In
-            </button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
+            <a href="#pricing" style={{ ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Start Building</a>
+            <a href="#agents" style={{ padding: '14px 32px', borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', color: '#d4d4d8', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Meet the Agents</a>
+          </div>
+        </div>
+
+        {/* Video */}
+        <div style={{ maxWidth: 960, margin: '48px auto 0', padding: '0 24px' }}>
+          <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,.1)', boxShadow: '0 0 80px rgba(99,102,241,.1)' }}>
+            <div style={{ height: 36, background: 'linear-gradient(180deg, rgba(20,20,30,1) 0%, rgba(15,15,23,1) 100%)', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 6 }}><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#ff5f57' }} /><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#febc2e' }} /><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#28c840' }} /></div>
+              <span style={{ fontSize: 11, ...S.t4, fontFamily: 'monospace', marginLeft: 8 }}>madecreative.pro</span>
+            </div>
+            <video autoPlay loop muted playsInline style={{ width: '100%', display: 'block', aspectRatio: '16/9', objectFit: 'cover' }}>
+              <source src="/hero-demo.webm" type="video/webm" />
+            </video>
           </div>
         </div>
       </section>
 
-      {/* ─── Stats Bar ────────────────────────────────────────────────────────── */}
-      <section className="py-10 px-6 border-y border-bolt-elements-borderColor bg-bolt-elements-background-depth-2/50">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-          {STATS.map((s) => (
-            <div key={s.label} className="text-center">
-              <div className="text-3xl sm:text-4xl font-bold" style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.value}</div>
-              <div className="text-sm text-bolt-elements-textTertiary mt-1">{s.label}</div>
-            </div>
+      {/* ── STATS ────────────────────────────────────────────────────────── */}
+      <section style={{ padding: '64px 24px' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32, textAlign: 'center' }}>
+          {[{ v: '500+', l: 'Websites built' }, { v: '<60s', l: 'Build time' }, { v: '99.9%', l: 'Uptime SLA' }, { v: '5', l: 'AI Agents' }].map(s => (
+            <div key={s.l}><div style={{ fontSize: 36, fontWeight: 700, ...S.gt }}>{s.v}</div><div style={{ fontSize: 14, ...S.t4, marginTop: 4 }}>{s.l}</div></div>
           ))}
         </div>
       </section>
 
-      {/* ─── How It Works ─────────────────────────────────────────────────────── */}
-      <section id="how-it-works" className="py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="text-sm font-medium text-indigo-400 mb-2">Simple process</div>
-            <h2 className="text-3xl sm:text-4xl font-bold">Three steps to your website</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {STEPS.map((step, i) => (
-              <div key={step.num} className="relative">
-                {i < STEPS.length - 1 && (
-                  <div className="hidden md:block absolute top-10 left-[calc(100%_-_16px)] w-[calc(100%_-_48px)] h-[2px] bg-gradient-to-r from-indigo-500/40 to-transparent" />
-                )}
-                <div className="flex flex-col items-center text-center">
-                  <div
-                    className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5"
-                    style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))' }}
-                  >
-                    <div className={`${step.icon} text-3xl text-indigo-400`} />
-                  </div>
-                  <div className="text-xs text-indigo-400 font-mono font-bold mb-2">STEP {step.num}</div>
-                  <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-                  <p className="text-sm text-bolt-elements-textSecondary leading-relaxed">{step.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Features ─────────────────────────────────────────────────────────── */}
-      <section id="features" className="py-24 px-6 bg-bolt-elements-background-depth-2/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="text-sm font-medium text-indigo-400 mb-2">Everything included</div>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Not just a website builder</h2>
-            <p className="text-bolt-elements-textSecondary max-w-2xl mx-auto">
-              MadeCreative is a complete digital presence platform. AI website builder + chatbot + analytics + monitoring + monthly reports. All automated.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="group p-6 rounded-xl bg-bolt-elements-background-depth-1 border border-bolt-elements-borderColor hover:border-indigo-500/30 transition-all hover:shadow-lg hover:shadow-indigo-500/5"
-              >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
-                  style={{ background: `${f.color}15` }}
-                >
-                  <div className={`${f.icon} text-xl`} style={{ color: f.color }} />
-                </div>
-                <h3 className="font-semibold mb-2">{f.title}</h3>
-                <p className="text-sm text-bolt-elements-textSecondary leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Comparison Table ─────────────────────────────────────────────────── */}
-      <section className="py-24 px-6">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="text-sm font-medium text-indigo-400 mb-2">Why switch</div>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Traditional agency vs MadeCreative</h2>
-          </div>
-          <div className="rounded-xl border border-bolt-elements-borderColor overflow-hidden">
-            <div className="grid grid-cols-3 bg-bolt-elements-background-depth-2 text-sm font-medium">
-              <div className="p-4" />
-              <div className="p-4 text-center text-bolt-elements-textTertiary">Traditional</div>
-              <div className="p-4 text-center text-indigo-400">MadeCreative</div>
-            </div>
-            {COMPARISON.map((row, i) => (
-              <div
-                key={row.feature}
-                className={`grid grid-cols-3 text-sm ${i % 2 === 0 ? 'bg-bolt-elements-background-depth-1' : 'bg-bolt-elements-background-depth-2/50'}`}
-              >
-                <div className="p-4 font-medium">{row.feature}</div>
-                <div className="p-4 text-center text-bolt-elements-textTertiary">{row.traditional}</div>
-                <div className="p-4 text-center text-green-400 font-medium">{row.madecreative}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Testimonials ─────────────────────────────────────────────────────── */}
-      <section className="py-24 px-6 bg-bolt-elements-background-depth-2/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="text-sm font-medium text-indigo-400 mb-2">Social proof</div>
-            <h2 className="text-3xl sm:text-4xl font-bold">Loved by business owners</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {TESTIMONIALS.map((t) => (
-              <div
-                key={t.name}
-                className="p-5 rounded-xl bg-bolt-elements-background-depth-1 border border-bolt-elements-borderColor"
-              >
-                <div className="flex gap-0.5 mb-3">
-                  {Array.from({ length: t.rating }, (_, i) => (
-                    <span key={i} className="text-amber-400 text-sm">&#9733;</span>
-                  ))}
-                </div>
-                <p className="text-sm text-bolt-elements-textSecondary mb-4 leading-relaxed">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">{t.avatar}</div>
-                  <div>
-                    <div className="text-sm font-medium">{t.name}</div>
-                    <div className="text-xs text-bolt-elements-textTertiary">{t.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Pricing ──────────────────────────────────────────────────────────── */}
-      <section id="pricing" className="py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-6">
-            <div className="text-sm font-medium text-indigo-400 mb-2">Pricing</div>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Simple, transparent pricing</h2>
-            <p className="text-bolt-elements-textSecondary max-w-xl mx-auto">
-              All plans include AI website builder, chatbot, deploy, monitoring, and monthly reports. No hidden fees. Cancel anytime.
-            </p>
+      {/* ══ AGENT ECOSYSTEM — animated workspace ═════════════════════════ */}
+      <section id="agents" style={{ padding: '96px 24px', position: 'relative' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(99,102,241,.04), transparent)', pointerEvents: 'none' }} />
+        <div style={{ maxWidth: 1152, margin: '0 auto', position: 'relative' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// THE AGENT TEAM</div>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Watch your agents work</h2>
+            <p style={{ ...S.t2, maxWidth: 560, margin: '0 auto' }}>Each agent has a desk in your virtual office. Click one to see what they do.</p>
           </div>
 
-          {/* Billing toggle */}
-          <div className="flex items-center justify-center gap-3 mb-12">
-            <span className={`text-sm ${!annual ? 'text-bolt-elements-textPrimary font-medium' : 'text-bolt-elements-textTertiary'}`}>Monthly</span>
-            <button
-              onClick={() => setAnnual(!annual)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${annual ? 'bg-indigo-600' : 'bg-bolt-elements-background-depth-3 border border-bolt-elements-borderColor'}`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${annual ? 'translate-x-6' : 'translate-x-0.5'}`} />
-            </button>
-            <span className={`text-sm ${annual ? 'text-bolt-elements-textPrimary font-medium' : 'text-bolt-elements-textTertiary'}`}>Annual</span>
-            {annual && <span className="text-xs text-green-400 font-medium bg-green-400/10 px-2 py-0.5 rounded-full">Save 20%</span>}
-          </div>
+          {/* ── Agent Workspace — SVG animated scene ── */}
+          <div style={{ ...S.card, padding: '40px 24px', marginBottom: 40, position: 'relative', overflow: 'hidden' }}>
+            {/* Floor grid lines */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(180deg, transparent, rgba(99,102,241,.03))', borderTop: '1px solid rgba(255,255,255,.03)' }} />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {PLANS.map((plan) => {
-              const displayPrice = annual ? Math.round(plan.price * 0.8) : plan.price;
-              const isActive = checkoutPlan === plan.slug;
-
-              return (
-                <div
-                  key={plan.name}
-                  className={`rounded-2xl p-6 border transition-all ${
-                    plan.popular
-                      ? 'border-indigo-500 bg-indigo-500/5 shadow-xl shadow-indigo-500/10 md:scale-105 relative'
-                      : 'border-bolt-elements-borderColor bg-bolt-elements-background-depth-2'
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-semibold text-white" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                      Most Popular
-                    </div>
-                  )}
-
-                  <h3 className="text-lg font-bold">{plan.name}</h3>
-                  <p className="text-sm text-bolt-elements-textTertiary mt-1 mb-4">{plan.desc}</p>
-
-                  <div className="mb-6">
-                    <span className="text-bolt-elements-textTertiary text-lg align-top">&#8364;</span>
-                    <span className="text-5xl font-bold">{displayPrice}</span>
-                    <span className="text-bolt-elements-textTertiary">{plan.period}</span>
-                    {annual && (
-                      <div className="text-xs text-bolt-elements-textTertiary mt-1">
-                        <span className="line-through">&#8364;{plan.price * 12}</span>{' '}
-                        <span className="text-green-400">&#8364;{displayPrice * 12}/year</span>
-                      </div>
+            <svg viewBox="0 0 1000 280" style={{ width: '100%', height: 'auto' }} xmlns="http://www.w3.org/2000/svg">
+              {/* Connection lines between desks */}
+              {AGENTS.map((agent, i) => {
+                if (i >= AGENTS.length - 1) return null;
+                const next = AGENTS[i + 1]!;
+                const x1 = agent.x * 10 + 60;
+                const x2 = next.x * 10 + 40;
+                const y = 140;
+                const isActive = i < activeA;
+                return (
+                  <g key={`line-${i}`}>
+                    <line x1={x1} y1={y} x2={x2} y2={y} stroke={isActive ? agent.color : 'rgba(255,255,255,0.04)'} strokeWidth={isActive ? 2 : 1} strokeDasharray={isActive ? 'none' : '4 4'}>
+                      {isActive && <animate attributeName="stroke-opacity" values=".4;1;.4" dur="2s" repeatCount="indefinite" />}
+                    </line>
+                    {isActive && (
+                      <circle r="4" fill={next.color}>
+                        <animateMotion dur="1.5s" repeatCount="indefinite" path={`M${x1},${y} L${x2},${y}`} />
+                      </circle>
                     )}
-                  </div>
+                  </g>
+                );
+              })}
 
-                  <ul className="space-y-2.5 mb-6">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-sm">
-                        <div className="i-ph:check-circle-fill text-green-400 text-base shrink-0 mt-0.5" />
-                        <span className="text-bolt-elements-textSecondary">{f}</span>
-                      </li>
-                    ))}
-                    {plan.notIncluded.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-sm opacity-40">
-                        <div className="i-ph:x-circle text-base shrink-0 mt-0.5" />
-                        <span>{f}</span>
+              {/* Agent workstations */}
+              {AGENTS.map((agent, i) => {
+                const cx = agent.x * 10 + 50;
+                const isActive = activeA === i;
+                const isDone = i < activeA;
+                return (
+                  <g key={agent.id} onClick={() => setActiveA(i)} style={{ cursor: 'pointer' }}>
+                    {/* Desk */}
+                    <rect x={cx - 45} y={170} width={90} height={8} rx={4} fill={isActive ? `${agent.color}30` : 'rgba(255,255,255,0.03)'} stroke={isActive ? agent.color : 'rgba(255,255,255,0.06)'} strokeWidth={1} />
+                    {/* Screen on desk */}
+                    <rect x={cx - 30} y={130} width={60} height={40} rx={4} fill={isActive ? `${agent.color}15` : 'rgba(255,255,255,0.02)'} stroke={isActive ? `${agent.color}60` : 'rgba(255,255,255,0.05)'} strokeWidth={1} />
+                    {/* Screen content — typing animation */}
+                    {isActive && (
+                      <>
+                        <rect x={cx - 22} y={142} width={44} height={3} rx={1.5} fill={`${agent.color}40`}>
+                          <animate attributeName="width" values="0;44;44" dur="1s" fill="freeze" />
+                        </rect>
+                        <rect x={cx - 22} y={149} width={30} height={3} rx={1.5} fill={`${agent.color}25`}>
+                          <animate attributeName="width" values="0;30;30" dur="1.3s" fill="freeze" />
+                        </rect>
+                        <rect x={cx - 22} y={156} width={38} height={3} rx={1.5} fill={`${agent.color}20`}>
+                          <animate attributeName="width" values="0;38;38" dur="1.6s" fill="freeze" />
+                        </rect>
+                      </>
+                    )}
+                    {isDone && (
+                      <text x={cx} y={155} textAnchor="middle" fontSize={14} fill="#22c55e">&#10003;</text>
+                    )}
+
+                    {/* Agent character (person) */}
+                    <g transform={`translate(${cx}, ${isActive ? 100 : 105})`}>
+                      {isActive && (
+                        <circle r={32} fill="none" stroke={agent.color} strokeWidth={1} opacity={0.15}>
+                          <animate attributeName="r" values="28;36;28" dur="2s" repeatCount="indefinite" />
+                          <animate attributeName="opacity" values=".15;.05;.15" dur="2s" repeatCount="indefinite" />
+                        </circle>
+                      )}
+                      {/* Head */}
+                      <circle r={12} fill={isActive ? agent.color : 'rgba(255,255,255,0.12)'}>
+                        {isActive && <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="1.5s" repeatCount="indefinite" />}
+                      </circle>
+                      {/* Emoji face */}
+                      <text y={5} textAnchor="middle" fontSize={14} style={{ pointerEvents: 'none' }}>
+                        {isActive && <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="1.5s" repeatCount="indefinite" />}
+                        {agent.emoji}
+                      </text>
+                      {/* Body */}
+                      <rect x={-8} y={14} width={16} height={16} rx={4} fill={isActive ? `${agent.color}50` : 'rgba(255,255,255,0.06)'}>
+                        {isActive && <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="1.5s" repeatCount="indefinite" />}
+                      </rect>
+                    </g>
+
+                    {/* Data particles floating up when active */}
+                    {isActive && (
+                      <>
+                        <text x={cx - 15} y={75} fontSize={9} fontFamily="monospace" fill={agent.color}>
+                          {'{ }'}
+                          <animate attributeName="y" values="80;50" dur="2s" repeatCount="indefinite" />
+                          <animate attributeName="opacity" values="1;0" dur="2s" repeatCount="indefinite" />
+                        </text>
+                        <text x={cx + 10} y={65} fontSize={8} fontFamily="monospace" fill={`${agent.color}80`}>
+                          01
+                          <animate attributeName="y" values="75;40" dur="2.5s" repeatCount="indefinite" />
+                          <animate attributeName="opacity" values=".8;0" dur="2.5s" repeatCount="indefinite" />
+                        </text>
+                      </>
+                    )}
+
+                    {/* Name label */}
+                    <text x={cx} y={205} textAnchor="middle" fontSize={10} fontFamily="monospace" fontWeight={700} fill={isActive ? agent.color : isDone ? '#22c55e' : 'rgba(255,255,255,0.2)'}>{agent.name}</text>
+                    <text x={cx} y={220} textAnchor="middle" fontSize={9} fill="rgba(255,255,255,0.25)">{agent.role}</text>
+
+                    {/* Status badge */}
+                    {isActive && (
+                      <g>
+                        <rect x={cx - 40} y={230} width={80} height={20} rx={10} fill={`${agent.color}15`} stroke={`${agent.color}30`} strokeWidth={1} />
+                        <text x={cx} y={243} textAnchor="middle" fontSize={8} fontFamily="monospace" fill={agent.color}>{agent.verb}</text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Progress dots below */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
+              {AGENTS.map((a, i) => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div onClick={() => setActiveA(i)} style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: i <= activeA ? a.color : 'rgba(255,255,255,0.06)', cursor: 'pointer', transition: 'all .3s', transform: i === activeA ? 'scale(1.4)' : 'scale(1)' }} />
+                  {i < AGENTS.length - 1 && <div style={{ width: 24, height: 2, backgroundColor: i < activeA ? a.color : 'rgba(255,255,255,0.04)', transition: 'all .3s' }} />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Active agent detail */}
+          <div style={{ ...S.card, padding: 32, maxWidth: 640, margin: '0 auto', textAlign: 'center', boxShadow: `0 0 60px ${AGENTS[activeA]!.color}08` }}>
+            <div style={{ fontSize: 40, marginBottom: 12, animation: 'mc-float 3s ease-in-out infinite' }}>{AGENTS[activeA]!.emoji}</div>
+            <h3 style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>
+              <span style={{ color: AGENTS[activeA]!.color }}>{AGENTS[activeA]!.name}</span>
+              <span style={{ color: '#3f3f46' }}> — </span>
+              <span style={{ color: '#d4d4d8' }}>{AGENTS[activeA]!.role}</span>
+            </h3>
+            <p style={{ ...S.t2, fontSize: 14, lineHeight: 1.7, marginTop: 12, maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>{AGENTS[activeA]!.desc}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
+      <section style={{ padding: '96px 24px' }}>
+        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// HOW IT WORKS</div>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff' }}>From idea to live site in 3 steps</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+            {[
+              { n: '01', icon: 'i-ph:chat-circle-text', t: 'Describe your vision', d: '"Build a restaurant website with menu, gallery, and reservations."' },
+              { n: '02', icon: 'i-ph:cpu', t: 'Agents get to work', d: '5 AI agents activate in parallel: scraping, analyzing, coding, setting up chatbot.' },
+              { n: '03', icon: 'i-ph:globe-simple', t: 'Live in 60 seconds', d: 'Deployed with SSL, CDN, custom domain, chatbot, and 24/7 monitoring.' },
+            ].map(s => (
+              <div key={s.n} style={{ ...S.card, padding: 24, position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 16, right: 16, fontSize: 56, fontWeight: 800, color: 'rgba(255,255,255,.02)' }}>{s.n}</div>
+                <div className={s.icon} style={{ fontSize: 28, color: '#818cf8', marginBottom: 16 }} />
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 8 }}>{s.t}</h3>
+                <p style={{ fontSize: 14, ...S.t2, lineHeight: 1.6 }}>{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES ─────────────────────────────────────────────────────── */}
+      <section id="features" style={{ padding: '96px 24px', ...S.bg2 }}>
+        <div style={{ maxWidth: 1152, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// FEATURES</div>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff' }}>Everything included</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+            {FEATURES.map(f => (
+              <div key={f.t} style={{ ...S.card, padding: 24 }}>
+                <div className={f.icon} style={{ fontSize: 24, color: '#818cf8', marginBottom: 16 }} />
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 8 }}>{f.t}</h3>
+                <p style={{ fontSize: 14, ...S.t2, lineHeight: 1.6 }}>{f.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── COMPARISON ───────────────────────────────────────────────────── */}
+      <section style={{ padding: '96px 24px' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// WHY SWITCH</div>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff' }}>Agency vs <span style={S.gt}>MadeCreative</span></h2>
+          </div>
+          <div style={{ borderRadius: 16, border: '1px solid rgba(255,255,255,.06)', overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', fontSize: 13, fontWeight: 600, backgroundColor: 'rgba(255,255,255,.03)', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+              <div style={{ padding: 16, ...S.t4 }} /><div style={{ padding: 16, textAlign: 'center', ...S.t4 }}>Traditional</div><div style={{ padding: 16, textAlign: 'center', color: '#818cf8' }}>MadeCreative</div>
+            </div>
+            {COMPARISON.map((r, i) => (
+              <div key={r.f} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', fontSize: 14, borderBottom: '1px solid rgba(255,255,255,.04)', backgroundColor: i % 2 ? 'rgba(255,255,255,.01)' : 'transparent' }}>
+                <div style={{ padding: 16, ...S.t2 }}>{r.f}</div>
+                <div style={{ padding: 16, textAlign: 'center', ...S.t4 }}>{r.old}</div>
+                <div style={{ padding: 16, textAlign: 'center', color: '#4ade80', fontWeight: 500 }}>{r.us}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS ─────────────────────────────────────────────────── */}
+      <section style={{ padding: '96px 24px', ...S.bg2 }}>
+        <div style={{ maxWidth: 1152, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// TESTIMONIALS</div>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff' }}>Trusted across Europe</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20 }}>
+            {TESTIMONIALS.map(t => (
+              <div key={t.name} style={S.card}>
+                <div style={{ padding: 20 }}>
+                  <div style={{ display: 'flex', gap: 2, marginBottom: 12 }}>{Array.from({ length: 5 }, (_, i) => <span key={i} style={{ color: '#fbbf24', fontSize: 14 }}>&#9733;</span>)}</div>
+                  <p style={{ fontSize: 14, ...S.t2, lineHeight: 1.6, marginBottom: 16 }}>"{t.text}"</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', ...S.gb, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>{t.a}</div>
+                    <div><div style={{ fontSize: 14, fontWeight: 500, color: '#e4e4e7' }}>{t.name}</div><div style={{ fontSize: 12, ...S.t4 }}>{t.role}</div></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ──────────────────────────────────────────────────────── */}
+      <section id="pricing" style={{ padding: '96px 24px', position: 'relative' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(99,102,241,.04), transparent)', pointerEvents: 'none' }} />
+        <div style={{ maxWidth: 1080, margin: '0 auto', position: 'relative' }}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// PRICING</div>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Start building today</h2>
+            <p style={{ ...S.t2, maxWidth: 480, margin: '0 auto' }}>All plans include AI builder, chatbot, deploy, monitoring, and reports.</p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 48 }}>
+            <span style={{ fontSize: 14, color: !annual ? '#fff' : '#52525b', fontWeight: !annual ? 500 : 400 }}>Monthly</span>
+            <button onClick={() => setAnnual(!annual)} style={{ position: 'relative', width: 48, height: 24, borderRadius: 12, backgroundColor: annual ? '#6366f1' : '#27272a', border: 'none', cursor: 'pointer' }}>
+              <div style={{ position: 'absolute', top: 2, width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff', transition: 'transform .2s', transform: annual ? 'translateX(24px)' : 'translateX(2px)', boxShadow: '0 1px 3px rgba(0,0,0,.3)' }} />
+            </button>
+            <span style={{ fontSize: 14, color: annual ? '#fff' : '#52525b', fontWeight: annual ? 500 : 400 }}>Annual</span>
+            {annual && <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 600, backgroundColor: 'rgba(74,222,128,.1)', padding: '2px 8px', borderRadius: 9999, border: '1px solid rgba(74,222,128,.2)' }}>-20%</span>}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+            {PLANS.map(plan => {
+              const price = annual ? Math.round(plan.price * 0.8) : plan.price;
+              const isOpen = cPlan === plan.slug;
+              return (
+                <div key={plan.name} style={{ ...(plan.hl ? S.cardHl : S.card), padding: 24, position: 'relative', ...(plan.hl ? { boxShadow: '0 0 60px rgba(99,102,241,.08)', transform: 'scale(1.02)' } : {}) }}>
+                  {plan.hl && <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', ...S.gb, padding: '4px 16px', borderRadius: 9999, fontSize: 12, fontWeight: 700, color: '#fff' }}>Most Popular</div>}
+                  <h3 style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{plan.name}</h3>
+                  <p style={{ fontSize: 13, ...S.t4, marginTop: 4, marginBottom: 16 }}>{plan.desc}</p>
+                  <div style={{ marginBottom: 24 }}>
+                    <span style={{ ...S.t4, fontSize: 18 }}>&euro;</span>
+                    <span style={{ fontSize: 48, fontWeight: 800, color: '#fff' }}>{price}</span>
+                    <span style={S.t4}>/mo</span>
+                    {annual && <div style={{ fontSize: 12, ...S.t4, marginTop: 4 }}><span style={{ textDecoration: 'line-through' }}>&euro;{plan.price * 12}</span> <span style={{ color: '#4ade80' }}>&euro;{price * 12}/yr</span></div>}
+                  </div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px' }}>
+                    {plan.features.map(f => (
+                      <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, marginBottom: 10 }}>
+                        <span style={{ color: '#4ade80', fontSize: 16, lineHeight: 1.2 }}>&#10003;</span>
+                        <span style={{ color: '#d4d4d8' }}>{f}</span>
                       </li>
                     ))}
                   </ul>
-
-                  {/* Checkout inline */}
-                  {isActive ? (
-                    <div className="space-y-3">
-                      <input
-                        type="email"
-                        value={checkoutEmail}
-                        onChange={(e) => { setCheckoutEmail(e.target.value); setCheckoutError(''); }}
-                        placeholder="your@email.com"
-                        className="w-full px-4 py-2.5 rounded-lg bg-bolt-elements-background-depth-3 border border-bolt-elements-borderColor text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                        autoFocus
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleCheckout(plan.slug); }}
-                      />
-                      {checkoutError && <p className="text-xs text-red-400">{checkoutError}</p>}
-                      <button
-                        onClick={() => handleCheckout(plan.slug)}
-                        disabled={checkoutLoading}
-                        className="w-full py-2.5 rounded-lg text-white font-medium text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
-                      >
-                        {checkoutLoading ? (
-                          <>
-                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                            Redirecting to Stripe...
-                          </>
-                        ) : (
-                          <>
-                            <div className="i-ph:lock-simple text-sm" />
-                            Pay &#8364;{displayPrice}/mo — Checkout
-                          </>
-                        )}
+                  {isOpen ? (
+                    <div>
+                      <input type="email" value={cEmail} onChange={e => { setCEmail(e.target.value); setCErr(''); }} placeholder="your@email.com" autoFocus onKeyDown={e => { if (e.key === 'Enter') checkout(plan.slug); }}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 16px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', color: '#fff', fontSize: 14, outline: 'none', marginBottom: 8 }} />
+                      {cErr && <p style={{ fontSize: 12, color: '#f87171', marginBottom: 8 }}>{cErr}</p>}
+                      <button onClick={() => checkout(plan.slug)} disabled={cLoad}
+                        style={{ width: '100%', padding: '10px 0', borderRadius: 8, ...S.gb, color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer', opacity: cLoad ? .5 : 1, marginBottom: 8 }}>
+                        {cLoad ? 'Redirecting...' : `Pay \u20AC${price}/mo`}
                       </button>
-                      <button onClick={() => { setCheckoutPlan(null); setCheckoutError(''); }} className="w-full text-xs text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary">
-                        Cancel
-                      </button>
+                      <button onClick={() => { setCPlan(null); setCErr(''); }} style={{ width: '100%', fontSize: 12, color: '#52525b', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>Cancel</button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => { setCheckoutPlan(plan.slug); setCheckoutError(''); }}
-                      className={`w-full py-2.5 rounded-lg text-center text-sm font-medium transition-all ${
-                        plan.popular
-                          ? 'text-white'
-                          : 'bg-bolt-elements-background-depth-3 hover:bg-bolt-elements-background-depth-1 text-bolt-elements-textPrimary border border-bolt-elements-borderColor'
-                      }`}
-                      style={plan.popular ? { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' } : undefined}
-                    >
+                    <button onClick={() => { setCPlan(plan.slug); setCErr(''); }}
+                      style={{ width: '100%', padding: '10px 0', borderRadius: 8, fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', ...(plan.hl ? { ...S.gb, color: '#fff' } : { backgroundColor: 'rgba(255,255,255,.05)', color: '#d4d4d8', border: '1px solid rgba(255,255,255,.06)' }) }}>
                       Get Started
                     </button>
                   )}
@@ -618,109 +475,43 @@ export function Landing() {
               );
             })}
           </div>
-
-          <p className="text-center text-xs text-bolt-elements-textTertiary mt-8 flex items-center justify-center gap-1.5">
-            <div className="i-ph:lock-simple text-sm" />
-            Secured by Stripe. Cancel anytime. 14-day money-back guarantee.
-          </p>
+          <p style={{ textAlign: 'center', fontSize: 12, ...S.t4, marginTop: 32 }}>&#128274; Stripe secured. 14-day money-back.</p>
         </div>
       </section>
 
-      {/* ─── FAQ ──────────────────────────────────────────────────────────────── */}
-      <section className="py-24 px-6 bg-bolt-elements-background-depth-2/50">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="text-sm font-medium text-indigo-400 mb-2">FAQ</div>
-            <h2 className="text-3xl sm:text-4xl font-bold">Frequently asked questions</h2>
+      {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+      <section style={{ padding: '96px 24px', ...S.bg2 }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// FAQ</div>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff' }}>Questions & answers</h2>
           </div>
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {FAQS.map((faq, i) => (
-              <div key={i} className="rounded-xl border border-bolt-elements-borderColor bg-bolt-elements-background-depth-1 overflow-hidden">
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full flex items-center justify-between p-5 text-left"
-                >
-                  <span className="font-medium text-sm pr-4">{faq.q}</span>
-                  <div className={`i-ph:caret-down text-lg text-bolt-elements-textTertiary transition-transform shrink-0 ${openFaq === i ? 'rotate-180' : ''}`} />
+              <div key={i} style={S.faq}>
+                <button onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <span style={{ fontSize: 15, fontWeight: 500, color: '#e4e4e7', paddingRight: 16 }}>{faq.q}</span>
+                  <span style={{ fontSize: 18, color: '#52525b', transform: openFaq === i ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }}>&#9662;</span>
                 </button>
-                {openFaq === i && (
-                  <div className="px-5 pb-5 -mt-1">
-                    <p className="text-sm text-bolt-elements-textSecondary leading-relaxed">{faq.a}</p>
-                  </div>
-                )}
+                {openFaq === i && <div style={{ padding: '0 20px 20px' }}><p style={{ fontSize: 14, ...S.t2, lineHeight: 1.7 }}>{faq.a}</p></div>}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Final CTA ────────────────────────────────────────────────────────── */}
-      <section className="py-24 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
-        <div className="max-w-3xl mx-auto text-center relative">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Stop paying agencies.<br />
-            <GradientText>Start building with AI.</GradientText>
-          </h2>
-          <p className="text-bolt-elements-textSecondary mb-8 max-w-xl mx-auto">
-            Join hundreds of businesses that switched from expensive agencies and slow WordPress sites to AI-powered websites that build themselves.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href="#pricing"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-xl text-white font-semibold text-lg text-center transition-all hover:shadow-lg hover:shadow-indigo-500/20"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
-            >
-              Get Started from &#8364;25/mo
-            </a>
-          </div>
-          <p className="mt-4 text-xs text-bolt-elements-textTertiary">14-day money-back guarantee. No contracts.</p>
-        </div>
+      {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
+      <section style={{ padding: '96px 24px', textAlign: 'center' }}>
+        <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Stop paying agencies.<br /><span style={S.gt}>Let AI agents build your site.</span></h2>
+        <p style={{ ...S.t2, marginBottom: 32 }}>5 agents. Real code. Live in 60 seconds. From &euro;25/month.</p>
+        <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started Now</a>
       </section>
 
-      {/* ─── Footer ───────────────────────────────────────────────────────────── */}
-      <footer className="py-12 px-6 border-t border-bolt-elements-borderColor">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
-            <div>
-              <span className="text-lg font-bold" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                MadeCreative
-              </span>
-              <p className="text-xs text-bolt-elements-textTertiary mt-2 leading-relaxed">
-                AI-powered website builder. Real code, real results.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold mb-3">Product</h4>
-              <div className="space-y-2">
-                <a href="#features" className="block text-sm text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary">Features</a>
-                <a href="#pricing" className="block text-sm text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary">Pricing</a>
-                <a href="#how-it-works" className="block text-sm text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary">How it works</a>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold mb-3">Support</h4>
-              <div className="space-y-2">
-                <a href="#faq" className="block text-sm text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary">FAQ</a>
-                <a href="mailto:support@madecreative.pro" className="block text-sm text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary">Contact</a>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold mb-3">Legal</h4>
-              <div className="space-y-2">
-                <a href="#" className="block text-sm text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary">Privacy Policy</a>
-                <a href="#" className="block text-sm text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary">Terms of Service</a>
-                <a href="#" className="block text-sm text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary">Imprint</a>
-              </div>
-            </div>
-          </div>
-          <div className="pt-6 border-t border-bolt-elements-borderColor flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-bolt-elements-textTertiary">
-            <span>
-              <span style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 600 }}>MadeCreative</span>
-              {' '}&copy; {new Date().getFullYear()}. All rights reserved.
-            </span>
-            <span>Made with AI in Munich, Germany</span>
-          </div>
+      {/* ── FOOTER ───────────────────────────────────────────────────────── */}
+      <footer style={{ padding: '48px 24px', borderTop: '1px solid rgba(255,255,255,.05)' }}>
+        <div style={{ maxWidth: 1152, margin: '0 auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, fontSize: 12, ...S.t4 }}>
+          <span><span style={S.gt}>MadeCreative</span> &copy; {new Date().getFullYear()}</span>
+          <span>Built with AI in Munich, Germany</span>
         </div>
       </footer>
     </div>
