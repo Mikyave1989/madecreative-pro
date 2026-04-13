@@ -567,6 +567,9 @@ function generateStaticHtml(params: {
 // ─── Builder Agent ────────────────────────────────────────────────────────────
 
 export class BuilderAgent extends BaseAgent {
+  // Stored by run() so handleToolCall can access scraped content for multi-page generation
+  private _scrapedContent: Record<string, unknown> | null = null;
+
   constructor(context: AgentContext) {
     super(context);
   }
@@ -856,81 +859,160 @@ export class BuilderAgent extends BaseAgent {
         };
         const [fontHeading, fontBody] = fontMap[sector] ?? ["Playfair Display", "Raleway"];
 
+        // ── Detect multi-page vs single-page from scraped content ──
+        const scrapedPages = (this._scrapedContent as { pages?: Array<Record<string, unknown>> } | null)?.pages ?? [];
+        // Deduplicate pages by normalized URL
+        const seenUrls = new Set<string>();
+        const uniquePages: Array<Record<string, unknown>> = [];
+        for (const p of scrapedPages) {
+          const norm = ((p.url as string) ?? "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+          if (!norm || seenUrls.has(norm)) continue;
+          seenUrls.add(norm);
+          if (((p.headings as unknown[])?.length ?? 0) > 0 || ((p.paragraphs as unknown[])?.length ?? 0) > 0) {
+            uniquePages.push(p);
+          }
+        }
+        const isMultiPage = uniquePages.length > 1;
+        this.log("info", `build_preview_site: ${isMultiPage ? "MULTI-PAGE" : "SINGLE-PAGE"} (${uniquePages.length} unique pages from scrape)`);
+
+        const systemPrompt = `You are a world-class web designer who builds €10,000+ quality websites.
+Use ONLY the real content provided — real photos, real text, real contact info.
+NEVER invent text, NEVER use stock/placeholder images. Every <img> must use a provided URL.
+
+DESIGN SYSTEM:
+- Fonts: "${fontHeading}" (headings) + "${fontBody}" (body) via Google Fonts <link>
+- Colors: primary=${colors.primary}, accent=${colors.accent}, background=${colors.background}, text=${colors.text}
+- Hero heading: clamp(3rem, 7vw, 6rem), font-weight 300
+- Nav: fixed, glassmorphism (transparent → solid blur on scroll)
+- Scroll reveal on every section (IntersectionObserver, fade + rise)
+- Scroll progress bar (accent color)
+- All responsive (mobile-first, works at 375px)
+- WhatsApp floating button if number available
+
+OUTPUT: Create files using write_file. Each file is a self-contained HTML with inline CSS + JS. NEVER ask questions — build immediately.`;
+
         let projectFiles: Record<string, string> = {};
         try {
-          const aiPrompt = `Build a COMPLETE, production-ready, single-page website for "${projectData.businessName}" (sector: ${sector}).
+          if (isMultiPage) {
+            // ── MULTI-PAGE: generate one HTML per scraped page ──
+            const baseUrl = (scrapedPages[0]?.url as string)?.replace(/^https?:\/\/(www\.)?[^/]+/, "") ?? "";
+            const urlToPath = (url: string): string => {
+              let path = url.replace(/^https?:\/\/(www\.)?[^/]+/, "").replace(/\/$/, "");
+              if (!path || path === "") return "index.html";
+              return path.replace(/^\//, "") + "/index.html";
+            };
 
-REAL CONTENT TO USE (never invent data):
+            // Build nav from top-level pages
+            const navItems = uniquePages
+              .filter(p => (urlToPath(p.url as string).split("/").length <= 2))
+              .map(p => {
+                const h1 = ((p.headings as Array<{ level: number; text: string }>) ?? []).find(h => h.level === 1)?.text || (p.title as string) || "";
+                const href = "/" + urlToPath(p.url as string).replace("/index.html", "/").replace("index.html", "");
+                return `<a href="${href}">${h1}</a>`;
+              }).join("\n");
+
+            for (let i = 0; i < uniquePages.length; i++) {
+              const page = uniquePages[i]!;
+              const localPath = urlToPath(page.url as string);
+              const isHome = localPath === "index.html";
+              const pageTitle = ((page.headings as Array<{ level: number; text: string }>) ?? []).find(h => h.level === 1)?.text || (page.title as string) || projectData.businessName;
+
+              // Collect page images
+              const pageImgs = ((page.images as Array<{ url: string; alt?: string }>) ?? [])
+                .filter(img => img.url?.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(img.url) && !/dummy|plugin|admin|icon|sprite/i.test(img.url))
+                .slice(0, 10)
+                .map((img, j) => `${j + 1}. ${img.url}${img.alt ? ` — "${img.alt}"` : ""}`).join("\n");
+
+              const pageHeadings = ((page.headings as Array<{ level: number; text: string }>) ?? [])
+                .filter(h => h.text?.length > 2).slice(0, 10)
+                .map(h => `h${h.level}: ${h.text}`).join("\n");
+
+              const pageParas = ((page.paragraphs as string[]) ?? [])
+                .filter(t => t.length > 20).slice(0, 10)
+                .map((t, j) => `${j + 1}. ${t.slice(0, 300)}`).join("\n");
+
+              const pagePrompt = isHome
+                ? `Build the HOME PAGE for "${projectData.businessName}". Full-screen hero (100vh), intro sections linking to sub-pages, gallery preview, contact section.`
+                : `Build the "${pageTitle}" INTERNAL PAGE. Hero banner (~50vh), page content with real text and photos, gallery if multiple images.`;
+
+              this.log("info", `build_preview_site: generating page ${i + 1}/${uniquePages.length}: ${localPath}`);
+
+              const pageResult = await this.client.toolUseLoop(
+                [{ role: "user", content: `${pagePrompt}
+
+NAVIGATION (include on every page): ${navItems}
+
+REAL CONTENT FOR THIS PAGE:
+PHOTOS: ${pageImgs || "No page-specific photos."}
+HEADINGS: ${pageHeadings}
+TEXT: ${pageParas || "No paragraphs — show photo gallery."}
+CONTACT: Phone: ${projectData.phone}, Email: ${projectData.email}, Address: ${projectData.address}
+Logo: ${projectData.heroImage}
+
+CRITICAL: Use ONLY the provided photo URLs. NEVER use placeholder or stock images.
+Output file path: ${localPath}` }],
+                async (toolName, input) => {
+                  if (toolName === "write_file") {
+                    const path = input["path"] as string;
+                    const content = input["content"] as string;
+                    if (path && content) { projectFiles[path] = content; return { success: true, path }; }
+                  }
+                  return { error: "Unknown tool" };
+                },
+                {
+                  system: systemPrompt,
+                  tools: [{ name: "write_file", description: "Create a project file", input_schema: { type: "object" as const, properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } }],
+                  model: "claude-sonnet-4-6" as const,
+                  maxTokens: 16000,
+                }
+              );
+              this.totalCost += pageResult.cost;
+              this.totalInputTokens += pageResult.inputTokens;
+              this.totalOutputTokens += pageResult.outputTokens;
+            }
+          } else {
+            // ── SINGLE-PAGE: generate one index.html ──
+            const allPhotos = photos.slice(0, 12).map((p, i) => `${i + 1}. ${(p as Record<string, unknown>).url ?? p}`).join("\n");
+
+            const aiPrompt = `Build a COMPLETE premium single-page website for "${projectData.businessName}" (sector: ${sector}).
+
+REAL CONTENT (never invent data):
 - Business: ${projectData.businessName}
 - Hero title: ${projectData.heroTitle}
-- Tagline: ${projectData.tagline || ""}
 - Description: ${projectData.description}
-- About: ${projectData.aboutText || projectData.description}
 - Hero image: ${projectData.heroImage}
 - Address: ${projectData.address}
 - Phone: ${projectData.phone}
 - Email: ${projectData.email}
-${projectData.galleryImages.length > 0 ? `Gallery images:\n${projectData.galleryImages.map((g, i) => `  ${i + 1}. ${g.url}`).join("\n")}` : ""}
+${allPhotos ? `Photos:\n${allPhotos}` : ""}
 ${projectData.googleRating ? `Google Rating: ${projectData.googleRating}/5 (${projectData.reviewCount ?? 0}+ reviews)` : ""}
-${projectData.openingHours ? `Opening hours: ${JSON.stringify(projectData.openingHours)}` : ""}
-Colors: primary=${colors.primary}, accent=${colors.accent}, background=${colors.background}, text=${colors.text}
-Fonts: heading="${fontHeading}", body="${fontBody}"
 
-MANDATORY STRUCTURE (single index.html with embedded CSS + JS):
-1. HERO — full-screen (100vh), background image with dark gradient overlay, animated heading, accent-color eyebrow label, thin divider, subtitle, CTA button, star rating below
-2. ABOUT — split grid (text + image), stats cards (4 items)
-3. SERVICES/HIGHLIGHTS — dark background section, 3-column cards with emoji icons, hover lift effect
-4. GALLERY — 6-image grid with hover zoom, rounded corners
-5. TESTIMONIALS — 2x2 grid, cards with star ratings + italic quotes + author
-6. CONTACT — dark section, 3-column (address, phone/email, hours)
-7. FOOTER — minimal dark
+MANDATORY: Hero (100vh), About, Services, Gallery, Testimonials, Contact, Footer.
+CRITICAL: Use ONLY provided photo URLs. NEVER use stock images.
+OUTPUT: write_file with path "index.html".`;
 
-MANDATORY DESIGN:
-- Google Fonts: "${fontHeading}" (headings) + "${fontBody}" (body) via <link>
-- Hero heading: clamp(3rem, 7vw, 6rem), font-weight 300
-- Body: 1rem, line-height 1.7, muted color
-- Generous padding: 80-120px between sections
-- Scroll reveal: elements fade in + rise (IntersectionObserver)
-- Nav: fixed, transparent → solid with blur on scroll
-- Scroll progress bar at top
-- All images lazy loaded
-- Fully responsive (mobile-first, works at 375px)
-- WhatsApp floating button (bottom-right)
-- SEO meta tags + Schema.org LocalBusiness JSON-LD
-
-OUTPUT: Use write_file to create a SINGLE "index.html" file containing everything (HTML + CSS + JS inline). The file must be completely self-contained and work when opened directly.`;
-
-          const aiResult = await this.client.toolUseLoop(
-            [{ role: "user", content: aiPrompt }],
-            async (toolName, toolInput) => {
-              if (toolName === "write_file") {
-                const path = toolInput["path"] as string;
-                const content = toolInput["content"] as string;
-                if (path && content) { projectFiles[path] = content; return { success: true, path }; }
+            const aiResult = await this.client.toolUseLoop(
+              [{ role: "user", content: aiPrompt }],
+              async (toolName, input) => {
+                if (toolName === "write_file") {
+                  const path = input["path"] as string;
+                  const content = input["content"] as string;
+                  if (path && content) { projectFiles[path] = content; return { success: true, path }; }
+                }
+                return { error: "Unknown tool" };
+              },
+              {
+                system: systemPrompt,
+                tools: [{ name: "write_file", description: "Create a project file", input_schema: { type: "object" as const, properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } }],
+                model: "claude-sonnet-4-6" as const,
+                maxTokens: 32000,
               }
-              return { error: "Unknown tool" };
-            },
-            {
-              system: `You are a world-class web designer who builds €10,000+ quality websites. You produce STUNNING, visually rich sites that make people say "wow."
-
-GOLDEN RULES:
-- NEVER build generic or template-looking sites. Every site must feel custom-crafted.
-- EVERY section needs visual depth: layered backgrounds, subtle gradients, shadows.
-- Typography is 50% of the design. Use the specified Google Fonts pairing.
-- Whitespace is luxury. Generous padding, wide max-widths.
-- Hero must be full-screen (100vh) with image + gradient overlay + animated text.
-- Navigation: transparent → glassmorphism on scroll.
-- Scroll reveal on EVERY section (IntersectionObserver, fade + rise).
-- Colors must be rich and warm (NEVER pure #000 or #fff).
-- Responsive: looks perfect at 375px, 768px, and 1440px.
-
-OUTPUT FORMAT: Create files using write_file. Build a single self-contained index.html with all CSS and JS inline. NEVER ask questions — build immediately.`,
-              tools: [{ name: "write_file", description: "Create a project file", input_schema: { type: "object" as const, properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } }],
-              model: "claude-sonnet-4-6" as const,
-              maxTokens: 32000,
-            }
-          );
-          this.log("info", `build_preview_site: AI generated ${Object.keys(projectFiles).length} files (${aiResult.totalOutputTokens} tokens)`);
+            );
+            this.totalCost += aiResult.cost;
+            this.totalInputTokens += aiResult.inputTokens;
+            this.totalOutputTokens += aiResult.outputTokens;
+          }
+          this.log("info", `build_preview_site: AI generated ${Object.keys(projectFiles).length} files`);
         } catch (aiErr) {
           this.log("warn", `build_preview_site: AI generation failed, falling back to template: ${aiErr instanceof Error ? aiErr.message : String(aiErr)}`);
           // Fallback to static template if AI fails
@@ -1282,24 +1364,73 @@ OUTPUT FORMAT: Create files using write_file. Build a single self-contained inde
           await this.markJobFailed(error);
           return { success: false, error, apiCost: 0, tokensUsed: 0, durationMs: 0, toolCalls: [] };
         }
+        // ── Scrape website if prospect has one but no scrapedContent yet ──
+        let scrapedData: Record<string, unknown> | null = prospect.scrapedContent as Record<string, unknown> | null;
+        if (prospect.website && !scrapedData) {
+          this.log("info", `Scraping website: ${prospect.website}`);
+          try {
+            const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
+            const scrapeRes = await fetch(`${apiBase}/public/signup/analyze-url`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url: prospect.website, generatePreview: false }),
+            });
+            if (scrapeRes.ok) {
+              const scrapeJson = await scrapeRes.json() as { data?: { scraped?: Record<string, unknown> } };
+              scrapedData = scrapeJson.data?.scraped ?? null;
+              if (scrapedData) {
+                // Persist scraped content for future use
+                await prisma.prospect.update({
+                  where: { id: prospect.id },
+                  data: { scrapedContent: scrapedData as object },
+                });
+                this.log("info", `Scraped content saved: ${(scrapedData.pages as unknown[])?.length ?? 0} pages`);
+              }
+            }
+          } catch (err) {
+            this.log("warn", `Website scrape failed: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+
+        // Derive language from country
+        const langMap: Record<string, string> = { IT: "it", DE: "de", FR: "fr", ES: "es", PT: "pt", NL: "nl", AT: "de", CH: "de", BE: "fr" };
+        const language = langMap[prospect.country.toUpperCase()] ?? "en";
+
+        // Extract photos + contact from scraped data if available
+        const scraped = scrapedData as { contact?: Record<string, string>; logo?: string; pages?: Array<{ images?: Array<{ url: string; alt?: string }>; headings?: Array<{ level: number; text: string }>; paragraphs?: string[] }> } | null;
+        const scrapedPhotos: string[] = [];
+        if (scraped?.pages) {
+          const seen = new Set<string>();
+          for (const p of scraped.pages) {
+            for (const img of p.images ?? []) {
+              const url = typeof img === "string" ? img : img.url;
+              if (url?.startsWith("http") && !seen.has(url) && /\.(jpg|jpeg|png|webp)/i.test(url) && !/dummy|plugin|admin|icon|sprite|pixel/i.test(url)) {
+                seen.add(url);
+                scrapedPhotos.push(url);
+              }
+            }
+          }
+        }
+
         businessData = {
           companyName: prospect.companyName,
           sector: prospect.sector,
           country: prospect.country,
-          language: "it", // Default — would be derived from country
+          language,
           city: prospect.city,
           description: prospect.aiAnalysis ?? null,
           googleRating: prospect.googleRating,
           reviewCount: prospect.reviewCount,
           website: prospect.website,
-          phone: prospect.contactPhone,
-          email: prospect.contactEmail,
-          address: null,
+          phone: scraped?.contact?.phone ?? prospect.contactPhone,
+          email: scraped?.contact?.email ?? prospect.contactEmail,
+          address: scraped?.contact?.address ?? null,
           id: prospect.id,
           isProspect: true,
-          existingPhotoUrls: Array.isArray(prospect.photoUrls) ? (prospect.photoUrls as string[]) : [],
-          logoUrl: prospect.logoUrl,
-          photoQuality: prospect.photoQuality,
+          existingPhotoUrls: scrapedPhotos.length > 0 ? scrapedPhotos : (Array.isArray(prospect.photoUrls) ? (prospect.photoUrls as string[]) : []),
+          logoUrl: (scraped?.logo as string) ?? prospect.logoUrl,
+          photoQuality: scrapedPhotos.length > 0 ? 80 : prospect.photoQuality,
+          scrapedContent: scrapedData,
         };
       } else if (parsed.data.clientId) {
         const client = await prisma.client.findUnique({
@@ -1332,10 +1463,14 @@ OUTPUT FORMAT: Create files using write_file. Build a single self-contained inde
         return { success: false, error, apiCost: 0, tokensUsed: 0, durationMs: 0, toolCalls: [] };
       }
 
+      // Store scraped content for multi-page generation in handleToolCall
+      this._scrapedContent = (businessData as Record<string, unknown>).scrapedContent as Record<string, unknown> | null ?? null;
+
       await this.updateProgress(15);
       this.log("info", "Builder agent: starting build", {
         business: businessData.companyName,
         sector: businessData.sector,
+        hasScrapedContent: Boolean(this._scrapedContent),
       });
 
       const userPrompt = buildBuilderUserPrompt({
