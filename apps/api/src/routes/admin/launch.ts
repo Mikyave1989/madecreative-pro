@@ -407,7 +407,7 @@ app.get("/campaigns", async (c) => {
   // Load all real scrape configs (exclude the internal warming state marker)
   const configs = await prisma.scrapeConfig.findMany({
     where: {
-      name: { not: { equals: "__warming_state__", mode: "insensitive" } },
+      NOT: { name: { equals: "__warming_state__", mode: "insensitive" } },
     },
     orderBy: { createdAt: "desc" },
     take: 100,

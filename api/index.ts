@@ -34,15 +34,20 @@ export default async function handler(req: IncomingMessage & { body?: unknown },
     }
 
     // Build body — use req.body (pre-parsed by Vercel) or rawBody
-    let body: string | Buffer | null = null;
+    let body: BodyInit | null = null;
     if (req.method !== "GET" && req.method !== "HEAD") {
       if (typeof req.body === "object" && req.body !== null) {
         body = JSON.stringify(req.body);
         headers.set("content-type", "application/json");
       } else if (typeof req.body === "string") {
         body = req.body;
-      } else if ((req as unknown as Record<string, unknown>).rawBody) {
-        body = (req as unknown as Record<string, Buffer>).rawBody;
+      } else {
+        const raw = (req as unknown as Record<string, unknown>).rawBody;
+        if (raw instanceof Uint8Array) {
+          body = raw;
+        } else if (typeof raw === "string") {
+          body = raw;
+        }
       }
     }
 
