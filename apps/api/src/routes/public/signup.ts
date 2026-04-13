@@ -118,7 +118,7 @@ app.post("/checkout", async (c) => {
         locale: locale ?? "de",
       },
       subscription_data: { metadata: { plan } },
-      success_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env["PORTAL_URL"] ?? "https://madecreative.pro"}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/${locale ?? "de"}#pricing`,
       allow_promotion_codes: true,
     });

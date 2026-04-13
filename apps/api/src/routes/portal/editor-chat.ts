@@ -598,8 +598,8 @@ app.post("/buy-credits", async (c) => {
       customer_email: !client.stripeCustomerId ? client.email : undefined,
       line_items: [{ price_data: { currency: "eur", product_data: { name: `${selected.credits} Crediti AI` }, unit_amount: selected.amount }, quantity: 1 }],
       metadata: { clientId, credits: String(selected.credits) },
-      success_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/editor?credits=purchased`,
-      cancel_url: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/editor`,
+      success_url: `${process.env["PORTAL_URL"] ?? "https://madecreative.pro"}/editor?credits=purchased`,
+      cancel_url: `${process.env["PORTAL_URL"] ?? "https://madecreative.pro"}/editor`,
     });
     return c.json({ success: true, data: { checkoutUrl: session.url, credits: selected.credits } });
   } catch {

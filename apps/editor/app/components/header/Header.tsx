@@ -4,6 +4,45 @@ import { chatStore } from '~/lib/stores/chat';
 import { classNames } from '~/utils/classNames';
 import { HeaderActionButtons } from './HeaderActionButtons.client';
 import { ChatDescription } from '~/lib/persistence/ChatDescription.client';
+import { authUser, credits, logout } from '~/lib/stores/auth';
+
+function UserMenu() {
+  const user = useStore(authUser);
+  const creditInfo = useStore(credits);
+
+  if (!user) return null;
+
+  return (
+    <div className="flex items-center gap-3 ml-auto">
+      {creditInfo && (
+        <span className="text-xs text-bolt-elements-textTertiary hidden sm:block">
+          {creditInfo.remaining} credits
+        </span>
+      )}
+      <a
+        href="/billing"
+        className="text-xs text-indigo-400 hover:text-indigo-300 hidden sm:block"
+      >
+        {user.plan}
+      </a>
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-medium">
+          {user.contactName?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
+        </div>
+        <button
+          onClick={() => {
+            logout();
+            window.location.href = '/login';
+          }}
+          className="text-xs text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary"
+          title="Logout"
+        >
+          <div className="i-ph:sign-out text-lg" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function Header() {
   const chat = useStore(chatStore);
@@ -21,7 +60,7 @@ export function Header() {
           <span style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontWeight:700,fontSize:"1.1rem"}}>MadeCreative</span>
         </a>
       </div>
-      {chat.started && ( // Display ChatDescription and HeaderActionButtons only when the chat has started.
+      {chat.started && (
         <>
           <span className="flex-1 px-4 truncate text-center text-bolt-elements-textPrimary">
             <ClientOnly>{() => <ChatDescription />}</ClientOnly>
@@ -35,6 +74,7 @@ export function Header() {
           </ClientOnly>
         </>
       )}
+      <ClientOnly>{() => <UserMenu />}</ClientOnly>
     </header>
   );
 }

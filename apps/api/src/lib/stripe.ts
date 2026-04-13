@@ -46,7 +46,7 @@ export async function generatePaymentLink(params: {
   const session = await createCheckoutSession({
     email: params.email,
     prospectId: params.prospectId,
-    successUrl: `${process.env["PORTAL_URL"] ?? "https://app.madecreative.pro"}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+    successUrl: `${process.env["PORTAL_URL"] ?? "https://madecreative.pro"}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}`,
   });
 
@@ -253,7 +253,7 @@ async function handleCheckoutCompleted(
   }
 
   // Send payment confirmation email with credentials
-  const portalUrl = process.env["PORTAL_URL"] ?? "https://app.madecreative.pro";
+  const portalUrl = process.env["PORTAL_URL"] ?? "https://madecreative.pro";
   try {
     const resendApiKey = process.env["RESEND_API_KEY"];
     if (resendApiKey) {

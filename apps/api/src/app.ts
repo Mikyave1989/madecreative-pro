@@ -50,10 +50,12 @@ app.use(
     origin: [
       process.env["MARKETING_URL"] ?? "https://madecreative.pro",
       process.env["ADMIN_URL"] ?? "https://admin.madecreative.pro",
-      process.env["PORTAL_URL"] ?? "https://app.madecreative.pro",
+      process.env["PORTAL_URL"] ?? "https://madecreative.pro",
+      process.env["EDITOR_URL"] ?? "https://madecreative.pro",
       "http://localhost:3000",
       "http://localhost:3001",
       "http://localhost:3002",
+      "http://localhost:5173",
     ],
     allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "stripe-signature"],

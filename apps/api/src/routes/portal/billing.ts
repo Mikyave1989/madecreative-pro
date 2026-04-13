@@ -150,7 +150,7 @@ app.post("/portal", async (c) => {
   }
 
   try {
-    const portalUrl = process.env["PORTAL_URL"] ?? "https://app.madecreative.pro";
+    const portalUrl = process.env["PORTAL_URL"] ?? "https://madecreative.pro";
     const session = await createBillingPortalSession({
       stripeCustomerId: client.stripeCustomerId,
       returnUrl: `${portalUrl}/billing`,

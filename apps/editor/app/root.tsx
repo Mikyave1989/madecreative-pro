@@ -113,6 +113,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 import { logStore } from './lib/stores/logs';
+import { AuthGuard } from './components/auth/AuthGuard.client';
 
 export default function App() {
   const theme = useStore(themeStore);
@@ -125,13 +126,8 @@ export default function App() {
       timestamp: new Date().toISOString(),
     });
 
-    // Initialize debug logging with improved error handling
     import('./utils/debugLogger')
       .then(({ debugLogger }) => {
-        /*
-         * The debug logger initializes itself and starts disabled by default
-         * It will only start capturing when enableDebugMode() is called
-         */
         const status = debugLogger.getStatus();
         logStore.logSystem('Debug logging ready', {
           initialized: status.initialized,
@@ -146,7 +142,13 @@ export default function App() {
 
   return (
     <Layout>
-      <Outlet />
+      <ClientOnly fallback={<Outlet />}>
+        {() => (
+          <AuthGuard>
+            <Outlet />
+          </AuthGuard>
+        )}
+      </ClientOnly>
     </Layout>
   );
 }

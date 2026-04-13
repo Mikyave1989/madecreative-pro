@@ -268,4 +268,215 @@ app.post("/:id/duplicate", async (c) => {
   );
 });
 
+// ─── POST /portal/projects/:id/deploy ────────────────────────────────────────
+//
+// Routing logic:
+//   - Files that include a "package.json" key are treated as a full Next.js
+//     project and deployed via deployProjectFiles (Vercel v13 API).
+//   - Files that contain only HTML (no package.json) fall back to the original
+//     deploySite function for backward compatibility.
+
+app.post("/:id/deploy", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
+  const id = c.req.param("id");
+
+  const project = await prisma.clientWebsite.findFirst({
+    where: { id, clientId, isActive: true },
+    include: { client: { select: { companyName: true, sector: true } } },
+  });
+  if (!project) return c.json({ success: false, error: "Project not found" }, 404);
+
+  const body = await c.req.json().catch(() => null);
+  const files = body?.files as Record<string, string> | undefined;
+
+  if (!files || Object.keys(files).length === 0) {
+    return c.json({ success: false, error: "No files to deploy" }, 400);
+  }
+
+  // Persist files and mark deployment as in-progress before the async work.
+  await prisma.clientWebsite.update({
+    where: { id },
+    data: { files: files as object, deployStatus: "DEPLOYING" },
+  });
+
+  const subdomain = project.subdomain || project.id.slice(0, 12);
+  const isNextJsProject = "package.json" in files;
+
+  try {
+    let deployUrl: string;
+    let vercelProjectId: string;
+    let deploymentId: string | undefined;
+
+    if (isNextJsProject) {
+      // ── Next.js / multi-file project ──────────────────────────────────────
+      const { deployProjectFiles } = await import("../../lib/deploy-project.js");
+
+      const result = await deployProjectFiles({
+        files,
+        projectName: subdomain,
+        subdomain,
+        framework: "nextjs",
+      });
+
+      deployUrl = result.deployUrl;
+      vercelProjectId = result.vercelProjectId;
+      deploymentId = result.deploymentId;
+    } else {
+      // ── Legacy: static HTML fallback ──────────────────────────────────────
+      const { deploySite } = await import("../../lib/deploy-site.js");
+
+      const result = await deploySite({
+        clientId,
+        companyName: project.client.companyName,
+        sector: project.client.sector,
+        content: files as Record<string, unknown>,
+        subdomain,
+      });
+
+      deployUrl = result.deployUrl;
+      vercelProjectId = result.vercelProjectId;
+    }
+
+    await prisma.clientWebsite.update({
+      where: { id },
+      data: {
+        deployUrl,
+        vercelProjectId,
+        deployStatus: "DEPLOYED",
+        lastDeployedAt: new Date(),
+      },
+    });
+
+    return c.json({
+      success: true,
+      data: {
+        deployUrl,
+        vercelProjectId,
+        ...(deploymentId ? { deploymentId } : {}),
+        deployStatus: "DEPLOYED",
+      },
+    });
+  } catch (err) {
+    await prisma.clientWebsite.update({
+      where: { id },
+      data: { deployStatus: "FAILED" },
+    });
+
+    const message = err instanceof Error ? err.message : "Deploy failed";
+    console.error(`[deploy /:id/deploy] project=${id} error:`, message);
+
+    return c.json({ success: false, error: message }, 500);
+  }
+});
+
+// ─── POST /portal/projects/:id/files ─────────────────────────────────────────
+
+app.post("/:id/files", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
+  const id = c.req.param("id");
+
+  const project = await prisma.clientWebsite.findFirst({
+    where: { id, clientId, isActive: true },
+  });
+  if (!project) return c.json({ success: false, error: "Project not found" }, 404);
+
+  const body = await c.req.json().catch(() => null);
+  const files = body?.files as Record<string, string> | undefined;
+
+  if (!files) {
+    return c.json({ success: false, error: "No files provided" }, 400);
+  }
+
+  await prisma.clientWebsite.update({
+    where: { id },
+    data: { files: files as object },
+  });
+
+  return c.json({ success: true, data: { saved: Object.keys(files).length } });
+});
+
+// ─── POST /portal/projects/:id/domain — Set custom domain ──────────────────
+
+app.post("/:id/domain", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
+  const id = c.req.param("id");
+
+  const project = await prisma.clientWebsite.findFirst({
+    where: { id, clientId, isActive: true },
+  });
+  if (!project) return c.json({ success: false, error: "Project not found" }, 404);
+
+  // Only Growth and Pro can use custom domains
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { plan: true },
+  });
+  if (client?.plan === "STARTER") {
+    return c.json({ success: false, error: "Custom domains require Growth or Pro plan" }, 403);
+  }
+
+  const body = await c.req.json().catch(() => null);
+  const domain = (body?.domain as string)?.trim().toLowerCase();
+
+  if (!domain || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z]{2,})+$/.test(domain)) {
+    return c.json({ success: false, error: "Invalid domain format" }, 400);
+  }
+
+  const vercelToken = process.env["VERCEL_TOKEN"];
+  const teamId = process.env["VERCEL_TEAM_ID"];
+  if (!vercelToken) {
+    return c.json({ success: false, error: "Deployment not configured" }, 500);
+  }
+
+  if (!project.vercelProjectId) {
+    return c.json({ success: false, error: "Deploy your project first before adding a custom domain" }, 400);
+  }
+
+  try {
+    const addRes = await fetch(
+      `https://api.vercel.com/v10/projects/${project.vercelProjectId}/domains${teamId ? `?teamId=${teamId}` : ""}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${vercelToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: domain }),
+      }
+    );
+
+    const addData = await addRes.json() as { name?: string; error?: { code?: string; message?: string } };
+
+    if (!addRes.ok) {
+      return c.json({ success: false, error: addData.error?.message || "Failed to add domain" }, 400);
+    }
+
+    await prisma.clientWebsite.update({
+      where: { id },
+      data: { domain },
+    });
+
+    const isSubdomain = domain.split(".").length > 2;
+
+    return c.json({
+      success: true,
+      data: {
+        domain,
+        dns: isSubdomain
+          ? { type: "CNAME", name: domain.split(".")[0], value: "cname.vercel-dns.com" }
+          : { type: "A", name: "@", value: "76.76.21.21" },
+        message: `Add the DNS record below, then your site will be live at https://${domain}`,
+      },
+    });
+  } catch (err) {
+    return c.json(
+      { success: false, error: err instanceof Error ? err.message : "Failed to add domain" },
+      500
+    );
+  }
+});
+
 export default app;

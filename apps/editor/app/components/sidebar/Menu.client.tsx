@@ -14,6 +14,8 @@ import { useSearchFilter } from '~/lib/hooks/useSearchFilter';
 import { classNames } from '~/utils/classNames';
 import { useStore } from '@nanostores/react';
 import { profileStore } from '~/lib/stores/profile';
+import { authUser, credits, logout } from '~/lib/stores/auth';
+import { projectsList, projectsLoading, loadProjects, deleteProject } from '~/lib/stores/projects';
 
 const menuVariants = {
   closed: {
@@ -71,6 +73,10 @@ export const Menu = () => {
   const [dialogContent, setDialogContent] = useState<DialogContent>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const profile = useStore(profileStore);
+  const user = useStore(authUser);
+  const creditInfo = useStore(credits);
+  const projects = useStore(projectsList);
+  const projLoading = useStore(projectsLoading);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
@@ -86,7 +92,11 @@ export const Menu = () => {
         .then(setList)
         .catch((error) => toast.error(error.message));
     }
-  }, []);
+
+    if (user) {
+      loadProjects();
+    }
+  }, [user]);
 
   const deleteChat = useCallback(
     async (id: string): Promise<void> => {
@@ -340,22 +350,16 @@ export const Menu = () => {
         <div className="h-12 flex items-center justify-between px-4 border-b border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-900/50 rounded-tr-2xl">
           <div className="text-gray-900 dark:text-white font-medium"></div>
           <div className="flex items-center gap-3">
-            <HelpButton onClick={() => window.open('https://madecreative.ai/', '_blank')} />
+            {creditInfo && (
+              <span className="text-xs text-gray-500">{creditInfo.remaining} credits</span>
+            )}
             <span className="font-medium text-sm text-gray-900 dark:text-white truncate">
-              {profile?.username || 'Guest User'}
+              {user?.contactName || profile?.username || 'Guest'}
             </span>
-            <div className="flex items-center justify-center w-[32px] h-[32px] overflow-hidden bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-500 rounded-full shrink-0">
-              {profile?.avatar ? (
-                <img
-                  src={profile.avatar}
-                  alt={profile?.username || 'User'}
-                  className="w-full h-full object-cover"
-                  loading="eager"
-                  decoding="sync"
-                />
-              ) : (
-                <div className="i-ph:user-fill text-lg" />
-              )}
+            <div className="flex items-center justify-center w-[32px] h-[32px] overflow-hidden bg-indigo-600 text-white rounded-full shrink-0">
+              <span className="text-sm font-medium">
+                {(user?.contactName || profile?.username || 'G').charAt(0).toUpperCase()}
+              </span>
             </div>
           </div>
         </div>
@@ -396,6 +400,29 @@ export const Menu = () => {
               />
             </div>
           </div>
+          {/* My Projects (API-backed) */}
+          {user && projects.length > 0 && (
+            <div className="px-3 pb-2">
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 px-1 py-1.5">My Projects</div>
+              <div className="space-y-0.5">
+                {projects.map((proj) => (
+                  <a
+                    key={proj.id}
+                    href={`/?project=${proj.id}`}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+                  >
+                    <div className="i-ph:folder-simple text-indigo-400 text-base" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">{proj.name}</span>
+                    {proj.deployUrl && (
+                      <div className="i-ph:globe text-green-400 text-sm" title="Deployed" />
+                    )}
+                  </a>
+                ))}
+              </div>
+              <div className="border-b border-gray-100 dark:border-gray-800 mt-2" />
+            </div>
+          )}
+
           <div className="flex items-center justify-between text-sm px-4 py-2">
             <div className="font-medium text-gray-600 dark:text-gray-400">Your Chats</div>
             {selectionMode && (
@@ -525,11 +552,38 @@ export const Menu = () => {
               </Dialog>
             </DialogRoot>
           </div>
-          <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-800 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <SettingsButton onClick={handleSettingsClick} />
+          <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-3 space-y-2">
+            {user && (
+              <div className="flex items-center gap-2 mb-2">
+                <a
+                  href="/billing"
+                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  <div className="i-ph:credit-card text-sm" />
+                  <span>Billing</span>
+                </a>
+                <a
+                  href="/settings"
+                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  <div className="i-ph:gear text-sm" />
+                  <span>Settings</span>
+                </a>
+                <button
+                  onClick={() => { logout(); window.location.href = '/login'; }}
+                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-400 ml-auto"
+                >
+                  <div className="i-ph:sign-out text-sm" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <SettingsButton onClick={handleSettingsClick} />
+              </div>
+              <ThemeSwitch />
             </div>
-            <ThemeSwitch />
           </div>
         </div>
       </motion.div>

@@ -1,6 +1,10 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "bolt"
+name = "madecreative-editor"
 compatibility_flags = ["nodejs_compat"]
 compatibility_date = "2025-03-28"
 pages_build_output_dir = "./build/client"
 send_metrics = false
+
+# Custom domain — madecreative.pro served via Cloudflare Pages
+# Configure in Cloudflare dashboard: Pages > madecreative-editor > Custom domains > madecreative.pro
+# DNS: CNAME madecreative.pro → madecreative-editor.pages.dev

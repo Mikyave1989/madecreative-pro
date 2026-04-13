@@ -1,0 +1,82 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  agent-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.workers
+    command: ["node", "--loader", "ts-node/esm", "workers/agent-runner.ts"]
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scraper-cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.workers
+    command: ["node", "--loader", "ts-node/esm", "workers/scraper-cron.ts"]
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  outreach-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.workers
+    command: ["node", "--loader", "ts-node/esm", "workers/outreach-worker.ts"]
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  report-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.workers
+    command: ["node", "--loader", "ts-node/esm", "workers/report-worker.ts"]
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  monitoring-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.workers
+    command: ["node", "--loader", "ts-node/esm", "workers/monitoring-worker.ts"]
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis-data:

@@ -7,6 +7,7 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { streamingState } from '~/lib/stores/streaming';
 import { classNames } from '~/utils/classNames';
 import { useState } from 'react';
+import { toast } from 'react-toastify';
 import { NetlifyDeploymentLink } from '~/components/chat/NetlifyDeploymentLink.client';
 import { VercelDeploymentLink } from '~/components/chat/VercelDeploymentLink.client';
 import { useVercelDeploy } from '~/components/deploy/VercelDeploy.client';
@@ -15,6 +16,9 @@ import { useGitHubDeploy } from '~/components/deploy/GitHubDeploy.client';
 import { useGitLabDeploy } from '~/components/deploy/GitLabDeploy.client';
 import { GitHubDeploymentDialog } from '~/components/deploy/GitHubDeploymentDialog';
 import { GitLabDeploymentDialog } from '~/components/deploy/GitLabDeploymentDialog';
+import { authUser } from '~/lib/stores/auth';
+import { activeProjectId } from '~/lib/stores/projects';
+import { isAuthenticated } from '~/lib/api/client';
 
 interface DeployButtonProps {
   onVercelDeploy?: () => Promise<void>;
@@ -32,11 +36,14 @@ export const DeployButton = ({
   const netlifyConn = useStore(netlifyConnection);
   const vercelConn = useStore(vercelConnection);
   const gitlabIsConnected = useStore(isGitLabConnected);
+  const user = useStore(authUser);
+  const projectId = useStore(activeProjectId);
   const [activePreviewIndex] = useState(0);
   const previews = useStore(workbenchStore.previews);
   const activePreview = previews[activePreviewIndex];
   const [isDeploying, setIsDeploying] = useState(false);
-  const [deployingTo, setDeployingTo] = useState<'netlify' | 'vercel' | 'github' | 'gitlab' | null>(null);
+  const [deployingTo, setDeployingTo] = useState<'netlify' | 'vercel' | 'github' | 'gitlab' | 'madecreative' | null>(null);
+  const [mcDeployUrl, setMcDeployUrl] = useState<string | null>(null);
   const isStreaming = useStore(streamingState);
   const { handleVercelDeploy } = useVercelDeploy();
   const { handleNetlifyDeploy } = useNetlifyDeploy();
@@ -48,6 +55,56 @@ export const DeployButton = ({
   const [gitlabDeploymentFiles, setGitlabDeploymentFiles] = useState<Record<string, string> | null>(null);
   const [githubProjectName, setGithubProjectName] = useState('');
   const [gitlabProjectName, setGitlabProjectName] = useState('');
+
+  const handleMcDeployClick = async () => {
+    if (!user || !projectId) {
+      toast.error('Please create a project first to deploy.');
+      return;
+    }
+
+    setIsDeploying(true);
+    setDeployingTo('madecreative');
+
+    try {
+      // Collect all files from the workbench
+      const allFiles = workbenchStore.files.get();
+      const files: Record<string, string> = {};
+
+      for (const [path, dirent] of Object.entries(allFiles)) {
+        if (dirent?.type === 'file' && dirent.content) {
+          const cleanPath = path.replace(/^\/home\/project\//, '');
+          files[cleanPath] = dirent.content;
+        }
+      }
+
+      if (Object.keys(files).length === 0) {
+        toast.error('No files to deploy. Build your project first.');
+        return;
+      }
+
+      const token = localStorage.getItem('mc_token');
+
+      const res = await fetch('/api/mc-deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, files, token }),
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.data?.deployUrl) {
+        setMcDeployUrl(data.data.deployUrl);
+        toast.success(`Deployed! ${data.data.deployUrl}`);
+      } else {
+        toast.error(data.error || 'Deploy failed');
+      }
+    } catch (err) {
+      toast.error('Deploy failed. Please try again.');
+    } finally {
+      setIsDeploying(false);
+      setDeployingTo(null);
+    }
+  };
 
   const handleVercelDeployClick = async () => {
     setIsDeploying(true);
@@ -148,6 +205,39 @@ export const DeployButton = ({
             sideOffset={5}
             align="end"
           >
+            {/* MadeCreative Deploy — primary option */}
+            {isAuthenticated() && (
+              <DropdownMenu.Item
+                className={classNames(
+                  'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
+                  {
+                    'opacity-60 cursor-not-allowed': isDeploying || !activePreview || !projectId,
+                  },
+                )}
+                disabled={isDeploying || !activePreview || !projectId}
+                onClick={handleMcDeployClick}
+              >
+                <div
+                  className="w-5 h-5 rounded flex items-center justify-center text-white text-xs font-bold"
+                  style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                >
+                  M
+                </div>
+                <span className="mx-auto">Deploy to MadeCreative</span>
+                {mcDeployUrl && (
+                  <a
+                    href={mcDeployUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute right-2 flex items-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="i-ph:arrow-square-out text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary" />
+                  </a>
+                )}
+              </DropdownMenu.Item>
+            )}
+
             <DropdownMenu.Item
               className={classNames(
                 'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',

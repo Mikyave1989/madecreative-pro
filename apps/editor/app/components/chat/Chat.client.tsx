@@ -18,6 +18,9 @@ import { useSettings } from '~/lib/hooks/useSettings';
 import type { ProviderInfo } from '~/types/model';
 import { useSearchParams } from '@remix-run/react';
 import { createSampler } from '~/utils/sampler';
+import { hasCredits, deductCredit, fetchCredits } from '~/lib/api/credits';
+import { isAuthenticated } from '~/lib/api/client';
+import { activeProjectId, syncFilesToProject } from '~/lib/stores/projects';
 import { getTemplates, selectStarterTemplate } from '~/utils/selectStarterTemplate';
 import { logStore } from '~/lib/stores/logs';
 import { streamingState } from '~/lib/stores/streaming';
@@ -171,6 +174,30 @@ export const ChatImpl = memo(
           });
         }
 
+        // Deduct credit after successful response
+        if (isAuthenticated()) {
+          deductCredit(1);
+        }
+
+        // Auto-sync files to API project
+        const projectId = activeProjectId.get();
+
+        if (projectId && isAuthenticated()) {
+          const allFiles = workbenchStore.files.get();
+          const filesToSync: Record<string, string> = {};
+
+          for (const [path, dirent] of Object.entries(allFiles)) {
+            if (dirent?.type === 'file' && dirent.content) {
+              const cleanPath = path.replace(/^\/home\/project\//, '');
+              filesToSync[cleanPath] = dirent.content;
+            }
+          }
+
+          if (Object.keys(filesToSync).length > 0) {
+            syncFilesToProject(projectId, filesToSync);
+          }
+        }
+
         logger.debug('Finished streaming');
       },
       initialMessages,
@@ -198,6 +225,10 @@ export const ChatImpl = memo(
 
     useEffect(() => {
       chatStore.setKey('started', initialMessages.length > 0);
+
+      if (isAuthenticated()) {
+        fetchCredits();
+      }
     }, []);
 
     useEffect(() => {
@@ -395,6 +426,15 @@ export const ChatImpl = memo(
 
       if (isLoading) {
         abort();
+        return;
+      }
+
+      // Credit check for authenticated users
+      if (isAuthenticated() && !hasCredits()) {
+        toast.error('No credits remaining. Upgrade your plan or purchase more credits.', {
+          position: 'bottom-right',
+          autoClose: 5000,
+        });
         return;
       }
 

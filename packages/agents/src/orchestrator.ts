@@ -116,6 +116,8 @@ export function createOrchestratorWorker(
 // ─── Auto-pipeline: chain agents after completion ────────────────────────────
 // SCRAPER → ANALYZER (for each new prospect)
 // ANALYZER → BUILDER (if leadScore >= 50)
+// BUILDER → OUTREACH (generate + send cold email after preview built)
+// BUILDER (client site) → QA (run lighthouse/check after deploy)
 
 async function chainNextAgent(
   completedType: AgentType,
@@ -198,6 +200,91 @@ async function chainNextAgent(
 
       await builderQueue.close();
       console.log(`[Orchestrator] Auto-chained BUILDER for prospect ${prospectId} (score: ${prospect.leadScore})`);
+    }
+
+    if (completedType === "BUILDER") {
+      const prospectId = jobData.input["prospectId"] as string | undefined;
+      if (!prospectId) return;
+
+      // Check if this prospect now has a preview and hasn't been contacted yet
+      const prospect = await prisma.prospect.findUnique({
+        where: { id: prospectId },
+        select: {
+          id: true,
+          contactEmail: true,
+          status: true,
+          previewSiteUrl: true,
+          companyName: true,
+          sector: true,
+          country: true,
+          city: true,
+        },
+      });
+
+      if (!prospect?.contactEmail || !prospect.previewSiteUrl) return;
+
+      // Only chain OUTREACH if prospect hasn't been contacted yet
+      const alreadyContacted = ["EMAIL_QUEUED", "CONTACTED", "EMAIL_SENT", "FOLLOWED_UP", "REPLIED", "CALL_SCHEDULED", "CONVERTED", "BLACKLISTED"].includes(prospect.status);
+      if (alreadyContacted) return;
+
+      const outreachQueue = new Queue(AGENT_QUEUE_NAMES["OUTREACH"], { connection: redis });
+
+      const job = await prisma.agentJob.create({
+        data: {
+          agentType: "OUTREACH",
+          status: "QUEUED",
+          input: {
+            prospectId: prospect.id,
+            previewUrl: prospect.previewSiteUrl,
+            companyName: prospect.companyName,
+            sector: prospect.sector,
+            country: prospect.country,
+            city: prospect.city,
+          },
+          prospectId: prospect.id,
+        },
+      });
+
+      // Delay 30min to let preview deploy settle + avoid rate limits
+      await outreachQueue.add(
+        "OUTREACH",
+        { jobId: job.id, input: job.input as Record<string, unknown> },
+        { jobId: job.id, delay: 30 * 60 * 1000 },
+      );
+
+      // Update prospect status
+      await prisma.prospect.update({
+        where: { id: prospect.id },
+        data: { status: "EMAIL_QUEUED" },
+      });
+
+      await outreachQueue.close();
+      console.log(`[Orchestrator] Auto-chained OUTREACH for prospect ${prospectId} (email: ${prospect.contactEmail})`);
+
+      // Also chain QA for the built preview site
+      const qaQueue = new Queue(AGENT_QUEUE_NAMES["QA"], { connection: redis });
+
+      const qaJob = await prisma.agentJob.create({
+        data: {
+          agentType: "QA",
+          status: "QUEUED",
+          input: {
+            prospectId: prospect.id,
+            url: prospect.previewSiteUrl,
+            checks: ["lighthouse", "mobile", "links"],
+          },
+          prospectId: prospect.id,
+        },
+      });
+
+      await qaQueue.add(
+        "QA",
+        { jobId: qaJob.id, input: qaJob.input as Record<string, unknown> },
+        { jobId: qaJob.id, delay: 60_000 }, // 1min after deploy
+      );
+
+      await qaQueue.close();
+      console.log(`[Orchestrator] Auto-chained QA for prospect ${prospectId}`);
     }
   } finally {
     await redis.quit();
