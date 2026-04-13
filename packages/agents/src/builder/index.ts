@@ -842,10 +842,67 @@ export class BuilderAgent extends BaseAgent {
           googleMapsEmbedUrl: (businessData["googleMapsEmbedUrl"] as string) ?? undefined,
         };
 
-        // Generate premium site using AI (same quality as portal Stitch)
+        // ── Generate premium site using AI — SAME quality as bolt.diy editor ──
+        // Uses identical design system prompt so campaigns and editor produce
+        // visually consistent €10k+ sites.
+
+        const fontMap: Record<string, [string, string]> = {
+          restaurant: ["Cormorant Garamond", "DM Sans"],
+          dental: ["Outfit", "Nunito Sans"],
+          legal: ["Libre Baskerville", "Source Sans 3"],
+          fitness: ["Bebas Neue", "Barlow"],
+          beauty: ["Playfair Display", "Raleway"],
+          hotel: ["Cormorant Garamond", "DM Sans"],
+          ecommerce: ["Space Grotesk", "Inter"],
+          realestate: ["Syne", "Work Sans"],
+          medical: ["Outfit", "Nunito Sans"],
+          professional: ["Space Grotesk", "Inter"],
+        };
+        const [fontHeading, fontBody] = fontMap[sector] ?? ["Playfair Display", "Raleway"];
+
         let projectFiles: Record<string, string> = {};
         try {
-          const aiPrompt = `Build a COMPLETE premium website for "${projectData.businessName}" (sector: ${sector}). Use the following REAL content:\n\nHero title: ${projectData.heroTitle}\nDescription: ${projectData.description}\nHero image: ${projectData.heroImage}\nAddress: ${projectData.address}\nPhone: ${projectData.phone}\nEmail: ${projectData.email}\n${projectData.galleryImages.length > 0 ? `Gallery images:\n${projectData.galleryImages.map(g => `  - ${g.url}`).join("\n")}` : ""}\n${projectData.googleRating ? `Google Rating: ${projectData.googleRating}/5 (${projectData.reviewCount ?? 0}+ reviews)` : ""}\n\nCreate a stunning Next.js 14 + Tailwind site with: animated gradient text, magic card effects, blur-fade scroll reveals, parallax hero, glassmorphism nav with hamburger, stats with number ticker, gallery grid, testimonials, contact form, WhatsApp widget, footer. Use write_file for each file.`;
+          const aiPrompt = `Build a COMPLETE, production-ready, single-page website for "${projectData.businessName}" (sector: ${sector}).
+
+REAL CONTENT TO USE (never invent data):
+- Business: ${projectData.businessName}
+- Hero title: ${projectData.heroTitle}
+- Tagline: ${projectData.tagline || ""}
+- Description: ${projectData.description}
+- About: ${projectData.aboutText || projectData.description}
+- Hero image: ${projectData.heroImage}
+- Address: ${projectData.address}
+- Phone: ${projectData.phone}
+- Email: ${projectData.email}
+${projectData.galleryImages.length > 0 ? `Gallery images:\n${projectData.galleryImages.map((g, i) => `  ${i + 1}. ${g.url}`).join("\n")}` : ""}
+${projectData.googleRating ? `Google Rating: ${projectData.googleRating}/5 (${projectData.reviewCount ?? 0}+ reviews)` : ""}
+${projectData.openingHours ? `Opening hours: ${JSON.stringify(projectData.openingHours)}` : ""}
+Colors: primary=${colors.primary}, accent=${colors.accent}, background=${colors.background}, text=${colors.text}
+Fonts: heading="${fontHeading}", body="${fontBody}"
+
+MANDATORY STRUCTURE (single index.html with embedded CSS + JS):
+1. HERO — full-screen (100vh), background image with dark gradient overlay, animated heading, accent-color eyebrow label, thin divider, subtitle, CTA button, star rating below
+2. ABOUT — split grid (text + image), stats cards (4 items)
+3. SERVICES/HIGHLIGHTS — dark background section, 3-column cards with emoji icons, hover lift effect
+4. GALLERY — 6-image grid with hover zoom, rounded corners
+5. TESTIMONIALS — 2x2 grid, cards with star ratings + italic quotes + author
+6. CONTACT — dark section, 3-column (address, phone/email, hours)
+7. FOOTER — minimal dark
+
+MANDATORY DESIGN:
+- Google Fonts: "${fontHeading}" (headings) + "${fontBody}" (body) via <link>
+- Hero heading: clamp(3rem, 7vw, 6rem), font-weight 300
+- Body: 1rem, line-height 1.7, muted color
+- Generous padding: 80-120px between sections
+- Scroll reveal: elements fade in + rise (IntersectionObserver)
+- Nav: fixed, transparent → solid with blur on scroll
+- Scroll progress bar at top
+- All images lazy loaded
+- Fully responsive (mobile-first, works at 375px)
+- WhatsApp floating button (bottom-right)
+- SEO meta tags + Schema.org LocalBusiness JSON-LD
+
+OUTPUT: Use write_file to create a SINGLE "index.html" file containing everything (HTML + CSS + JS inline). The file must be completely self-contained and work when opened directly.`;
 
           const aiResult = await this.client.toolUseLoop(
             [{ role: "user", content: aiPrompt }],
@@ -858,10 +915,23 @@ export class BuilderAgent extends BaseAgent {
               return { error: "Unknown tool" };
             },
             {
-              system: "You are a world-class AI full-stack developer. Build stunning €10k+ websites with Next.js 14, Tailwind CSS, Framer Motion. Use premium effects: Magic Card, animated gradient text, blur-fade, number ticker, parallax. NEVER ask questions — build immediately using write_file.",
+              system: `You are a world-class web designer who builds €10,000+ quality websites. You produce STUNNING, visually rich sites that make people say "wow."
+
+GOLDEN RULES:
+- NEVER build generic or template-looking sites. Every site must feel custom-crafted.
+- EVERY section needs visual depth: layered backgrounds, subtle gradients, shadows.
+- Typography is 50% of the design. Use the specified Google Fonts pairing.
+- Whitespace is luxury. Generous padding, wide max-widths.
+- Hero must be full-screen (100vh) with image + gradient overlay + animated text.
+- Navigation: transparent → glassmorphism on scroll.
+- Scroll reveal on EVERY section (IntersectionObserver, fade + rise).
+- Colors must be rich and warm (NEVER pure #000 or #fff).
+- Responsive: looks perfect at 375px, 768px, and 1440px.
+
+OUTPUT FORMAT: Create files using write_file. Build a single self-contained index.html with all CSS and JS inline. NEVER ask questions — build immediately.`,
               tools: [{ name: "write_file", description: "Create a project file", input_schema: { type: "object" as const, properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } }],
               model: "claude-sonnet-4-6" as const,
-              maxTokens: 16384,
+              maxTokens: 32000,
             }
           );
           this.log("info", `build_preview_site: AI generated ${Object.keys(projectFiles).length} files (${aiResult.totalOutputTokens} tokens)`);
