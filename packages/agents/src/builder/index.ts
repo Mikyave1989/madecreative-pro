@@ -164,7 +164,7 @@ async function deployToVercel(
       target: "production",
       meta: {
         slug,
-        "madecreative:preview": "true",
+        madecreativePreview: "true",
       },
     };
 
