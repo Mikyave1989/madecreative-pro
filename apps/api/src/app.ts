@@ -157,28 +157,10 @@ app.get("/preview/:prospectId", async (c) => {
 
   const signupUrl = `https://madecreative.pro/signup?plan=STARTER&email=${encodeURIComponent(prospect.contactEmail ?? "")}&company=${encodeURIComponent(prospect.companyName)}`;
 
-  // ─── If builder has deployed a real site, fetch its HTML and inject banners ──
-  if (prospect.previewSiteUrl) {
-    try {
-      const siteRes = await fetch(prospect.previewSiteUrl, { headers: { "User-Agent": "MadeCreative-Preview/1.0" } });
-      if (siteRes.ok) {
-        let siteHtml = await siteRes.text();
-
-        // Inject banner CSS + HTML into the fetched site
-        const bannerCss = `<style>:root{--mc-top:48px;--mc-bottom:64px}body{padding-top:var(--mc-top)!important;padding-bottom:var(--mc-bottom)!important}#mc-top-bar{position:fixed;top:0;left:0;right:0;height:var(--mc-top);z-index:2147483647;background:linear-gradient(90deg,#4f46e5 0%,#7c3aed 60%,#9333ea 100%);display:flex;align-items:center;justify-content:center;padding:0 16px;box-shadow:0 2px 12px rgba(79,70,229,0.35);gap:10px}#mc-top-bar span{color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13px;font-weight:500;text-align:center;line-height:1.3}#mc-top-bar .mc-dot{width:8px;height:8px;border-radius:50%;background:#a5f3fc;flex-shrink:0;animation:mc-pulse 2s ease-in-out infinite}@keyframes mc-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}#mc-bottom-bar{position:fixed;bottom:0;left:0;right:0;height:var(--mc-bottom);z-index:2147483647;background:linear-gradient(90deg,#1e1b4b 0%,#312e81 50%,#1e1b4b 100%);display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:12px;box-shadow:0 -2px 16px rgba(79,70,229,0.4)}#mc-bottom-bar .mc-company-label{color:#c7d2fe;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}#mc-bottom-bar .mc-right{display:flex;align-items:center;gap:16px;flex-shrink:0}#mc-bottom-bar .mc-powered{color:#6366f1;font-size:11px;white-space:nowrap}#mc-cta-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:#fff!important;font-size:14px;font-weight:700;padding:10px 22px;border-radius:9999px;text-decoration:none!important;white-space:nowrap;box-shadow:0 4px 14px rgba(99,102,241,0.5);transition:transform .15s,box-shadow .15s}#mc-cta-btn:hover{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,0.65)}#mc-cta-btn .mc-arrow{font-size:16px;transition:transform .15s}#mc-cta-btn:hover .mc-arrow{transform:translateX(3px)}@media(max-width:600px){#mc-top-bar span{font-size:11px}#mc-bottom-bar{padding:0 12px;gap:8px}#mc-bottom-bar .mc-company-label{display:none}#mc-bottom-bar .mc-powered{display:none}#mc-cta-btn{font-size:13px;padding:9px 16px}}</style>`;
-        const topBar = `<div id="mc-top-bar" role="banner"><span class="mc-dot"></span><span>${i18n.topBar}</span></div>`;
-        const bottomBar = `<div id="mc-bottom-bar" role="complementary"><span class="mc-company-label">${i18n.bottomLabel}</span><div class="mc-right"><span class="mc-powered">${i18n.powered}</span><a id="mc-cta-btn" href="${signupUrl}" target="_blank" rel="noopener noreferrer">${i18n.cta}<span class="mc-arrow" aria-hidden="true">&#8594;</span></a></div></div>`;
-
-        siteHtml = siteHtml
-          .replace("</head>", `${bannerCss}\n</head>`)
-          .replace(/<body([^>]*)>/, `<body$1>\n${topBar}`)
-          .replace("</body>", `${bottomBar}\n</body>`);
-
-        return c.html(siteHtml);
-      }
-    } catch {
-      // Fetch failed — fall through to generated fallback
-    }
+  // ─── If builder has deployed a real site, redirect to it ──
+  // Direct redirect avoids proxy issues with Next.js relative paths (/_next/...)
+  if (prospect.previewSiteUrl && !prospect.previewSiteUrl.includes("/preview/")) {
+    return c.redirect(prospect.previewSiteUrl, 302);
   }
 
   // ─── Fallback: generate HTML on-the-fly for prospects without a deployed site ─
