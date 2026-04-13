@@ -162,6 +162,7 @@ async function deployToVercel(
         framework: null, // Always static — bolt.diy files don't need Vercel build
       },
       target: "production",
+      public: true, // Disable deployment protection — site must be publicly accessible
       meta: {
         slug,
         madecreativePreview: "true",
@@ -211,7 +212,7 @@ async function deployToVercel(
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            vercelAuthentication: { deploymentType: "none" },
+            passwordProtection: null,
             ssoProtection: null,
           }),
         }
