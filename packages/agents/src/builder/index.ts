@@ -1,7 +1,7 @@
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 import { BaseAgent, type AgentContext } from "../base-agent.js";
 import type { AgentResult } from "@madecreative/shared";
-import { getTemplateConfig, generateSitePreview, generateNextJsProject, projectToPreviewHtml } from "@madecreative/shared";
+import { getTemplateConfig, generateNextJsProject, projectToPreviewHtml } from "@madecreative/shared";
 import type { ProjectData } from "@madecreative/shared";
 import { prisma } from "@madecreative/db";
 import { builderTools } from "./tools.js";
@@ -122,36 +122,47 @@ async function fetchPexelsPhotos(
   }
 }
 
-// ─── Helper: deploy to Vercel ─────────────────────────────────────────────────
+// ─── Helper: deploy to Vercel (multi-file project) ──────────────────────────
 
 async function deployToVercel(
   slug: string,
-  htmlContent: string
+  files: Record<string, string>,
 ): Promise<{ url: string | null; warning: string | null }> {
   const token = process.env["VERCEL_TOKEN"];
+  const teamId = process.env["VERCEL_TEAM_ID"];
   if (!token) {
     return {
       url: null,
       warning:
         "VERCEL_TOKEN environment variable is not set. Files saved locally but not deployed. " +
-        "Set VERCEL_TOKEN to enable automatic preview deployment to preview.madecreative.pro.",
+        "Set VERCEL_TOKEN to enable automatic preview deployment.",
     };
   }
 
   try {
-    const projectName = `madecreative-preview-${slug}`.slice(0, 52);
+    const { createHash } = await import("crypto");
+    const projectName = `mc-preview-${slug}`.slice(0, 52);
+    const isNextJs = "package.json" in files;
+    const teamQuery = teamId ? `?teamId=${teamId}` : "";
+    const teamQueryAmp = teamId ? `&teamId=${teamId}` : "";
+
+    // Build Vercel files array with base64 + SHA-1
+    const vercelFiles = Object.entries(files).map(([filePath, content]) => {
+      const raw = Buffer.from(content, "utf8");
+      return {
+        file: filePath.startsWith("/") ? filePath.slice(1) : filePath,
+        data: raw.toString("base64"),
+        encoding: "base64" as const,
+        sha: createHash("sha1").update(content, "utf8").digest("hex"),
+        size: raw.byteLength,
+      };
+    });
 
     const payload = {
       name: projectName,
-      files: [
-        {
-          file: "index.html",
-          data: Buffer.from(htmlContent).toString("base64"),
-          encoding: "base64",
-        },
-      ],
+      files: vercelFiles,
       projectSettings: {
-        framework: null,
+        framework: isNextJs ? "nextjs" : null,
       },
       target: "production",
       meta: {
@@ -160,7 +171,7 @@ async function deployToVercel(
       },
     };
 
-    const res = await fetch("https://api.vercel.com/v13/deployments", {
+    const res = await fetch(`https://api.vercel.com/v13/deployments${teamQuery}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -174,14 +185,47 @@ async function deployToVercel(
       throw new Error(`Vercel API error ${res.status}: ${body}`);
     }
 
-    const deployment = (await res.json()) as { url: string; alias?: string[] };
-    const previewUrl = `https://preview.madecreative.pro/${slug}`;
-    const vercelUrl = deployment.alias?.[0] ?? deployment.url;
+    const deployment = (await res.json()) as { id: string; url: string; name: string };
 
-    return {
-      url: vercelUrl ? `https://${vercelUrl}` : previewUrl,
-      warning: null,
-    };
+    // Assign custom subdomain
+    const customDomain = `${slug}.madecreative.pro`;
+    try {
+      await fetch(
+        `https://api.vercel.com/v10/projects/${encodeURIComponent(projectName)}/domains?upsert=true${teamQueryAmp}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: customDomain }),
+        }
+      );
+    } catch { /* non-fatal */ }
+
+    // Disable Vercel auth protection
+    try {
+      await fetch(
+        `https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}${teamQuery}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            vercelAuthentication: { deploymentType: "none" },
+            ssoProtection: null,
+          }),
+        }
+      );
+    } catch { /* non-fatal */ }
+
+    const deployUrl = deployment.url
+      ? `https://${deployment.url}`
+      : `https://${customDomain}`;
+
+    return { url: deployUrl, warning: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return {
@@ -855,16 +899,32 @@ export class BuilderAgent extends BaseAgent {
           }
         }
 
-        // Generate preview HTML from the Next.js project (single source of truth)
-        const htmlContent = projectToPreviewHtml(projectFiles);
+        // Deploy full project files to Vercel (multi-file deploy)
+        // Falls back to single HTML if the project has no package.json
+        const hasPackageJson = "package.json" in projectFiles;
+        let deployFiles = projectFiles;
 
-        // Save to temp dir
+        if (!hasPackageJson) {
+          // No package.json → deploy as static HTML
+          const htmlContent = projectToPreviewHtml(projectFiles);
+          deployFiles = { "index.html": htmlContent };
+          this.log("info", "build_preview_site: no package.json, deploying as static HTML");
+        } else {
+          this.log("info", `build_preview_site: deploying ${Object.keys(projectFiles).length} files as Next.js project`);
+        }
+
+        // Save project files to temp dir for debugging
         const outputDir = `/tmp/preview-${slug}`;
         try {
           const fs = await import("fs/promises");
           await fs.mkdir(outputDir, { recursive: true });
-          await fs.writeFile(`${outputDir}/index.html`, htmlContent, "utf-8");
-          this.log("info", `build_preview_site: HTML saved to ${outputDir}`);
+          for (const [filePath, content] of Object.entries(projectFiles)) {
+            const fullPath = `${outputDir}/${filePath}`;
+            const dir = fullPath.substring(0, fullPath.lastIndexOf("/"));
+            await fs.mkdir(dir, { recursive: true });
+            await fs.writeFile(fullPath, content, "utf-8");
+          }
+          this.log("info", `build_preview_site: ${Object.keys(projectFiles).length} files saved to ${outputDir}`);
         } catch (err) {
           this.log("warn", "build_preview_site: could not save to disk", {
             error: err instanceof Error ? err.message : String(err),
@@ -872,7 +932,7 @@ export class BuilderAgent extends BaseAgent {
         }
 
         // Deploy to Vercel
-        const { url, warning } = await deployToVercel(slug, htmlContent);
+        const { url, warning } = await deployToVercel(slug, deployFiles);
 
         if (warning) {
           this.log("warn", "build_preview_site: deployment warning", { warning });

@@ -205,6 +205,10 @@ export class OutreachAgent extends BaseAgent {
 
     const painPoints = (prospect.painPoints as PainPoint[] | null) ?? [];
 
+    // Use the /preview/:id wrapper URL (has CTA banners) instead of raw Vercel URL
+    const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
+    const previewUrlWithBanners = `${apiBase}/preview/${prospect.id}`;
+
     const userPrompt = buildOutreachPrompt({
       prospect: {
         companyName: prospect.companyName,
@@ -215,7 +219,7 @@ export class OutreachAgent extends BaseAgent {
         googleRating: prospect.googleRating,
         reviewCount: prospect.reviewCount,
         painPoints,
-        previewSiteUrl: prospect.previewSiteUrl,
+        previewSiteUrl: previewUrlWithBanners,
       },
       language,
       senderName,
@@ -811,6 +815,10 @@ export class OutreachAgent extends BaseAgent {
         // No draft found: generate a single email on the fly
         this.log("warn", `No draft found for step ${stepNumber}, generating fresh email`);
 
+        // Use wrapper URL with CTA banners
+        const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
+        const previewUrlWithBanners = `${apiBase}/preview/${prospect.id}`;
+
         const singlePrompt = buildOutreachPrompt({
           prospect: {
             companyName: prospect.companyName,
@@ -821,7 +829,7 @@ export class OutreachAgent extends BaseAgent {
             googleRating: prospect.googleRating,
             reviewCount: prospect.reviewCount,
             painPoints,
-            previewSiteUrl: prospect.previewSiteUrl,
+            previewSiteUrl: previewUrlWithBanners,
           },
           language,
           senderName: sender.name,

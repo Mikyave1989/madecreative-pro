@@ -102,24 +102,12 @@ app.get("/preview/:prospectId", async (c) => {
 
   const prospect = await prisma.prospect.findUnique({
     where: { id },
-    select: { companyName: true, sector: true, city: true, contactPhone: true, contactEmail: true, googleRating: true, reviewCount: true, website: true, photoUrls: true, logoUrl: true, country: true },
+    select: { companyName: true, sector: true, city: true, contactPhone: true, contactEmail: true, googleRating: true, reviewCount: true, website: true, photoUrls: true, logoUrl: true, country: true, previewSiteUrl: true },
   });
 
   if (!prospect) {
     return c.text("Preview not found", 404);
   }
-
-  const { generateSitePreview } = await import("@madecreative/shared");
-  const siteHtml = generateSitePreview({
-    name: prospect.companyName,
-    sector: prospect.sector,
-    city: prospect.city ?? undefined,
-    phone: prospect.contactPhone ?? undefined,
-    email: prospect.contactEmail ?? undefined,
-    googleRating: prospect.googleRating ?? undefined,
-    reviewCount: prospect.reviewCount ?? undefined,
-    logoUrl: prospect.logoUrl ?? undefined,
-  });
 
   // ─── Localised copy ───────────────────────────────────────────────────────────
   const country = (prospect.country ?? "").toUpperCase();
@@ -167,6 +155,62 @@ app.get("/preview/:prospectId", async (c) => {
   })();
 
   const signupUrl = `https://madecreative.pro/signup?plan=STARTER&email=${encodeURIComponent(prospect.contactEmail ?? "")}&company=${encodeURIComponent(prospect.companyName)}`;
+
+  // ─── If builder has deployed a real site, show it in iframe with banners ─────
+  if (prospect.previewSiteUrl) {
+    const iframeHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${prospect.companyName} — Preview | MadeCreative</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    #mc-top-bar{position:fixed;top:0;left:0;right:0;height:48px;z-index:2147483647;background:linear-gradient(90deg,#4f46e5 0%,#7c3aed 60%,#9333ea 100%);display:flex;align-items:center;justify-content:center;padding:0 16px;box-shadow:0 2px 12px rgba(79,70,229,0.35);gap:10px}
+    #mc-top-bar span{color:#fff;font-size:13px;font-weight:500;letter-spacing:0.01em;text-align:center;line-height:1.3}
+    #mc-top-bar .mc-dot{width:8px;height:8px;border-radius:50%;background:#a5f3fc;flex-shrink:0;animation:mc-pulse 2s ease-in-out infinite}
+    @keyframes mc-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.85)}}
+    #mc-bottom-bar{position:fixed;bottom:0;left:0;right:0;height:64px;z-index:2147483647;background:linear-gradient(90deg,#1e1b4b 0%,#312e81 50%,#1e1b4b 100%);display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:12px;box-shadow:0 -2px 16px rgba(79,70,229,0.4)}
+    #mc-bottom-bar .mc-company-label{color:#c7d2fe;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+    #mc-bottom-bar .mc-right{display:flex;align-items:center;gap:16px;flex-shrink:0}
+    #mc-bottom-bar .mc-powered{color:#6366f1;font-size:11px;font-weight:400;white-space:nowrap;letter-spacing:0.02em}
+    #mc-cta-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:#fff!important;font-size:14px;font-weight:700;letter-spacing:0.01em;padding:10px 22px;border-radius:9999px;text-decoration:none!important;border:none;cursor:pointer;white-space:nowrap;box-shadow:0 4px 14px rgba(99,102,241,0.5);transition:transform 0.15s ease,box-shadow 0.15s ease,background 0.15s ease}
+    #mc-cta-btn:hover{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,0.65)}
+    #mc-cta-btn .mc-arrow{font-size:16px;transition:transform 0.15s ease}
+    #mc-cta-btn:hover .mc-arrow{transform:translateX(3px)}
+    #mc-iframe{position:fixed;top:48px;left:0;right:0;bottom:64px;width:100%;border:none}
+    @media(max-width:600px){#mc-top-bar span{font-size:11px}#mc-bottom-bar{padding:0 12px;gap:8px}#mc-bottom-bar .mc-company-label{display:none}#mc-bottom-bar .mc-powered{display:none}#mc-cta-btn{font-size:13px;padding:9px 16px}}
+  </style>
+</head>
+<body>
+  <div id="mc-top-bar" role="banner"><span class="mc-dot"></span><span>${i18n.topBar}</span></div>
+  <iframe id="mc-iframe" src="${prospect.previewSiteUrl}" loading="eager" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"></iframe>
+  <div id="mc-bottom-bar" role="complementary">
+    <span class="mc-company-label">${i18n.bottomLabel}</span>
+    <div class="mc-right">
+      <span class="mc-powered">${i18n.powered}</span>
+      <a id="mc-cta-btn" href="${signupUrl}" target="_blank" rel="noopener noreferrer">${i18n.cta}<span class="mc-arrow" aria-hidden="true">&#8594;</span></a>
+    </div>
+  </div>
+</body>
+</html>`;
+    return c.html(iframeHtml);
+  }
+
+  // ─── Fallback: generate HTML on-the-fly for prospects without a deployed site ─
+  const { generateSitePreview } = await import("@madecreative/shared");
+  const siteHtml = generateSitePreview({
+    name: prospect.companyName,
+    sector: prospect.sector,
+    city: prospect.city ?? undefined,
+    phone: prospect.contactPhone ?? undefined,
+    email: prospect.contactEmail ?? undefined,
+    googleRating: prospect.googleRating ?? undefined,
+    reviewCount: prospect.reviewCount ?? undefined,
+    logoUrl: prospect.logoUrl ?? undefined,
+  });
 
   // ─── Injected CSS ─────────────────────────────────────────────────────────────
   const bannerStyle = `
