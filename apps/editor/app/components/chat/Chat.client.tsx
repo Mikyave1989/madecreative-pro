@@ -445,11 +445,16 @@ export const ChatImpl = memo(
       const urlInMessage = finalMessageContent.match(/https?:\/\/[^\s"'<>]+/i)?.[0]
         || finalMessageContent.match(/(?:^|\s)((?:www\.)?[a-z0-9][-a-z0-9.]+\.[a-z]{2,})(?:\s|$)/i)?.[1];
 
+      console.log('[MadeCreative] sendMessage called, content:', finalMessageContent.slice(0, 100));
+      console.log('[MadeCreative] hasRebuildKeyword:', hasRebuildKeyword, 'urlInMessage:', urlInMessage);
+
       if (hasRebuildKeyword && urlInMessage) {
         const urlToScrape = urlInMessage.startsWith('http') ? urlInMessage : 'https://' + urlInMessage;
         if (urlToScrape) {
           try {
-            toast.info('Scraping ' + urlToScrape + '...', { autoClose: 3000, position: 'bottom-right' });
+            // Debug: verify code runs
+            console.log('[MadeCreative] Scraping triggered for:', urlToScrape);
+            toast.info('🔍 Scraping ' + urlToScrape + '...', { autoClose: 60000, position: 'top-center', toastId: 'scraping' });
             // Call Railway scraper DIRECTLY — bypass Vercel (which has 60s timeout)
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 120_000);
