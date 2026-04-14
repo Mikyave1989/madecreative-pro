@@ -470,8 +470,26 @@ function StudioClient() {
           zIndex: 10,
         }}
       >
-        {/* Left: logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '160px' }}>
+        {/* Left: back button + logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '160px' }}>
+          {/* Back to dashboard */}
+          <a
+            href="/"
+            title="Torna alla dashboard"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '30px', height: '30px', borderRadius: '6px',
+              background: 'transparent', border: '1px solid #374151',
+              color: '#9ca3af', textDecoration: 'none', fontSize: '16px',
+              transition: 'all 0.15s', flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#1f2937'; e.currentTarget.style.color = '#f9fafb'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af'; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </a>
           <a
             href="/"
             style={{
