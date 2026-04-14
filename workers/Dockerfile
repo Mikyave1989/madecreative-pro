@@ -50,9 +50,8 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl chromium nss freetype harfbuzz ca-certificates ttf-freefont
 
-# Set Playwright to use system Chromium
-ENV PLAYWRIGHT_BROWSERS_PATH=0
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+# Install Playwright's Chromium browser in the image
+RUN npx playwright install chromium --with-deps 2>/dev/null || true
 
 COPY --from=builder /app /app
 

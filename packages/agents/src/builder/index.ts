@@ -870,8 +870,7 @@ export class BuilderAgent extends BaseAgent {
             this.log("info", `build_preview_site: deep-scraping ${website} with Playwright`);
             try {
               const { chromium } = await import("playwright");
-              const executablePath = process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"] || "/usr/bin/chromium-browser";
-              const browser = await chromium.launch({ executablePath, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
+              const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
               const context = await browser.newContext({ userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36" });
 
               // ── Discover all internal pages ──
@@ -1266,8 +1265,7 @@ RESPONSIVE: mobile (320-480px) single column + hamburger, tablet (481-1024px) 2-
 
         try {
           const { chromium } = await import("playwright");
-          const execPath = process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"] || "/usr/bin/chromium-browser";
-          const browser = await chromium.launch({ executablePath: execPath, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
+          const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
 
           const screenshots: { desktop?: string; mobile?: string } = {};
 

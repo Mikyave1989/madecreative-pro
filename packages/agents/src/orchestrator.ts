@@ -386,10 +386,7 @@ export async function startOrchestrator(): Promise<Worker[]> {
 
         console.log(`[ScrapeServer] Deep scraping: ${url}`);
         const { chromium } = await import("playwright");
-        // Use system Chromium on Alpine Linux (installed via apk)
-        const executablePath = process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"] || "/usr/bin/chromium-browser";
         const browser = await chromium.launch({
-          executablePath,
           args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
         });
         const context = await browser.newContext({ userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36" });
