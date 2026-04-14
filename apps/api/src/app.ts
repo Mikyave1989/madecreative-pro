@@ -177,24 +177,27 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   };
   const pl = priceLabel[lang] ?? priceLabel.en!;
 
-  // Personal plain-text style — one link, no buttons, no marketing layout = inbox delivery
+  // Clean email — personal intro + one preview button + WhatsApp
   const subjects: Record<string, string> = {
-    de: `${name} - Ich habe etwas für Sie erstellt`,
-    it: `${name} - ho creato qualcosa per voi`,
-    fr: `${name} - j'ai créé quelque chose pour vous`,
-    es: `${name} - he creado algo para vosotros`,
-    en: `${name} - I created something for you`,
+    de: `${name} - Ihre neue Website ist fertig`,
+    it: `${name} - il vostro nuovo sito e pronto`,
+    fr: `${name} - votre nouveau site est pret`,
+    es: `${name} - su nuevo sitio web esta listo`,
+    en: `${name} - your new website is ready`,
   };
+
+  const btn = `<a href="${previewUrl}" style="display:inline-block;background:#6366f1;color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;padding:14px 28px;border-radius:8px;text-decoration:none;margin:20px 0">`;
+
   const bodies: Record<string, string> = {
-    de: `<p>Hallo,</p><p>ich habe mir ${name}${city ? ` in ${city}` : ""} angeschaut und mir die Zeit genommen, einen neuen Webseiten-Vorschlag zu erstellen - kostenlos und unverbindlich.</p><p>Hier können Sie ihn ansehen:<br><a href="${previewUrl}">${previewUrl}</a></p><p>Falls Sie Fragen haben oder mehr erfahren möchten, antworten Sie einfach auf diese E-Mail oder schreiben Sie mir auf WhatsApp: +393317389918</p><p>Viele Grüße,<br>Marco Bianchi<br>madecreative.pro</p>`,
-    it: `<p>Ciao,</p><p>ho visto ${name}${city ? ` a ${city}` : ""} e mi sono preso il tempo di creare una proposta per un nuovo sito web - gratuitamente e senza impegno.</p><p>Puoi vederla qui:<br><a href="${previewUrl}">${previewUrl}</a></p><p>Se hai domande o vuoi saperne di più, rispondi a questa email o scrivimi su WhatsApp: +393317389918</p><p>Cordialmente,<br>Marco Bianchi<br>madecreative.pro</p>`,
-    fr: `<p>Bonjour,</p><p>J'ai regardé ${name}${city ? ` à ${city}` : ""} et j'ai pris le temps de créer une proposition de nouveau site web - gratuitement et sans engagement.</p><p>Vous pouvez la voir ici:<br><a href="${previewUrl}">${previewUrl}</a></p><p>Si vous avez des questions, répondez à cet email ou écrivez-moi sur WhatsApp: +393317389918</p><p>Cordialement,<br>Marco Bianchi<br>madecreative.pro</p>`,
-    es: `<p>Hola,</p><p>He visto ${name}${city ? ` en ${city}` : ""} y me tomé el tiempo de crear una propuesta de nuevo sitio web - gratuitamente y sin compromiso.</p><p>Puedes verla aquí:<br><a href="${previewUrl}">${previewUrl}</a></p><p>Si tienes preguntas, responde a este email o escríbeme en WhatsApp: +393317389918</p><p>Saludos,<br>Marco Bianchi<br>madecreative.pro</p>`,
-    en: `<p>Hi,</p><p>I came across ${name}${city ? ` in ${city}` : ""} and took the time to put together a new website proposal - free and with no strings attached.</p><p>You can see it here:<br><a href="${previewUrl}">${previewUrl}</a></p><p>If you have any questions or like what you see, just reply to this email or reach me on WhatsApp: +393317389918</p><p>Best,<br>Marco Bianchi<br>madecreative.pro</p>`,
+    de: `<p style="margin:0 0 16px">Hallo,</p><p style="margin:0 0 16px">ich habe mir <strong>${name}</strong>${city ? ` in ${city}` : ""} angesehen und einen kostenlosen Webseiten-Vorschlag erstellt.</p><p style="margin:0 0 24px">Hier ist das Ergebnis:</p><p style="margin:0 0 24px;text-align:center">${btn}Website-Vorschau ansehen</a></p><p style="margin:0 0 16px">Haben Sie Fragen? Antworten Sie auf diese E-Mail oder schreiben Sie mir auf WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Viele Gruesse,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    it: `<p style="margin:0 0 16px">Ciao,</p><p style="margin:0 0 16px">ho visto <strong>${name}</strong>${city ? ` a ${city}` : ""} e ho creato una proposta gratuita per un nuovo sito web.</p><p style="margin:0 0 24px">Ecco il risultato:</p><p style="margin:0 0 24px;text-align:center">${btn}Vedi l'anteprima</a></p><p style="margin:0 0 16px">Hai domande? Rispondi a questa email o scrivimi su WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Cordialmente,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    fr: `<p style="margin:0 0 16px">Bonjour,</p><p style="margin:0 0 16px">J'ai vu <strong>${name}</strong>${city ? ` a ${city}` : ""} et j'ai cree une proposition gratuite de nouveau site web.</p><p style="margin:0 0 24px">Voici le resultat:</p><p style="margin:0 0 24px;text-align:center">${btn}Voir l'apercu</a></p><p style="margin:0 0 16px">Des questions? Repondez a cet email ou ecrivez-moi sur WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Cordialement,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    es: `<p style="margin:0 0 16px">Hola,</p><p style="margin:0 0 16px">He visto <strong>${name}</strong>${city ? ` en ${city}` : ""} y he creado una propuesta gratuita de nuevo sitio web.</p><p style="margin:0 0 24px">Aqui esta el resultado:</p><p style="margin:0 0 24px;text-align:center">${btn}Ver vista previa</a></p><p style="margin:0 0 16px">Tienes preguntas? Responde a este email o escribeme en WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Saludos,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    en: `<p style="margin:0 0 16px">Hi,</p><p style="margin:0 0 16px">I came across <strong>${name}</strong>${city ? ` in ${city}` : ""} and created a free website proposal for you.</p><p style="margin:0 0 24px">Here is the result:</p><p style="margin:0 0 24px;text-align:center">${btn}View your preview</a></p><p style="margin:0 0 16px">Questions? Reply to this email or reach me on WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Best,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
   };
 
   const subject = subjects[lang] ?? subjects.en!;
-  const bodyHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Georgia,serif;max-width:520px;margin:0 auto;padding:24px;color:#222;line-height:1.7;font-size:15px">${bodies[lang] ?? bodies.en!}</body></html>`;
+  const bodyHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#333;line-height:1.6;font-size:15px;background:#ffffff">${bodies[lang] ?? bodies.en!}<p style="margin:32px 0 0;padding-top:20px;border-top:1px solid #e8e8e8;font-size:12px;color:#999">MadeCreative · madecreative.pro · Unsubscribe</p></body></html>`;
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
