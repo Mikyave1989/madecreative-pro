@@ -383,6 +383,15 @@ app.post("/campaign", async (c) => {
     input: job.input as Record<string, unknown>,
   });
 
+  // Auto-initialize warming at day 0 if it has never been set up.
+  // Without this, getWarmingDay() returns -1 → getWarmingLimit(-1) = 5 → outreach is
+  // capped at 5 emails forever, which is confusing and blocks the pipeline.
+  const warmingDay = await getWarmingDay();
+  if (warmingDay < 0) {
+    await setWarmingDay(0);
+    console.log("[campaign] Warming auto-initialized at day 0 (limit: 5 emails/day)");
+  }
+
   return c.json(
     {
       success: true,

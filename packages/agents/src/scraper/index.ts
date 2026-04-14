@@ -157,23 +157,37 @@ export class ScraperAgent extends BaseAgent {
       return this.browserContext.newPage();
     }
 
-    this.log("info", "Launching Playwright browser with stealth plugin");
+    this.log("info", "Launching Playwright browser");
 
     // Dynamic imports — only loaded when a scraping job actually runs.
     const { chromium } = await import("playwright");
-    // playwright-extra and its stealth plugin don't ship perfect type declarations,
-    // so we go through `unknown` casts to avoid TS errors.
-    const playwrightExtraModule = (await import("playwright-extra")) as unknown as {
-      default: { use: (plugin: unknown) => { chromium?: BrowserType } };
-    };
-    const stealthPluginModule = (await import(
-      "puppeteer-extra-plugin-stealth"
-    )) as unknown as { default: () => unknown };
 
-    // Register stealth plugin
-    const stealthPlaywright = playwrightExtraModule.default.use(
-      stealthPluginModule.default()
-    );
+    // Try to use playwright-extra + stealth plugin for better anti-bot bypass.
+    // playwright-extra can be exported as { chromium } directly (ESM) or under .default (CJS),
+    // and the stealth plugin can also have different shapes — wrap everything in try/catch
+    // and fall back to vanilla playwright if anything fails.
+    let launcher: BrowserType = chromium;
+    try {
+      const pwExtraRaw = await import("playwright-extra");
+      // Handle both ESM ({ chromium }) and CJS ({ default: { chromium } }) exports
+      const pwExtra = (pwExtraRaw as unknown as { chromium?: { use?: (p: unknown) => unknown } }).chromium
+        ?? ((pwExtraRaw as unknown as { default?: { chromium?: { use?: (p: unknown) => unknown } } }).default?.chromium);
+
+      if (pwExtra && typeof pwExtra.use === "function") {
+        const stealthRaw = await import("puppeteer-extra-plugin-stealth");
+        const stealthFn = (stealthRaw as unknown as { default?: () => unknown }).default
+          ?? (stealthRaw as unknown as (() => unknown));
+        if (typeof stealthFn === "function") {
+          pwExtra.use(stealthFn());
+          launcher = pwExtra as unknown as BrowserType;
+          this.log("info", "Stealth plugin loaded");
+        }
+      } else {
+        this.log("warn", "playwright-extra.chromium.use not available — using vanilla playwright");
+      }
+    } catch (stealthErr) {
+      this.log("warn", `Stealth plugin load failed (${(stealthErr as Error).message}) — using vanilla playwright`);
+    }
 
     // Bright Data rotating proxy — session rotates automatically with each new
     // context creation.  We track usage per session in Redis.
@@ -195,10 +209,6 @@ export class ScraperAgent extends BaseAgent {
         "--disable-gpu",
       ],
     };
-
-    // Use playwright-extra's chromium if available (wraps with stealth),
-    // otherwise fall back to vanilla playwright.
-    const launcher = stealthPlaywright.chromium ?? chromium;
 
     this.browser = await launcher.launch(launchOptions);
 
