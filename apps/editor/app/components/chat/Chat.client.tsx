@@ -440,13 +440,13 @@ export const ChatImpl = memo(
 
       let finalMessageContent = messageContent;
 
-      // ── Auto-scrape: detect URL rebuild requests and inject real content ──
-      const rebuildMatch = finalMessageContent.match(
-        /(?:ricostruisci|rebuild|clone|clona|rifai|ricrea|analizza e ricostruisci)\s+(https?:\/\/[^\s]+)/i
-      ) || finalMessageContent.match(/(https?:\/\/[^\s]+).*(?:ricostruisci|rebuild|clone|clona|rifai|ricrea)/i);
+      // ── Auto-scrape: detect ANY message with a URL + rebuild keyword ──
+      const hasRebuildKeyword = /ricostruisci|ricostruire|rebuild|clone|clona|rifai|ricrea|analizza|copia il sito|rifai il sito|ricostrui/i.test(finalMessageContent);
+      const urlInMessage = finalMessageContent.match(/https?:\/\/[^\s"'<>]+/i)?.[0]
+        || finalMessageContent.match(/(?:^|\s)((?:www\.)?[a-z0-9][-a-z0-9.]+\.[a-z]{2,})(?:\s|$)/i)?.[1];
 
-      if (rebuildMatch) {
-        const urlToScrape = rebuildMatch[1] || rebuildMatch[0].match(/https?:\/\/[^\s]+/)?.[0];
+      if (hasRebuildKeyword && urlInMessage) {
+        const urlToScrape = urlInMessage.startsWith('http') ? urlInMessage : 'https://' + urlInMessage;
         if (urlToScrape) {
           try {
             toast.info('Scraping ' + urlToScrape + '...', { autoClose: 3000, position: 'bottom-right' });
