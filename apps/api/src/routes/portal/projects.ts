@@ -124,6 +124,63 @@ app.post("/", async (c) => {
   );
 });
 
+// ─── GET /portal/projects/credits — credit balance for studio ────────────────
+// NOTE: Must be registered BEFORE /:id so Hono doesn't match "credits" as an id.
+
+app.get("/credits", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { plan: true, creditsUsed: true, creditsPurchased: true, creditsResetAt: true },
+  });
+  if (client) {
+    studioHydrateCredits(clientId, client.creditsUsed, client.creditsPurchased, client.creditsResetAt);
+  }
+  const credits = studioGetCredits(clientId, client?.plan ?? "STARTER");
+  return c.json({ success: true, data: credits });
+});
+
+// ─── POST /portal/projects/dedup — Delete duplicate projects (same name, keep newest) ─
+// NOTE: Must be registered BEFORE /:id so Hono doesn't match "dedup" as an id.
+
+app.post("/dedup", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
+
+  // Find all active projects for this client
+  const all = await prisma.clientWebsite.findMany({
+    where: { clientId, isActive: true },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, name: true, updatedAt: true, deployUrl: true },
+  });
+
+  // Group by name — keep the first (newest), soft-delete the rest
+  const seen = new Map<string, string>(); // name → kept id
+  const toDelete: string[] = [];
+
+  for (const p of all) {
+    const key = p.name.trim().toLowerCase();
+    if (!seen.has(key)) {
+      seen.set(key, p.id);
+    } else {
+      toDelete.push(p.id);
+    }
+  }
+
+  if (toDelete.length > 0) {
+    await prisma.clientWebsite.updateMany({
+      where: { id: { in: toDelete }, clientId },
+      data: { isActive: false, files: {}, pages: {} },
+    });
+  }
+
+  return c.json({
+    success: true,
+    data: { deleted: toDelete.length, kept: seen.size },
+  });
+});
+
 // ─── GET /portal/projects/:id ────────────────────────────────────────────────
 
 app.get("/:id", async (c) => {
@@ -583,22 +640,6 @@ async function studioDeductCredits(clientId: string, amount: number): Promise<bo
   return true;
 }
 
-// ─── GET /portal/projects/credits — credit balance for studio ────────────────
-
-app.get("/credits", async (c) => {
-  const { prisma } = await import("@madecreative/db");
-  const clientId = c.get("jwtPayload").sub;
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { plan: true, creditsUsed: true, creditsPurchased: true, creditsResetAt: true },
-  });
-  if (client) {
-    studioHydrateCredits(clientId, client.creditsUsed, client.creditsPurchased, client.creditsResetAt);
-  }
-  const credits = studioGetCredits(clientId, client?.plan ?? "STARTER");
-  return c.json({ success: true, data: credits });
-});
-
 app.post("/:id/chat", async (c) => {
   const { streamSSE } = await import("hono/streaming");
   const { prisma } = await import("@madecreative/db");
@@ -768,45 +809,6 @@ app.post("/:id/chat", async (c) => {
       console.error("[studio/chat] stream error:", msg);
       await stream.writeSSE({ data: JSON.stringify({ type: "error", error: msg }) });
     }
-  });
-});
-
-// ─── POST /portal/projects/dedup — Delete duplicate projects (same name, keep newest) ─
-
-app.post("/dedup", async (c) => {
-  const { prisma } = await import("@madecreative/db");
-  const clientId = c.get("jwtPayload").sub;
-
-  // Find all active projects for this client
-  const all = await prisma.clientWebsite.findMany({
-    where: { clientId, isActive: true },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true, name: true, updatedAt: true, deployUrl: true },
-  });
-
-  // Group by name — keep the first (newest), soft-delete the rest
-  const seen = new Map<string, string>(); // name → kept id
-  const toDelete: string[] = [];
-
-  for (const p of all) {
-    const key = p.name.trim().toLowerCase();
-    if (!seen.has(key)) {
-      seen.set(key, p.id);
-    } else {
-      toDelete.push(p.id);
-    }
-  }
-
-  if (toDelete.length > 0) {
-    await prisma.clientWebsite.updateMany({
-      where: { id: { in: toDelete }, clientId },
-      data: { isActive: false, files: {}, pages: {} },
-    });
-  }
-
-  return c.json({
-    success: true,
-    data: { deleted: toDelete.length, kept: seen.size },
   });
 });
 
