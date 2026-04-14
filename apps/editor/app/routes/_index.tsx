@@ -6,7 +6,7 @@ import { Header } from '~/components/header/Header';
 import BackgroundRays from '~/components/ui/BackgroundRays';
 import { Landing } from '~/components/landing/Landing';
 import { useStore } from '@nanostores/react';
-import { useNavigate, useSearchParams } from '@remix-run/react';
+import { useNavigate, useSearchParams, useLocation } from '@remix-run/react';
 import { useEffect } from 'react';
 import { authUser } from '~/lib/stores/auth';
 import { activeProjectId, loadProjects } from '~/lib/stores/projects';
@@ -40,13 +40,18 @@ function IndexClient() {
   const user = useStore(authUser);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const projectParam = searchParams.get('project');
 
   useEffect(() => {
     if (!user) return;
-    if (projectParam) return; // handled by the other effect
+    if (projectParam) return;
+    // Only auto-redirect from the root "/" — NOT from /chat/:id.
+    // chat.$id.tsx re-exports this component, so without this guard
+    // navigating to /chat/:id would trigger a redirect back to /?project=xxx
+    // causing an infinite loop: /?project → /chat/:id → /?project → ...
+    if (location.pathname !== '/') return;
 
-    // If no project param, auto-load the most recently opened project
     const token = localStorage.getItem('mc_token');
     if (!token) return;
 
@@ -54,19 +59,22 @@ function IndexClient() {
     if (persistedProjectId) {
       navigate(`/?project=${persistedProjectId}`);
     }
-  }, [user, projectParam]);
+  }, [user, projectParam, location.pathname]);
 
   useEffect(() => {
     if (!user || !projectParam) return;
+    // Only load when at /?project=xxx — not when chat.$id.tsx renders this
+    // component at /chat/:id (which has no ?project param anyway, but guard
+    // against edge cases where both could coexist).
+    if (location.pathname !== '/') return;
 
     activeProjectId.set(projectParam);
 
     // Load project files from API and inject into the bolt.diy workbench.
-    // bolt.diy loads files by replaying a synthetic assistant message that
-    // contains <boltArtifact> / <boltAction type="file"> tags — exactly the
-    // same format used by the snapshot-restore mechanism.  Once the chat is
-    // created we navigate to it so the action runner processes the files and
-    // the AI has full file context for subsequent modification requests.
+    // Bolt loads files by replaying a synthetic assistant message that
+    // contains <boltArtifact>/<boltAction type="file"> tags — same format
+    // as the snapshot-restore mechanism.  Navigate to /chat/:id so the
+    // action runner writes files to WebContainers and the AI has full context.
     apiClient<{ files: Record<string, string>; name: string }>(
       `/portal/projects/${projectParam}`,
     ).then(async (res) => {
@@ -77,7 +85,6 @@ function IndexClient() {
 
       const projectName = res.data.name || 'Progetto';
 
-      // Build the synthetic artifact message with every file as a boltAction
       const fileActions = Object.entries(files)
         .map(([filePath, content]) => `<boltAction type="file" filePath="${filePath}">\n${content}\n</boltAction>`)
         .join('\n');
@@ -111,7 +118,7 @@ ${fileActions}
         console.error('[IndexClient] Failed to create project chat:', err);
       }
     });
-  }, [user, projectParam]);
+  }, [user, projectParam, location.pathname]);
 
   if (!user) {
     return <Landing />;
