@@ -298,50 +298,12 @@ app.get("/preview/:prospectId", async (c) => {
   // ─── Injected CSS ─────────────────────────────────────────────────────────────
   const bannerStyle = `
 <style>
-  /* MadeCreative preview banner */
+  /* MadeCreative preview banner — bottom only, no top bar blocking hamburger */
   :root {
-    --mc-top: 48px;
     --mc-bottom: 64px;
   }
   body {
-    padding-top: var(--mc-top) !important;
     padding-bottom: var(--mc-bottom) !important;
-  }
-  #mc-top-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: var(--mc-top);
-    z-index: 2147483647;
-    background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 60%, #9333ea 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 16px;
-    box-shadow: 0 2px 12px rgba(79,70,229,0.35);
-    gap: 10px;
-  }
-  #mc-top-bar span {
-    color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    text-align: center;
-    line-height: 1.3;
-  }
-  #mc-top-bar .mc-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #a5f3fc;
-    flex-shrink: 0;
-    animation: mc-pulse 2s ease-in-out infinite;
-  }
-  @keyframes mc-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(0.85); }
   }
   #mc-bottom-bar {
     position: fixed;
@@ -419,7 +381,6 @@ app.get("/preview/:prospectId", async (c) => {
     transform: translateX(3px);
   }
   @media (max-width: 600px) {
-    #mc-top-bar span { font-size: 11px; }
     #mc-bottom-bar { padding: 0 12px; gap: 8px; }
     #mc-bottom-bar .mc-company-label { display: none; }
     #mc-bottom-bar .mc-powered { display: none; }
@@ -427,13 +388,7 @@ app.get("/preview/:prospectId", async (c) => {
   }
 </style>`;
 
-  // ─── Injected HTML ────────────────────────────────────────────────────────────
-  const topBar = `
-<div id="mc-top-bar" role="banner" aria-label="Preview notice">
-  <span class="mc-dot"></span>
-  <span>${i18n.topBar}</span>
-</div>`;
-
+  // ─── Bottom bar only — no top bar (was blocking hamburger menu on mobile) ─────
   const bottomBar = `
 <div id="mc-bottom-bar" role="complementary" aria-label="Purchase call to action">
   <span class="mc-company-label">${i18n.bottomLabel}</span>
@@ -448,7 +403,6 @@ app.get("/preview/:prospectId", async (c) => {
   // Inject into the generated HTML
   const html = siteHtml
     .replace("</head>", `${bannerStyle}\n</head>`)
-    .replace("<body", `${topBar}\n<body`)
     .replace("</body>", `${bottomBar}\n</body>`);
 
   return c.html(html);
