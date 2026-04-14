@@ -55,13 +55,14 @@ The year is 2025.
   6. Only use stock photos (from Pexels) when the original site has FEWER THAN 3 images total.
   7. If original site has VIDEO elements (YouTube embeds, MP4 files, Vimeo), include them in the rebuilt site.
 
-  MULTI-PAGE RULE:
-  If the scraped data shows MULTIPLE pages (scraped.pages has more than 1 unique URL with content), you MUST rebuild a MULTI-PAGE website that mirrors the original structure:
-  - Create separate HTML files for each page (e.g. index.html, la-villa/index.html, matrimoni/index.html, etc.)
-  - Each page must have the SAME navigation menu linking to all other pages
-  - Each page must include ALL photos and text content from the corresponding original page
-  - Use a consistent design system across all pages (same fonts, colors, nav, footer)
-  - The home page (index.html) should preview content from sub-pages with links
+  MULTI-PAGE RULE — NO LIMITS:
+  If the scraped data shows MULTIPLE pages, you MUST rebuild ALL of them — even if there are 20+ pages.
+  - Create a separate HTML file for EVERY page in the scraped data (index.html, page2/index.html, etc.)
+  - Each page must have the SAME navigation menu linking to ALL other pages
+  - Each page must include ALL photos and ALL text from its corresponding original page — NO skipping
+  - Consistent design system across all pages (same fonts, colors, nav, footer)
+  - The home page (index.html) previews content from sub-pages with links
+  - Use the URL path from the scraped page to create the local file path
 
   If the original site is a single landing page, build a single-page site with all sections.
 
