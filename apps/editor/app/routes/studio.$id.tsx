@@ -84,9 +84,18 @@ function StudioClient() {
   const navigate = useNavigate();
   const rebuildUrl = searchParams.get('rebuild');
 
+  // ── Guard: no id means invalid URL → go home ──────────────────────────────
+  useEffect(() => {
+    if (!id) {
+      navigate('/', { replace: true });
+    }
+  }, [id, navigate]);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [files, setFiles] = useState<Record<string, string>>({});
+  const [projectLoading, setProjectLoading] = useState(true);
+  const [projectError, setProjectError] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -157,38 +166,66 @@ function StudioClient() {
 
   useEffect(() => {
     if (!id) return;
+
     const token = localStorage.getItem('mc_token');
-    if (!token) return;
+    if (!token) {
+      // Not logged in — send to login page immediately
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    setProjectLoading(true);
+    setProjectError(null);
 
     fetch(`${API_URL}/portal/projects/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => {
-        if (r.status === 404) {
-          // Stale project ID — clear it and redirect immediately
+      .then(async (r) => {
+        if (r.status === 401) {
+          // Token expired / invalid — clear everything and go to login
+          localStorage.removeItem('mc_token');
+          localStorage.removeItem('mc_refresh_token');
           localStorage.removeItem('mc_active_project_id');
-          window.location.href = '/';
+          navigate('/login', { replace: true });
           return null;
+        }
+        if (r.status === 404) {
+          // Stale project ID — clear it and go to project launcher immediately
+          localStorage.removeItem('mc_active_project_id');
+          navigate('/', { replace: true });
+          return null;
+        }
+        if (!r.ok) {
+          const errText = await r.text().catch(() => '');
+          throw new Error(`HTTP ${r.status}: ${errText.slice(0, 120)}`);
         }
         return r.json();
       })
       .then((raw: unknown) => {
         if (!raw) return;
         const data = raw as { success: boolean; data?: { files?: Record<string, string>; deployUrl?: string; name?: string; subdomain?: string } };
-        if (!data.success || !data.data) return;
+        if (!data.success || !data.data) {
+          setProjectError('Impossibile caricare il progetto. Riprova.');
+          setProjectLoading(false);
+          return;
+        }
         setFiles(data.data.files ?? {});
         setDeployUrl(data.data.deployUrl ?? null);
         setProjectName(data.data.name ?? '');
         setSubdomain(data.data.subdomain ?? null);
-      })
-      .then(() => {
+        setProjectLoading(false);
+
         // Auto-trigger rebuild if ?rebuild=url was passed from the project launcher
         if (rebuildUrl) {
           setInput(`ricostruisci ${rebuildUrl}`);
         }
       })
-      .catch((err) => console.error('[Studio] Failed to load project:', err));
-  }, [id, rebuildUrl]);
+      .catch((err) => {
+        console.error('[Studio] Failed to load project:', err);
+        setProjectError('Errore di rete. Controlla la connessione e riprova.');
+        setProjectLoading(false);
+      });
+  }, [id, rebuildUrl, navigate]);
 
   // ── Scroll to bottom of chat ───────────────────────────────────────────────
 
@@ -576,6 +613,42 @@ function StudioClient() {
   // explicit Vercel deploy. Showing it before deploy causes DNS-not-found errors.
   const previewUrl = deployUrl ?? null;
   const hasFiles = Object.keys(files).length > 0;
+
+  // ─── Loading / error screens ───────────────────────────────────────────────
+
+  if (!id) return null; // guard — useEffect will redirect
+
+  if (projectLoading) {
+    return (
+      <div style={{ background: '#0a0a0a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ width: '32px', height: '32px', border: '3px solid #374151', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ color: '#9ca3af', fontSize: '14px' }}>Caricamento progetto...</div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (projectError) {
+    return (
+      <div style={{ background: '#0a0a0a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px', padding: '24px' }}>
+        <div style={{ color: '#f87171', fontSize: '16px', textAlign: 'center' }}>{projectError}</div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ background: '#6366f1', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 600, padding: '10px 20px' }}
+          >
+            Riprova
+          </button>
+          <button
+            onClick={() => { localStorage.removeItem('mc_active_project_id'); navigate('/'); }}
+            style={{ background: '#374151', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 600, padding: '10px 20px' }}
+          >
+            Torna alla dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
