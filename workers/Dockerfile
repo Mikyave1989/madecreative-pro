@@ -72,11 +72,9 @@ RUN apt-get update && apt-get install -y \
 # Copy built app from builder
 COPY --from=builder /app /app
 
-# Install Playwright browsers after node_modules are available
-RUN PLAYWRIGHT_BROWSERS_PATH=/ms-playwright npx playwright install chromium && \
-    echo "Playwright chromium installed at /ms-playwright"
+# Install Playwright browsers (uses default path /root/.cache/ms-playwright)
+RUN npx playwright install chromium && echo "✅ Playwright chromium installed"
 
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV WORKER_SCRIPT="agent-runner"
 
 CMD node workers/dist/${WORKER_SCRIPT}.js
