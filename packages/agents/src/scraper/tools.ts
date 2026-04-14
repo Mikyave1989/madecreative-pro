@@ -58,30 +58,33 @@ export const scraperTools: Tool[] = [
   {
     name: "check_duplicate",
     description:
-      "Check whether a business already exists as a Prospect or Client in the database. " +
-      "Performs exact match on phone/email and fuzzy match on name+city (Fuse.js threshold 0.2). " +
-      "Returns { isDuplicate: boolean, matchedId?: string, matchReason?: string }.",
+      "Check if a business already exists in the database AND automatically save it if not a duplicate. " +
+      "Pass ALL fields from extract_business_details — the tool saves the prospect automatically when isDuplicate=false. " +
+      "You do NOT need to call save_prospect separately after this tool.",
     input_schema: {
       type: "object" as const,
       properties: {
-        name: {
-          type: "string",
-          description: "Business/company name",
-        },
-        city: {
-          type: "string",
-          description: "City where the business is located",
-        },
-        phone: {
-          type: "string",
-          description: "Normalized phone number (optional)",
-        },
-        email: {
-          type: "string",
-          description: "Contact email address (optional)",
-        },
+        // Dedup fields
+        name:         { type: "string",  description: "Business name (used for dedup check)" },
+        city:         { type: "string",  description: "City" },
+        phone:        { type: "string",  description: "Phone number" },
+        email:        { type: "string",  description: "Email address" },
+        // Full BusinessData fields — required for auto-save
+        companyName:  { type: "string",  description: "Company name (same as name)" },
+        country:      { type: "string",  description: "2-letter country code e.g. DE, IT" },
+        sector:       { type: "string",  description: "Business sector e.g. restaurant" },
+        googleMapsUrl:{ type: "string",  description: "Full Google Maps URL" },
+        hasWebsite:   { type: "boolean", description: "Whether the business has a website" },
+        contactEmail: { type: "string",  description: "Email (same as email)" },
+        contactPhone: { type: "string",  description: "Phone (same as phone)" },
+        website:      { type: "string",  description: "Website URL if available" },
+        googleRating: { type: "number",  description: "Google rating 0-5" },
+        reviewCount:  { type: "number",  description: "Number of reviews" },
+        address:      { type: "string",  description: "Full address" },
+        logoUrl:      { type: "string",  description: "Logo image URL" },
+        photoUrls:    { type: "array", items: { type: "string" }, description: "Up to 3 photo URLs" },
       },
-      required: ["name"],
+      required: ["name", "companyName", "country", "sector", "googleMapsUrl", "hasWebsite"],
     },
   },
 

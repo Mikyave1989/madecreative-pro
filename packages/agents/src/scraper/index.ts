@@ -929,7 +929,7 @@ export class ScraperAgent extends BaseAgent {
       const result = await this.callClaude(
         [{ role: "user", content: userPrompt }],
         SCRAPER_SYSTEM_PROMPT,
-        { maxTokens: 4096 }
+        { maxTokens: 16384 }
       );
 
       await this.updateProgress(90);

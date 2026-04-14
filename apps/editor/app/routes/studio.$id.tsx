@@ -162,8 +162,18 @@ function StudioClient() {
     fetch(`${API_URL}/portal/projects/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 404) {
+          // Stale project ID — clear it and redirect to create a new one
+          localStorage.removeItem('mc_active_project_id');
+          toast.error('Progetto non trovato. Creane uno nuovo.', { autoClose: 4000 });
+          setTimeout(() => { window.location.href = '/'; }, 2000);
+          return null;
+        }
+        return r.json();
+      })
       .then((raw: unknown) => {
+        if (!raw) return;
         const data = raw as { success: boolean; data?: { files?: Record<string, string>; deployUrl?: string; name?: string; subdomain?: string } };
         if (!data.success || !data.data) return;
         setFiles(data.data.files ?? {});
@@ -403,7 +413,14 @@ function StudioClient() {
       }
 
       if (!res.ok || !res.body) {
-        throw new Error(`HTTP ${res.status}`);
+        if (res.status === 404) {
+          throw new Error('Progetto non trovato. Ricarica la pagina o crea un nuovo progetto.');
+        }
+        if (res.status === 401) {
+          throw new Error('Sessione scaduta. Fai il login di nuovo.');
+        }
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`Errore API (${res.status}): ${errBody.slice(0, 100)}`);
       }
 
       const reader = res.body.getReader();
