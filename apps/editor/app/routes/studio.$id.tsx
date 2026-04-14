@@ -122,14 +122,15 @@ function StudioClient() {
     fetch(`${API_URL}/portal/projects/credits`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : null)
       .then((raw: unknown) => {
+        if (!raw) return;
         const data = raw as { success: boolean; data?: CreditInfo };
         if (data.success && data.data) {
           setCreditInfo(data.data);
         }
       })
-      .catch(() => { /* silently fail */ });
+      .catch(() => {}); // non-fatal
   }, []);
 
   // ── Load projects list (for sidebar) ──────────────────────────────────────
@@ -164,10 +165,9 @@ function StudioClient() {
     })
       .then((r) => {
         if (r.status === 404) {
-          // Stale project ID — clear it and redirect to create a new one
+          // Stale project ID — clear it and redirect immediately
           localStorage.removeItem('mc_active_project_id');
-          toast.error('Progetto non trovato. Creane uno nuovo.', { autoClose: 4000 });
-          setTimeout(() => { window.location.href = '/'; }, 2000);
+          window.location.href = '/';
           return null;
         }
         return r.json();
