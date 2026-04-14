@@ -1254,12 +1254,26 @@ body{padding-top:44px!important;padding-bottom:56px!important}
         const hasPackageJson = "package.json" in projectFiles;
         let deployFiles = projectFiles;
 
+        const htmlFileCount = Object.keys(projectFiles).filter(f => f.endsWith(".html")).length;
+
         if (!hasPackageJson) {
-          // No package.json → deploy as static HTML
-          const htmlContent = projectToPreviewHtml(projectFiles);
-          deployFiles = { "index.html": htmlContent };
-          this.log("info", "build_preview_site: no package.json, deploying as static HTML");
+          if (htmlFileCount > 1) {
+            // Multi-page static HTML — keep all files + add vercel.json for proper routing
+            deployFiles = { ...projectFiles };
+            deployFiles["vercel.json"] = JSON.stringify({ cleanUrls: true, trailingSlash: false }, null, 2);
+            this.log("info", `build_preview_site: multi-page static (${htmlFileCount} pages), added vercel.json routing`);
+          } else {
+            // Single page — deploy as-is
+            const htmlContent = projectToPreviewHtml(projectFiles);
+            deployFiles = { "index.html": htmlContent };
+            this.log("info", "build_preview_site: single-page, deploying as static HTML");
+          }
         } else {
+          // Next.js project — add vercel.json with static export config
+          deployFiles = { ...projectFiles };
+          if (!deployFiles["vercel.json"]) {
+            deployFiles["vercel.json"] = JSON.stringify({ cleanUrls: true, trailingSlash: false }, null, 2);
+          }
           this.log("info", `build_preview_site: deploying ${Object.keys(projectFiles).length} files as Next.js project`);
         }
 

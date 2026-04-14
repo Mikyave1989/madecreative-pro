@@ -666,8 +666,19 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
         <div className="z-iframe-overlay w-full h-full absolute" onClick={() => setIsPortDropdownOpen(false)} />
       )}
       <div className="bg-bolt-elements-background-depth-2 p-2 flex items-center gap-2">
-        <div className="flex items-center gap-2">
-          <IconButton icon="i-ph:arrow-clockwise" onClick={reloadPreview} />
+        <div className="flex items-center gap-1">
+          {/* Back / Forward navigation */}
+          <IconButton
+            icon="i-ph:arrow-left"
+            title="Indietro"
+            onClick={() => iframeRef.current?.contentWindow?.history.back()}
+          />
+          <IconButton
+            icon="i-ph:arrow-right"
+            title="Avanti"
+            onClick={() => iframeRef.current?.contentWindow?.history.forward()}
+          />
+          <IconButton icon="i-ph:arrow-clockwise" onClick={reloadPreview} title="Ricarica" />
           <IconButton
             icon="i-ph:selection"
             onClick={() => setIsSelectionMode(!isSelectionMode)}

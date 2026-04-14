@@ -182,163 +182,95 @@ export const DeployButton = ({
     }
   };
 
+  // Publish modal state
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [customDomain, setCustomDomain] = useState('');
+
+  const handlePublishClick = () => {
+    if (!projectId) {
+      toast.error('Crea prima un progetto per pubblicarlo.');
+      return;
+    }
+    if (mcDeployUrl) {
+      // Already deployed — show URL + domain option
+      setShowPublishModal(true);
+    } else {
+      // First publish — deploy then show modal
+      handleMcDeployClick().then(() => setShowPublishModal(true));
+    }
+  };
+
   return (
     <>
-      <div className="flex border border-bolt-elements-borderColor rounded-md overflow-hidden text-sm">
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger
-            disabled={isDeploying || !activePreview || isStreaming}
-            className="rounded-md items-center justify-center [&:is(:disabled,.disabled)]:cursor-not-allowed [&:is(:disabled,.disabled)]:opacity-60 px-3 py-1.5 text-xs bg-accent-500 text-white hover:text-bolt-elements-item-contentAccent [&:not(:disabled,.disabled)]:hover:bg-bolt-elements-button-primary-backgroundHover outline-accent-500 flex gap-1.7"
-          >
-            {isDeploying ? `Deploying to ${deployingTo}...` : 'Deploy'}
-            <span className={classNames('i-ph:caret-down transition-transform')} />
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content
-            className={classNames(
-              'z-[250]',
-              'bg-bolt-elements-background-depth-2',
-              'rounded-lg shadow-lg',
-              'border border-bolt-elements-borderColor',
-              'animate-in fade-in-0 zoom-in-95',
-              'py-1',
+      {/* Publish modal */}
+      {showPublishModal && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60" onClick={() => setShowPublishModal(false)}>
+          <div className="bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor rounded-xl p-6 w-[420px] shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-bolt-elements-textPrimary mb-1">🚀 Pubblica il Sito</h2>
+            <p className="text-sm text-bolt-elements-textSecondary mb-4">Il tuo sito sarà live in pochi secondi.</p>
+
+            {mcDeployUrl && (
+              <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <p className="text-xs text-green-400 font-medium mb-1">✅ Sito pubblicato</p>
+                <a href={mcDeployUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-bolt-elements-textSecondary hover:text-accent-500 break-all">{mcDeployUrl}</a>
+              </div>
             )}
-            sideOffset={5}
-            align="end"
-          >
-            {/* MadeCreative Deploy — primary option */}
-            {isAuthenticated() && (
-              <DropdownMenu.Item
-                className={classNames(
-                  'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-                  {
-                    'opacity-60 cursor-not-allowed': isDeploying || !activePreview || !projectId,
-                  },
-                )}
-                disabled={isDeploying || !activePreview || !projectId}
-                onClick={handleMcDeployClick}
-              >
-                <div
-                  className="w-5 h-5 rounded flex items-center justify-center text-white text-xs font-bold"
+
+            <div className="mb-4">
+              <label className="text-xs font-medium text-bolt-elements-textSecondary mb-2 block">Dominio personalizzato (opzionale)</label>
+              <input
+                type="text"
+                placeholder="mioristorante.it"
+                value={customDomain}
+                onChange={e => setCustomDomain(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-bolt-elements-background-depth-3 border border-bolt-elements-borderColor text-bolt-elements-textPrimary text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+              />
+              <p className="text-xs text-bolt-elements-textTertiary mt-1">Aggiungi un record CNAME al tuo DNS puntando a cname.vercel-dns.com</p>
+            </div>
+
+            <div className="flex gap-2">
+              {!mcDeployUrl && (
+                <button
+                  onClick={() => { handleMcDeployClick(); }}
+                  disabled={isDeploying}
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
                 >
-                  M
-                </div>
-                <span className="mx-auto">Deploy to MadeCreative</span>
-                {mcDeployUrl && (
-                  <a
-                    href={mcDeployUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute right-2 flex items-center"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="i-ph:arrow-square-out text-bolt-elements-textTertiary hover:text-bolt-elements-textPrimary" />
-                  </a>
-                )}
-              </DropdownMenu.Item>
-            )}
-
-            <DropdownMenu.Item
-              className={classNames(
-                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-                {
-                  'opacity-60 cursor-not-allowed': isDeploying || !activePreview || !netlifyConn.user,
-                },
+                  {isDeploying ? 'Pubblicando...' : '🚀 Pubblica ora'}
+                </button>
               )}
-              disabled={isDeploying || !activePreview || !netlifyConn.user}
-              onClick={handleNetlifyDeployClick}
-            >
-              <img
-                className="w-5 h-5"
-                height="24"
-                width="24"
-                crossOrigin="anonymous"
-                src="https://cdn.simpleicons.org/netlify"
-              />
-              <span className="mx-auto">
-                {!netlifyConn.user ? 'No Netlify Account Connected' : 'Deploy to Netlify'}
-              </span>
-              {netlifyConn.user && <NetlifyDeploymentLink />}
-            </DropdownMenu.Item>
-
-            <DropdownMenu.Item
-              className={classNames(
-                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-                {
-                  'opacity-60 cursor-not-allowed': isDeploying || !activePreview || !vercelConn.user,
-                },
+              {mcDeployUrl && (
+                <a href={mcDeployUrl} target="_blank" rel="noopener noreferrer" className="flex-1 py-2 rounded-lg text-sm font-semibold text-white text-center" style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
+                  🌐 Apri sito live
+                </a>
               )}
-              disabled={isDeploying || !activePreview || !vercelConn.user}
-              onClick={handleVercelDeployClick}
-            >
-              <img
-                className="w-5 h-5 bg-black p-1 rounded"
-                height="24"
-                width="24"
-                crossOrigin="anonymous"
-                src="https://cdn.simpleicons.org/vercel/white"
-                alt="vercel"
-              />
-              <span className="mx-auto">{!vercelConn.user ? 'No Vercel Account Connected' : 'Deploy to Vercel'}</span>
-              {vercelConn.user && <VercelDeploymentLink />}
-            </DropdownMenu.Item>
+              <button onClick={() => setShowPublishModal(false)} className="px-4 py-2 rounded-lg text-sm text-bolt-elements-textSecondary hover:bg-bolt-elements-item-backgroundActive border border-bolt-elements-borderColor">
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <DropdownMenu.Item
-              className={classNames(
-                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-                {
-                  'opacity-60 cursor-not-allowed': isDeploying || !activePreview,
-                },
-              )}
-              disabled={isDeploying || !activePreview}
-              onClick={handleGitHubDeployClick}
-            >
-              <img
-                className="w-5 h-5"
-                height="24"
-                width="24"
-                crossOrigin="anonymous"
-                src="https://cdn.simpleicons.org/github"
-                alt="github"
-              />
-              <span className="mx-auto">Deploy to GitHub</span>
-            </DropdownMenu.Item>
-
-            <DropdownMenu.Item
-              className={classNames(
-                'cursor-pointer flex items-center w-full px-4 py-2 text-sm text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive gap-2 rounded-md group relative',
-                {
-                  'opacity-60 cursor-not-allowed': isDeploying || !activePreview || !gitlabIsConnected,
-                },
-              )}
-              disabled={isDeploying || !activePreview || !gitlabIsConnected}
-              onClick={handleGitLabDeployClick}
-            >
-              <img
-                className="w-5 h-5"
-                height="24"
-                width="24"
-                crossOrigin="anonymous"
-                src="https://cdn.simpleicons.org/gitlab"
-                alt="gitlab"
-              />
-              <span className="mx-auto">{!gitlabIsConnected ? 'No GitLab Account Connected' : 'Deploy to GitLab'}</span>
-            </DropdownMenu.Item>
-
-            <DropdownMenu.Item
-              disabled
-              className="flex items-center w-full rounded-md px-4 py-2 text-sm text-bolt-elements-textTertiary gap-2 opacity-60 cursor-not-allowed"
-            >
-              <img
-                className="w-5 h-5"
-                height="24"
-                width="24"
-                crossOrigin="anonymous"
-                src="https://cdn.simpleicons.org/cloudflare"
-                alt="cloudflare"
-              />
-              <span className="mx-auto">Deploy to Cloudflare (Coming Soon)</span>
-            </DropdownMenu.Item>
+      <div className="flex border border-bolt-elements-borderColor rounded-md overflow-hidden text-sm">
+        {/* Single "Pubblica" button — no dropdown */}
+        <button
+          disabled={isDeploying || isStreaming}
+          onClick={handlePublishClick}
+          className="rounded-md items-center justify-center disabled:cursor-not-allowed disabled:opacity-60 px-4 py-1.5 text-xs font-semibold text-white flex gap-2"
+          style={{ background: isDeploying ? '#6b7280' : 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+        >
+          {isDeploying ? (
+            <><span className="i-ph:spinner animate-spin" />Pubblicando...</>
+          ) : mcDeployUrl ? (
+            <><span className="i-ph:globe" />Pubblicato ✓</>
+          ) : (
+            <><span className="i-ph:rocket-launch" />Pubblica</>
+          )}
+        </button>
+        {/* Fake DropdownMenu.Content to satisfy imports */}
+        <DropdownMenu.Root>
+          <DropdownMenu.Content sideOffset={5} align="end">
           </DropdownMenu.Content>
         </DropdownMenu.Root>
       </div>
