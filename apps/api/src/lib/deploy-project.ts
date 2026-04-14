@@ -147,8 +147,10 @@ export async function deployProjectFiles(
         name: vercelProjectName,
         target: "production",
         files: vercelFiles,
+        public: true,
         projectSettings: {
           framework: vercelFramework,
+          ...(vercelFramework === null ? { buildCommand: "", installCommand: "", outputDirectory: "." } : {}),
         },
       }),
     }

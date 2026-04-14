@@ -301,7 +301,9 @@ app.post("/:id/deploy", async (c) => {
   });
 
   const subdomain = project.subdomain || project.id.slice(0, 12);
-  const isNextJsProject = "package.json" in files;
+  // forceStatic = true when deploying from editor (bolt.diy files, no build needed)
+  const forceStatic = Boolean(body?.forceStatic);
+  const isNextJsProject = !forceStatic && "package.json" in files;
 
   try {
     let deployUrl: string;
@@ -323,19 +325,19 @@ app.post("/:id/deploy", async (c) => {
       vercelProjectId = result.vercelProjectId;
       deploymentId = result.deploymentId;
     } else {
-      // ── Legacy: static HTML fallback ──────────────────────────────────────
-      const { deploySite } = await import("../../lib/deploy-site.js");
+      // ── Static deploy — used for bolt.diy generated files (no build step) ─
+      const { deployProjectFiles } = await import("../../lib/deploy-project.js");
 
-      const result = await deploySite({
-        clientId,
-        companyName: project.client.companyName,
-        sector: project.client.sector,
-        content: files as Record<string, unknown>,
+      const result = await deployProjectFiles({
+        files,
+        projectName: subdomain,
         subdomain,
+        framework: "static",
       });
 
       deployUrl = result.deployUrl;
       vercelProjectId = result.vercelProjectId;
+      deploymentId = result.deploymentId;
     }
 
     await prisma.clientWebsite.update({
