@@ -445,8 +445,10 @@ export const ChatImpl = memo(
       const urlInMessage = finalMessageContent.match(/https?:\/\/[^\s"'<>]+/i)?.[0]
         || finalMessageContent.match(/(?:^|\s)((?:www\.)?[a-z0-9][-a-z0-9.]+\.[a-z]{2,})(?:\s|$)/i)?.[1];
 
-      console.log('[MadeCreative] sendMessage called, content:', finalMessageContent.slice(0, 100));
-      console.log('[MadeCreative] hasRebuildKeyword:', hasRebuildKeyword, 'urlInMessage:', urlInMessage);
+      // Temporary debug alert to verify code executes
+      if (hasRebuildKeyword) {
+        alert('[DEBUG] Rebuild detected! URL: ' + (urlInMessage || 'none found') + '\nContent preview: ' + finalMessageContent.slice(0, 80));
+      }
 
       if (hasRebuildKeyword && urlInMessage) {
         const urlToScrape = urlInMessage.startsWith('http') ? urlInMessage : 'https://' + urlInMessage;
