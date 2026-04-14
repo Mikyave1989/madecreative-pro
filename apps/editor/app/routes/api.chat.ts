@@ -83,11 +83,10 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     const urlToScrape = rebuildMatch[1] || rebuildMatch[0];
     try {
       const apiBase = (context.cloudflare?.env as any)?.API_URL || 'https://api.madecreative.pro';
-      const jwtSecret = (context.cloudflare?.env as any)?.JWT_SECRET || '';
 
       const scrapeRes = await fetch(`${apiBase}/public/scrape-deep`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Internal-Token': jwtSecret },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: urlToScrape }),
         signal: AbortSignal.timeout(120_000),
       });

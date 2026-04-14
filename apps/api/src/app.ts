@@ -113,11 +113,11 @@ app.post("/public/scrape-deep", async (c) => {
     }
   }
 
-  // Forward to Railway worker's Playwright scraper
+  // Forward to Railway worker's Playwright scraper (no auth needed — public sites only)
   try {
     const res = await fetch(`${scrapeUrl}/scrape`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Internal-Token": process.env["JWT_SECRET"] ?? "" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: body.url }),
     });
     const data = await res.json();

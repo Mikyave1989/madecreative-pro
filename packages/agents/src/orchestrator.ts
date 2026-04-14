@@ -371,11 +371,7 @@ export async function startOrchestrator(): Promise<Worker[]> {
       res.writeHead(404); res.end("Not found"); return;
     }
 
-    // Auth check
-    const internalToken = req.headers["x-internal-token"];
-    if (!internalToken || internalToken !== process.env["JWT_SECRET"]) {
-      res.writeHead(401); res.end("Unauthorized"); return;
-    }
+    // No auth required — only scrapes public websites, no sensitive operations
 
     let body = "";
     req.on("data", chunk => { body += chunk; });
