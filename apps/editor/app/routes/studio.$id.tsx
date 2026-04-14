@@ -1,5 +1,5 @@
 import { json } from '@remix-run/cloudflare';
-import { useParams } from '@remix-run/react';
+import { useParams, useSearchParams } from '@remix-run/react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { toast } from 'react-toastify';
@@ -60,6 +60,8 @@ function StudioSkeleton() {
 
 function StudioClient() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const rebuildUrl = searchParams.get('rebuild');
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -98,8 +100,14 @@ function StudioClient() {
         setProjectName(data.data.name ?? '');
         setSubdomain(data.data.subdomain ?? null);
       })
+      .then(() => {
+        // Auto-trigger rebuild if ?rebuild=url was passed from the project launcher
+        if (rebuildUrl) {
+          setInput(`ricostruisci ${rebuildUrl}`);
+        }
+      })
       .catch((err) => console.error('[Studio] Failed to load project:', err));
-  }, [id]);
+  }, [id, rebuildUrl]);
 
   // ── Scroll to bottom of chat ───────────────────────────────────────────────
 
@@ -131,14 +139,90 @@ function StudioClient() {
     }
   }, [id]);
 
+  // ── Scrape website before rebuild ─────────────────────────────────────────
+
+  const scrapeAndInject = useCallback(async (rawMsg: string): Promise<string> => {
+    const rebuildKw = /ricostruisci|ricostruire|rebuild|clone|clona|rifai|ricrea|analizza|copia il sito/i.test(rawMsg);
+    const urlMatch = rawMsg.match(/https?:\/\/[^\s"'<>]+/i)?.[0]
+      ?? rawMsg.match(/(?:^|\s)((?:www\.)?[a-z0-9][-a-z0-9.]+\.[a-z]{2,})(?:\s|$)/i)?.[1];
+
+    if (!rebuildKw || !urlMatch) return rawMsg;
+
+    const urlToScrape = urlMatch.startsWith('http') ? urlMatch : 'https://' + urlMatch;
+    toast.info(`🔍 Scraping ${urlToScrape}…`, { autoClose: 90000, position: 'top-center', toastId: 'scraping' });
+
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 120_000);
+      const res = await fetch('https://agent-runner-production-b33a.up.railway.app/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlToScrape }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      toast.dismiss('scraping');
+
+      if (!res.ok) throw new Error(`Scrape HTTP ${res.status}`);
+      const data = await res.json() as { data?: { scraped?: { pages?: any[]; logo?: string; contact?: any; socialLinks?: any } } };
+      const scraped = data.data?.scraped;
+
+      if (!scraped?.pages?.length) {
+        toast.warning('Scraping: nessuna pagina trovata — procedo senza contenuto reale', { autoClose: 3000 });
+        return rawMsg;
+      }
+
+      const seen = new Set<string>();
+      const pages = scraped.pages.filter((p: any) => {
+        const n = (p.url || '').replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+        if (!n || seen.has(n)) return false;
+        seen.add(n);
+        return p.headings?.length || p.paragraphs?.length || p.images?.length;
+      });
+
+      let pagesContent = '';
+      let totalImgs = 0, totalVids = 0;
+      const navPages = pages.map((p: any) => {
+        const path = p.url.replace(/^https?:\/\/(www\.)?[^/]+/, '').replace(/\/$/, '') || '/';
+        const h1 = p.headings?.find((h: any) => h.level === 1)?.text || p.title || '';
+        return `${path} → "${h1}"`;
+      }).join('\n');
+
+      for (const p of pages) {
+        const imgs = (p.images || []).filter((i: any) => i.url?.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(i.url));
+        totalImgs += imgs.length;
+        const vids = (p.videos || []);
+        totalVids += vids.length;
+        const localPath = (p.url.replace(/^https?:\/\/(www\.)?[^/]+/, '').replace(/\/$/, '') || '/index').replace(/^\//, '') + '/index.html';
+        pagesContent += `\n=== PAGE: ${localPath === '/index/index.html' ? 'index.html' : localPath} ===\n`
+          + `Title: ${p.title || ''}\n`
+          + `Headings:\n${(p.headings || []).map((h: any) => `  h${h.level}: ${h.text}`).join('\n') || '  none'}\n`
+          + `Text:\n${(p.paragraphs || []).map((t: string) => `  ${t}`).join('\n') || '  none'}\n`
+          + `Photos:\n${imgs.map((i: any, n: number) => `  ${n+1}. ${i.url}${i.alt ? ' ('+i.alt+')' : ''}`).join('\n') || '  none'}\n`
+          + (vids.length ? `Videos:\n${vids.map((v: any) => `  VIDEO (${v.type}): ${v.url}`).join('\n')}\n` : '');
+      }
+
+      const injection = `\n\n=== SCRAPED: ${urlToScrape} ===\nLogo: ${scraped.logo||'none'}\nPhone: ${scraped.contact?.phone||'N/A'} | Email: ${scraped.contact?.email||'N/A'}\nFacebook: ${scraped.socialLinks?.facebook||''} | Instagram: ${scraped.socialLinks?.instagram||''}\n${totalVids > 0 ? '⚠️ VIDEO FOUND — use as full-screen autoplay muted hero!\n' : ''}\nSTRUCTURE (${pages.length} pages):\n${navPages}\n\nvercel.json: {"cleanUrls":true,"trailingSlash":false}\n${pagesContent}=== END SCRAPED ===`;
+
+      toast.success(`Scraped ${pages.length} pagine, ${totalImgs} foto, ${totalVids} video ✓`, { autoClose: 3000, position: 'bottom-right' });
+      return rawMsg + injection;
+    } catch (err) {
+      toast.dismiss('scraping');
+      toast.warning('Scraping fallito — procedo senza contenuto reale', { autoClose: 3000 });
+      return rawMsg;
+    }
+  }, []);
+
   // ── Send message ───────────────────────────────────────────────────────────
 
   const sendMessage = useCallback(async () => {
-    const msg = input.trim();
-    if (!msg || isStreaming || !id) return;
+    const raw = input.trim();
+    if (!raw || isStreaming || !id) return;
 
     setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: msg }]);
+    const msg = await scrapeAndInject(raw);
+
+    setMessages((prev) => [...prev, { role: 'user', content: raw }]); // show original to user
     setIsStreaming(true);
 
     const token = localStorage.getItem('mc_token');
@@ -151,7 +235,7 @@ function StudioClient() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token ?? ''}`,
         },
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify({ message: msg }), // send enriched message to API
       });
 
       if (!res.ok || !res.body) {

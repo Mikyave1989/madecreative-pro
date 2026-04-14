@@ -7,7 +7,7 @@ import BackgroundRays from '~/components/ui/BackgroundRays';
 import { Landing } from '~/components/landing/Landing';
 import { useStore } from '@nanostores/react';
 import { useNavigate, useSearchParams, useLocation } from '@remix-run/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { authUser } from '~/lib/stores/auth';
 import { activeProjectId } from '~/lib/stores/projects';
 
@@ -65,11 +65,77 @@ function IndexClient() {
     return <Landing />;
   }
 
+  // Logged in but no project to redirect to — show project launcher
+  return <ProjectLauncher navigate={navigate} />;
+}
+
+function ProjectLauncher({ navigate }: { navigate: (path: string) => void }) {
+  const [url, setUrl] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    const token = localStorage.getItem('mc_token');
+    const API_URL = 'https://api.madecreative.pro';
+
+    // Name from URL or default
+    let name = 'Nuovo Sito';
+    const urlMatch = url.trim().match(/([a-z0-9-]+)\.[a-z]{2,}/i);
+    if (urlMatch) name = urlMatch[1].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    try {
+      const res = await fetch(`${API_URL}/portal/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json() as { success: boolean; data?: { id: string } };
+      if (data.success && data.data?.id) {
+        localStorage.setItem('mc_active_project_id', data.data.id);
+        // Navigate to studio with the URL pre-filled if provided
+        const target = url.trim()
+          ? `/studio/${data.data.id}?rebuild=${encodeURIComponent(url.trim())}`
+          : `/studio/${data.data.id}`;
+        navigate(target);
+      }
+    } catch {
+      setCreating(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full w-full bg-bolt-elements-background-depth-1">
-      <BackgroundRays />
-      <Header />
-      <Chat />
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '32px', padding: '24px' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '32px', fontWeight: 700, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', marginBottom: '8px' }}>
+          MadeCreative Studio
+        </div>
+        <div style={{ color: '#6b7280', fontSize: '15px' }}>Ricostruisci un sito o inizia da zero</div>
+      </div>
+      <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div>
+          <label style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>
+            URL sito da ricostruire (opzionale)
+          </label>
+          <input
+            type="text"
+            placeholder="es. www.mioristorante.it"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            style={{ width: '100%', background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', color: '#f9fafb', fontSize: '14px', padding: '10px 14px', outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
+        <button
+          onClick={handleCreate}
+          disabled={creating}
+          style={{ background: creating ? '#374151' : 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: '8px', color: '#fff', cursor: creating ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 600, padding: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+        >
+          {creating ? '⏳ Creazione...' : url ? '🚀 Ricostruisci sito' : '✨ Nuovo progetto vuoto'}
+        </button>
+      </div>
+      <div style={{ color: '#374151', fontSize: '12px' }}>
+        Oppure seleziona un progetto esistente dal menu laterale
+      </div>
     </div>
   );
 }
