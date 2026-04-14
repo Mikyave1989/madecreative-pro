@@ -408,7 +408,7 @@ export const Menu = () => {
                 {projects.map((proj) => (
                   <div key={proj.id} className="flex items-center gap-1 group rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                     <a
-                      href={`/?project=${proj.id}`}
+                      href={`/studio/${proj.id}`}
                       className="flex items-center gap-2 px-3 py-2 flex-1 min-w-0"
                     >
                       <div className="i-ph:folder-simple text-indigo-400 text-base flex-shrink-0" />

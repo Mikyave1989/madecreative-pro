@@ -491,6 +491,148 @@ app.post("/:id/domain", async (c) => {
   }
 });
 
+// ─── POST /portal/projects/:id/chat — AI streaming editor ───────────────────
+
+const STUDIO_SYSTEM_PROMPT = `You are an expert web developer editing a website. The user will ask you to modify or add features.
+
+Rules:
+- Always respond with a brief explanation first (1-3 sentences in the user's language)
+- Then output COMPLETE modified file contents using EXACTLY this format:
+  <boltAction type="file" filePath="RELATIVE_PATH">
+  COMPLETE FILE CONTENT HERE
+  </boltAction>
+- Output ONLY files that changed
+- ALWAYS output the complete file (never partial/diff)
+- Preserve all existing content not explicitly asked to change
+- For multi-page sites, only modify the pages asked
+- Never add placeholder text or lorem ipsum`;
+
+app.post("/:id/chat", async (c) => {
+  const { streamSSE } = await import("hono/streaming");
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
+  const id = c.req.param("id");
+
+  const body = await c.req.json().catch(() => null);
+  const message = (body?.message as string)?.trim();
+  if (!message) {
+    return c.json({ success: false, error: "Message is required" }, 400);
+  }
+
+  const project = await prisma.clientWebsite.findFirst({
+    where: { id, clientId, isActive: true },
+  });
+  if (!project) {
+    return c.json({ success: false, error: "Project not found" }, 404);
+  }
+
+  const existingFiles = (project.files ?? {}) as Record<string, string>;
+
+  // Build user message with file context
+  const fileContext = Object.entries(existingFiles)
+    .map(([path, content]) => `<file path="${path}">${content}</file>`)
+    .join("\n");
+
+  const userMessage = Object.keys(existingFiles).length > 0
+    ? `Current project files:\n<files>\n${fileContext}\n</files>\n\nUser request: ${message}`
+    : `User request: ${message}`;
+
+  const anthropicKey = process.env["ANTHROPIC_API_KEY"];
+  if (!anthropicKey) {
+    return c.json({ success: false, error: "AI not configured" }, 500);
+  }
+
+  return streamSSE(c, async (stream) => {
+    let fullText = "";
+
+    try {
+      const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 16000,
+          stream: true,
+          system: STUDIO_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: userMessage }],
+        }),
+      });
+
+      if (!anthropicRes.ok || !anthropicRes.body) {
+        const errText = await anthropicRes.text();
+        await stream.writeSSE({ data: JSON.stringify({ type: "error", error: `Claude API error: ${errText}` }) });
+        return;
+      }
+
+      const reader = anthropicRes.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+
+          try {
+            const ev = JSON.parse(data) as {
+              type: string;
+              delta?: { type: string; text?: string };
+            };
+
+            if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta" && ev.delta.text) {
+              fullText += ev.delta.text;
+              await stream.writeSSE({ data: JSON.stringify({ type: "text", content: ev.delta.text }) });
+            }
+          } catch {
+            // skip malformed SSE lines
+          }
+        }
+      }
+
+      // Parse changed files from full response
+      const fileRegex = /<boltAction\s+type="file"\s+filePath="([^"]+)">([\s\S]*?)<\/boltAction>/g;
+      const changedFiles: string[] = [];
+      const updatedFiles: Record<string, string> = { ...existingFiles };
+
+      let match: RegExpExecArray | null;
+      while ((match = fileRegex.exec(fullText)) !== null) {
+        const [, filePath, content] = match;
+        if (filePath && content !== undefined) {
+          updatedFiles[filePath] = content.replace(/^\n/, "").replace(/\n$/, "");
+          changedFiles.push(filePath);
+        }
+      }
+
+      // Persist merged files to DB
+      if (changedFiles.length > 0) {
+        await prisma.clientWebsite.update({
+          where: { id },
+          data: { files: updatedFiles as object },
+        });
+      }
+
+      await stream.writeSSE({ data: JSON.stringify({ type: "done", changedFiles }) });
+      await stream.writeSSE({ data: "[DONE]" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Stream error";
+      console.error("[studio/chat] stream error:", msg);
+      await stream.writeSSE({ data: JSON.stringify({ type: "error", error: msg }) });
+    }
+  });
+});
+
 // ─── POST /portal/projects/dedup — Delete duplicate projects (same name, keep newest) ─
 
 app.post("/dedup", async (c) => {
