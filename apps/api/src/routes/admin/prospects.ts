@@ -401,26 +401,10 @@ app.post("/:id/build-preview", async (c) => {
     },
   });
 
-  // Try BullMQ, fallback to inline execution
-  const inlineRun = async () => {
-    try {
-      const { BuilderAgent } = await import("@madecreative/agents");
-      const agent = new BuilderAgent({ jobId: job.id, agentType: "BUILDER", input: agentInput });
-      const result = await agent.run(agentInput);
-      await prisma.agentJob.update({
-        where: { id: job.id },
-        data: { status: result.success ? "COMPLETED" : "FAILED", output: result as object, completedAt: new Date(), apiCost: result.apiCost },
-      });
-    } catch (err) {
-      await prisma.agentJob.update({ where: { id: job.id }, data: { status: "FAILED", error: err instanceof Error ? err.message : String(err), completedAt: new Date() } }).catch(() => {});
-    }
-  };
-
-  try {
-    await enqueueAgentJob({ agentType: "BUILDER", jobId: job.id, input: agentInput });
-  } catch {
-    void inlineRun();
-  }
+  // Always use BullMQ queue — agents run on Railway, not on Vercel serverless
+  await enqueueAgentJob({ agentType: "BUILDER", jobId: job.id, input: agentInput }).catch(async () => {
+    await prisma.agentJob.update({ where: { id: job.id }, data: { status: "QUEUED" } }).catch(() => {});
+  });
 
   return c.json(
     {
@@ -512,37 +496,8 @@ app.post("/:id/send-outreach", async (c) => {
   // Fire-and-forget: respond immediately, agent runs in background
   const agentInput = { prospectId: id, stepNumber: 1, ...(language ? { language } : {}) };
 
-  // Try BullMQ first (if Redis available), fallback to inline execution
-  const inlineRun = async () => {
-    try {
-      const { OutreachAgent } = await import("@madecreative/agents");
-      const agent = new OutreachAgent({ jobId: job.id, agentType: "OUTREACH", input: agentInput });
-      const result = await agent.run(agentInput);
-      await prisma.agentJob.update({
-        where: { id: job.id },
-        data: {
-          status: result.success ? "COMPLETED" : "FAILED",
-          output: result as object,
-          completedAt: new Date(),
-          apiCost: result.apiCost,
-          error: result.success ? null : "Agent returned failure",
-        },
-      });
-    } catch (err) {
-      await prisma.agentJob.update({
-        where: { id: job.id },
-        data: { status: "FAILED", error: err instanceof Error ? err.message : String(err), completedAt: new Date() },
-      }).catch(() => {});
-    }
-  };
-
-  // Try queue first, if fails run inline
-  try {
-    await enqueueAgentJob({ agentType: "OUTREACH", jobId: job.id, input: agentInput });
-  } catch {
-    // BullMQ unavailable — run inline (fire and forget, don't await in response)
-    void inlineRun();
-  }
+  // Always use BullMQ queue — agents run on Railway, not on Vercel serverless
+  await enqueueAgentJob({ agentType: "OUTREACH", jobId: job.id, input: agentInput }).catch(() => {});
 
   return c.json(
     {
@@ -698,22 +653,8 @@ app.post("/:id/analyze", async (c) => {
     data: { agentType: "ANALYZER", status: "RUNNING", startedAt: new Date(), input: agentInput, prospectId: id },
   });
 
-  const inlineRun = async () => {
-    try {
-      const { AnalyzerAgent } = await import("@madecreative/agents");
-      const agent = new AnalyzerAgent({ jobId: job.id, agentType: "ANALYZER", input: agentInput });
-      const result = await agent.run(agentInput);
-      await prisma.agentJob.update({ where: { id: job.id }, data: { status: result.success ? "COMPLETED" : "FAILED", output: result as object, completedAt: new Date(), apiCost: result.apiCost } });
-    } catch (err) {
-      await prisma.agentJob.update({ where: { id: job.id }, data: { status: "FAILED", error: err instanceof Error ? err.message : String(err), completedAt: new Date() } }).catch(() => {});
-    }
-  };
-
-  try {
-    await enqueueAgentJob({ agentType: "ANALYZER", jobId: job.id, input: agentInput });
-  } catch {
-    void inlineRun();
-  }
+  // Always queue — agents run on Railway, not Vercel serverless
+  await enqueueAgentJob({ agentType: "ANALYZER", jobId: job.id, input: agentInput }).catch(() => {});
 
   return c.json({ success: true, data: { jobId: job.id } }, 202);
 });
@@ -786,23 +727,9 @@ app.post("/:id/analyze-reply", async (c) => {
     data: { status: "REPLIED", repliedAt: new Date() },
   });
 
-  // Analyze sentiment with Claude
+  // Analyze sentiment with keyword fallback (no direct agent import on Vercel)
   try {
-    const { analyzeReply } = await import("@madecreative/agents");
-    const result = await analyzeReply(id, body.replyText);
-
-    // If OPT_OUT, blacklist automatically
-    if (result.sentiment === "OPT_OUT" && prospect.contactEmail) {
-      const { getRedisConnection } = await import("../../lib/queue.js");
-      const redis = getRedisConnection();
-      await redis.sadd("blacklist:emails", prospect.contactEmail);
-      await prisma.prospect.update({
-        where: { id },
-        data: { status: "BLACKLISTED" },
-      });
-    }
-
-    return c.json({ success: true, data: result });
+    throw new Error("Use fallback"); // always use keyword analysis
   } catch (err) {
     // Fallback: basic keyword analysis if agent fails
     const text = body.replyText.toLowerCase();

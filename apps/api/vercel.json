@@ -6,28 +6,23 @@
       "src": "src/index.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["src/**", "prisma/**"],
+        "includeFiles": ["src/**", "prisma/**", "../../packages/*/dist/**"],
         "maxLambdaSize": "50mb",
         "maxDuration": 300
       }
     }
   ],
   "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "src/index.ts"
-    }
+    { "src": "/(.*)", "dest": "src/index.ts" }
   ],
+  "buildCommand": "cd ../.. && npm run build --workspace=@madecreative/api",
+  "installCommand": "cd ../.. && npm install --ignore-scripts",
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        {
-          "key": "Strict-Transport-Security",
-          "value": "max-age=31536000; includeSubDomains"
-        }
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }
       ]
     }
   ],
@@ -39,7 +34,5 @@
     "STRIPE_PRICE_GROWTH_ANNUAL": "price_1TKbKPPpUruzeNQ3Kml52RBH",
     "STRIPE_PRICE_PRO_MONTHLY": "price_1TKbKQPpUruzeNQ3Gv7pFtoC",
     "STRIPE_PRICE_PRO_ANNUAL": "price_1TKbKQPpUruzeNQ309SbijxP"
-  },
-  "buildCommand": "cd ../.. && npm run build --workspace=@madecreative/api",
-  "installCommand": "cd ../.. && npm install"
+  }
 }
