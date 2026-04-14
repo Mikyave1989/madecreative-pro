@@ -17,21 +17,20 @@ function adminFetch(path: string, options: RequestInit = {}) {
 
 interface AgentJob {
   id: string;
-  type: string;
+  agentType: string;
   status: string;
   progress: number;
-  startedAt: string;
+  startedAt: string | null;
   completedAt: string | null;
   error: string | null;
-  metadata: Record<string, unknown>;
+  input: Record<string, unknown>;
+  createdAt: string;
 }
 
 interface AgentStats {
-  running: number;
-  queued: number;
-  completed: number;
-  failed: number;
-  totalToday: number;
+  byStatus: { status: string; count: number }[];
+  byType: { agentType: string; count: number; totalCost: number }[];
+  last30Days: { completedJobs: number; totalApiCost: number };
 }
 
 export default function AdminAgents() {
@@ -42,16 +41,26 @@ export default function AdminAgents() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminFetch('/admin/agents/jobs');
-      if (res.ok) {
-        const d = await res.json();
-        const list = d.data?.jobs ?? d.data ?? d.jobs ?? [];
+      const [jobsRes, statsRes] = await Promise.all([
+        adminFetch('/admin/agents/jobs?limit=50&sortBy=createdAt&sortOrder=desc'),
+        adminFetch('/admin/agents/stats'),
+      ]);
+
+      if (jobsRes.ok) {
+        const d = await jobsRes.json();
+        // API returns { success, data: { data: [...], total, ... } }
+        const inner = d.data ?? {};
+        const list = inner.data ?? inner.jobs ?? d.jobs ?? [];
         setJobs(Array.isArray(list) ? list : []);
-        const s = d.data?.stats ?? d.stats;
-        if (s) setStats(s);
+      }
+
+      if (statsRes.ok) {
+        const s = await statsRes.json();
+        const statsData = s.data ?? s;
+        if (statsData) setStats(statsData);
       }
     } catch {
-      // silent — endpoint may not exist yet
+      toast.error('Failed to load agent data');
     } finally {
       setLoading(false);
     }
@@ -65,7 +74,7 @@ export default function AdminAgents() {
 
   const cancelJob = async (id: string) => {
     try {
-      const res = await adminFetch(`/admin/agents/jobs/${id}/cancel`, { method: 'POST' });
+      const res = await adminFetch(`/admin/agents/jobs/${id}`, { method: 'DELETE' });
       if (res.ok) {
         toast.success('Job cancelled');
         load();
@@ -104,19 +113,43 @@ export default function AdminAgents() {
 
       {/* Stats row */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          {[
-            { label: 'Running', value: stats.running, color: 'text-blue-400' },
-            { label: 'Queued', value: stats.queued, color: 'text-amber-400' },
-            { label: 'Completed', value: stats.completed, color: 'text-green-400' },
-            { label: 'Failed', value: stats.failed, color: 'text-red-400' },
-            { label: 'Total today', value: stats.totalToday, color: 'text-gray-300' },
-          ].map((s) => (
-            <div key={s.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
-              <div className="text-xs text-gray-500 mb-2">{s.label}</div>
-              <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+        <div className="space-y-4 mb-8">
+          {/* Status counts */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {(() => {
+              const statusMap: Record<string, number> = {};
+              for (const s of stats.byStatus) statusMap[s.status] = s.count;
+              const statusColors: Record<string, string> = {
+                Running: 'text-blue-400',
+                Queued: 'text-amber-400',
+                Completed: 'text-green-400',
+                Failed: 'text-red-400',
+                Cancelled: 'text-gray-500',
+              };
+              return ['RUNNING', 'QUEUED', 'COMPLETED', 'FAILED', 'CANCELLED'].map((status) => (
+                <div key={status} className="bg-[#111] rounded-xl p-4 border border-white/5">
+                  <div className="text-xs text-gray-500 mb-2">{status.charAt(0) + status.slice(1).toLowerCase()}</div>
+                  <div className={`text-2xl font-bold ${statusColors[status.charAt(0) + status.slice(1).toLowerCase()] ?? 'text-gray-300'}`}>
+                    {statusMap[status] ?? 0}
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+          {/* By type */}
+          {stats.byType.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              {stats.byType.map((t) => (
+                <div key={t.agentType} className="bg-[#111] rounded-lg p-3 border border-white/5">
+                  <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-1">{t.agentType}</div>
+                  <div className="text-sm font-semibold text-white">{t.count} jobs</div>
+                  {t.totalCost > 0 && (
+                    <div className="text-[10px] text-gray-500 mt-0.5">${t.totalCost.toFixed(2)} cost</div>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -157,7 +190,7 @@ export default function AdminAgents() {
                       <span className="text-xs font-mono text-gray-500">{job.id.slice(0, 8)}…</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs text-gray-300 capitalize">{job.type.replace(/_/g, ' ')}</span>
+                      <span className="text-xs text-gray-300 capitalize">{job.agentType.replace(/_/g, ' ')}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -181,7 +214,7 @@ export default function AdminAgents() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs text-gray-500">
-                        {new Date(job.startedAt).toLocaleTimeString()}
+                        {job.startedAt ? new Date(job.startedAt).toLocaleTimeString() : new Date(job.createdAt).toLocaleTimeString()}
                       </span>
                     </td>
                     <td className="px-4 py-3">

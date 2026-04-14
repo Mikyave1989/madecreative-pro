@@ -104,6 +104,12 @@ export function createOrchestratorWorker(
 
   worker.on("failed", (job, err) => {
     console.error(`[Orchestrator] ${agentType} job failed: ${job?.id}`, err.message);
+
+    // If SCRAPER failed/timed-out, still try to chain ANALYZER for any prospects it managed to save
+    if (agentType === "SCRAPER" && job) {
+      void chainNextAgent(agentType, job.data as { jobId: string; input: Record<string, unknown> }, {})
+        .catch((e) => console.error(`[Orchestrator] Post-failure chain error:`, e));
+    }
   });
 
   worker.on("error", (err) => {
