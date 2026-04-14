@@ -491,4 +491,43 @@ app.post("/:id/domain", async (c) => {
   }
 });
 
+// ─── POST /portal/projects/dedup — Delete duplicate projects (same name, keep newest) ─
+
+app.post("/dedup", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
+
+  // Find all active projects for this client
+  const all = await prisma.clientWebsite.findMany({
+    where: { clientId, isActive: true },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, name: true, updatedAt: true, deployUrl: true },
+  });
+
+  // Group by name — keep the first (newest), soft-delete the rest
+  const seen = new Map<string, string>(); // name → kept id
+  const toDelete: string[] = [];
+
+  for (const p of all) {
+    const key = p.name.trim().toLowerCase();
+    if (!seen.has(key)) {
+      seen.set(key, p.id);
+    } else {
+      toDelete.push(p.id);
+    }
+  }
+
+  if (toDelete.length > 0) {
+    await prisma.clientWebsite.updateMany({
+      where: { id: { in: toDelete }, clientId },
+      data: { isActive: false, files: {}, pages: {} },
+    });
+  }
+
+  return c.json({
+    success: true,
+    data: { deleted: toDelete.length, kept: seen.size },
+  });
+});
+
 export default app;

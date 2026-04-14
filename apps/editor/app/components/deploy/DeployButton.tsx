@@ -120,10 +120,18 @@ export const DeployButton = ({
         }
         toast.info('Creazione progetto...', { autoClose: 2000 });
         const apiBase = 'https://api.madecreative.pro';
-        let siteName = 'Sito Ricostruito';
-        const indexHtml = files['index.html'] || '';
-        const titleMatch = indexHtml.match(/<title[^>]*>([^<]+)<\/title>/i);
-        if (titleMatch?.[1]) siteName = titleMatch[1].replace(/\s*[—|–|-].*$/, '').trim().slice(0, 60);
+        // Prefer the h1 / og:title over the generic <title> (which is often "Home" or "Vite App")
+        let siteName = '';
+        const indexHtml = files['index.html'] || Object.values(files).find(c => c.includes('<html')) || '';
+        const ogTitle = indexHtml.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)?.[1];
+        const h1Match = indexHtml.match(/<h1[^>]*>([^<]{3,80})<\/h1>/i)?.[1];
+        const titleMatch = indexHtml.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1];
+        const raw = (ogTitle || h1Match || titleMatch || '').trim();
+        // Strip generic suffixes like "| Home", "- Home Page", "— Home"
+        siteName = raw.replace(/\s*[|—–-]\s*(home|index|welcome|benvenuto).*$/i, '').trim().slice(0, 60);
+        if (!siteName || /^(home|index|welcome|benvenuto|vite\s*app|react\s*app)$/i.test(siteName)) {
+          siteName = 'Nuovo Sito';
+        }
 
         try {
           const createRes = await fetch(`${apiBase}/portal/projects`, {

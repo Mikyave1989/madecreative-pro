@@ -406,17 +406,33 @@ export const Menu = () => {
               <div className="text-xs font-medium text-gray-500 dark:text-gray-400 px-1 py-1.5">My Projects</div>
               <div className="space-y-0.5">
                 {projects.map((proj) => (
-                  <a
-                    key={proj.id}
-                    href={`/?project=${proj.id}`}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
-                  >
-                    <div className="i-ph:folder-simple text-indigo-400 text-base" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">{proj.name}</span>
-                    {proj.deployUrl && (
-                      <div className="i-ph:globe text-green-400 text-sm" title="Deployed" />
-                    )}
-                  </a>
+                  <div key={proj.id} className="flex items-center gap-1 group rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <a
+                      href={`/?project=${proj.id}`}
+                      className="flex items-center gap-2 px-3 py-2 flex-1 min-w-0"
+                    >
+                      <div className="i-ph:folder-simple text-indigo-400 text-base flex-shrink-0" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">{proj.name}</span>
+                      {proj.deployUrl && (
+                        <div className="i-ph:globe text-green-400 text-sm flex-shrink-0" title="Pubblicato" />
+                      )}
+                    </a>
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        if (!confirm(`Eliminare il progetto "${proj.name}"?`)) return;
+                        await deleteProject(proj.id);
+                        // Clear persisted ID if it matches
+                        if (localStorage.getItem('mc_active_project_id') === proj.id) {
+                          localStorage.removeItem('mc_active_project_id');
+                        }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 mr-1 rounded text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
+                      title="Elimina progetto"
+                    >
+                      <div className="i-ph:trash text-sm" />
+                    </button>
+                  </div>
                 ))}
               </div>
               <div className="border-b border-gray-100 dark:border-gray-800 mt-2" />
