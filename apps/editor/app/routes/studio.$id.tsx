@@ -1,9 +1,18 @@
 import { json } from '@remix-run/cloudflare';
-import { useParams, useSearchParams } from '@remix-run/react';
+import { useParams, useSearchParams, useNavigate } from '@remix-run/react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { toast } from 'react-toastify';
 import { API_URL } from '~/lib/api/client';
+
+// ─── Credit types (mirrors auth store) ───────────────────────────────────────
+
+interface CreditInfo {
+  remaining: number;
+  used: number;
+  total: number;
+  purchased: number;
+}
 
 export const loader = () => json({});
 
@@ -72,6 +81,7 @@ function StudioSkeleton() {
 function StudioClient() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const rebuildUrl = searchParams.get('rebuild');
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -89,11 +99,58 @@ function StudioClient() {
   const [iframeLoading, setIframeLoading] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
+  // Credits
+  const [creditInfo, setCreditInfo] = useState<CreditInfo | null>(null);
+
+  // Projects sidebar
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; deployUrl?: string | null; updatedAt: string }>>([]);
+  const [creatingProject, setCreatingProject] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Load credits on mount ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    const token = localStorage.getItem('mc_token');
+    if (!token) return;
+
+    fetch(`${API_URL}/portal/projects/credits`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((raw: unknown) => {
+        const data = raw as { success: boolean; data?: CreditInfo };
+        if (data.success && data.data) {
+          setCreditInfo(data.data);
+        }
+      })
+      .catch(() => { /* silently fail */ });
+  }, []);
+
+  // ── Load projects list (for sidebar) ──────────────────────────────────────
+
+  const loadProjects = useCallback(async () => {
+    const token = localStorage.getItem('mc_token');
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/portal/projects`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json() as { success: boolean; data?: Array<{ id: string; name: string; deployUrl?: string | null; updatedAt: string }> };
+      if (data.success && Array.isArray(data.data)) {
+        setProjects(data.data);
+      }
+    } catch { /* silently fail */ }
+  }, []);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   // ── Load project on mount ──────────────────────────────────────────────────
 
@@ -286,6 +343,20 @@ function StudioClient() {
     const raw = input.trim();
     if (!raw || isStreaming || !id) return;
 
+    // ── Credit check ───────────────────────────────────────────────────────
+    if (creditInfo !== null && creditInfo.remaining < 1) {
+      toast.error(
+        <span>
+          Crediti esauriti.{' '}
+          <a href="/billing" style={{ color: '#a78bfa', textDecoration: 'underline' }}>
+            Upgrade Plan
+          </a>
+        </span>,
+        { autoClose: 6000, position: 'top-center' }
+      );
+      return;
+    }
+
     setInput('');
     const currentAttachments = [...attachments];
     setAttachments([]);
@@ -316,6 +387,21 @@ function StudioClient() {
         }),
       });
 
+      if (res.status === 402) {
+        const errData = await res.json() as { error?: string };
+        toast.error(
+          <span>
+            {errData.error ?? 'Crediti esauriti.'}{' '}
+            <a href="/billing" style={{ color: '#a78bfa', textDecoration: 'underline' }}>
+              Upgrade Plan
+            </a>
+          </span>,
+          { autoClose: 6000, position: 'top-center' }
+        );
+        setIsStreaming(false);
+        return;
+      }
+
       if (!res.ok || !res.body) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -339,7 +425,7 @@ function StudioClient() {
           if (data === '[DONE]') continue;
 
           try {
-            const ev = JSON.parse(data) as { type: string; content?: string; changedFiles?: string[]; error?: string };
+            const ev = JSON.parse(data) as { type: string; content?: string; changedFiles?: string[]; error?: string; credits?: CreditInfo };
 
             if (ev.type === 'text' && ev.content) {
               aiText += ev.content;
@@ -360,6 +446,10 @@ function StudioClient() {
                 }
                 return prev;
               });
+              // Update credit display with server-authoritative value
+              if (ev.credits) {
+                setCreditInfo(ev.credits as CreditInfo);
+              }
             } else if (ev.type === 'error') {
               toast.error(ev.error ?? 'AI error');
             }
@@ -381,7 +471,7 @@ function StudioClient() {
     } finally {
       setIsStreaming(false);
     }
-  }, [input, isStreaming, id, reloadFiles]);
+  }, [input, isStreaming, id, reloadFiles, creditInfo]);
 
   // ── Deploy ─────────────────────────────────────────────────────────────────
 
@@ -413,6 +503,35 @@ function StudioClient() {
       setDeploying(false);
     }
   };
+
+  // ── Create new project ────────────────────────────────────────────────────
+
+  const handleNewProject = useCallback(async () => {
+    if (creatingProject) return;
+    setCreatingProject(true);
+    const token = localStorage.getItem('mc_token');
+    try {
+      const res = await fetch(`${API_URL}/portal/projects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token ?? ''}`,
+        },
+        body: JSON.stringify({ name: 'Nuovo Progetto' }),
+      });
+      const data = await res.json() as { success: boolean; data?: { id: string }; error?: string };
+      if (data.success && data.data?.id) {
+        toast.success('Nuovo progetto creato!', { autoClose: 2000 });
+        navigate(`/studio/${data.data.id}`);
+      } else {
+        toast.error(data.error ?? 'Errore creazione progetto');
+      }
+    } catch {
+      toast.error('Errore di rete');
+    } finally {
+      setCreatingProject(false);
+    }
+  }, [creatingProject, navigate]);
 
   // ── Rename project ─────────────────────────────────────────────────────────
 
@@ -561,8 +680,87 @@ function StudioClient() {
           )}
         </div>
 
-        {/* Right: deploy button */}
-        <div style={{ minWidth: '160px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+        {/* Right: credits + new project + deploy */}
+        <div style={{ minWidth: '200px', display: 'flex', justifyContent: 'flex-end', gap: '6px', alignItems: 'center' }}>
+          {/* Credits badge */}
+          {creditInfo !== null && (
+            <a
+              href="/billing"
+              title="Gestisci crediti"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                color: creditInfo.remaining < 20 ? '#f87171' : '#a78bfa',
+                fontSize: '12px',
+                fontWeight: 600,
+                textDecoration: 'none',
+                padding: '5px 9px',
+                borderRadius: '6px',
+                border: `1px solid ${creditInfo.remaining < 20 ? '#7f1d1d' : '#312e81'}`,
+                background: creditInfo.remaining < 20 ? 'rgba(239,68,68,0.1)' : 'rgba(99,102,241,0.1)',
+                transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{ fontSize: '13px' }}>&#9889;</span>
+              {creditInfo.remaining} crediti
+            </a>
+          )}
+
+          {/* New project button */}
+          <button
+            onClick={handleNewProject}
+            disabled={creatingProject}
+            title="Crea nuovo progetto"
+            style={{
+              background: 'transparent',
+              border: '1px solid #374151',
+              borderRadius: '6px',
+              color: '#9ca3af',
+              cursor: creatingProject ? 'not-allowed' : 'pointer',
+              fontSize: '12px',
+              fontWeight: 600,
+              padding: '5px 10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.15s',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { if (!creatingProject) { e.currentTarget.style.background = '#1f2937'; e.currentTarget.style.color = '#f9fafb'; } }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af'; }}
+          >
+            {creatingProject ? <SpinnerIcon size={11} /> : '+'} Nuovo
+          </button>
+
+          {/* Projects switcher button */}
+          <button
+            onClick={() => { setSidebarOpen(o => !o); if (!sidebarOpen) loadProjects(); }}
+            title="Elenco progetti"
+            style={{
+              background: sidebarOpen ? '#1f2937' : 'transparent',
+              border: '1px solid #374151',
+              borderRadius: '6px',
+              color: sidebarOpen ? '#f9fafb' : '#9ca3af',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 600,
+              padding: '5px 10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.15s',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            Progetti
+          </button>
+
           {deployUrl && (
             <a
               href={deployUrl}
@@ -617,6 +815,126 @@ function StudioClient() {
           </button>
         </div>
       </header>
+
+      {/* ── Projects sidebar overlay ── */}
+      {sidebarOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setSidebarOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              top: '48px',
+              background: 'rgba(0,0,0,0.4)',
+              zIndex: 20,
+            }}
+          />
+          {/* Sidebar panel */}
+          <div
+            style={{
+              position: 'fixed',
+              top: '48px',
+              right: 0,
+              bottom: 0,
+              width: '280px',
+              background: '#111827',
+              borderLeft: '1px solid #1f2937',
+              zIndex: 30,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                padding: '14px 16px 10px',
+                borderBottom: '1px solid #1f2937',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#f9fafb' }}>I tuoi progetti</span>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '16px', padding: '0', lineHeight: 1 }}
+              >
+                &#10005;
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+              {projects.length === 0 ? (
+                <div style={{ color: '#6b7280', fontSize: '13px', textAlign: 'center', padding: '24px 8px' }}>
+                  Nessun progetto trovato
+                </div>
+              ) : (
+                projects.map((p) => (
+                  <a
+                    key={p.id}
+                    href={`/studio/${p.id}`}
+                    onClick={(e) => { e.preventDefault(); setSidebarOpen(false); navigate(`/studio/${p.id}`); }}
+                    style={{
+                      display: 'block',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      background: p.id === id ? '#1f2937' : 'transparent',
+                      border: `1px solid ${p.id === id ? '#374151' : 'transparent'}`,
+                      color: p.id === id ? '#f9fafb' : '#9ca3af',
+                      textDecoration: 'none',
+                      fontSize: '13px',
+                      fontWeight: p.id === id ? 600 : 400,
+                      marginBottom: '4px',
+                      transition: 'all 0.15s',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => { if (p.id !== id) { e.currentTarget.style.background = '#1f2937'; e.currentTarget.style.color = '#f9fafb'; } }}
+                    onMouseLeave={e => { if (p.id !== id) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af'; } }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '14px' }}>{p.deployUrl ? '&#127760;' : '&#9998;'}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {p.name || 'Untitled'}
+                      </span>
+                      {p.id === id && (
+                        <span style={{ fontSize: '10px', background: '#6366f1', color: '#fff', borderRadius: '4px', padding: '1px 6px' }}>
+                          attivo
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#4b5563', marginTop: '3px', marginLeft: '22px' }}>
+                      {new Date(p.updatedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+                    </div>
+                  </a>
+                ))
+              )}
+            </div>
+            <div style={{ padding: '12px', borderTop: '1px solid #1f2937' }}>
+              <button
+                onClick={() => { setSidebarOpen(false); handleNewProject(); }}
+                disabled={creatingProject}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  cursor: creatingProject ? 'not-allowed' : 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  padding: '9px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+              >
+                {creatingProject ? <SpinnerIcon size={12} /> : '+'} Nuovo progetto
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Body: Chat + Preview ── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
