@@ -71,15 +71,14 @@ function sha1(content: string): string {
  */
 function buildVercelFiles(
   files: Record<string, string>
-): Array<{ file: string; data: string; encoding: "base64"; sha: string; size: number }> {
+): Array<{ file: string; data: string; encoding: "base64" }> {
   return Object.entries(files).map(([filePath, content]) => {
     const raw = Buffer.from(content, "utf8");
     return {
-      file: filePath,
+      file: filePath.startsWith("/") ? filePath.slice(1) : filePath,
       data: raw.toString("base64"),
       encoding: "base64" as const,
-      sha: sha1(content),
-      size: raw.byteLength,
+      // No sha/size — Vercel v13 API rejects them
     };
   });
 }
