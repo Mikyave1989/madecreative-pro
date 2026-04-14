@@ -165,13 +165,13 @@
 
   --bolt-elements-icon-success: theme('colors.green.400');
   --bolt-elements-icon-error: theme('colors.red.400');
-  --bolt-elements-icon-primary: theme('colors.gray.950');
-  --bolt-elements-icon-secondary: theme('colors.gray.600');
+  --bolt-elements-icon-primary: theme('colors.white');
+  --bolt-elements-icon-secondary: theme('colors.gray.400');
   --bolt-elements-icon-tertiary: theme('colors.gray.500');
 
-  --bolt-elements-dividerColor: theme('colors.gray.100');
+  --bolt-elements-dividerColor: rgba(255, 255, 255, 0.08);
 
-  --bolt-elements-prompt-background: theme('colors.alpha.gray.80');
+  --bolt-elements-prompt-background: rgba(255, 255, 255, 0.06);
 
   --bolt-elements-sidebar-dropdownShadow: theme('colors.alpha.gray.30');
   --bolt-elements-sidebar-buttonBackgroundDefault: theme('colors.alpha.accent.10');
