@@ -159,10 +159,13 @@ async function deployToVercel(
       name: projectName,
       files: vercelFiles,
       projectSettings: {
-        framework: null, // Always static — bolt.diy files don't need Vercel build
+        framework: null,        // Static — no framework detection
+        buildCommand: "",       // Empty = no build command (prevents vite build error)
+        outputDirectory: ".",   // Serve files as-is
+        installCommand: "",     // No npm install needed
       },
       target: "production",
-      public: true, // Disable deployment protection — site must be publicly accessible
+      public: true,
       meta: {
         slug,
         madecreativePreview: "true",
