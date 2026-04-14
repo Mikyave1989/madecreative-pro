@@ -123,7 +123,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   const city = prospect.city ?? "";
   const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
   const previewUrl = `${apiBase}/preview/${prospect.id}`;
-  const signupUrl = `https://madecreative.pro/signup?plan=STARTER&email=${encodeURIComponent(prospect.contactEmail)}&company=${encodeURIComponent(name)}`;
+  const signupUrl = `https://madecreative.pro/signup?plan=STARTER&email=${encodeURIComponent(prospect.contactEmail)}&company=${encodeURIComponent(name)}&prospectId=${id}&source=preview`;
 
   const subjects: Record<string, string> = { de: `Ihre neue Website — ${name}`, it: `Il tuo nuovo sito web — ${name}`, fr: `Votre nouveau site web — ${name}`, es: `Tu nuevo sitio web — ${name}`, en: `Your new website — ${name}` };
   const bodies: Record<string, string> = {
@@ -175,7 +175,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Das ist eine Vorschau Ihrer neuen Website — von KI in 60 Sekunden erstellt",
         bottomLabel: `${prospect.companyName} — Ihre neue Website ist fertig!`,
-        cta: "Diese Website erhalten — €299 Setup + €29/Monat",
+        cta: "Kaufen & im Editor bearbeiten — €299 + €29/Mo",
         powered: "Bereitgestellt von MadeCreative",
       };
     }
@@ -183,7 +183,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Questa è un'anteprima del tuo nuovo sito web — creato dall'AI in 60 secondi",
         bottomLabel: `${prospect.companyName} — Il tuo nuovo sito è pronto!`,
-        cta: "Ottieni questo sito — €299 Setup + €29/mese",
+        cta: "Acquista e modifica nell'editor — €299 + €29/mese",
         powered: "Offerto da MadeCreative",
       };
     }
@@ -191,7 +191,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Ceci est un aperçu de votre nouveau site web — créé par l'IA en 60 secondes",
         bottomLabel: `${prospect.companyName} — Votre nouveau site est prêt\u00a0!`,
-        cta: "Obtenir ce site — €299 Setup + €29/mois",
+        cta: "Acheter et modifier dans l'éditeur — €299 + €29/mois",
         powered: "Propulsé par MadeCreative",
       };
     }
@@ -199,7 +199,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Esta es una vista previa de su nuevo sitio web — creado por IA en 60 segundos",
         bottomLabel: `${prospect.companyName} — ¡Tu nuevo sitio está listo!`,
-        cta: "Obtener este sitio — €299 Setup + €29/mes",
+        cta: "Comprar y editar en el editor — €299 + €29/mes",
         powered: "Ofrecido por MadeCreative",
       };
     }
@@ -207,12 +207,12 @@ app.get("/preview/:prospectId", async (c) => {
     return {
       topBar: "This is a preview of your new website — built by AI in 60 seconds",
       bottomLabel: `${prospect.companyName} — Your new website is ready!`,
-      cta: "Get This Website — €299 Setup + €29/mo",
+      cta: "Buy & Edit in Editor — €299 + €29/mo",
       powered: "Powered by MadeCreative",
     };
   })();
 
-  const signupUrl = `https://madecreative.pro/signup?plan=STARTER&email=${encodeURIComponent(prospect.contactEmail ?? "")}&company=${encodeURIComponent(prospect.companyName)}`;
+  const signupUrl = `https://madecreative.pro/signup?plan=STARTER&email=${encodeURIComponent(prospect.contactEmail ?? "")}&company=${encodeURIComponent(prospect.companyName)}&prospectId=${id}&source=preview`;
 
   // ─── If builder has deployed a real site, redirect to it ──
   // Direct redirect avoids proxy issues with Next.js relative paths (/_next/...)
