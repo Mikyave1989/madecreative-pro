@@ -276,17 +276,30 @@ export const DeployButton = ({
               </div>
             )}
 
-            <div className="mb-4">
-              <label className="text-xs font-medium text-bolt-elements-textSecondary mb-2 block">Dominio personalizzato (opzionale)</label>
-              <input
-                type="text"
-                placeholder="mioristorante.it"
-                value={customDomain}
-                onChange={e => setCustomDomain(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-bolt-elements-background-depth-3 border border-bolt-elements-borderColor text-bolt-elements-textPrimary text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
-              />
-              <p className="text-xs text-bolt-elements-textTertiary mt-1">Aggiungi un record CNAME al tuo DNS puntando a cname.vercel-dns.com</p>
-            </div>
+            {/* Domain connection */}
+            {mcDeployUrl && (
+              <div className="mb-4 p-3 rounded-lg bg-bolt-elements-background-depth-3 border border-bolt-elements-borderColor">
+                <p className="text-xs font-medium text-bolt-elements-textPrimary mb-2">🌐 Connetti il tuo dominio</p>
+                <input
+                  type="text"
+                  placeholder="es. mioristorante.it"
+                  value={customDomain}
+                  onChange={e => setCustomDomain(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor text-bolt-elements-textPrimary text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 mb-2"
+                />
+                {customDomain && (
+                  <div className="p-2 rounded bg-indigo-500/10 border border-indigo-500/20 text-xs text-bolt-elements-textSecondary">
+                    <p className="font-medium text-indigo-400 mb-1">Istruzioni DNS:</p>
+                    <p>1. Vai nel pannello DNS del tuo dominio</p>
+                    <p>2. Aggiungi un record <strong>CNAME</strong>:</p>
+                    <p className="font-mono bg-bolt-elements-background-depth-1 px-2 py-1 rounded mt-1">
+                      {customDomain.split('.').length > 2 ? customDomain.split('.')[0] : '@'} → cname.vercel-dns.com
+                    </p>
+                    <p className="mt-1">3. Attendi 5-10 minuti per la propagazione</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex gap-2">
               {!mcDeployUrl && (
