@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 RUN apk add --no-cache python3 make g++ openssl
@@ -7,29 +7,26 @@ RUN apk add --no-cache python3 make g++ openssl
 COPY package.json package-lock.json ./
 COPY tsconfig.json ./
 
-# Copy app package.json stubs for npm workspaces resolution
+# Patch workspaces: remove apps/* glob, keep only apps/api explicitly
+RUN node -e " \
+  const p = JSON.parse(require('fs').readFileSync('package.json','utf8')); \
+  p.workspaces = ['apps/api','packages/*','workers']; \
+  require('fs').writeFileSync('package.json', JSON.stringify(p, null, 2));"
+
+# Copy only what workers need
 COPY apps/api/package.json apps/api/
-COPY apps/portal/package.json apps/portal/
-COPY apps/marketing/package.json apps/marketing/
-COPY apps/admin/package.json apps/admin/
-
-# Copy Prisma schema
 COPY apps/api/prisma apps/api/prisma/
+COPY apps/api/src apps/api/src/
+COPY apps/api/tsconfig.json apps/api/
 
-# Copy workspace packages
 COPY packages/db/ packages/db/
 COPY packages/shared/ packages/shared/
 COPY packages/agents/ packages/agents/
 COPY packages/ai/ packages/ai/
 
-# Copy API source (needed by @madecreative/api service on Railway)
-COPY apps/api/src apps/api/src/
-COPY apps/api/tsconfig.json apps/api/
-
-# Copy workers source (for worker services)
 COPY workers/ workers/
 
-# Install all deps — ignore postinstall (prisma generate runs below)
+# Install deps
 RUN npm install --ignore-scripts
 
 # Generate Prisma client for linux-musl (Alpine)
@@ -41,11 +38,24 @@ RUN npm run build --workspace=packages/shared || true
 RUN npm run build --workspace=packages/ai || true
 RUN npm run build --workspace=packages/agents || true
 
-# Build API (for the @madecreative/api Railway service)
-RUN npm run build --workspace=@madecreative/api
+# Build API
+RUN npm run build --workspace=@madecreative/api || true
 
 # Build workers (TypeScript → JavaScript)
 RUN npx tsc --project workers/tsconfig.json
 
-EXPOSE 3000
-CMD ["node", "apps/api/dist/index.js"]
+# --- Runtime stage ---
+FROM node:20-alpine
+WORKDIR /app
+
+RUN apk add --no-cache openssl chromium nss freetype harfbuzz ca-certificates ttf-freefont
+
+# Set Playwright to use system Chromium
+ENV PLAYWRIGHT_BROWSERS_PATH=0
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+COPY --from=builder /app /app
+
+ENV WORKER_SCRIPT="agent-runner"
+
+CMD node workers/dist/${WORKER_SCRIPT}.js
