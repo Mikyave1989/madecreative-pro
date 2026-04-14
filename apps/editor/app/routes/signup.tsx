@@ -43,10 +43,18 @@ const PLANS: Plan[] = [
 export default function SignupPage() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState('');
-  const [companyName, setCompanyName] = useState('');
+  // Pre-fill from URL params (e.g. from preview CTA: ?plan=PRO&email=...&company=...)
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const urlPlan = urlParams.get('plan')?.toUpperCase() as Plan['id'] | null;
+  const urlEmail = urlParams.get('email') || '';
+  const urlCompany = urlParams.get('company') || '';
+  const urlProspectId = urlParams.get('prospectId') || '';
+  const validPlan = (urlPlan && PLANS.find(p => p.id === urlPlan)) ? urlPlan : 'GROWTH';
+
+  const [email, setEmail] = useState(urlEmail);
+  const [companyName, setCompanyName] = useState(urlCompany);
   const [websiteUrl, setWebsiteUrl] = useState('');
-  const [plan, setPlan] = useState<Plan['id']>('GROWTH');
+  const [plan, setPlan] = useState<Plan['id']>(validPlan);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -63,9 +71,8 @@ export default function SignupPage() {
         companyName: companyName.trim(),
       };
 
-      if (websiteUrl.trim()) {
-        body.websiteUrl = websiteUrl.trim();
-      }
+      if (websiteUrl.trim()) body.websiteUrl = websiteUrl.trim();
+      if (urlProspectId) body.prospectId = urlProspectId;
 
       const res = await fetch(`${API_URL}/public/signup/checkout`, {
         method: 'POST',
