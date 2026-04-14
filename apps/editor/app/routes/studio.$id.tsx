@@ -358,7 +358,10 @@ function StudioClient() {
 
   // ── Preview URL ────────────────────────────────────────────────────────────
 
-  const previewUrl = deployUrl ?? (subdomain ? `https://${subdomain}.madecreative.pro` : null);
+  // Only use deployUrl for the preview — the subdomain URL only works after an
+  // explicit Vercel deploy. Showing it before deploy causes DNS-not-found errors.
+  const previewUrl = deployUrl ?? null;
+  const hasFiles = Object.keys(files).length > 0;
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -791,18 +794,20 @@ function StudioClient() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: '#9ca3af',
-                      gap: '12px',
+                      gap: '16px',
                       textAlign: 'center',
-                      padding: '24px',
+                      padding: '32px',
                     }}
                   >
-                    <div style={{ fontSize: '40px' }}>&#127760;</div>
+                    <div style={{ fontSize: '40px' }}>{hasFiles ? '🚀' : '✨'}</div>
                     <div>
-                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#f9fafb', marginBottom: '6px' }}>
-                        No preview yet
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#f9fafb', marginBottom: '8px' }}>
+                        {hasFiles ? 'Sito generato — clicca Deploy per vederlo live' : 'Nessun sito ancora'}
                       </div>
-                      <div style={{ fontSize: '13px', lineHeight: 1.6 }}>
-                        Ask the AI to build your site, then click Deploy to see it live.
+                      <div style={{ fontSize: '13px', lineHeight: 1.7, color: '#6b7280' }}>
+                        {hasFiles
+                          ? 'Il sito è stato generato. Clicca il pulsante Deploy in alto a destra per pubblicarlo su Vercel e vedere la preview.'
+                          : 'Chiedi all\'AI di costruire il sito. Es: "ricostruisci www.miosito.it" oppure "crea un sito per un ristorante italiano a Milano".'}
                       </div>
                     </div>
                     <button
