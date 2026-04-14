@@ -469,7 +469,7 @@ app.get("/campaigns", async (c) => {
   // and count the prospects that were created by a scraper job for this config.
   // We do two aggregate queries to keep it efficient.
 
-  const [activeJobRows, prospectCountRows, sitesBuiltRows, emailsSentRows] = await Promise.all([
+  const [activeJobRows, prospectCountRows, analyzedRows, sitesBuiltRows, emailsSentRows] = await Promise.all([
     // Count RUNNING or QUEUED SCRAPER jobs per configId stored in input JSON
     prisma.$queryRaw<{ configId: string; count: bigint }[]>`
       SELECT
@@ -491,6 +491,19 @@ app.get("/campaigns", async (c) => {
       JOIN "AgentJob" j
         ON j.id = p."scrapeJobId"
       WHERE j.input->>'configId' IS NOT NULL
+      GROUP BY j.input->>'configId'
+    `.catch(() => [] as { configId: string; count: bigint }[]),
+
+    // Count analyzed prospects (leadScore > 0)
+    prisma.$queryRaw<{ configId: string; count: bigint }[]>`
+      SELECT
+        j.input->>'configId' AS "configId",
+        COUNT(DISTINCT p.id)::bigint AS count
+      FROM "Prospect" p
+      JOIN "AgentJob" j
+        ON j.id = p."scrapeJobId"
+      WHERE j.input->>'configId' IS NOT NULL
+        AND p."leadScore" > 0
       GROUP BY j.input->>'configId'
     `.catch(() => [] as { configId: string; count: bigint }[]),
 
@@ -532,6 +545,11 @@ app.get("/campaigns", async (c) => {
     prospectMap[row.configId] = Number(row.count);
   }
 
+  const analyzedMap: Record<string, number> = {};
+  for (const row of analyzedRows) {
+    analyzedMap[row.configId] = Number(row.count);
+  }
+
   const sitesBuiltMap: Record<string, number> = {};
   for (const row of sitesBuiltRows) {
     sitesBuiltMap[row.configId] = Number(row.count);
@@ -555,6 +573,7 @@ app.get("/campaigns", async (c) => {
     createdAt: cfg.createdAt.toISOString(),
     activeJobs: activeJobMap[cfg.id] ?? 0,
     prospectsFound: prospectMap[cfg.id] ?? cfg.totalFound,
+    analyzed: analyzedMap[cfg.id] ?? 0,
     sitesBuilt: sitesBuiltMap[cfg.id] ?? 0,
     emailsSent: emailsSentMap[cfg.id] ?? 0,
   }));

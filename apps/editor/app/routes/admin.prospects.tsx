@@ -9,21 +9,21 @@ export const meta: MetaFunction = () => [{ title: 'Prospects — Admin' }];
 interface Prospect {
   id: string;
   companyName: string;
-  email: string | null;
-  phone: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
   city: string | null;
   country: string | null;
   sector: string | null;
   leadScore: number;
   status: string;
-  previewUrl: string | null;
+  previewSiteUrl: string | null;
   website: string | null;
-  rating: number | null;
+  googleRating: number | null;
   reviewCount: number | null;
-  contactedAt: string | null;
+  firstContactedAt: string | null;
   repliedAt: string | null;
   convertedAt: string | null;
-  notes: string | null;
+  aiAnalysis: string | null;
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -92,8 +92,8 @@ function ProspectDetail({ p }: { p: Prospect }) {
       <div>
         <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-1">Contact</div>
         <div className="text-xs text-gray-300 space-y-1">
-          <div>{p.email || '—'}</div>
-          <div>{p.phone || '—'}</div>
+          <div>{p.contactEmail || '—'}</div>
+          <div>{p.contactPhone || '—'}</div>
         </div>
       </div>
       <div>
@@ -105,29 +105,29 @@ function ProspectDetail({ p }: { p: Prospect }) {
       <div>
         <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-1">Rating</div>
         <div className="text-xs text-gray-300">
-          {p.rating ? `${p.rating} ★ (${p.reviewCount ?? 0} reviews)` : '—'}
+          {p.googleRating ? `${p.googleRating} ★ (${p.reviewCount ?? 0} reviews)` : '—'}
         </div>
       </div>
       <div>
         <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-1">Timeline</div>
         <div className="text-xs text-gray-500 space-y-0.5">
-          {p.contactedAt && <div>Contacted {fmtDate(p.contactedAt)}</div>}
+          {p.firstContactedAt && <div>Contacted {fmtDate(p.firstContactedAt)}</div>}
           {p.repliedAt && <div>Replied {fmtDate(p.repliedAt)}</div>}
           {p.convertedAt && <div className="text-green-400">Converted {fmtDate(p.convertedAt)}</div>}
         </div>
       </div>
-      {p.notes && (
+      {p.aiAnalysis && (
         <div className="col-span-2 md:col-span-4">
-          <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-1">Notes</div>
+          <div className="text-[10px] text-gray-600 uppercase tracking-wide mb-1">AI Analysis</div>
           <div className="text-xs text-gray-400 bg-white/3 rounded px-3 py-2 border border-white/5">
-            {p.notes}
+            {p.aiAnalysis}
           </div>
         </div>
       )}
       <div className="col-span-2 md:col-span-4 flex gap-3">
-        {p.previewUrl && (
+        {p.previewSiteUrl && (
           <a
-            href={p.previewUrl}
+            href={p.previewSiteUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/15 border border-indigo-500/25 text-indigo-400 text-xs hover:bg-indigo-600/25 transition-colors"
@@ -213,7 +213,7 @@ export default function AdminProspects() {
   const [filterCountry, setFilterCountry] = useState('');
   const [filterSector, setFilterSector] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [sortField, setSortField] = useState<'leadScore' | 'companyName' | 'contactedAt'>('leadScore');
+  const [sortField, setSortField] = useState<'leadScore' | 'companyName' | 'createdAt'>('leadScore');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const limit = 50;
@@ -225,9 +225,9 @@ export default function AdminProspects() {
     try {
       const qs = buildQs({
         limit,
-        offset: (page - 1) * limit,
-        sort: sortField,
-        order: sortOrder,
+        page,
+        sortBy: sortField,
+        sortOrder,
         country: filterCountry || undefined,
         sector: filterSector || undefined,
         status: filterStatus || undefined,
@@ -240,8 +240,9 @@ export default function AdminProspects() {
         return;
       }
       const data = await res.json();
-      const list = data.data?.prospects ?? data.data ?? data.prospects ?? data;
-      const t = data.data?.total ?? data.total ?? list.length;
+      const inner = data.data ?? {};
+      const list = inner.data ?? inner.prospects ?? data.prospects ?? [];
+      const t = inner.total ?? data.total ?? (Array.isArray(list) ? list.length : 0);
       setProspects(Array.isArray(list) ? list : []);
       setTotal(t);
     } catch {
@@ -440,8 +441,8 @@ export default function AdminProspects() {
                         <span className="font-medium text-white">{p.companyName}</span>
                       </td>
                       <td className="px-4 py-3">
-                        {p.email ? (
-                          <span className="text-gray-400 text-xs font-mono">{p.email}</span>
+                        {p.contactEmail ? (
+                          <span className="text-gray-400 text-xs font-mono">{p.contactEmail}</span>
                         ) : (
                           <span className="text-gray-700 text-xs">—</span>
                         )}
@@ -465,9 +466,9 @@ export default function AdminProspects() {
                         <StatusBadge status={p.status} />
                       </td>
                       <td className="px-4 py-3">
-                        {p.previewUrl ? (
+                        {p.previewSiteUrl ? (
                           <a
-                            href={p.previewUrl}
+                            href={p.previewSiteUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}

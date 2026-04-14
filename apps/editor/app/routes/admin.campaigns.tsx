@@ -43,6 +43,7 @@ interface ActiveCampaign {
   createdAt: string;
   activeJobs: number;
   prospectsFound: number;
+  analyzed: number;
   sitesBuilt: number;
   emailsSent: number;
 }
@@ -600,13 +601,18 @@ function CampaignRow({ campaign: c }: { campaign: ActiveCampaign }) {
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <Stat label="Prospects" value={c.prospectsFound} />
-        <Stat label="Max" value={c.maxResults} />
-        <Stat label="Active jobs" value={c.activeJobs} highlight={hasJobs} />
+      {/* Pipeline progress */}
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Stat label="Scraped" value={c.prospectsFound} color="#6366f1" />
+        <PipelineArrow />
+        <Stat label="Analyzed" value={c.analyzed ?? 0} color="#8b5cf6" />
+        <PipelineArrow />
         <Stat label="Sites built" value={c.sitesBuilt ?? 0} color="#ec4899" />
+        <PipelineArrow />
         <Stat label="Emails sent" value={c.emailsSent ?? 0} color="#f59e0b" />
+        <div style={{ borderLeft: '1px solid rgba(255,255,255,.06)', paddingLeft: '16px', marginLeft: '4px' }}>
+          <Stat label="Active jobs" value={c.activeJobs} highlight={hasJobs} />
+        </div>
         <div>
           <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>Last run</div>
           <div style={{ fontSize: '12px', color: '#9ca3af' }}>
@@ -619,6 +625,14 @@ function CampaignRow({ campaign: c }: { campaign: ActiveCampaign }) {
       <span style={S.badge(hasJobs ? '#10b981' : c.isActive ? '#6366f1' : '#6b7280')}>
         {hasJobs ? 'Running' : c.isActive ? 'Active' : 'Idle'}
       </span>
+    </div>
+  );
+}
+
+function PipelineArrow() {
+  return (
+    <div style={{ color: '#374151', fontSize: '14px', lineHeight: 1 }}>
+      ›
     </div>
   );
 }
