@@ -363,7 +363,8 @@ export async function startOrchestrator(): Promise<Worker[]> {
   // The editor calls POST /scrape on this worker (which has Playwright installed)
   // to get JS-rendered content including all lazy-loaded images and videos.
   const { createServer } = await import("http");
-  const SCRAPE_PORT = parseInt(process.env["SCRAPE_PORT"] ?? "4000", 10);
+  // Railway injects PORT automatically — use it so the domain works
+  const SCRAPE_PORT = parseInt(process.env["PORT"] ?? process.env["SCRAPE_PORT"] ?? "4000", 10);
 
   const httpServer = createServer(async (req, res) => {
     if (req.method !== "POST" || !req.url?.startsWith("/scrape")) {
