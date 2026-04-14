@@ -254,8 +254,7 @@ async function chainNextAgent(
         data: { status: "EMAIL_QUEUED" },
       });
 
-      await outreachQueue.close();
-      console.log(`[Orchestrator] Auto-chained OUTREACH for prospect ${prospectId} (email: ${prospect.contactEmail})`);
+      console.log(`[Orchestrator] Preview email sent for prospect ${prospectId} (email: ${prospect.contactEmail})`);
 
       // Also chain QA for the built preview site
       const qaQueue = new Queue(AGENT_QUEUE_NAMES["QA"], { connection: redis });
