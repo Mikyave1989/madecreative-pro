@@ -43,6 +43,8 @@ interface ActiveCampaign {
   createdAt: string;
   activeJobs: number;
   prospectsFound: number;
+  sitesBuilt: number;
+  emailsSent: number;
 }
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -603,6 +605,8 @@ function CampaignRow({ campaign: c }: { campaign: ActiveCampaign }) {
         <Stat label="Prospects" value={c.prospectsFound} />
         <Stat label="Max" value={c.maxResults} />
         <Stat label="Active jobs" value={c.activeJobs} highlight={hasJobs} />
+        <Stat label="Sites built" value={c.sitesBuilt ?? 0} color="#ec4899" />
+        <Stat label="Emails sent" value={c.emailsSent ?? 0} color="#f59e0b" />
         <div>
           <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>Last run</div>
           <div style={{ fontSize: '12px', color: '#9ca3af' }}>
@@ -623,10 +627,12 @@ function Stat({
   label,
   value,
   highlight = false,
+  color,
 }: {
   label: string;
   value: number;
   highlight?: boolean;
+  color?: string;
 }) {
   return (
     <div>
@@ -635,7 +641,7 @@ function Stat({
         style={{
           fontSize: '15px',
           fontWeight: 700,
-          color: highlight ? '#10b981' : '#fff',
+          color: color ?? (highlight ? '#10b981' : '#fff'),
         }}
       >
         {value.toLocaleString()}

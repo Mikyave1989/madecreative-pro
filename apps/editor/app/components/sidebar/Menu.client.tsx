@@ -420,11 +420,16 @@ export const Menu = () => {
                     <button
                       onClick={async (e) => {
                         e.preventDefault();
-                        if (!confirm(`Eliminare il progetto "${proj.name}"?`)) return;
-                        await deleteProject(proj.id);
-                        // Clear persisted ID if it matches
-                        if (localStorage.getItem('mc_active_project_id') === proj.id) {
-                          localStorage.removeItem('mc_active_project_id');
+                        if (!confirm(`Eliminare "${proj.name}"?`)) return;
+                        const ok = await deleteProject(proj.id);
+                        if (ok) {
+                          if (localStorage.getItem('mc_active_project_id') === proj.id) {
+                            localStorage.removeItem('mc_active_project_id');
+                          }
+                          toast.success('Progetto eliminato', { autoClose: 2000 });
+                          await loadProjects();
+                        } else {
+                          toast.error('Errore durante l\'eliminazione');
                         }
                       }}
                       className="opacity-0 group-hover:opacity-100 p-1 mr-1 rounded text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
