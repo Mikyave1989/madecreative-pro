@@ -432,7 +432,7 @@ export const Menu = () => {
                           toast.error('Errore durante l\'eliminazione');
                         }
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 mr-1 rounded text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
+                      className="opacity-30 hover:opacity-100 p-1 mr-1 rounded text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
                       title="Elimina progetto"
                     >
                       <div className="i-ph:trash text-sm" />

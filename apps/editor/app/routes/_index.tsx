@@ -45,6 +45,15 @@ function IndexClient() {
     // Only auto-redirect from the root "/" — NOT from /chat/:id.
     if (location.pathname !== '/') return;
 
+    // If user explicitly exited the editor, clear active project and stay on launcher
+    const exitParam = searchParams.get('exit');
+    if (exitParam) {
+      localStorage.removeItem('mc_active_project_id');
+      // Clean the URL so a refresh doesn't keep the exit param
+      window.history.replaceState({}, '', '/');
+      return;
+    }
+
     const token = localStorage.getItem('mc_token');
     if (!token) return;
 
@@ -52,7 +61,7 @@ function IndexClient() {
     if (persistedProjectId) {
       navigate('/studio/' + persistedProjectId);
     }
-  }, [user, projectParam, location.pathname]);
+  }, [user, projectParam, location.pathname, searchParams]);
 
   useEffect(() => {
     if (!user || !projectParam) return;
