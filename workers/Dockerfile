@@ -24,6 +24,7 @@ COPY apps/api/tsconfig.json apps/api/
 
 COPY packages/db/ packages/db/
 COPY packages/shared/ packages/shared/
+COPY packages/ai/ packages/ai/
 COPY packages/agents/ packages/agents/
 
 COPY workers/ workers/
@@ -40,6 +41,7 @@ RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
 # Build only what the worker needs
 RUN npm run build --workspace=packages/db || true
 RUN npm run build --workspace=packages/shared || true
+RUN npm run build --workspace=packages/ai || true
 RUN npm run build --workspace=packages/agents || true
 RUN npx tsc --project workers/tsconfig.json
 
