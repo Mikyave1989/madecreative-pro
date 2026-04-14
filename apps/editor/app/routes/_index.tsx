@@ -60,7 +60,27 @@ function IndexClient() {
     const persistedProjectId = localStorage.getItem('mc_active_project_id');
     if (persistedProjectId) {
       navigate('/studio/' + persistedProjectId);
+      return;
     }
+
+    // No persisted project — check if the user has projects from a campaign purchase.
+    // New clients who bought a site via email CTA have a ClientWebsite already in DB
+    // but nothing in localStorage. Auto-redirect to their most recent project.
+    fetch('https://api.madecreative.pro/portal/projects', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { success: boolean; data?: { id: string; deployUrl?: string; files?: unknown }[] } | null) => {
+        if (!data?.success || !Array.isArray(data.data) || data.data.length === 0) return;
+        // Find the most recent project that has files (i.e. a real purchased site)
+        const withFiles = data.data.find(p => p.deployUrl || p.files);
+        const project = withFiles ?? data.data[0];
+        if (project?.id) {
+          localStorage.setItem('mc_active_project_id', project.id);
+          navigate('/studio/' + project.id);
+        }
+      })
+      .catch(() => {}); // silent — user just sees the launcher
   }, [user, projectParam, location.pathname, searchParams]);
 
   useEffect(() => {
