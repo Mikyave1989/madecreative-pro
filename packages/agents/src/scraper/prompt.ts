@@ -16,8 +16,9 @@ For each city in the list:
 1. Call \`search_google_maps\` with the sector keywords and city.
 2. For each business URL returned:
    a. Call \`extract_business_details\` to get full info.
-   b. Call \`check_duplicate\` with name, city, phone, and email.
-   c. If NOT a duplicate, call \`save_prospect\` with the extracted data.
+   b. Call \`check_duplicate\` passing ALL fields from the extracted data (name, city, phone, email, companyName, country, sector, googleMapsUrl, hasWebsite, etc.).
+      The tool will automatically save the prospect if it is NOT a duplicate — you do NOT need to call \`save_prospect\` separately.
+      Only call \`save_prospect\` if \`check_duplicate\` returns \`autoSaved: false\` or does not return \`autoSaved\`.
 3. If you hit a rate limit or CAPTCHA error, call \`rotate_proxy_session\` once, then retry.
 
 ## Business Qualification

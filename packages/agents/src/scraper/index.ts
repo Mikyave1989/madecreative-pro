@@ -675,8 +675,20 @@ export class ScraperAgent extends BaseAgent {
     }
 
     const { name, city, phone, email } = parsed.data;
+    const dupResult = await this.deduplicateProspect({ name, city, phone, email });
 
-    return this.deduplicateProspect({ name, city, phone, email });
+    // ── Auto-save: if not a duplicate AND the caller provided full business data,
+    // save immediately instead of relying on Claude to call save_prospect separately.
+    // This prevents the "Claude forgets to call save_prospect" failure mode.
+    if (!dupResult.isDuplicate) {
+      const businessParsed = BusinessDataSchema.safeParse(rawInput);
+      if (businessParsed.success) {
+        const saveResult = await this.saveToDB(businessParsed.data, undefined);
+        return { ...dupResult, autoSaved: true, saveResult };
+      }
+    }
+
+    return dupResult;
   }
 
   private async deduplicateProspect(params: {
