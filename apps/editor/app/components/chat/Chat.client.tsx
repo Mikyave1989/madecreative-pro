@@ -445,10 +445,6 @@ export const ChatImpl = memo(
       const urlInMessage = finalMessageContent.match(/https?:\/\/[^\s"'<>]+/i)?.[0]
         || finalMessageContent.match(/(?:^|\s)((?:www\.)?[a-z0-9][-a-z0-9.]+\.[a-z]{2,})(?:\s|$)/i)?.[1];
 
-      // Temporary debug alert to verify code executes
-      if (hasRebuildKeyword) {
-        alert('[DEBUG] Rebuild detected! URL: ' + (urlInMessage || 'none found') + '\nContent preview: ' + finalMessageContent.slice(0, 80));
-      }
 
       if (hasRebuildKeyword && urlInMessage) {
         const urlToScrape = urlInMessage.startsWith('http') ? urlInMessage : 'https://' + urlInMessage;
@@ -474,26 +470,31 @@ export const ChatImpl = memo(
               if (scraped?.pages?.length > 0) {
                 let pagesContent = '';
                 let totalImgs = 0;
+                let totalVids = 0;
                 for (const p of scraped.pages) {
+                  // NO LIMITS — all photos, all text, all videos
                   const imgs = (p.images || []).filter((i: any) => i.url?.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(i.url) && !/dummy|plugin|icon|sprite|pixel/i.test(i.url));
                   totalImgs += imgs.length;
                   const imgList = imgs.map((i: any, n: number) => `  ${n+1}. ${i.url}${i.alt ? ' ('+i.alt+')' : ''}`).join('\n');
                   const heads = (p.headings || []).filter((h: any) => h.text?.length > 2).map((h: any) => `  h${h.level}: ${h.text}`).join('\n');
-                  const paras = (p.paragraphs || []).filter((t: string) => t.length > 20).slice(0, 10).join('\n  ');
-                  const vids = (p.videos || []).map((v: any) => `  VIDEO (${v.type}): ${v.url}`).join('\n');
-                  pagesContent += `\n--- PAGE: ${p.url} (${p.title||''}) ---\nHeadings:\n${heads}\nText:\n  ${paras}\nPhotos (ALL ${imgs.length}):\n${imgList||'  none'}\n${vids ? 'Videos:\n'+vids : ''}`;
+                  const paras = (p.paragraphs || []).filter((t: string) => t.length > 20).join('\n  '); // NO slice limit
+                  const pageVids = (p.videos || []);
+                  totalVids += pageVids.length;
+                  const vids = pageVids.map((v: any) => `  VIDEO (${v.type}): ${v.url}`).join('\n');
+                  pagesContent += `\n--- PAGE: ${p.url} (${p.title||''}) ---\nHeadings:\n${heads}\nText:\n  ${paras}\nPhotos (ALL ${imgs.length} — include every one):\n${imgList||'  none'}\n${vids ? 'Videos (embed ALL):\n'+vids : ''}`;
                 }
                 const injection = `\n\n--- SCRAPED CONTENT FROM ${urlToScrape} ---
 IMPORTANT: Use ONLY this real content. NEVER invent text or use stock photos.
 Logo: ${scraped.logo||'none'}
 Phone: ${scraped.contact?.phone||'N/A'} | Email: ${scraped.contact?.email||'N/A'}
 Facebook: ${scraped.socialLinks?.facebook||''} | Instagram: ${scraped.socialLinks?.instagram||''}
-Total pages: ${scraped.pages.length} | Total images: ${totalImgs}
+Total pages: ${scraped.pages.length} | Total images: ${totalImgs} | Total videos: ${totalVids}
+${totalVids > 0 ? 'VIDEO HERO RULE: Use the first video as a full-screen autoplay muted loop background on the home page hero!' : ''}
 ${scraped.pages.length > 1 ? 'MULTI-PAGE SITE: Build separate HTML files for each page with consistent nav.' : 'Single-page site.'}
 ${pagesContent}
 --- END SCRAPED CONTENT ---`;
                 finalMessageContent = finalMessageContent + injection;
-                toast.success(`Scraped ${scraped.pages.length} pages, ${totalImgs} images`, { autoClose: 2000, position: 'bottom-right' });
+                toast.success(`Scraped ${scraped.pages.length} pages, ${totalImgs} photos, ${totalVids} videos`, { autoClose: 3000, position: 'bottom-right' });
               }
             }
           } catch {
