@@ -1200,6 +1200,55 @@ RESPONSIVE: mobile (320-480px) single column + hamburger, tablet (481-1024px) 2-
           }
         }
 
+        // ── Calculate price based on site complexity ──
+        const pageCount = Object.keys(projectFiles).filter(f => f.endsWith(".html")).length || 1;
+        const plan = pageCount >= 10 ? "PRO" : pageCount >= 2 ? "GROWTH" : "STARTER";
+        const planPrices: Record<string, { setup: number; monthly: number }> = {
+          STARTER: { setup: 299, monthly: 29 },
+          GROWTH: { setup: 599, monthly: 49 },
+          PRO: { setup: 999, monthly: 99 },
+        };
+        const price = planPrices[plan]!;
+        this.log("info", `build_preview_site: ${pageCount} pages → plan=${plan} €${price.setup}+€${price.monthly}/mo`);
+
+        // ── Inject MadeCreative CTA banner into every HTML file ──
+        const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
+        const langMap: Record<string, string> = { DE: "de", AT: "de", CH: "de", IT: "it", FR: "fr", BE: "fr", ES: "es" };
+        const country = (businessData as Record<string, unknown>).country as string ?? "EN";
+        const lang = langMap[country.toUpperCase()] ?? "en";
+
+        const cta: Record<string, { top: string; buy: string }> = {
+          de: { top: "KI-generierte Website-Vorschau", buy: `Kaufen & bearbeiten — €${price.setup} + €${price.monthly}/Mo` },
+          it: { top: "Anteprima sito generata dall'AI", buy: `Acquista e modifica — €${price.setup} + €${price.monthly}/mese` },
+          fr: { top: "Aperçu du site généré par IA", buy: `Acheter et modifier — €${price.setup} + €${price.monthly}/mois` },
+          es: { top: "Vista previa del sitio generada por IA", buy: `Comprar y editar — €${price.setup} + €${price.monthly}/mes` },
+          en: { top: "AI-generated website preview", buy: `Buy & Edit — €${price.setup} + €${price.monthly}/mo` },
+        };
+        const t = cta[lang] ?? cta.en!;
+        const signupUrl = `https://madecreative.pro/signup?plan=${plan}&prospectId=${prospectId ?? ""}&source=preview`;
+        const banner = `<style>
+#_mc_top{position:fixed;top:0;left:0;right:0;height:44px;z-index:2147483647;background:linear-gradient(90deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;color:#fff;font-family:-apple-system,sans-serif;font-size:13px;font-weight:500;gap:8px}
+#_mc_bot{position:fixed;bottom:0;left:0;right:0;height:56px;z-index:2147483647;background:linear-gradient(90deg,#1e1b4b,#312e81);display:flex;align-items:center;justify-content:flex-end;padding:0 20px;gap:12px}
+#_mc_bot span{color:#c7d2fe;font-family:-apple-system,sans-serif;font-size:12px}
+#_mc_cta{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff!important;font-family:-apple-system,sans-serif;font-size:13px;font-weight:700;padding:9px 20px;border-radius:9999px;text-decoration:none!important;white-space:nowrap;box-shadow:0 4px 14px rgba(99,102,241,.5)}
+body{padding-top:44px!important;padding-bottom:56px!important}
+</style>
+<div id="_mc_top"><span>✨</span><span>${t.top} — MadeCreative</span></div>
+<div id="_mc_bot"><span>madecreative.pro</span><a id="_mc_cta" href="${signupUrl}" target="_blank">${t.buy} →</a></div>`;
+
+        // Inject banner into all HTML files
+        for (const [path, content] of Object.entries(projectFiles)) {
+          if (path.endsWith(".html")) {
+            let injected = content;
+            if (injected.includes("</head>")) {
+              injected = injected.replace("</head>", `${banner}\n</head>`);
+            } else {
+              injected = banner + "\n" + injected;
+            }
+            projectFiles[path] = injected;
+          }
+        }
+
         // Deploy full project files to Vercel (multi-file deploy)
         // Falls back to single HTML if the project has no package.json
         const hasPackageJson = "package.json" in projectFiles;

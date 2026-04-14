@@ -141,7 +141,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 
   const prospect = await prisma.prospect.findUnique({
     where: { id },
-    select: { id: true, companyName: true, contactEmail: true, previewSiteUrl: true, city: true, sector: true, country: true },
+    select: { id: true, companyName: true, contactEmail: true, previewSiteUrl: true, city: true, sector: true, country: true, scrapedContent: true },
   });
 
   if (!prospect?.contactEmail) return c.json({ error: "No email" }, 422);
@@ -150,20 +150,40 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   const resendKey = process.env["RESEND_API_KEY"];
   if (!resendKey) return c.json({ error: "RESEND not configured" }, 500);
 
+  // Determine plan & price based on number of pages in scrapedContent
+  const pageCount = (prospect.scrapedContent as { pages?: unknown[] } | null)?.pages?.length ?? 1;
+  const plan = pageCount >= 10 ? "PRO" : pageCount >= 2 ? "GROWTH" : "STARTER";
+  const planPrices: Record<string, { setup: number; monthly: number }> = {
+    STARTER: { setup: 299, monthly: 29 },
+    GROWTH: { setup: 599, monthly: 49 },
+    PRO: { setup: 999, monthly: 99 },
+  };
+  const price = planPrices[plan]!;
+
   const lang = body.language ?? "en";
   const name = prospect.companyName;
   const city = prospect.city ?? "";
   const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
-  const previewUrl = `${apiBase}/preview/${prospect.id}`;
-  const signupUrl = `https://madecreative.pro/signup?plan=STARTER&email=${encodeURIComponent(prospect.contactEmail)}&company=${encodeURIComponent(name)}&prospectId=${id}&source=preview`;
+  const previewUrl = prospect.previewSiteUrl; // Direct Vercel URL with banner already injected
+  const signupUrl = `https://madecreative.pro/signup?plan=${plan}&email=${encodeURIComponent(prospect.contactEmail)}&company=${encodeURIComponent(name)}&prospectId=${id}&source=preview`;
+
+  // Price label per language
+  const priceLabel: Record<string, string> = {
+    de: `€${price.setup} Setup + €${price.monthly}/Monat`,
+    it: `€${price.setup} Setup + €${price.monthly}/mese`,
+    fr: `€${price.setup} Setup + €${price.monthly}/mois`,
+    es: `€${price.setup} Setup + €${price.monthly}/mes`,
+    en: `€${price.setup} setup + €${price.monthly}/month`,
+  };
+  const pl = priceLabel[lang] ?? priceLabel.en!;
 
   const subjects: Record<string, string> = { de: `Ihre neue Website — ${name}`, it: `Il tuo nuovo sito web — ${name}`, fr: `Votre nouveau site web — ${name}`, es: `Tu nuevo sitio web — ${name}`, en: `Your new website — ${name}` };
   const bodies: Record<string, string> = {
-    de: `<p>Sehr geehrte Damen und Herren von <strong>${name}</strong>,</p><p>wir haben uns Ihr Unternehmen${city ? ` in ${city}` : ""} angesehen und &mdash; vollkommen kostenlos &mdash; einen <strong>Vorschlag für Ihre neue Website</strong> erstellt.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Website-Vorschau ansehen &rarr;</a></p><p>Ab <strong>&euro;299 Setup + &euro;29/Monat</strong>. Jederzeit kündbar.</p><p>Beste Grüße,<br><strong>Marco Bianchi</strong><br>MadeCreative &mdash; madecreative.pro</p>`,
-    it: `<p>Gentili responsabili di <strong>${name}</strong>,</p><p>abbiamo analizzato la vostra attività${city ? ` a ${city}` : ""} e creato gratuitamente una <strong>proposta per il vostro nuovo sito web</strong>.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Vedi l'anteprima &rarr;</a></p><p>Da <strong>&euro;299 Setup + &euro;29/mese</strong>. Senza vincoli.</p><p>Cordiali saluti,<br><strong>Marco Bianchi</strong><br>MadeCreative &mdash; madecreative.pro</p>`,
-    fr: `<p>Chère équipe de <strong>${name}</strong>,</p><p>Nous avons analysé votre activité${city ? ` à ${city}` : ""} et créé gratuitement une <strong>proposition de nouveau site web</strong>.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Voir l'aperçu &rarr;</a></p><p>À partir de <strong>&euro;299 Setup + &euro;29/mois</strong>. Sans engagement.</p><p>Cordialement,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
-    es: `<p>Estimado equipo de <strong>${name}</strong>,</p><p>Hemos creado gratuitamente una <strong>propuesta para su nuevo sitio web</strong>.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Ver vista previa &rarr;</a></p><p>Desde <strong>&euro;299 Setup + &euro;29/mes</strong>. Sin compromiso.</p><p>Saludos,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
-    en: `<p>Dear <strong>${name}</strong> team,</p><p>We built a free website preview for your business${city ? ` in ${city}` : ""}.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">View your preview &rarr;</a></p><p>From <strong>&euro;299 setup + &euro;29/month</strong>. Cancel anytime.</p><p>Best regards,<br><strong>Marco Bianchi</strong><br>MadeCreative &mdash; madecreative.pro</p>`,
+    de: `<p>Sehr geehrte Damen und Herren von <strong>${name}</strong>,</p><p>wir haben uns Ihr Unternehmen${city ? ` in ${city}` : ""} angesehen und &mdash; vollkommen kostenlos &mdash; einen <strong>Vorschlag für Ihre neue Website</strong> erstellt.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Website-Vorschau ansehen &rarr;</a></p><p>Ab <strong>${pl}</strong>. Jederzeit kündbar.</p><p style="text-align:center;margin:20px 0"><a href="${signupUrl}" style="background:#059669;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">Jetzt kaufen &amp; bearbeiten &rarr;</a></p><p>Beste Grüße,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
+    it: `<p>Gentili responsabili di <strong>${name}</strong>,</p><p>abbiamo analizzato la vostra attività${city ? ` a ${city}` : ""} e creato gratuitamente una <strong>proposta per il vostro nuovo sito web</strong>.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Vedi l'anteprima &rarr;</a></p><p>Da <strong>${pl}</strong>. Senza vincoli.</p><p style="text-align:center;margin:20px 0"><a href="${signupUrl}" style="background:#059669;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">Acquista e modifica &rarr;</a></p><p>Cordiali saluti,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
+    fr: `<p>Chère équipe de <strong>${name}</strong>,</p><p>Nous avons créé gratuitement une <strong>proposition de nouveau site web</strong>.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Voir l'aperçu &rarr;</a></p><p>À partir de <strong>${pl}</strong>. Sans engagement.</p><p style="text-align:center;margin:20px 0"><a href="${signupUrl}" style="background:#059669;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">Acheter et modifier &rarr;</a></p><p>Cordialement,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
+    es: `<p>Estimado equipo de <strong>${name}</strong>,</p><p>Hemos creado gratuitamente una <strong>propuesta para su nuevo sitio web</strong>.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Ver vista previa &rarr;</a></p><p>Desde <strong>${pl}</strong>. Sin compromiso.</p><p style="text-align:center;margin:20px 0"><a href="${signupUrl}" style="background:#059669;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">Comprar y editar &rarr;</a></p><p>Saludos,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
+    en: `<p>Dear <strong>${name}</strong> team,</p><p>We built a free website preview for your business${city ? ` in ${city}` : ""}.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">View your preview &rarr;</a></p><p>From <strong>${pl}</strong>. Cancel anytime.</p><p style="text-align:center;margin:20px 0"><a href="${signupUrl}" style="background:#059669;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">Buy &amp; Edit &rarr;</a></p><p>Best regards,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
   };
 
   const subject = subjects[lang] ?? subjects.en!;
