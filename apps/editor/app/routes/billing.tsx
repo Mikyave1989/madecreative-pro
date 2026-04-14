@@ -25,6 +25,37 @@ interface Invoice {
   invoiceUrl: string | null;
 }
 
+// Buy extra credits button component
+function BuyCreditsButton({ credits, price }: { credits: number; price: number }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleBuy = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient<{ checkoutUrl: string }>('/portal/editor/buy-credits', {
+        method: 'POST',
+        body: JSON.stringify({ credits, amount: price * 100 }),
+      });
+      if (res.success && res.data?.checkoutUrl) {
+        window.location.href = res.data.checkoutUrl;
+      }
+    } catch {
+      // silently fail
+    }
+    setLoading(false);
+  };
+
+  return (
+    <button
+      onClick={handleBuy}
+      disabled={loading}
+      className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+    >
+      {loading ? 'Loading...' : 'Acquista'}
+    </button>
+  );
+}
+
 const PLANS = [
   { name: 'STARTER', price: 29, setup: 299, credits: 200, features: ['1 website', '200 AI credits/mo', 'Email support'] },
   { name: 'GROWTH', price: 49, setup: 599, credits: 500, features: ['3 websites', '500 AI credits/mo', 'Priority support', 'Custom domain'] },
@@ -125,6 +156,37 @@ export default function BillingPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Extra Credits */}
+        <div className="bg-bolt-elements-background-depth-2 rounded-xl p-6 border border-bolt-elements-borderColor">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-bolt-elements-textPrimary">Crediti Aggiuntivi</h2>
+              <p className="text-sm text-bolt-elements-textTertiary mt-1">Acquista crediti extra quando finiscono quelli del piano. Non scadono.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { credits: 100, price: 5, label: 'Starter Pack' },
+              { credits: 300, price: 12, label: 'Popular', highlight: true },
+              { credits: 1000, price: 35, label: 'Pro Pack' },
+            ].map((pack) => (
+              <div
+                key={pack.credits}
+                className={`rounded-xl p-4 border text-center ${pack.highlight ? 'border-indigo-500 bg-indigo-500/5' : 'border-bolt-elements-borderColor bg-bolt-elements-background-depth-3'}`}
+              >
+                {pack.highlight && <div className="text-xs text-indigo-400 font-bold mb-2 uppercase tracking-wide">Più popolare</div>}
+                <div className="text-2xl font-bold text-bolt-elements-textPrimary">{pack.credits}</div>
+                <div className="text-xs text-bolt-elements-textTertiary mb-3">crediti AI</div>
+                <div className="text-lg font-semibold text-indigo-400 mb-3">€{pack.price}</div>
+                <BuyCreditsButton credits={pack.credits} price={pack.price} />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-bolt-elements-textTertiary mt-4 text-center">
+            1 credito = 1 messaggio AI nell'editor. I crediti del piano si resettano ogni mese, quelli acquistati no.
+          </p>
         </div>
 
         {/* Plans */}
