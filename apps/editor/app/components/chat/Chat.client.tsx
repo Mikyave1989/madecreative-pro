@@ -531,6 +531,18 @@ ${pagesContent}
             toast.warning('Scraping failed — generating without real content', { autoClose: 3000, position: 'bottom-right' });
           }
         }
+
+        // When rebuilding in an existing chat (project already loaded), reset to a
+        // fresh chat so the AI doesn't mix the old project files with the new site.
+        // Without this the AI sees both the old project AND the scraped content and
+        // gets confused instead of doing a clean rebuild.
+        if (chatStarted) {
+          setMessages([]);
+          setChatStarted(false);
+          // Also clear persisted project ID so the root auto-redirect doesn't
+          // immediately reload the old project on top of the fresh rebuild.
+          try { localStorage.removeItem('mc_active_project_id'); } catch {}
+        }
       }
 
       if (selectedElement) {
