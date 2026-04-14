@@ -578,8 +578,11 @@ function StudioClient() {
       });
       const data = await res.json() as { success: boolean; data?: { id: string }; error?: string };
       if (data.success && data.data?.id) {
+        localStorage.setItem('mc_active_project_id', data.data.id);
         toast.success('Nuovo progetto creato!', { autoClose: 2000 });
-        navigate(`/studio/${data.data.id}`);
+        // Navigate without any stale search params (e.g. ?rebuild=)
+        window.location.href = `/studio/${data.data.id}`;
+        return;
       } else {
         toast.error(data.error ?? 'Errore creazione progetto');
       }
@@ -686,7 +689,7 @@ function StudioClient() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '160px' }}>
           {/* Back to dashboard */}
           <a
-            href="/"
+            href="/?exit=1"
             title="Torna alla dashboard"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -703,7 +706,7 @@ function StudioClient() {
             </svg>
           </a>
           <a
-            href="/"
+            href="/?exit=1"
             style={{
               display: 'flex',
               alignItems: 'center',
