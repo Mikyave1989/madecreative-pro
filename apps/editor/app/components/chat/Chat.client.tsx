@@ -468,33 +468,63 @@ export const ChatImpl = memo(
               const data = await res.json() as { data?: { scraped?: any } };
               const scraped = data.data?.scraped;
               if (scraped?.pages?.length > 0) {
+                // Deduplicate pages by normalized URL
+                const seenPageUrls = new Set<string>();
+                const uniqueScrapedPages = scraped.pages.filter((p: any) => {
+                  const norm = (p.url || '').replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+                  if (!norm || seenPageUrls.has(norm)) return false;
+                  seenPageUrls.add(norm);
+                  return (p.headings?.length > 0 || p.paragraphs?.length > 0 || p.images?.length > 0);
+                });
+
+                // Build page structure map for nav (needed for faithful reconstruction)
+                const navPages = uniqueScrapedPages.map((p: any) => {
+                  const h1 = (p.headings || []).find((h: any) => h.level === 1)?.text || p.title || '';
+                  const path = p.url.replace(/^https?:\/\/(www\.)?[^/]+/, '').replace(/\/$/, '') || '/';
+                  return `${path} → "${h1}"`;
+                }).join('\n');
+
                 let pagesContent = '';
                 let totalImgs = 0;
                 let totalVids = 0;
-                for (const p of scraped.pages) {
-                  // NO LIMITS — all photos, all text, all videos
+
+                for (const p of uniqueScrapedPages) {
                   const imgs = (p.images || []).filter((i: any) => i.url?.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(i.url) && !/dummy|plugin|icon|sprite|pixel/i.test(i.url));
                   totalImgs += imgs.length;
+                  // All photos — no limit
                   const imgList = imgs.map((i: any, n: number) => `  ${n+1}. ${i.url}${i.alt ? ' ('+i.alt+')' : ''}`).join('\n');
+                  // All headings
                   const heads = (p.headings || []).filter((h: any) => h.text?.length > 2).map((h: any) => `  h${h.level}: ${h.text}`).join('\n');
-                  const paras = (p.paragraphs || []).filter((t: string) => t.length > 20).join('\n  '); // NO slice limit
+                  // All paragraphs (no limit)
+                  const paras = (p.paragraphs || []).filter((t: string) => t.length > 20).map((t: string) => `  ${t}`).join('\n');
                   const pageVids = (p.videos || []);
                   totalVids += pageVids.length;
                   const vids = pageVids.map((v: any) => `  VIDEO (${v.type}): ${v.url}`).join('\n');
-                  pagesContent += `\n--- PAGE: ${p.url} (${p.title||''}) ---\nHeadings:\n${heads}\nText:\n  ${paras}\nPhotos (ALL ${imgs.length} — include every one):\n${imgList||'  none'}\n${vids ? 'Videos (embed ALL):\n'+vids : ''}`;
+                  // Local file path from URL
+                  const localPath = (p.url.replace(/^https?:\/\/(www\.)?[^/]+/, '').replace(/\/$/, '') || '/index').replace(/^\//, '') + '/index.html';
+                  pagesContent += `\n=== PAGE FILE: ${localPath === '/index/index.html' ? 'index.html' : localPath} ===\nTitle: ${p.title||''}\nHeadings:\n${heads||'  none'}\nText:\n${paras||'  none'}\nPhotos (include ALL — do NOT skip any):\n${imgList||'  none'}\n${vids ? 'Videos (embed ALL):\n'+vids : ''}`;
                 }
-                const injection = `\n\n--- SCRAPED CONTENT FROM ${urlToScrape} ---
-IMPORTANT: Use ONLY this real content. NEVER invent text or use stock photos.
+
+                const injection = `\n\n=== FAITHFUL RECONSTRUCTION: ${urlToScrape} ===
+MISSION: Create an EXACT COPY of this site with premium €10k+ design upgrade.
+WHAT IS SACRED (must not change): All content, photos, videos, texts, nav structure, page count.
+WHAT TO UPGRADE: Only visual design — fonts, colors, animations, layout quality.
+GOLDEN RULE: Every element that exists in the original MUST exist in the rebuilt site.
+
 Logo: ${scraped.logo||'none'}
 Phone: ${scraped.contact?.phone||'N/A'} | Email: ${scraped.contact?.email||'N/A'}
 Facebook: ${scraped.socialLinks?.facebook||''} | Instagram: ${scraped.socialLinks?.instagram||''}
-Total pages: ${scraped.pages.length} | Total images: ${totalImgs} | Total videos: ${totalVids}
-${totalVids > 0 ? 'VIDEO HERO RULE: Use the first video as a full-screen autoplay muted loop background on the home page hero!' : ''}
-${scraped.pages.length > 1 ? 'MULTI-PAGE SITE: Build separate HTML files for each page with consistent nav.' : 'Single-page site.'}
+${totalVids > 0 ? 'FIRST VIDEO → use as full-screen autoplay muted hero on home page!' : ''}
+
+SITE STRUCTURE (${uniqueScrapedPages.length} pages — build ALL as separate HTML files):
+${navPages}
+
+Build vercel.json: {"cleanUrls":true,"trailingSlash":false}
+
 ${pagesContent}
---- END SCRAPED CONTENT ---`;
+=== END SCRAPED CONTENT ===`;
                 finalMessageContent = finalMessageContent + injection;
-                toast.success(`Scraped ${scraped.pages.length} pages, ${totalImgs} photos, ${totalVids} videos`, { autoClose: 3000, position: 'bottom-right' });
+                toast.success(`Scraped ${uniqueScrapedPages.length} pages, ${totalImgs} photos, ${totalVids} videos`, { autoClose: 3000, position: 'bottom-right' });
               }
             }
           } catch {

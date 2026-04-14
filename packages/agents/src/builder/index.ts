@@ -1064,9 +1064,15 @@ export class BuilderAgent extends BaseAgent {
             }
             this.log("info", `build_preview_site: ${uniquePages.length} pages, ${totalPhotos} total photos, ${totalVideos} total videos`);
 
-            boltMessage = `Rebuild this website with a stunning premium design: ${website}
+            boltMessage = `You are rebuilding: ${website}
 
-Use ONLY the real scraped content. NEVER invent text or use stock photos.
+MISSION: Create an EXACT FAITHFUL COPY of this website but with a premium €10,000+ visual upgrade.
+WHAT STAYS IDENTICAL: Every page, every section, every navigation item, every menu item, every photo, every video, every text, every contact detail, every opening hour, every price, every product — 100% preserved.
+WHAT CHANGES: Only the visual design — premium fonts, refined colors, smooth animations, glassmorphism nav, scroll reveals, better spacing, modern layout. The content is SACRED and must not be touched.
+
+GOLDEN RULE: If it exists on the original site, it MUST exist on the rebuilt site. If it does not exist on the original, do NOT add it.
+
+Use ONLY the real scraped content. NEVER invent text. NEVER use stock photos. NEVER omit anything.
 
 BUSINESS:
 - Logo: ${scraped.logo || "none"}
