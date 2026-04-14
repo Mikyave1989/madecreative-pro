@@ -549,15 +549,43 @@ app.post("/:id/chat", async (c) => {
   }
 
   const existingFiles = (project.files ?? {}) as Record<string, string>;
+  const attachments = (body?.attachments ?? []) as Array<{
+    type: "image" | "pdf" | "text";
+    mediaType: string;
+    data: string;
+    name: string;
+  }>;
 
-  // Build user message with file context
+  // Build user message content blocks
   const fileContext = Object.entries(existingFiles)
     .map(([path, content]) => `<file path="${path}">${content}</file>`)
     .join("\n");
 
-  const userMessage = Object.keys(existingFiles).length > 0
+  const textPart = Object.keys(existingFiles).length > 0
     ? `Current project files:\n<files>\n${fileContext}\n</files>\n\nUser request: ${message}`
     : `User request: ${message}`;
+
+  // Build multi-modal content array for Claude
+  type ClaudeContentBlock =
+    | { type: "text"; text: string }
+    | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
+    | { type: "document"; source: { type: "base64"; media_type: string; data: string } };
+
+  const contentBlocks: ClaudeContentBlock[] = [{ type: "text", text: textPart }];
+
+  for (const att of attachments) {
+    if (att.type === "image" && att.data) {
+      contentBlocks.push({
+        type: "image",
+        source: { type: "base64", media_type: att.mediaType || "image/jpeg", data: att.data },
+      });
+    } else if (att.type === "pdf" && att.data) {
+      contentBlocks.push({
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: att.data },
+      });
+    }
+  }
 
   const anthropicKey = process.env["ANTHROPIC_API_KEY"];
   if (!anthropicKey) {
@@ -580,7 +608,7 @@ app.post("/:id/chat", async (c) => {
           max_tokens: 16000,
           stream: true,
           system: STUDIO_SYSTEM_PROMPT,
-          messages: [{ role: "user", content: userMessage }],
+          messages: [{ role: "user", content: contentBlocks }],
         }),
       });
 

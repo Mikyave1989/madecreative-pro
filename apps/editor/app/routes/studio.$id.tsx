@@ -13,6 +13,17 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   changedFiles?: string[];
+  attachments?: Attachment[];
+}
+
+interface Attachment {
+  id: string;
+  name: string;
+  type: 'image' | 'pdf' | 'text';
+  mediaType: string;
+  data: string;       // base64
+  preview?: string;   // data URL for images
+  size: number;
 }
 
 // ─── Simple markdown renderer ─────────────────────────────────────────────────
@@ -76,9 +87,12 @@ function StudioClient() {
   const [deploying, setDeploying] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [iframeLoading, setIframeLoading] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // ── Load project on mount ──────────────────────────────────────────────────
@@ -138,6 +152,59 @@ function StudioClient() {
       setFiles(data.data.files);
     }
   }, [id]);
+
+  // ── Handle file attachments ────────────────────────────────────────────────
+
+  const handleFiles = useCallback(async (fileList: FileList | null, type: 'image' | 'file') => {
+    if (!fileList?.length) return;
+    const newAttachments: Attachment[] = [];
+
+    for (const file of Array.from(fileList)) {
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error(`${file.name} è troppo grande (max 20MB)`);
+        continue;
+      }
+
+      const data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          // Remove data URL prefix to get pure base64
+          resolve(result.split(',')[1] ?? '');
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const preview = type === 'image'
+        ? await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(file);
+          })
+        : undefined;
+
+      const attachType: Attachment['type'] = file.type.startsWith('image/') ? 'image'
+        : file.type === 'application/pdf' ? 'pdf'
+        : 'text';
+
+      newAttachments.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: file.name,
+        type: attachType,
+        mediaType: file.type || 'application/octet-stream',
+        data,
+        preview,
+        size: file.size,
+      });
+    }
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+    toast.success(`${newAttachments.length} file allegato/i`, { autoClose: 2000 });
+  }, []);
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  }, []);
 
   // ── Scrape website before rebuild ─────────────────────────────────────────
 
@@ -220,9 +287,12 @@ function StudioClient() {
     if (!raw || isStreaming || !id) return;
 
     setInput('');
+    const currentAttachments = [...attachments];
+    setAttachments([]);
+
     const msg = await scrapeAndInject(raw);
 
-    setMessages((prev) => [...prev, { role: 'user', content: raw }]); // show original to user
+    setMessages((prev) => [...prev, { role: 'user', content: raw, attachments: currentAttachments }]);
     setIsStreaming(true);
 
     const token = localStorage.getItem('mc_token');
@@ -235,7 +305,15 @@ function StudioClient() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token ?? ''}`,
         },
-        body: JSON.stringify({ message: msg }), // send enriched message to API
+        body: JSON.stringify({
+          message: msg,
+          attachments: currentAttachments.map(a => ({
+            type: a.type,
+            mediaType: a.mediaType,
+            data: a.data,
+            name: a.name,
+          })),
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -595,23 +673,38 @@ function StudioClient() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Hidden file inputs */}
+          <input ref={imageInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+            onChange={(e) => handleFiles(e.target.files, 'image')} />
+          <input ref={fileInputRef} type="file" accept=".pdf,.txt,.csv,.json,.md,.html,.css,.js,.ts" multiple style={{ display: 'none' }}
+            onChange={(e) => handleFiles(e.target.files, 'file')} />
+
           {/* Input area */}
-          <div
-            style={{
-              padding: '12px',
-              borderTop: '1px solid #1f2937',
-              background: '#0f172a',
-            }}
-          >
+          <div style={{ padding: '12px', borderTop: '1px solid #1f2937', background: '#0f172a' }}>
+
+            {/* Attachment preview strip */}
+            {attachments.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', padding: '8px', background: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>
+                {attachments.map(a => (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#374151', borderRadius: '6px', padding: '4px 8px', fontSize: '12px', color: '#d1d5db', maxWidth: '160px' }}>
+                    {a.preview
+                      ? <img src={a.preview} alt={a.name} style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }} />
+                      : <span style={{ fontSize: '16px', flexShrink: 0 }}>{a.type === 'pdf' ? '📄' : '📎'}</span>
+                    }
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+                    <button onClick={() => removeAttachment(a.id)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '0', fontSize: '14px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div
               style={{
                 background: '#1f2937',
                 border: '1px solid #374151',
                 borderRadius: '10px',
                 overflow: 'hidden',
-                transition: 'border-color 0.2s',
               }}
-              onFocus={() => {}}
             >
               <textarea
                 ref={textareaRef}
@@ -623,7 +716,7 @@ function StudioClient() {
                     sendMessage();
                   }
                 }}
-                placeholder="Ask me to modify your website... (Ctrl+Enter to send)"
+                placeholder="Chiedi di modificare il sito, ricostruire, aggiungere sezioni... (Ctrl+Enter)"
                 disabled={isStreaming}
                 rows={1}
                 style={{
@@ -639,6 +732,7 @@ function StudioClient() {
                   lineHeight: 1.5,
                   minHeight: '40px',
                   maxHeight: '160px',
+                  boxSizing: 'border-box',
                 }}
               />
               <div
@@ -646,23 +740,69 @@ function StudioClient() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '4px 8px 8px',
+                  padding: '6px 8px 8px',
                 }}
               >
-                <span style={{ fontSize: '11px', color: '#6b7280' }}>
-                  Ctrl+Enter to send
-                </span>
+                {/* Left: action buttons */}
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  {/* Image upload */}
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={isStreaming}
+                    title="Allega foto"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')}
+                    onMouseLeave={e => (e.currentTarget.style.color = '#6b7280')}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  </button>
+                  {/* File/PDF upload */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isStreaming}
+                    title="Allega file (PDF, TXT, HTML...)"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')}
+                    onMouseLeave={e => (e.currentTarget.style.color = '#6b7280')}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                    </svg>
+                  </button>
+                  {/* Screenshot / inspect element hint */}
+                  <button
+                    onClick={() => setInput(prev => prev + (prev ? ' ' : '') + '[screenshot] ')}
+                    disabled={isStreaming}
+                    title="Chiedi modifica visiva"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')}
+                    onMouseLeave={e => (e.currentTarget.style.color = '#6b7280')}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 13.5V19a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.5"/><path d="M2 10.5V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5.5"/>
+                      <line x1="12" y1="12" x2="12" y2="15"/><line x1="10" y1="15" x2="14" y2="15"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {attachments.length > 0 && (
+                    <span style={{ fontSize: '11px', color: '#6366f1' }}>{attachments.length} allegato/i</span>
+                  )}
                 <button
                   onClick={sendMessage}
-                  disabled={isStreaming || !input.trim()}
+                  disabled={isStreaming || (!input.trim() && attachments.length === 0)}
                   style={{
-                    background: isStreaming || !input.trim()
+                    background: isStreaming || (!input.trim() && attachments.length === 0)
                       ? '#374151'
                       : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
                     border: 'none',
                     borderRadius: '7px',
                     color: '#fff',
-                    cursor: isStreaming || !input.trim() ? 'not-allowed' : 'pointer',
+                    cursor: isStreaming || (!input.trim() && attachments.length === 0) ? 'not-allowed' : 'pointer',
                     fontSize: '12px',
                     fontWeight: 600,
                     padding: '6px 14px',
@@ -672,9 +812,14 @@ function StudioClient() {
                     transition: 'background 0.2s',
                   }}
                 >
-                  {isStreaming ? <SpinnerIcon size={12} /> : '&#8593;'}
-                  {isStreaming ? 'Thinking...' : 'Send'}
+                  {isStreaming ? <SpinnerIcon size={12} /> : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+                    </svg>
+                  )}
+                  {isStreaming ? 'Thinking...' : 'Invia'}
                 </button>
+                </div>
               </div>
             </div>
           </div>
@@ -871,6 +1016,22 @@ function ChatMessage({ message }: { message: Message }) {
         }}
         dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
       />
+      {/* Attachment thumbnails */}
+      {message.attachments && message.attachments.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: '90%', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
+          {message.attachments.map(a => (
+            <div key={a.id} style={{ position: 'relative' }}>
+              {a.preview
+                ? <img src={a.preview} alt={a.name} style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #374151' }} />
+                : <div style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span>{a.type === 'pdf' ? '📄' : '📎'}</span>
+                    <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+                  </div>
+              }
+            </div>
+          ))}
+        </div>
+      )}
       {message.changedFiles && message.changedFiles.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '90%' }}>
           {message.changedFiles.map((f) => (
