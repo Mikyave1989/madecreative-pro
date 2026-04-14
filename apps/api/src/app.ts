@@ -95,6 +95,63 @@ app.route("/public/signup", signupRoutes);
 app.route("/track", trackRoutes);
 app.route("/public/ai-generate", aiGenerateRoutes);
 
+// ─── Internal Route — called by workers, protected by JWT_SECRET header ──────
+
+app.post("/internal/send-preview-email/:prospectId", async (c) => {
+  const secret = c.req.header("X-Internal-Token");
+  if (!secret || secret !== process.env["JWT_SECRET"]) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const { prisma } = await import("@madecreative/db");
+  const id = c.req.param("prospectId");
+  const body = await c.req.json().catch(() => ({})) as { language?: string };
+
+  const prospect = await prisma.prospect.findUnique({
+    where: { id },
+    select: { id: true, companyName: true, contactEmail: true, previewSiteUrl: true, city: true, sector: true, country: true },
+  });
+
+  if (!prospect?.contactEmail) return c.json({ error: "No email" }, 422);
+  if (!prospect?.previewSiteUrl) return c.json({ error: "No preview URL" }, 422);
+
+  const resendKey = process.env["RESEND_API_KEY"];
+  if (!resendKey) return c.json({ error: "RESEND not configured" }, 500);
+
+  const lang = body.language ?? "en";
+  const name = prospect.companyName;
+  const city = prospect.city ?? "";
+  const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
+  const previewUrl = `${apiBase}/preview/${prospect.id}`;
+  const signupUrl = `https://madecreative.pro/signup?plan=STARTER&email=${encodeURIComponent(prospect.contactEmail)}&company=${encodeURIComponent(name)}`;
+
+  const subjects: Record<string, string> = { de: `Ihre neue Website — ${name}`, it: `Il tuo nuovo sito web — ${name}`, fr: `Votre nouveau site web — ${name}`, es: `Tu nuevo sitio web — ${name}`, en: `Your new website — ${name}` };
+  const bodies: Record<string, string> = {
+    de: `<p>Sehr geehrte Damen und Herren von <strong>${name}</strong>,</p><p>wir haben uns Ihr Unternehmen${city ? ` in ${city}` : ""} angesehen und &mdash; vollkommen kostenlos &mdash; einen <strong>Vorschlag für Ihre neue Website</strong> erstellt.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Website-Vorschau ansehen &rarr;</a></p><p>Ab <strong>&euro;299 Setup + &euro;29/Monat</strong>. Jederzeit kündbar.</p><p>Beste Grüße,<br><strong>Marco Bianchi</strong><br>MadeCreative &mdash; madecreative.pro</p>`,
+    it: `<p>Gentili responsabili di <strong>${name}</strong>,</p><p>abbiamo analizzato la vostra attività${city ? ` a ${city}` : ""} e creato gratuitamente una <strong>proposta per il vostro nuovo sito web</strong>.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Vedi l'anteprima &rarr;</a></p><p>Da <strong>&euro;299 Setup + &euro;29/mese</strong>. Senza vincoli.</p><p>Cordiali saluti,<br><strong>Marco Bianchi</strong><br>MadeCreative &mdash; madecreative.pro</p>`,
+    fr: `<p>Chère équipe de <strong>${name}</strong>,</p><p>Nous avons analysé votre activité${city ? ` à ${city}` : ""} et créé gratuitement une <strong>proposition de nouveau site web</strong>.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Voir l'aperçu &rarr;</a></p><p>À partir de <strong>&euro;299 Setup + &euro;29/mois</strong>. Sans engagement.</p><p>Cordialement,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
+    es: `<p>Estimado equipo de <strong>${name}</strong>,</p><p>Hemos creado gratuitamente una <strong>propuesta para su nuevo sitio web</strong>.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Ver vista previa &rarr;</a></p><p>Desde <strong>&euro;299 Setup + &euro;29/mes</strong>. Sin compromiso.</p><p>Saludos,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
+    en: `<p>Dear <strong>${name}</strong> team,</p><p>We built a free website preview for your business${city ? ` in ${city}` : ""}.</p><p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">View your preview &rarr;</a></p><p>From <strong>&euro;299 setup + &euro;29/month</strong>. Cancel anytime.</p><p>Best regards,<br><strong>Marco Bianchi</strong><br>MadeCreative &mdash; madecreative.pro</p>`,
+  };
+
+  const subject = subjects[lang] ?? subjects.en!;
+  const bodyHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333">${bodies[lang] ?? bodies.en!}<hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0"><p style="font-size:11px;color:#999;text-align:center">MadeCreative · madecreative.pro</p></body></html>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: "Marco Bianchi <marco@madecreative.pro>", to: [prospect.contactEmail], reply_to: "info@madecreative.pro", subject, html: bodyHtml }),
+  });
+
+  const data = await res.json() as { id?: string; error?: unknown };
+  if (!res.ok) return c.json({ error: "Resend error", details: data }, 500);
+
+  await prisma.outreachEmail.create({ data: { prospectId: id, stepNumber: 1, subject, body: bodyHtml, bodyPlain: `${name} - Preview: ${previewUrl}`, language: lang, fromName: "Marco Bianchi", fromEmail: "marco@madecreative.pro", resendMessageId: data.id ?? null, sentAt: new Date(), status: "sent" } });
+  await prisma.prospect.update({ where: { id }, data: { status: "CONTACTED", firstContactedAt: new Date(), lastContactedAt: new Date() } });
+
+  return c.json({ success: true, data: { messageId: data.id, sentTo: prospect.contactEmail, previewUrl } });
+});
+
 // ─── Public Preview (serves generated site HTML) ─────────────────────────────
 
 app.get("/preview/:prospectId", async (c) => {

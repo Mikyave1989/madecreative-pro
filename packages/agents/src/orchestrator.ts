@@ -227,32 +227,28 @@ async function chainNextAgent(
       const alreadyContacted = ["EMAIL_QUEUED", "CONTACTED", "EMAIL_SENT", "FOLLOWED_UP", "REPLIED", "CALL_SCHEDULED", "CONVERTED", "BLACKLISTED"].includes(prospect.status);
       if (alreadyContacted) return;
 
-      const outreachQueue = new Queue(AGENT_QUEUE_NAMES["OUTREACH"], { connection: redis });
+      // ── Send preview email immediately via API ──
+      // Bypass the OutreachAgent (which needs Claude + Redis) for reliability.
+      // Directly call the send-preview-email endpoint — instant, no queuing.
+      const langMap: Record<string, string> = { DE: "de", AT: "de", CH: "de", IT: "it", FR: "fr", BE: "fr", ES: "es" };
+      const language = langMap[prospect.country?.toUpperCase() ?? ""] ?? "en";
+      const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
 
-      const job = await prisma.agentJob.create({
-        data: {
-          agentType: "OUTREACH",
-          status: "QUEUED",
-          input: {
-            prospectId: prospect.id,
-            previewUrl: prospect.previewSiteUrl,
-            companyName: prospect.companyName,
-            sector: prospect.sector,
-            country: prospect.country,
-            city: prospect.city,
-          },
-          prospectId: prospect.id,
-        },
-      });
+      try {
+        const emailRes = await fetch(`${apiBase}/admin/prospects/${prospect.id}/send-preview-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Internal-Token": process.env["JWT_SECRET"] ?? "" },
+          body: JSON.stringify({ language }),
+        });
+        if (emailRes.ok) {
+          console.log(`[Orchestrator] Preview email sent to ${prospect.contactEmail} for ${prospect.companyName}`);
+        } else {
+          console.warn(`[Orchestrator] Email send failed: ${emailRes.status}`);
+        }
+      } catch (err) {
+        console.warn(`[Orchestrator] Email send error: ${(err as Error).message}`);
+      }
 
-      // Small delay to let preview deploy settle
-      await outreachQueue.add(
-        "OUTREACH",
-        { jobId: job.id, input: job.input as Record<string, unknown> },
-        { jobId: job.id, delay: 60_000 }, // 1 minute
-      );
-
-      // Update prospect status
       await prisma.prospect.update({
         where: { id: prospect.id },
         data: { status: "EMAIL_QUEUED" },
