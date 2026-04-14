@@ -72,10 +72,25 @@ function IndexClient() {
 function ProjectLauncher({ navigate }: { navigate: (path: string) => void }) {
   const [url, setUrl] = useState('');
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Guard: no token → redirect to login immediately
+  useEffect(() => {
+    const token = localStorage.getItem('mc_token');
+    if (!token) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   const handleCreate = async () => {
-    setCreating(true);
     const token = localStorage.getItem('mc_token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    setCreating(true);
+    setError(null);
     const API_URL = 'https://api.madecreative.pro';
 
     // Name from URL or default
@@ -89,7 +104,16 @@ function ProjectLauncher({ navigate }: { navigate: (path: string) => void }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name }),
       });
-      const data = await res.json() as { success: boolean; data?: { id: string } };
+
+      if (res.status === 401) {
+        localStorage.removeItem('mc_token');
+        localStorage.removeItem('mc_refresh_token');
+        localStorage.removeItem('mc_active_project_id');
+        navigate('/login');
+        return;
+      }
+
+      const data = await res.json() as { success: boolean; data?: { id: string }; error?: string };
       if (data.success && data.data?.id) {
         localStorage.setItem('mc_active_project_id', data.data.id);
         // Navigate to studio with the URL pre-filled if provided
@@ -97,8 +121,12 @@ function ProjectLauncher({ navigate }: { navigate: (path: string) => void }) {
           ? `/studio/${data.data.id}?rebuild=${encodeURIComponent(url.trim())}`
           : `/studio/${data.data.id}`;
         navigate(target);
+      } else {
+        setError(data.error ?? 'Errore durante la creazione del progetto. Riprova.');
+        setCreating(false);
       }
     } catch {
+      setError('Errore di rete. Controlla la connessione e riprova.');
       setCreating(false);
     }
   };
@@ -112,6 +140,11 @@ function ProjectLauncher({ navigate }: { navigate: (path: string) => void }) {
         <div style={{ color: '#6b7280', fontSize: '15px' }}>Ricostruisci un sito o inizia da zero</div>
       </div>
       <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {error && (
+          <div style={{ background: '#1f0f0f', border: '1px solid #7f1d1d', borderRadius: '8px', color: '#f87171', fontSize: '13px', padding: '10px 14px' }}>
+            {error}
+          </div>
+        )}
         <div>
           <label style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>
             URL sito da ricostruire (opzionale)
@@ -121,7 +154,7 @@ function ProjectLauncher({ navigate }: { navigate: (path: string) => void }) {
             placeholder="es. www.mioristorante.it"
             value={url}
             onChange={e => setUrl(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            onKeyDown={e => e.key === 'Enter' && !creating && handleCreate()}
             style={{ width: '100%', background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', color: '#f9fafb', fontSize: '14px', padding: '10px 14px', outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
@@ -130,7 +163,7 @@ function ProjectLauncher({ navigate }: { navigate: (path: string) => void }) {
           disabled={creating}
           style={{ background: creating ? '#374151' : 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: '8px', color: '#fff', cursor: creating ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 600, padding: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
         >
-          {creating ? '⏳ Creazione...' : url ? '🚀 Ricostruisci sito' : '✨ Nuovo progetto vuoto'}
+          {creating ? 'Creazione in corso...' : url ? 'Ricostruisci sito' : 'Nuovo progetto vuoto'}
         </button>
       </div>
       <div style={{ color: '#374151', fontSize: '12px' }}>
