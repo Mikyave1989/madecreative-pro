@@ -43,6 +43,20 @@ function IndexClient() {
   const projectParam = searchParams.get('project');
 
   useEffect(() => {
+    if (!user) return;
+    if (projectParam) return; // handled by the other effect
+
+    // If no project param, auto-load the most recently opened project
+    const token = localStorage.getItem('mc_token');
+    if (!token) return;
+
+    const persistedProjectId = localStorage.getItem('mc_active_project_id');
+    if (persistedProjectId) {
+      navigate(`/?project=${persistedProjectId}`);
+    }
+  }, [user, projectParam]);
+
+  useEffect(() => {
     if (!user || !projectParam) return;
 
     activeProjectId.set(projectParam);

@@ -19,6 +19,10 @@ const resend = new Resend(process.env["RESEND_API_KEY"]);
 const ADMIN_EMAIL =
   process.env["ADMIN_ALERT_EMAIL"] ?? "alerts@madecreative.pro";
 
+// Track consecutive failures per websiteId — only alert after N in a row
+const consecutiveFailures = new Map<string, number>();
+const ALERT_THRESHOLD = 3;
+
 // ─── BullMQ queue for uptime checks ──────────────────────────────────────────
 
 const UPTIME_QUEUE = "uptime-check-queue";
@@ -132,23 +136,32 @@ async function checkWebsiteUptime(data: UptimeJobData): Promise<void> {
   }
 
   if (isDown) {
+    const failures = (consecutiveFailures.get(data.websiteId) ?? 0) + 1;
+    consecutiveFailures.set(data.websiteId, failures);
+
     console.warn(
-      `[Uptime] DOWN — ${data.domain} (status=${statusCode ?? "N/A"}, err=${errorMessage})`
+      `[Uptime] DOWN — ${data.domain} (status=${statusCode ?? "N/A"}, err=${errorMessage}, consecutive=${failures})`
     );
-    await resend.emails.send({
-      from: "MadeCreative Monitoring <monitoring@madecreative.pro>",
-      to: ADMIN_EMAIL,
-      subject: `[SITE DOWN] ${data.companyName} — ${data.domain}`,
-      text: [
-        `Client: ${data.companyName} (${data.clientEmail})`,
-        `Domain: ${data.domain}`,
-        `Status code: ${statusCode ?? "N/A"}`,
-        `Error: ${errorMessage || "HTTP " + String(statusCode)}`,
-        `Detected at: ${new Date().toISOString()}`,
-      ].join("\n"),
-    });
+
+    if (failures >= ALERT_THRESHOLD) {
+      await resend.emails.send({
+        from: "MadeCreative Monitoring <monitoring@madecreative.pro>",
+        to: ADMIN_EMAIL,
+        subject: `[SITE DOWN] ${data.companyName} — ${data.domain}`,
+        text: [
+          `Client: ${data.companyName} (${data.clientEmail})`,
+          `Domain: ${data.domain}`,
+          `Status code: ${statusCode ?? "N/A"}`,
+          `Error: ${errorMessage || "HTTP " + String(statusCode)}`,
+          `Consecutive failures: ${failures}`,
+          `Detected at: ${new Date().toISOString()}`,
+        ].join("\n"),
+      });
+      consecutiveFailures.delete(data.websiteId); // reset so we don't spam
+    }
   } else {
     console.log(`[Uptime] OK — ${data.domain} (${statusCode})`);
+    consecutiveFailures.delete(data.websiteId);
   }
 }
 
