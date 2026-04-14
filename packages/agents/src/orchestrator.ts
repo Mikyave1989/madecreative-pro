@@ -367,6 +367,15 @@ export async function startOrchestrator(): Promise<Worker[]> {
   const SCRAPE_PORT = parseInt(process.env["PORT"] ?? process.env["SCRAPE_PORT"] ?? "4000", 10);
 
   const httpServer = createServer(async (req, res) => {
+    // CORS headers — allow browser clients (editor) to call directly
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204); res.end(); return;
+    }
+
     if (req.method !== "POST" || !req.url?.startsWith("/scrape")) {
       res.writeHead(404); res.end("Not found"); return;
     }

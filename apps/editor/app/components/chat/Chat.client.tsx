@@ -450,9 +450,10 @@ export const ChatImpl = memo(
         if (urlToScrape) {
           try {
             toast.info('Scraping ' + urlToScrape + '...', { autoClose: 3000, position: 'bottom-right' });
+            // Call Railway scraper DIRECTLY — bypass Vercel (which has 60s timeout)
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 90_000);
-            const res = await fetch('https://api.madecreative.pro/public/scrape-deep', {
+            const timeoutId = setTimeout(() => controller.abort(), 120_000);
+            const res = await fetch('https://agent-runner-production-b33a.up.railway.app/scrape', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ url: urlToScrape }),
