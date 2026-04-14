@@ -1,514 +1,258 @@
 import { json } from '@remix-run/cloudflare';
-import { useParams, useSearchParams, useNavigate } from '@remix-run/react';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useParams } from '@remix-run/react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { toast } from 'react-toastify';
 import { API_URL } from '~/lib/api/client';
 
-// ─── Credit types (mirrors auth store) ───────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
-interface CreditInfo {
-  remaining: number;
-  used: number;
-  total: number;
-  purchased: number;
+const API = API_URL;
+const SCRAPE_URL = 'https://agent-runner-production-b33a.up.railway.app/scrape';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  files?: string[];
 }
+
+interface FileAttachment {
+  name: string;
+  type: string;
+  data: string;
+  preview?: string;
+}
+
+// ─── Loader ──────────────────────────────────────────────────────────────────
 
 export const loader = () => json({});
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  changedFiles?: string[];
-  attachments?: Attachment[];
-}
-
-interface Attachment {
-  id: string;
-  name: string;
-  type: 'image' | 'pdf' | 'text';
-  mediaType: string;
-  data: string;       // base64
-  preview?: string;   // data URL for images
-  size: number;
-}
-
-// ─── Simple markdown renderer ─────────────────────────────────────────────────
-
-function renderMarkdown(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code style="background:#1f2937;padding:2px 6px;border-radius:4px;font-size:0.85em;">$1</code>')
-    .replace(/^### (.+)$/gm, '<h3 style="font-size:1em;font-weight:600;margin:8px 0 4px;">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 style="font-size:1.1em;font-weight:700;margin:10px 0 4px;">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 style="font-size:1.2em;font-weight:700;margin:12px 0 4px;">$1</h1>')
-    .replace(/^- (.+)$/gm, '<li style="margin-left:16px;list-style:disc;">$1</li>')
-    .replace(/\n/g, '<br/>');
-}
-
-// ─── Strip boltAction blocks from AI text for display ─────────────────────────
-
-function stripBoltActions(text: string): string {
-  return text.replace(/<boltAction[\s\S]*?<\/boltAction>/g, '').trim();
-}
-
-// ─── Main export ──────────────────────────────────────────────────────────────
+// ─── Route ───────────────────────────────────────────────────────────────────
 
 export default function StudioRoute() {
   return (
-    <ClientOnly fallback={<StudioSkeleton />}>
-      {() => <StudioClient />}
+    <ClientOnly fallback={<Skeleton />}>
+      {() => <Studio />}
     </ClientOnly>
   );
 }
 
-function StudioSkeleton() {
+function Skeleton() {
   return (
     <div style={{ background: '#0a0a0a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#9ca3af', fontSize: '14px' }}>Loading editor...</div>
+      <div style={{ color: '#6b7280', fontSize: 14 }}>Loading editor...</div>
     </div>
   );
 }
 
-// ─── Studio Client ────────────────────────────────────────────────────────────
+// ─── Simple markdown ─────────────────────────────────────────────────────────
 
-function StudioClient() {
+function renderMd(text: string): string {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/```(\w*)\n([\s\S]*?)```/g, (_m, _lang, code) =>
+      `<pre style="background:#0d1117;padding:12px;border-radius:8px;overflow-x:auto;font-size:13px;margin:8px 0;border:1px solid #1f2937"><code>${code}</code></pre>`)
+    .replace(/`([^`]+)`/g, '<code style="background:#1f2937;padding:2px 6px;border-radius:4px;font-size:0.85em">$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^### (.+)$/gm, '<h3 style="font-size:1em;font-weight:600;margin:8px 0 4px">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 style="font-size:1.1em;font-weight:700;margin:10px 0 4px">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 style="font-size:1.2em;font-weight:700;margin:12px 0 4px">$1</h1>')
+    .replace(/^- (.+)$/gm, '<li style="margin-left:16px;list-style:disc">$1</li>')
+    .replace(/\n/g, '<br/>');
+}
+
+// ─── Studio Component ────────────────────────────────────────────────────────
+
+function Studio() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const rebuildUrl = searchParams.get('rebuild');
 
-  // ── Guard: no id means invalid URL → go home ──────────────────────────────
-  useEffect(() => {
-    if (!id) {
-      navigate('/', { replace: true });
-    }
-  }, [id, navigate]);
-
-  const [messages, setMessages] = useState<Message[]>([]);
+  // State
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const [files, setFiles] = useState<Record<string, string>>({});
-  const [projectLoading, setProjectLoading] = useState(true);
-  const [projectError, setProjectError] = useState<string | null>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [deployUrl, setDeployUrl] = useState<string | null>(null);
-  const [subdomain, setSubdomain] = useState<string | null>(null);
+  const [streaming, setStreaming] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [editingName, setEditingName] = useState(false);
-  const [deploying, setDeploying] = useState(false);
+  const [files, setFiles] = useState<Record<string, string>>({});
+  const [deployUrl, setDeployUrl] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
-  const [iframeLoading, setIframeLoading] = useState(false);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [deploying, setDeploying] = useState(false);
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
+  const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
-  // Credits
-  const [creditInfo, setCreditInfo] = useState<CreditInfo | null>(null);
-
-  // Projects sidebar
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [projects, setProjects] = useState<Array<{ id: string; name: string; deployUrl?: string | null; updatedAt: string }>>([]);
-  const [creatingProject, setCreatingProject] = useState(false);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Load credits on mount ──────────────────────────────────────────────────
-
+  // Auto-scroll chat
   useEffect(() => {
-    const token = localStorage.getItem('mc_token');
-    if (!token) return;
-
-    fetch(`${API_URL}/portal/projects/credits`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((raw: unknown) => {
-        if (!raw) return;
-        const data = raw as { success: boolean; data?: CreditInfo };
-        if (data.success && data.data) {
-          setCreditInfo(data.data);
-        }
-      })
-      .catch(() => {}); // non-fatal
-  }, []);
-
-  // ── Load projects list (for sidebar) ──────────────────────────────────────
-
-  const loadProjects = useCallback(async () => {
-    const token = localStorage.getItem('mc_token');
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_URL}/portal/projects`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json() as { success: boolean; data?: Array<{ id: string; name: string; deployUrl?: string | null; updatedAt: string }> };
-      if (data.success && Array.isArray(data.data)) {
-        setProjects(data.data);
-      }
-    } catch { /* silently fail */ }
-  }, []);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  // ── Load project on mount ──────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!id) return;
-
-    const token = localStorage.getItem('mc_token');
-    if (!token) {
-      // Not logged in — send to login page immediately
-      navigate('/login', { replace: true });
-      return;
-    }
-
-    setProjectLoading(true);
-    setProjectError(null);
-
-    fetch(`${API_URL}/portal/projects/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (r) => {
-        if (r.status === 401) {
-          // Token expired / invalid — clear everything and go to login
-          localStorage.removeItem('mc_token');
-          localStorage.removeItem('mc_refresh_token');
-          localStorage.removeItem('mc_active_project_id');
-          navigate('/login', { replace: true });
-          return null;
-        }
-        if (r.status === 404) {
-          // Stale project ID — clear it and go to project launcher immediately
-          localStorage.removeItem('mc_active_project_id');
-          navigate('/', { replace: true });
-          return null;
-        }
-        if (!r.ok) {
-          const errText = await r.text().catch(() => '');
-          throw new Error(`HTTP ${r.status}: ${errText.slice(0, 120)}`);
-        }
-        return r.json();
-      })
-      .then((raw: unknown) => {
-        if (!raw) return;
-        const data = raw as { success: boolean; data?: { files?: Record<string, string>; deployUrl?: string; name?: string; subdomain?: string } };
-        if (!data.success || !data.data) {
-          setProjectError('Impossibile caricare il progetto. Riprova.');
-          setProjectLoading(false);
-          return;
-        }
-        setFiles(data.data.files ?? {});
-        setDeployUrl(data.data.deployUrl ?? null);
-        setProjectName(data.data.name ?? '');
-        setSubdomain(data.data.subdomain ?? null);
-        setProjectLoading(false);
-
-        // Auto-trigger rebuild if ?rebuild=url was passed from the project launcher
-        if (rebuildUrl) {
-          const msg = `ricostruisci ${rebuildUrl}`;
-          setInput(msg);
-          // Auto-send after a short delay to let the project fully load
-          setTimeout(() => sendMessage(msg), 500);
-        }
-      })
-      .catch((err) => {
-        console.error('[Studio] Failed to load project:', err);
-        setProjectError('Errore di rete. Controlla la connessione e riprova.');
-        setProjectLoading(false);
-      });
-  }, [id, rebuildUrl, navigate]); // sendMessage omitted intentionally — msgOverride bypasses input state
-
-  // ── Scroll to bottom of chat ───────────────────────────────────────────────
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ── Auto-resize textarea ───────────────────────────────────────────────────
+  // Auto-resize textarea
+  const resizeTextarea = useCallback(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, 150) + 'px';
+    }
+  }, []);
 
+  // Load project on mount
   useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
-  }, [input]);
-
-  // ── Reload files after AI update ──────────────────────────────────────────
-
-  const reloadFiles = useCallback(async () => {
     if (!id) return;
     const token = localStorage.getItem('mc_token');
-    if (!token) return;
-    const res = await fetch(`${API_URL}/portal/projects/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json() as { success: boolean; data?: { files?: Record<string, string> } };
-    if (data.success && data.data?.files) {
-      setFiles(data.data.files);
-    }
+    if (!token) { window.location.href = '/login'; return; }
+
+    fetch(`${API}/portal/projects/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        if (!r.ok) { window.location.href = '/?exit=1'; return null; }
+        return r.json();
+      })
+      .then(d => {
+        if (!d?.success) return;
+        setProjectName(d.data.name || '');
+        setFiles(d.data.files || {});
+        setDeployUrl(d.data.deployUrl || null);
+        // Auto-rebuild if ?rebuild= param
+        const url = new URLSearchParams(window.location.search).get('rebuild');
+        if (url) setTimeout(() => doSend(`ricostruisci ${url}`), 800);
+      })
+      .catch(() => {
+        toast.error('Failed to load project');
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // ── Handle file attachments ────────────────────────────────────────────────
+  // ── Scraping ─────────────────────────────────────────────────────────────
 
-  const handleFiles = useCallback(async (fileList: FileList | null, type: 'image' | 'file') => {
-    if (!fileList?.length) return;
-    const newAttachments: Attachment[] = [];
+  async function scrapeAndEnrich(msg: string): Promise<string> {
+    const rebuildRe = /ricostruisci|ricostruire|rebuild|clone|rifai|copia il sito/i;
+    const urlRe = /https?:\/\/[^\s]+|(?:^|\s)((?:www\.)?[a-z0-9][-a-z0-9.]+\.[a-z]{2,})(?:\s|$)/i;
+    if (!rebuildRe.test(msg)) return msg;
+    const urlMatch = msg.match(/https?:\/\/[^\s]+/i)?.[0] || msg.match(urlRe)?.[1];
+    if (!urlMatch) return msg;
+    const url = urlMatch.startsWith('http') ? urlMatch : 'https://' + urlMatch;
 
-    for (const file of Array.from(fileList)) {
-      if (file.size > 20 * 1024 * 1024) {
-        toast.error(`${file.name} è troppo grande (max 20MB)`);
-        continue;
-      }
-
-      const data = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          // Remove data URL prefix to get pure base64
-          resolve(result.split(',')[1] ?? '');
-        };
-        reader.readAsDataURL(file);
-      });
-
-      const preview = type === 'image'
-        ? await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsDataURL(file);
-          })
-        : undefined;
-
-      const attachType: Attachment['type'] = file.type.startsWith('image/') ? 'image'
-        : file.type === 'application/pdf' ? 'pdf'
-        : 'text';
-
-      newAttachments.push({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        name: file.name,
-        type: attachType,
-        mediaType: file.type || 'application/octet-stream',
-        data,
-        preview,
-        size: file.size,
-      });
-    }
-
-    setAttachments(prev => [...prev, ...newAttachments]);
-    toast.success(`${newAttachments.length} file allegato/i`, { autoClose: 2000 });
-  }, []);
-
-  const removeAttachment = useCallback((id: string) => {
-    setAttachments(prev => prev.filter(a => a.id !== id));
-  }, []);
-
-  // ── Scrape website before rebuild ─────────────────────────────────────────
-
-  const scrapeAndInject = useCallback(async (rawMsg: string): Promise<string> => {
-    const rebuildKw = /ricostruisci|ricostruire|rebuild|clone|clona|rifai|ricrea|analizza|copia il sito/i.test(rawMsg);
-    const urlMatch = rawMsg.match(/https?:\/\/[^\s"'<>]+/i)?.[0]
-      ?? rawMsg.match(/(?:^|\s)((?:www\.)?[a-z0-9][-a-z0-9.]+\.[a-z]{2,})(?:\s|$)/i)?.[1];
-
-    if (!rebuildKw || !urlMatch) return rawMsg;
-
-    const urlToScrape = urlMatch.startsWith('http') ? urlMatch : 'https://' + urlMatch;
-    toast.info(`🔍 Scraping ${urlToScrape}…`, { autoClose: 90000, position: 'top-center', toastId: 'scraping' });
-
+    toast.info('Scraping ' + url + '...', { toastId: 'scraping', autoClose: false });
     try {
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 120_000);
-      const res = await fetch('https://agent-runner-production-b33a.up.railway.app/scrape', {
+      const r = await fetch(SCRAPE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: urlToScrape }),
-        signal: ctrl.signal,
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(120_000),
       });
-      clearTimeout(tid);
       toast.dismiss('scraping');
+      if (!r.ok) return msg;
+      const { data } = await r.json();
+      const s = data?.scraped;
+      if (!s?.pages?.length) return msg;
 
-      if (!res.ok) throw new Error(`Scrape HTTP ${res.status}`);
-      const data = await res.json() as { data?: { scraped?: { pages?: any[]; logo?: string; contact?: any; socialLinks?: any } } };
-      const scraped = data.data?.scraped;
-
-      if (!scraped?.pages?.length) {
-        toast.warning('Scraping: nessuna pagina trovata — procedo senza contenuto reale', { autoClose: 3000 });
-        return rawMsg;
+      let injection = `\n\n=== SCRAPED: ${url} ===\n`;
+      injection += `Phone: ${s.contact?.phone || 'N/A'} | Email: ${s.contact?.email || 'N/A'}\n`;
+      injection += `Logo: ${s.logo || 'none'}\n`;
+      for (const p of s.pages.slice(0, 10)) {
+        const path = p.url.replace(/^https?:\/\/[^/]+/, '').replace(/\/$/, '') || '/';
+        const h1 = p.headings?.find((h: { level: number; text: string }) => h.level === 1)?.text || p.title || '';
+        injection += `\nPAGE ${path} — "${h1}"\n`;
+        injection += (p.headings || []).map((h: { level: number; text: string }) => `  H${h.level}: ${h.text}`).join('\n') + '\n';
+        injection += (p.paragraphs || []).slice(0, 5).map((t: string) => `  ${t}`).join('\n') + '\n';
+        const imgs = (p.images || []).filter((i: { url: string }) => i.url?.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(i.url));
+        if (imgs.length) injection += `  Photos: ${imgs.map((i: { url: string }) => i.url).join(', ')}\n`;
+        const vids = p.videos || [];
+        if (vids.length) injection += `  Videos: ${vids.map((v: { type: string; url: string }) => `${v.type}:${v.url}`).join(', ')}\n`;
       }
-
-      const seen = new Set<string>();
-      const pages = scraped.pages.filter((p: any) => {
-        const n = (p.url || '').replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
-        if (!n || seen.has(n)) return false;
-        seen.add(n);
-        return p.headings?.length || p.paragraphs?.length || p.images?.length;
-      });
-
-      let pagesContent = '';
-      let totalImgs = 0, totalVids = 0;
-      const navPages = pages.map((p: any) => {
-        const path = p.url.replace(/^https?:\/\/(www\.)?[^/]+/, '').replace(/\/$/, '') || '/';
-        const h1 = p.headings?.find((h: any) => h.level === 1)?.text || p.title || '';
-        return `${path} → "${h1}"`;
-      }).join('\n');
-
-      for (const p of pages) {
-        const imgs = (p.images || []).filter((i: any) => i.url?.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(i.url));
-        totalImgs += imgs.length;
-        const vids = (p.videos || []);
-        totalVids += vids.length;
-        const localPath = (p.url.replace(/^https?:\/\/(www\.)?[^/]+/, '').replace(/\/$/, '') || '/index').replace(/^\//, '') + '/index.html';
-        pagesContent += `\n=== PAGE: ${localPath === '/index/index.html' ? 'index.html' : localPath} ===\n`
-          + `Title: ${p.title || ''}\n`
-          + `Headings:\n${(p.headings || []).map((h: any) => `  h${h.level}: ${h.text}`).join('\n') || '  none'}\n`
-          + `Text:\n${(p.paragraphs || []).map((t: string) => `  ${t}`).join('\n') || '  none'}\n`
-          + `Photos:\n${imgs.map((i: any, n: number) => `  ${n+1}. ${i.url}${i.alt ? ' ('+i.alt+')' : ''}`).join('\n') || '  none'}\n`
-          + (vids.length ? `Videos:\n${vids.map((v: any) => `  VIDEO (${v.type}): ${v.url}`).join('\n')}\n` : '');
-      }
-
-      const injection = `\n\n=== SCRAPED: ${urlToScrape} ===\nLogo: ${scraped.logo||'none'}\nPhone: ${scraped.contact?.phone||'N/A'} | Email: ${scraped.contact?.email||'N/A'}\nFacebook: ${scraped.socialLinks?.facebook||''} | Instagram: ${scraped.socialLinks?.instagram||''}\n${totalVids > 0 ? '⚠️ VIDEO FOUND — use as full-screen autoplay muted hero!\n' : ''}\nSTRUCTURE (${pages.length} pages):\n${navPages}\n\nvercel.json: {"cleanUrls":true,"trailingSlash":false}\n${pagesContent}=== END SCRAPED ===`;
-
-      toast.success(`Scraped ${pages.length} pagine, ${totalImgs} foto, ${totalVids} video ✓`, { autoClose: 3000, position: 'bottom-right' });
-      return rawMsg + injection;
-    } catch (err) {
+      injection += '=== END ===';
+      toast.success(`Scraped ${s.pages.length} pages`, { autoClose: 3000 });
+      return msg + injection;
+    } catch {
       toast.dismiss('scraping');
-      toast.warning('Scraping fallito — procedo senza contenuto reale', { autoClose: 3000 });
-      return rawMsg;
+      toast.warning('Scraping failed — generating without content');
+      return msg;
     }
-  }, []);
+  }
 
-  // ── Send message ───────────────────────────────────────────────────────────
+  // ── Send message ─────────────────────────────────────────────────────────
 
-  const sendMessage = useCallback(async (msgOverride?: string) => {
-    const raw = (msgOverride ?? input).trim();
-    if (!raw || isStreaming || !id) return;
-
-    // ── Credit check ───────────────────────────────────────────────────────
-    if (creditInfo !== null && creditInfo.remaining < 1) {
-      toast.error(
-        <span>
-          Crediti esauriti.{' '}
-          <a href="/billing" style={{ color: '#a78bfa', textDecoration: 'underline' }}>
-            Upgrade Plan
-          </a>
-        </span>,
-        { autoClose: 6000, position: 'top-center' }
-      );
-      return;
-    }
+  const doSend = useCallback(async (text?: string) => {
+    const msg = (text ?? input).trim();
+    if (!msg && attachments.length === 0) return;
+    if (streaming) return;
 
     setInput('');
     const currentAttachments = [...attachments];
     setAttachments([]);
+    setMessages(prev => [...prev, { role: 'user', text: text ?? input }]);
+    setStreaming(true);
 
-    const msg = await scrapeAndInject(raw);
-
-    setMessages((prev) => [...prev, { role: 'user', content: raw, attachments: currentAttachments }]);
-    setIsStreaming(true);
-
+    const enriched = await scrapeAndEnrich(msg);
     const token = localStorage.getItem('mc_token');
-    let aiText = '';
 
     try {
-      const res = await fetch(`${API_URL}/portal/projects/${id}/chat`, {
+      const res = await fetch(`${API}/portal/projects/${id}/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token ?? ''}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
         body: JSON.stringify({
-          message: msg,
+          message: enriched,
           attachments: currentAttachments.map(a => ({
-            type: a.type,
-            mediaType: a.mediaType,
+            type: a.type.startsWith('image') ? 'image' : 'pdf',
+            mediaType: a.type,
             data: a.data,
             name: a.name,
           })),
         }),
       });
 
-      if (res.status === 402) {
-        const errData = await res.json() as { error?: string };
-        toast.error(
-          <span>
-            {errData.error ?? 'Crediti esauriti.'}{' '}
-            <a href="/billing" style={{ color: '#a78bfa', textDecoration: 'underline' }}>
-              Upgrade Plan
-            </a>
-          </span>,
-          { autoClose: 6000, position: 'top-center' }
-        );
-        setIsStreaming(false);
-        return;
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        if (res.status === 402) { toast.error('Crediti esauriti. Vai su /billing'); return; }
+        throw new Error(`${res.status}: ${errText.slice(0, 200)}`);
       }
-
-      if (!res.ok || !res.body) {
-        if (res.status === 404) {
-          throw new Error('Progetto non trovato. Ricarica la pagina o crea un nuovo progetto.');
-        }
-        if (res.status === 401) {
-          throw new Error('Sessione scaduta. Fai il login di nuovo.');
-        }
-        const errBody = await res.text().catch(() => '');
-        throw new Error(`Errore API (${res.status}): ${errBody.slice(0, 100)}`);
-      }
+      if (!res.body) throw new Error('No response body');
 
       const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      const dec = new TextDecoder();
+      let buf = '';
+      let aiText = '';
       let changedFiles: string[] = [];
+      setMessages(prev => [...prev, { role: 'assistant', text: '' }]);
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6).trim();
           if (data === '[DONE]') continue;
-
           try {
-            const ev = JSON.parse(data) as { type: string; content?: string; changedFiles?: string[]; error?: string; credits?: CreditInfo };
-
-            if (ev.type === 'text' && ev.content) {
+            const ev = JSON.parse(data);
+            if (ev.type === 'text') {
               aiText += ev.content;
-              const displayText = stripBoltActions(aiText);
-              setMessages((prev) => {
+              const display = aiText.replace(/<boltAction[\s\S]*?<\/boltAction>/g, '').trim();
+              setMessages(prev => {
                 const last = prev[prev.length - 1];
-                if (last?.role === 'assistant') {
-                  return [...prev.slice(0, -1), { ...last, content: displayText }];
-                }
-                return [...prev, { role: 'assistant', content: displayText, changedFiles: [] }];
+                if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, text: display }];
+                return [...prev, { role: 'assistant', text: display }];
               });
             } else if (ev.type === 'done') {
-              changedFiles = ev.changedFiles ?? [];
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'assistant') {
-                  return [...prev.slice(0, -1), { ...last, changedFiles }];
-                }
-                return prev;
-              });
-              // Update credit display with server-authoritative value
-              if (ev.credits) {
-                setCreditInfo(ev.credits as CreditInfo);
+              changedFiles = ev.changedFiles || [];
+              if (changedFiles.length > 0) {
+                setMessages(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, files: changedFiles }];
+                  return prev;
+                });
               }
             } else if (ev.type === 'error') {
-              toast.error(ev.error ?? 'AI error');
+              throw new Error(ev.error);
             }
           } catch {
             // skip malformed SSE
@@ -517,1155 +261,352 @@ function StudioClient() {
       }
 
       if (changedFiles.length > 0) {
-        await reloadFiles();
-        setIframeKey((k) => k + 1);
-        toast.success('Changes saved', { autoClose: 2000, position: 'bottom-right' });
+        const r2 = await fetch(`${API}/portal/projects/${id}`, { headers: { Authorization: `Bearer ${token || ''}` } });
+        if (r2.ok) {
+          const d2 = await r2.json();
+          if (d2?.data?.files) setFiles(d2.data.files);
+        }
+        setIframeKey(k => k + 1);
+        toast.success(`${changedFiles.length} file aggiornati`, { autoClose: 2000 });
+      } else if (aiText.length > 0 && aiText.includes('<boltAction')) {
+        setIframeKey(k => k + 1);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Failed to send message: ${msg}`);
-      console.error('[Studio] sendMessage error:', err);
+      const errMsg = err instanceof Error ? err.message : 'Errore sconosciuto';
+      toast.error('Errore: ' + errMsg);
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && !last.text) return prev.slice(0, -1);
+        return prev;
+      });
     } finally {
-      setIsStreaming(false);
+      setStreaming(false);
     }
-  }, [input, isStreaming, id, reloadFiles, creditInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, attachments, streaming, id]);
 
-  // ── Deploy ─────────────────────────────────────────────────────────────────
+  // ── Deploy ───────────────────────────────────────────────────────────────
 
-  const handleDeploy = async () => {
-    if (!id || deploying) return;
+  async function deploy() {
+    if (deploying || Object.keys(files).length === 0) return;
     setDeploying(true);
     const token = localStorage.getItem('mc_token');
     try {
-      const res = await fetch(`${API_URL}/portal/projects/${id}/deploy`, {
+      const r = await fetch(`${API}/portal/projects/${id}/deploy`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token ?? ''}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
         body: JSON.stringify({ files, forceStatic: !('package.json' in files) }),
       });
-      const data = await res.json() as { success: boolean; data?: { deployUrl?: string } };
-      if (data.success && data.data?.deployUrl) {
-        setDeployUrl(data.data.deployUrl);
-        toast.success('Site published!', { autoClose: 3000 });
-        setIframeKey((k) => k + 1);
+      const d = await r.json();
+      if (d.success && d.data?.deployUrl) {
+        setDeployUrl(d.data.deployUrl);
+        setIframeKey(k => k + 1);
+        toast.success('Sito pubblicato!', { autoClose: 3000 });
       } else {
-        toast.error('Deploy failed');
-      }
-    } catch (err) {
-      toast.error('Deploy error');
-      console.error('[Studio] deploy error:', err);
-    } finally {
-      setDeploying(false);
-    }
-  };
-
-  // ── Create new project ────────────────────────────────────────────────────
-
-  const handleNewProject = useCallback(async () => {
-    if (creatingProject) return;
-    setCreatingProject(true);
-    const token = localStorage.getItem('mc_token');
-    try {
-      const res = await fetch(`${API_URL}/portal/projects`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token ?? ''}`,
-        },
-        body: JSON.stringify({ name: 'Nuovo Progetto' }),
-      });
-      const data = await res.json() as { success: boolean; data?: { id: string }; error?: string };
-      if (data.success && data.data?.id) {
-        localStorage.setItem('mc_active_project_id', data.data.id);
-        toast.success('Nuovo progetto creato!', { autoClose: 2000 });
-        // Navigate without any stale search params (e.g. ?rebuild=)
-        window.location.href = `/studio/${data.data.id}`;
-        return;
-      } else {
-        toast.error(data.error ?? 'Errore creazione progetto');
+        toast.error(d.error || 'Deploy fallito');
       }
     } catch {
       toast.error('Errore di rete');
     } finally {
-      setCreatingProject(false);
+      setDeploying(false);
     }
-  }, [creatingProject, navigate]);
+  }
 
-  // ── Rename project ─────────────────────────────────────────────────────────
+  // ── File attachment ──────────────────────────────────────────────────────
 
-  const handleRename = async () => {
-    if (!id || !projectName.trim()) return;
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>, isImage: boolean) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const result = ev.target?.result as string;
+      const data = result.split(',')[1] ?? '';
+      const preview = isImage ? result : undefined;
+      setAttachments(prev => [...prev, { name: f.name, type: f.type, data, preview }]);
+    };
+    reader.readAsDataURL(f);
+    e.target.value = '';
+  }
+
+  // ── Save project name ────────────────────────────────────────────────────
+
+  async function saveProjectName(name: string) {
+    setEditingName(false);
+    if (!name.trim() || name === projectName) return;
+    setProjectName(name);
     const token = localStorage.getItem('mc_token');
     try {
-      await fetch(`${API_URL}/portal/projects/${id}`, {
+      await fetch(`${API}/portal/projects/${id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token ?? ''}`,
-        },
-        body: JSON.stringify({ name: projectName }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+        body: JSON.stringify({ name }),
       });
-      setEditingName(false);
     } catch {
-      setEditingName(false);
+      // silent
     }
-  };
-
-  // ── Preview URL ────────────────────────────────────────────────────────────
-
-  // Only use deployUrl for the preview — the subdomain URL only works after an
-  // explicit Vercel deploy. Showing it before deploy causes DNS-not-found errors.
-  const previewUrl = deployUrl ?? null;
-  const hasFiles = Object.keys(files).length > 0;
-
-  // ─── Loading / error screens ───────────────────────────────────────────────
-
-  if (!id) return null; // guard — useEffect will redirect
-
-  if (projectLoading) {
-    return (
-      <div style={{ background: '#0a0a0a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ width: '32px', height: '32px', border: '3px solid #374151', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <div style={{ color: '#9ca3af', fontSize: '14px' }}>Caricamento progetto...</div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
   }
 
-  if (projectError) {
-    return (
-      <div style={{ background: '#0a0a0a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px', padding: '24px' }}>
-        <div style={{ color: '#f87171', fontSize: '16px', textAlign: 'center' }}>{projectError}</div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={() => window.location.reload()}
-            style={{ background: '#6366f1', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 600, padding: '10px 20px' }}
-          >
-            Riprova
-          </button>
-          <button
-            onClick={() => { localStorage.removeItem('mc_active_project_id'); navigate('/'); }}
-            style={{ background: '#374151', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 600, padding: '10px 20px' }}
-          >
-            Torna alla dashboard
-          </button>
-        </div>
-      </div>
-    );
+  // ── Key handler ──────────────────────────────────────────────────────────
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      doSend();
+    }
   }
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ── Sorted file names ────────────────────────────────────────────────────
+
+  const fileNames = Object.keys(files).sort();
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        background: '#0a0a0a',
-        color: '#f9fafb',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        overflow: 'hidden',
-      }}
-    >
-      {/* ── Header ── */}
-      <header
-        style={{
-          height: '48px',
-          minHeight: '48px',
-          background: '#111827',
-          borderBottom: '1px solid #1f2937',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 16px',
-          gap: '12px',
-          zIndex: 10,
-        }}
-      >
-        {/* Left: back button + logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '160px' }}>
-          {/* Back to dashboard */}
-          <a
-            href="/?exit=1"
-            title="Torna alla dashboard"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: '30px', height: '30px', borderRadius: '6px',
-              background: 'transparent', border: '1px solid #374151',
-              color: '#9ca3af', textDecoration: 'none', fontSize: '16px',
-              transition: 'all 0.15s', flexShrink: 0,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#1f2937'; e.currentTarget.style.color = '#f9fafb'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af'; }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </a>
-          <a
-            href="/?exit=1"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              textDecoration: 'none',
-            }}
-          >
-            <span
-              style={{
-                fontSize: '18px',
-                fontWeight: 700,
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              MadeCreative
-            </span>
-          </a>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a0a0a', color: '#e5e7eb', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      {/* ── Header ───────────────────────────────────────────────────────── */}
+      <div style={{ height: 48, minHeight: 48, background: '#111827', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', gap: 12 }}>
+        {/* Left */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <a href="/?exit=1" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: 18, lineHeight: 1 }} title="Back">&larr;</a>
+          <span style={{ fontWeight: 700, fontSize: 15, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>MadeCreative</span>
         </div>
 
-        {/* Center: project name */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        {/* Center — project name */}
+        <div style={{ flex: 1, textAlign: 'center' }}>
           {editingName ? (
             <input
-              ref={nameInputRef}
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              onBlur={handleRename}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRename();
-                if (e.key === 'Escape') setEditingName(false);
-              }}
               autoFocus
-              style={{
-                background: '#1f2937',
-                border: '1px solid #6366f1',
-                borderRadius: '6px',
-                color: '#f9fafb',
-                fontSize: '14px',
-                fontWeight: 500,
-                padding: '4px 10px',
-                outline: 'none',
-                textAlign: 'center',
-                maxWidth: '300px',
-                width: '100%',
-              }}
+              defaultValue={projectName}
+              onBlur={e => saveProjectName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveProjectName((e.target as HTMLInputElement).value); }}
+              style={{ background: '#1e2433', border: '1px solid #374151', borderRadius: 6, padding: '4px 10px', color: '#e5e7eb', fontSize: 14, textAlign: 'center', outline: 'none', width: 200 }}
             />
           ) : (
-            <button
-              onClick={() => setEditingName(true)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#f9fafb',
-                fontSize: '14px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                padding: '4px 10px',
-                borderRadius: '6px',
-              }}
-              title="Click to rename"
-            >
-              {projectName || 'Untitled Project'}
-            </button>
+            <span onClick={() => setEditingName(true)} style={{ cursor: 'pointer', color: '#d1d5db', fontSize: 14, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }} title="Click to rename">
+              {projectName || 'Untitled'}
+            </span>
           )}
         </div>
 
-        {/* Right: credits + new project + deploy */}
-        <div style={{ minWidth: '200px', display: 'flex', justifyContent: 'flex-end', gap: '6px', alignItems: 'center' }}>
-          {/* Credits badge */}
-          {creditInfo !== null && (
-            <a
-              href="/billing"
-              title="Gestisci crediti"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                color: creditInfo.remaining < 20 ? '#f87171' : '#a78bfa',
-                fontSize: '12px',
-                fontWeight: 600,
-                textDecoration: 'none',
-                padding: '5px 9px',
-                borderRadius: '6px',
-                border: `1px solid ${creditInfo.remaining < 20 ? '#7f1d1d' : '#312e81'}`,
-                background: creditInfo.remaining < 20 ? 'rgba(239,68,68,0.1)' : 'rgba(99,102,241,0.1)',
-                transition: 'all 0.15s',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <span style={{ fontSize: '13px' }}>&#9889;</span>
-              {creditInfo.remaining} crediti
-            </a>
-          )}
-
-          {/* New project button */}
-          <button
-            onClick={handleNewProject}
-            disabled={creatingProject}
-            title="Crea nuovo progetto"
-            style={{
-              background: 'transparent',
-              border: '1px solid #374151',
-              borderRadius: '6px',
-              color: '#9ca3af',
-              cursor: creatingProject ? 'not-allowed' : 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-              padding: '5px 10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={e => { if (!creatingProject) { e.currentTarget.style.background = '#1f2937'; e.currentTarget.style.color = '#f9fafb'; } }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af'; }}
-          >
-            {creatingProject ? <SpinnerIcon size={11} /> : '+'} Nuovo
-          </button>
-
-          {/* Projects switcher button */}
-          <button
-            onClick={() => { setSidebarOpen(o => !o); if (!sidebarOpen) loadProjects(); }}
-            title="Elenco progetti"
-            style={{
-              background: sidebarOpen ? '#1f2937' : 'transparent',
-              border: '1px solid #374151',
-              borderRadius: '6px',
-              color: sidebarOpen ? '#f9fafb' : '#9ca3af',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-              padding: '5px 10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
-            Progetti
-          </button>
-
-          {deployUrl && (
-            <a
-              href={deployUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                color: '#9ca3af',
-                fontSize: '12px',
-                textDecoration: 'none',
-                padding: '6px 10px',
-                borderRadius: '6px',
-                border: '1px solid #1f2937',
-              }}
-            >
-              <span style={{ fontSize: '12px' }}>&#127760;</span>
-              Live
-            </a>
-          )}
-          <button
-            onClick={handleDeploy}
-            disabled={deploying || Object.keys(files).length === 0}
-            style={{
-              background: deploying ? '#374151' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              border: 'none',
-              borderRadius: '6px',
-              color: '#fff',
-              cursor: deploying ? 'not-allowed' : 'pointer',
-              fontSize: '13px',
-              fontWeight: 600,
-              padding: '7px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'opacity 0.2s',
-              opacity: Object.keys(files).length === 0 ? 0.5 : 1,
-            }}
-          >
-            {deploying ? (
-              <>
-                <SpinnerIcon size={13} />
-                Deploying...
-              </>
-            ) : (
-              <>
-                <span style={{ fontSize: '13px' }}>&#128640;</span>
-                Deploy
-              </>
-            )}
+        {/* Right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <a href="/studio/new" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: 13, padding: '6px 12px', border: '1px solid #374151', borderRadius: 6, background: 'transparent' }}>+ Nuovo</a>
+          <button onClick={deploy} disabled={deploying || Object.keys(files).length === 0} style={{ background: deploying ? '#4b5563' : 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: deploying ? 'not-allowed' : 'pointer', opacity: Object.keys(files).length === 0 ? 0.5 : 1 }}>
+            {deploying ? 'Publishing...' : 'Deploy'}
           </button>
         </div>
-      </header>
+      </div>
 
-      {/* ── Projects sidebar overlay ── */}
-      {sidebarOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setSidebarOpen(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              top: '48px',
-              background: 'rgba(0,0,0,0.4)',
-              zIndex: 20,
-            }}
-          />
-          {/* Sidebar panel */}
-          <div
-            style={{
-              position: 'fixed',
-              top: '48px',
-              right: 0,
-              bottom: 0,
-              width: '280px',
-              background: '#111827',
-              borderLeft: '1px solid #1f2937',
-              zIndex: 30,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                padding: '14px 16px 10px',
-                borderBottom: '1px solid #1f2937',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#f9fafb' }}>I tuoi progetti</span>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '16px', padding: '0', lineHeight: 1 }}
-              >
-                &#10005;
-              </button>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-              {projects.length === 0 ? (
-                <div style={{ color: '#6b7280', fontSize: '13px', textAlign: 'center', padding: '24px 8px' }}>
-                  Nessun progetto trovato
-                </div>
-              ) : (
-                projects.map((p) => (
-                  <a
-                    key={p.id}
-                    href={`/studio/${p.id}`}
-                    onClick={(e) => { e.preventDefault(); setSidebarOpen(false); navigate(`/studio/${p.id}`); }}
-                    style={{
-                      display: 'block',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      background: p.id === id ? '#1f2937' : 'transparent',
-                      border: `1px solid ${p.id === id ? '#374151' : 'transparent'}`,
-                      color: p.id === id ? '#f9fafb' : '#9ca3af',
-                      textDecoration: 'none',
-                      fontSize: '13px',
-                      fontWeight: p.id === id ? 600 : 400,
-                      marginBottom: '4px',
-                      transition: 'all 0.15s',
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={e => { if (p.id !== id) { e.currentTarget.style.background = '#1f2937'; e.currentTarget.style.color = '#f9fafb'; } }}
-                    onMouseLeave={e => { if (p.id !== id) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af'; } }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '14px' }}>{p.deployUrl ? '&#127760;' : '&#9998;'}</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {p.name || 'Untitled'}
-                      </span>
-                      {p.id === id && (
-                        <span style={{ fontSize: '10px', background: '#6366f1', color: '#fff', borderRadius: '4px', padding: '1px 6px' }}>
-                          attivo
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#4b5563', marginTop: '3px', marginLeft: '22px' }}>
-                      {new Date(p.updatedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
-                    </div>
-                  </a>
-                ))
-              )}
-            </div>
-            <div style={{ padding: '12px', borderTop: '1px solid #1f2937' }}>
-              <button
-                onClick={() => { setSidebarOpen(false); handleNewProject(); }}
-                disabled={creatingProject}
-                style={{
-                  width: '100%',
-                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  cursor: creatingProject ? 'not-allowed' : 'pointer',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  padding: '9px 0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                }}
-              >
-                {creatingProject ? <SpinnerIcon size={12} /> : '+'} Nuovo progetto
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      {/* ── Body ─────────────────────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-      {/* ── Body: Chat + Preview ── */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* ── Chat Panel (40%) ── */}
-        <div
-          style={{
-            width: '40%',
-            minWidth: '320px',
-            maxWidth: '560px',
-            display: 'flex',
-            flexDirection: 'column',
-            borderRight: '1px solid #1f2937',
-            background: '#111827',
-          }}
-        >
-          {/* Message list */}
-          <div
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-            }}
-          >
+        {/* ── Chat Panel (40%) ─────────────────────────────────────────── */}
+        <div style={{ width: '40%', minWidth: 320, display: 'flex', flexDirection: 'column', borderRight: '1px solid #1f2937' }}>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.length === 0 && (
-              <div
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#9ca3af',
-                  textAlign: 'center',
-                  gap: '12px',
-                  padding: '40px 16px',
-                }}
-              >
-                <div
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '22px',
-                  }}
-                >
-                  &#10024;
-                </div>
-                <div>
-                  <div style={{ fontSize: '15px', fontWeight: 600, color: '#f9fafb', marginBottom: '6px' }}>
-                    AI Website Editor
-                  </div>
-                  <div style={{ fontSize: '13px', lineHeight: 1.6 }}>
-                    Ask me to add features, change colors, update content, or redesign any part of your site.
-                  </div>
-                </div>
+              <div style={{ textAlign: 'center', color: '#6b7280', marginTop: 60, fontSize: 14, lineHeight: 1.8 }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>&#9997;</div>
+                <div style={{ fontWeight: 600, color: '#9ca3af', marginBottom: 4 }}>MadeCreative Studio</div>
+                <div>Scrivi un messaggio per iniziare.</div>
+                <div style={{ fontSize: 13, marginTop: 8, color: '#4b5563' }}>Es: &quot;ricostruisci www.miosito.it&quot;</div>
               </div>
             )}
 
-            {messages.map((msg, i) => (
-              <ChatMessage key={i} message={msg} />
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{
+                  maxWidth: '85%',
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 14,
+                  lineHeight: 1.6,
+                  ...(m.role === 'user'
+                    ? { background: '#1e1b4b', border: '1px solid #3730a3', borderBottomRightRadius: 4 }
+                    : { background: '#131c2e', border: '1px solid #1f2937', borderBottomLeftRadius: 4 }),
+                }}>
+                  {m.role === 'assistant' ? (
+                    <div dangerouslySetInnerHTML={{ __html: renderMd(m.text || '') }} />
+                  ) : (
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                  )}
+                  {/* File chips */}
+                  {m.files && m.files.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+                      {m.files.map((f, fi) => (
+                        <span key={fi} onClick={() => { setSelectedFile(f); setActiveTab('code'); }} style={{ background: '#1f2937', color: '#a5b4fc', fontSize: 11, padding: '2px 8px', borderRadius: 4, cursor: 'pointer', border: '1px solid #374151' }}>
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
 
-            {isStreaming && <TypingIndicator />}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Hidden file inputs */}
-          <input ref={imageInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
-            onChange={(e) => handleFiles(e.target.files, 'image')} />
-          <input ref={fileInputRef} type="file" accept=".pdf,.txt,.csv,.json,.md,.html,.css,.js,.ts" multiple style={{ display: 'none' }}
-            onChange={(e) => handleFiles(e.target.files, 'file')} />
-
-          {/* Input area */}
-          <div style={{ padding: '12px', borderTop: '1px solid #1f2937', background: '#0f172a' }}>
-
-            {/* Attachment preview strip */}
-            {attachments.length > 0 && (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', padding: '8px', background: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>
-                {attachments.map(a => (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#374151', borderRadius: '6px', padding: '4px 8px', fontSize: '12px', color: '#d1d5db', maxWidth: '160px' }}>
-                    {a.preview
-                      ? <img src={a.preview} alt={a.name} style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }} />
-                      : <span style={{ fontSize: '16px', flexShrink: 0 }}>{a.type === 'pdf' ? '📄' : '📎'}</span>
-                    }
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
-                    <button onClick={() => removeAttachment(a.id)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '0', fontSize: '14px', flexShrink: 0, lineHeight: 1 }}>✕</button>
-                  </div>
-                ))}
+            {/* Typing indicator */}
+            {streaming && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <div style={{ background: '#131c2e', border: '1px solid #1f2937', borderRadius: 12, padding: '10px 14px', display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <span className="dot-1" style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1', animation: 'dotPulse 1.4s ease-in-out infinite' }} />
+                  <span className="dot-2" style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1', animation: 'dotPulse 1.4s ease-in-out 0.2s infinite' }} />
+                  <span className="dot-3" style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1', animation: 'dotPulse 1.4s ease-in-out 0.4s infinite' }} />
+                </div>
               </div>
             )}
 
-            <div
-              style={{
-                background: '#1f2937',
-                border: '1px solid #374151',
-                borderRadius: '10px',
-                overflow: 'hidden',
-              }}
-            >
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                placeholder="Chiedi di modificare il sito, ricostruire, aggiungere sezioni... (Ctrl+Enter)"
-                disabled={isStreaming}
-                rows={1}
-                style={{
-                  width: '100%',
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#f9fafb',
-                  fontSize: '14px',
-                  padding: '12px 14px 4px',
-                  resize: 'none',
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                  lineHeight: 1.5,
-                  minHeight: '40px',
-                  maxHeight: '160px',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '6px 8px 8px',
-                }}
-              >
-                {/* Left: action buttons */}
-                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  {/* Image upload */}
-                  <button
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={isStreaming}
-                    title="Allega foto"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#6b7280')}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-                      <polyline points="21 15 16 10 5 21"/>
-                    </svg>
-                  </button>
-                  {/* File/PDF upload */}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isStreaming}
-                    title="Allega file (PDF, TXT, HTML...)"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#6b7280')}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                    </svg>
-                  </button>
-                  {/* Screenshot / inspect element hint */}
-                  <button
-                    onClick={() => setInput(prev => prev + (prev ? ' ' : '') + '[screenshot] ')}
-                    disabled={isStreaming}
-                    title="Chiedi modifica visiva"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#a78bfa')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#6b7280')}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 13.5V19a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.5"/><path d="M2 10.5V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5.5"/>
-                      <line x1="12" y1="12" x2="12" y2="15"/><line x1="10" y1="15" x2="14" y2="15"/>
-                    </svg>
-                  </button>
-                </div>
+            <div ref={chatEndRef} />
+          </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {attachments.length > 0 && (
-                    <span style={{ fontSize: '11px', color: '#6366f1' }}>{attachments.length} allegato/i</span>
+          {/* Attachment previews */}
+          {attachments.length > 0 && (
+            <div style={{ padding: '8px 16px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {attachments.map((a, i) => (
+                <div key={i} style={{ position: 'relative', background: '#1f2937', borderRadius: 8, padding: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {a.preview ? (
+                    <img src={a.preview} alt={a.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} />
+                  ) : (
+                    <span style={{ fontSize: 11, color: '#9ca3af' }}>{a.name}</span>
                   )}
-                <button
-                  onClick={sendMessage}
-                  disabled={isStreaming || (!input.trim() && attachments.length === 0)}
-                  style={{
-                    background: isStreaming || (!input.trim() && attachments.length === 0)
-                      ? '#374151'
-                      : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                    border: 'none',
-                    borderRadius: '7px',
-                    color: '#fff',
-                    cursor: isStreaming || (!input.trim() && attachments.length === 0) ? 'not-allowed' : 'pointer',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    padding: '6px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    transition: 'background 0.2s',
-                  }}
-                >
-                  {isStreaming ? <SpinnerIcon size={12} /> : (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
-                    </svg>
-                  )}
-                  {isStreaming ? 'Thinking...' : 'Invia'}
-                </button>
+                  <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
                 </div>
-              </div>
+              ))}
             </div>
+          )}
+
+          {/* Input area */}
+          <div style={{ padding: 12, borderTop: '1px solid #1f2937', display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+            {/* Attachment buttons */}
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={() => fileInputRef.current?.click()} style={{ background: 'transparent', border: 'none', color: '#6b7280', fontSize: 18, cursor: 'pointer', padding: 4 }} title="Attach file">&#128206;</button>
+              <button onClick={() => imageInputRef.current?.click()} style={{ background: 'transparent', border: 'none', color: '#6b7280', fontSize: 18, cursor: 'pointer', padding: 4 }} title="Attach image">&#128247;</button>
+              <input ref={fileInputRef} type="file" accept=".pdf,.txt,.csv,.json,.html,.css,.js,.ts,.tsx" hidden onChange={e => handleFileInput(e, false)} />
+              <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={e => handleFileInput(e, true)} />
+            </div>
+
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={e => { setInput(e.target.value); resizeTextarea(); }}
+              onKeyDown={handleKeyDown}
+              placeholder="Scrivi un messaggio... (Ctrl+Enter per inviare)"
+              rows={1}
+              style={{ flex: 1, background: '#1e2433', border: '1px solid #374151', borderRadius: 8, padding: '10px 12px', color: '#e5e7eb', fontSize: 14, resize: 'none', outline: 'none', lineHeight: 1.5, maxHeight: 150, fontFamily: 'inherit' }}
+            />
+
+            <button
+              onClick={() => doSend()}
+              disabled={streaming || (!input.trim() && attachments.length === 0)}
+              style={{
+                width: 36, height: 36, borderRadius: 8, border: 'none',
+                background: (streaming || (!input.trim() && attachments.length === 0)) ? '#374151' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color: '#fff', fontSize: 16, cursor: (streaming || (!input.trim() && attachments.length === 0)) ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}
+              title="Send"
+            >
+              &#8593;
+            </button>
           </div>
         </div>
 
-        {/* ── Preview Panel (60%) ── */}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            background: '#0a0a0a',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Tab bar */}
-          <div
-            style={{
-              height: '40px',
-              minHeight: '40px',
-              background: '#111827',
-              borderBottom: '1px solid #1f2937',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 12px',
-              gap: '4px',
-            }}
-          >
-            {(['preview', 'code'] as const).map((tab) => (
+        {/* ── Preview Panel (60%) ──────────────────────────────────────── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0a0a0a' }}>
+
+          {/* Tabs */}
+          <div style={{ height: 40, minHeight: 40, display: 'flex', alignItems: 'center', borderBottom: '1px solid #1f2937', padding: '0 12px', gap: 4 }}>
+            {(['preview', 'code'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 style={{
                   background: activeTab === tab ? '#1f2937' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  color: activeTab === tab ? '#f9fafb' : '#9ca3af',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: activeTab === tab ? 600 : 400,
-                  padding: '5px 14px',
-                  transition: 'all 0.15s',
-                  textTransform: 'capitalize',
+                  color: activeTab === tab ? '#e5e7eb' : '#6b7280',
+                  border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 13, cursor: 'pointer', fontWeight: activeTab === tab ? 600 : 400,
                 }}
               >
-                {tab === 'preview' ? '&#128064; Preview' : '&#128196; Code'}
+                {tab === 'preview' ? 'Preview' : 'Code'}
               </button>
             ))}
-
-            <div style={{ flex: 1 }} />
-
-            {activeTab === 'preview' && (
-              <button
-                onClick={() => {
-                  setIframeLoading(true);
-                  setIframeKey((k) => k + 1);
-                }}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #1f2937',
-                  borderRadius: '6px',
-                  color: '#9ca3af',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  padding: '4px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                }}
-                title="Refresh preview"
-              >
-                &#8635; Refresh
-              </button>
+            {deployUrl && (
+              <a href={deployUrl} target="_blank" rel="noreferrer" style={{ marginLeft: 'auto', color: '#6b7280', fontSize: 12, textDecoration: 'none' }}>
+                {deployUrl.replace(/^https?:\/\//, '')}
+              </a>
             )}
           </div>
 
           {/* Tab content */}
-          <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-            {activeTab === 'preview' && (
-              <>
-                {iframeLoading && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'rgba(10,10,10,0.8)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      zIndex: 5,
-                    }}
-                  >
-                    <SpinnerIcon size={28} />
-                  </div>
-                )}
-                {previewUrl ? (
-                  <iframe
-                    key={iframeKey}
-                    src={previewUrl}
-                    title="Site preview"
-                    onLoad={() => setIframeLoading(false)}
-                    onError={() => setIframeLoading(false)}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      border: 'none',
-                      background: '#fff',
-                    }}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                  />
+          {activeTab === 'preview' ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              {deployUrl ? (
+                <iframe
+                  key={iframeKey}
+                  src={deployUrl}
+                  style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                  title="Preview"
+                />
+              ) : (
+                <div style={{ textAlign: 'center', color: '#4b5563', fontSize: 14 }}>
+                  <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.4 }}>&#127760;</div>
+                  <div>Genera il sito e clicca Deploy</div>
+                  <div style={{ fontSize: 12, marginTop: 4, color: '#374151' }}>per visualizzare l&apos;anteprima qui</div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+              {/* File tree */}
+              <div style={{ width: '30%', minWidth: 160, borderRight: '1px solid #1f2937', overflowY: 'auto', padding: '8px 0' }}>
+                {fileNames.length === 0 ? (
+                  <div style={{ color: '#4b5563', fontSize: 13, padding: '16px 12px', textAlign: 'center' }}>Nessun file</div>
                 ) : (
-                  <div
-                    style={{
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#9ca3af',
-                      gap: '16px',
-                      textAlign: 'center',
-                      padding: '32px',
-                    }}
-                  >
-                    <div style={{ fontSize: '40px' }}>{hasFiles ? '🚀' : '✨'}</div>
-                    <div>
-                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#f9fafb', marginBottom: '8px' }}>
-                        {hasFiles ? 'Sito generato — clicca Deploy per vederlo live' : 'Nessun sito ancora'}
-                      </div>
-                      <div style={{ fontSize: '13px', lineHeight: 1.7, color: '#6b7280' }}>
-                        {hasFiles
-                          ? 'Il sito è stato generato. Clicca il pulsante Deploy in alto a destra per pubblicarlo su Vercel e vedere la preview.'
-                          : 'Chiedi all\'AI di costruire il sito. Es: "ricostruisci www.miosito.it" oppure "crea un sito per un ristorante italiano a Milano".'}
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleDeploy}
-                      disabled={deploying || Object.keys(files).length === 0}
+                  fileNames.map(name => (
+                    <div
+                      key={name}
+                      onClick={() => setSelectedFile(name)}
                       style={{
-                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                        border: 'none',
-                        borderRadius: '8px',
-                        color: '#fff',
+                        padding: '6px 12px',
+                        fontSize: 12,
+                        color: selectedFile === name ? '#a5b4fc' : '#9ca3af',
+                        background: selectedFile === name ? '#1f2937' : 'transparent',
                         cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        padding: '10px 24px',
-                        marginTop: '8px',
-                        opacity: Object.keys(files).length === 0 ? 0.5 : 1,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        fontFamily: 'monospace',
                       }}
                     >
-                      {deploying ? 'Deploying...' : '&#128640; Deploy Now'}
-                    </button>
+                      {name}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* File content */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+                {selectedFile && files[selectedFile] ? (
+                  <pre style={{ margin: 0, fontSize: 13, color: '#d1d5db', fontFamily: '"Fira Code", "Cascadia Code", monospace', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {files[selectedFile]}
+                  </pre>
+                ) : (
+                  <div style={{ color: '#4b5563', fontSize: 13, textAlign: 'center', marginTop: 40 }}>
+                    Seleziona un file dalla lista
                   </div>
                 )}
-              </>
-            )}
-
-            {activeTab === 'code' && (
-              <CodePanel files={files} selectedFile={selectedFile} onSelectFile={setSelectedFile} />
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Chat Message Component ───────────────────────────────────────────────────
-
-function ChatMessage({ message }: { message: Message }) {
-  const isUser = message.role === 'user';
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: isUser ? 'flex-end' : 'flex-start',
-        gap: '4px',
-      }}
-    >
-      <div
-        style={{
-          background: isUser ? '#1e1b4b' : '#1a2235',
-          border: `1px solid ${isUser ? '#3730a3' : '#1f2937'}`,
-          borderRadius: isUser ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-          color: '#f9fafb',
-          fontSize: '13.5px',
-          lineHeight: 1.6,
-          maxWidth: '90%',
-          padding: '10px 14px',
-          wordBreak: 'break-word',
-        }}
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
-      />
-      {/* Attachment thumbnails */}
-      {message.attachments && message.attachments.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: '90%', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
-          {message.attachments.map(a => (
-            <div key={a.id} style={{ position: 'relative' }}>
-              {a.preview
-                ? <img src={a.preview} alt={a.name} style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #374151' }} />
-                : <div style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <span>{a.type === 'pdf' ? '📄' : '📎'}</span>
-                    <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
-                  </div>
-              }
+              </div>
             </div>
-          ))}
+          )}
         </div>
-      )}
-      {message.changedFiles && message.changedFiles.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '90%' }}>
-          {message.changedFiles.map((f) => (
-            <span
-              key={f}
-              style={{
-                background: '#1f2937',
-                border: '1px solid #374151',
-                borderRadius: '4px',
-                color: '#6ee7b7',
-                fontSize: '11px',
-                padding: '2px 7px',
-                fontFamily: 'monospace',
-              }}
-            >
-              &#128196; {f}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Typing Indicator ─────────────────────────────────────────────────────────
-
-function TypingIndicator() {
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-      <div
-        style={{
-          background: '#1a2235',
-          border: '1px solid #1f2937',
-          borderRadius: '12px 12px 12px 2px',
-          padding: '12px 16px',
-          display: 'flex',
-          gap: '4px',
-          alignItems: 'center',
-        }}
-      >
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            style={{
-              width: '7px',
-              height: '7px',
-              borderRadius: '50%',
-              background: '#6366f1',
-              display: 'inline-block',
-              animation: `bounce 1.2s infinite ${i * 0.2}s`,
-            }}
-          />
-        ))}
       </div>
-      <style>{`
-        @keyframes bounce {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
-          30% { transform: translateY(-6px); opacity: 1; }
+
+      {/* ── Keyframe animation for dots ────────────────────────────────── */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes dotPulse {
+          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+          40% { opacity: 1; transform: scale(1.2); }
         }
-      `}</style>
+      ` }} />
     </div>
   );
-}
-
-// ─── Code Panel ───────────────────────────────────────────────────────────────
-
-function CodePanel({
-  files,
-  selectedFile,
-  onSelectFile,
-}: {
-  files: Record<string, string>;
-  selectedFile: string | null;
-  onSelectFile: (f: string) => void;
-}) {
-  const fileList = Object.keys(files).sort();
-  const activeFile = selectedFile ?? fileList[0] ?? null;
-
-  if (fileList.length === 0) {
-    return (
-      <div
-        style={{
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#9ca3af',
-          fontSize: '13px',
-        }}
-      >
-        No files yet. Ask the AI to build your site.
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* File tree */}
-      <div
-        style={{
-          width: '200px',
-          minWidth: '160px',
-          borderRight: '1px solid #1f2937',
-          background: '#111827',
-          overflowY: 'auto',
-          padding: '8px 0',
-        }}
-      >
-        {fileList.map((f) => (
-          <button
-            key={f}
-            onClick={() => onSelectFile(f)}
-            style={{
-              background: activeFile === f ? '#1f2937' : 'transparent',
-              border: 'none',
-              borderLeft: activeFile === f ? '2px solid #6366f1' : '2px solid transparent',
-              color: activeFile === f ? '#f9fafb' : '#9ca3af',
-              cursor: 'pointer',
-              display: 'block',
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              padding: '5px 12px',
-              textAlign: 'left',
-              width: '100%',
-              wordBreak: 'break-all',
-              lineHeight: 1.4,
-              transition: 'background 0.1s',
-            }}
-          >
-            {getFileIcon(f)} {f}
-          </button>
-        ))}
-      </div>
-
-      {/* File content */}
-      <div style={{ flex: 1, overflowY: 'auto', background: '#0a0a0a' }}>
-        {activeFile && files[activeFile] !== undefined ? (
-          <pre
-            style={{
-              color: '#e5e7eb',
-              fontFamily: '"Fira Code", "Cascadia Code", Consolas, monospace',
-              fontSize: '12px',
-              lineHeight: 1.7,
-              margin: 0,
-              padding: '16px',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all',
-              tabSize: 2,
-            }}
-          >
-            <code>{files[activeFile]}</code>
-          </pre>
-        ) : (
-          <div
-            style={{
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#6b7280',
-              fontSize: '13px',
-            }}
-          >
-            Select a file
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Spinner icon ─────────────────────────────────────────────────────────────
-
-function SpinnerIcon({ size = 16 }: { size?: number }) {
-  return (
-    <>
-      <svg
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{ animation: 'spin 0.8s linear infinite' }}
-      >
-        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-      </svg>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </>
-  );
-}
-
-// ─── File icon helper ─────────────────────────────────────────────────────────
-
-function getFileIcon(filePath: string): string {
-  if (filePath.endsWith('.html')) return '&#128196;';
-  if (filePath.endsWith('.css')) return '&#127912;';
-  if (filePath.endsWith('.js') || filePath.endsWith('.ts') || filePath.endsWith('.tsx') || filePath.endsWith('.jsx')) return '&#128196;';
-  if (filePath.endsWith('.json')) return '&#123;&#125;';
-  if (filePath.endsWith('.svg')) return '&#127912;';
-  if (filePath.endsWith('.md')) return '&#128221;';
-  return '&#128196;';
 }
