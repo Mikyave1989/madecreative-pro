@@ -529,11 +529,94 @@ UPGRADE: only the visual design — typography, spacing, animations, layout qual
 GOLDEN RULE: if it exists on the original, it MUST exist in the rebuilt version.`;
 
 
+// ─── Shared credit helpers (mirrors editor-chat.ts) ─────────────────────────
+
+const STUDIO_PLAN_CREDITS: Record<string, number> = {
+  STARTER: 200,
+  GROWTH: 500,
+  PRO: 1000,
+};
+
+const studioCreditStore = new Map<string, { used: number; purchased: number; resetAt: number }>();
+
+function studioNextMonthReset(): Date {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1, 1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function studioGetCredits(clientId: string, plan = "STARTER") {
+  const now = Date.now();
+  let entry = studioCreditStore.get(clientId);
+  if (!entry || now > entry.resetAt) {
+    const purchased = entry?.purchased ?? 0;
+    entry = { used: 0, purchased, resetAt: studioNextMonthReset().getTime() };
+    studioCreditStore.set(clientId, entry);
+  }
+  const planCredits = STUDIO_PLAN_CREDITS[plan] ?? 200;
+  const total = planCredits + entry.purchased;
+  return { remaining: Math.max(0, total - entry.used), used: entry.used, total, purchased: entry.purchased };
+}
+
+function studioHydrateCredits(clientId: string, dbUsed: number, dbPurchased: number, dbResetAt: Date | null) {
+  const now = Date.now();
+  const resetAt = dbResetAt ? dbResetAt.getTime() : studioNextMonthReset().getTime();
+  const used = now > resetAt ? 0 : dbUsed;
+  studioCreditStore.set(clientId, { used, purchased: dbPurchased, resetAt: now > resetAt ? studioNextMonthReset().getTime() : resetAt });
+}
+
+async function studioDeductCredits(clientId: string, amount: number): Promise<boolean> {
+  const c = studioGetCredits(clientId);
+  if (c.remaining < amount) return false;
+  const entry = studioCreditStore.get(clientId)!;
+  entry.used += amount;
+  try {
+    const { prisma } = await import("@madecreative/db");
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { creditsUsed: entry.used, creditsResetAt: new Date(entry.resetAt) },
+    });
+  } catch (err) {
+    console.error("[studio/chat] Failed to persist credits:", err instanceof Error ? err.message : String(err));
+  }
+  return true;
+}
+
+// ─── GET /portal/projects/credits — credit balance for studio ────────────────
+
+app.get("/credits", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const clientId = c.get("jwtPayload").sub;
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { plan: true, creditsUsed: true, creditsPurchased: true, creditsResetAt: true },
+  });
+  if (client) {
+    studioHydrateCredits(clientId, client.creditsUsed, client.creditsPurchased, client.creditsResetAt);
+  }
+  const credits = studioGetCredits(clientId, client?.plan ?? "STARTER");
+  return c.json({ success: true, data: credits });
+});
+
 app.post("/:id/chat", async (c) => {
   const { streamSSE } = await import("hono/streaming");
   const { prisma } = await import("@madecreative/db");
   const clientId = c.get("jwtPayload").sub;
   const id = c.req.param("id");
+
+  // ── Credit check ──────────────────────────────────────────────────────────
+  const clientForCredits = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { plan: true, creditsUsed: true, creditsPurchased: true, creditsResetAt: true },
+  });
+  if (clientForCredits) {
+    studioHydrateCredits(clientId, clientForCredits.creditsUsed, clientForCredits.creditsPurchased, clientForCredits.creditsResetAt);
+  }
+  const creditStatus = studioGetCredits(clientId, clientForCredits?.plan ?? "STARTER");
+  if (creditStatus.remaining < 1) {
+    return c.json({ success: false, error: "Crediti esauriti. Vai su /billing per ricaricare.", credits: creditStatus }, 402);
+  }
 
   const body = await c.req.json().catch(() => null);
   const message = (body?.message as string)?.trim();
@@ -673,7 +756,12 @@ app.post("/:id/chat", async (c) => {
         });
       }
 
-      await stream.writeSSE({ data: JSON.stringify({ type: "done", changedFiles }) });
+      // Deduct credits: full build (>=5 files changed) = 3, multi-file = 1.5, single = 1
+      const creditCost = changedFiles.length >= 5 ? 3 : changedFiles.length >= 2 ? 1.5 : 1;
+      await studioDeductCredits(clientId, creditCost);
+      const updatedCredits = studioGetCredits(clientId, clientForCredits?.plan ?? "STARTER");
+
+      await stream.writeSSE({ data: JSON.stringify({ type: "done", changedFiles, credits: updatedCredits }) });
       await stream.writeSSE({ data: "[DONE]" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Stream error";
