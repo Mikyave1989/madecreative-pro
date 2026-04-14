@@ -89,26 +89,38 @@ export const DeployButton = ({
 
       // Auto-create project if none exists (e.g. after rebuilding from URL)
       if (!deployProjectId) {
-        toast.info('Creazione progetto in corso...', { autoClose: 2000 });
+        if (!token) {
+          toast.error('Sessione scaduta. Ricarica la pagina e riaccedi.');
+          setIsDeploying(false);
+          setDeployingTo(null);
+          return;
+        }
+        toast.info('Creazione progetto...', { autoClose: 2000 });
         const apiBase = 'https://api.madecreative.pro';
-        // Get site name from first HTML file title or use default
         let siteName = 'Sito Ricostruito';
         const indexHtml = files['index.html'] || '';
         const titleMatch = indexHtml.match(/<title[^>]*>([^<]+)<\/title>/i);
-        if (titleMatch?.[1]) siteName = titleMatch[1].replace(/\s*[—|-].*$/, '').trim().slice(0, 60);
+        if (titleMatch?.[1]) siteName = titleMatch[1].replace(/\s*[—|–|-].*$/, '').trim().slice(0, 60);
 
-        const createRes = await fetch(`${apiBase}/portal/projects`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name: siteName }),
-        });
-        const createData = await createRes.json() as { success: boolean; data?: { id: string } };
-        if (createData.success && createData.data?.id) {
-          deployProjectId = createData.data.id;
-          activeProjectId.set(deployProjectId);
-          toast.success(`Progetto "${siteName}" creato!`, { autoClose: 2000 });
-        } else {
-          toast.error('Impossibile creare il progetto. Riprova.');
+        try {
+          const createRes = await fetch(`${apiBase}/portal/projects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ name: siteName || 'Nuovo Sito' }),
+          });
+          const createData = await createRes.json() as { success: boolean; data?: { id: string }; error?: string };
+          if (createData.success && createData.data?.id) {
+            deployProjectId = createData.data.id;
+            activeProjectId.set(deployProjectId);
+          } else {
+            // If token expired, try to refresh
+            toast.error(`Errore: ${createData.error || 'Sessione scaduta. Riaccedi.'}`);
+            setIsDeploying(false);
+            setDeployingTo(null);
+            return;
+          }
+        } catch {
+          toast.error('Errore di rete. Controlla la connessione.');
           setIsDeploying(false);
           setDeployingTo(null);
           return;

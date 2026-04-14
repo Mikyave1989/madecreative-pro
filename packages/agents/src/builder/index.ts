@@ -1091,7 +1091,7 @@ BUSINESS:
 - Facebook: ${scraped.socialLinks?.facebook || ""}, Instagram: ${scraped.socialLinks?.instagram || ""}
 - Colors: ${JSON.stringify(scraped.colors || {})}
 
-${uniquePages.length > 1 ? `Site has ${uniquePages.length} pages. Build MULTI-PAGE with separate files.` : "Single-page site."}
+${uniquePages.length > 1 ? `MULTI-PAGE: You MUST create ${uniquePages.length} separate HTML files (one per page listed below). Every single page must be generated. Use write_file for EACH page: ${uniquePages.map(p => { const path = (p.url as string).replace(/^https?:\/\/(www\.)?[^/]+/, "").replace(/\/$/, ""); return (path || "/index") + "/index.html"; }).join(", ")}` : "Single-page site: create index.html only."}
 
 SCRAPED CONTENT:
 ${pagesContent}
@@ -1274,23 +1274,39 @@ body{padding-top:44px!important;padding-bottom:56px!important}
 
         if (!hasPackageJson) {
           if (htmlFileCount > 1) {
-            // Multi-page static HTML — keep all files + add vercel.json for proper routing
             deployFiles = { ...projectFiles };
-            deployFiles["vercel.json"] = JSON.stringify({ cleanUrls: true, trailingSlash: false }, null, 2);
-            this.log("info", `build_preview_site: multi-page static (${htmlFileCount} pages), added vercel.json routing`);
+
+            // Build explicit routes for every subdirectory/page
+            // e.g. /la-villa → la-villa/index.html, /matrimoni → matrimoni/index.html
+            const htmlFiles = Object.keys(projectFiles).filter(f => f.endsWith(".html"));
+            const routes: Array<{ src: string; dest: string }> = [];
+            for (const file of htmlFiles) {
+              if (file === "index.html") continue;
+              // la-villa/index.html → /la-villa and /la-villa/
+              const withoutHtml = file.replace(/\/index\.html$/, "").replace(/\.html$/, "");
+              routes.push({ src: `/${withoutHtml}/?`, dest: `/${file}` });
+              routes.push({ src: `/${withoutHtml}`, dest: `/${file}` });
+            }
+            // Catch-all for root
+            routes.push({ src: "/(.*)", dest: "/$1" });
+
+            deployFiles["vercel.json"] = JSON.stringify({
+              cleanUrls: true,
+              trailingSlash: false,
+              routes,
+            }, null, 2);
+            this.log("info", `build_preview_site: multi-page (${htmlFileCount} pages), ${routes.length} routes`);
           } else {
-            // Single page — deploy as-is
             const htmlContent = projectToPreviewHtml(projectFiles);
             deployFiles = { "index.html": htmlContent };
-            this.log("info", "build_preview_site: single-page, deploying as static HTML");
+            this.log("info", "build_preview_site: single-page");
           }
         } else {
-          // Next.js project — add vercel.json with static export config
           deployFiles = { ...projectFiles };
           if (!deployFiles["vercel.json"]) {
             deployFiles["vercel.json"] = JSON.stringify({ cleanUrls: true, trailingSlash: false }, null, 2);
           }
-          this.log("info", `build_preview_site: deploying ${Object.keys(projectFiles).length} files as Next.js project`);
+          this.log("info", `build_preview_site: ${Object.keys(projectFiles).length} files`);
         }
 
         // Save project files to temp dir for debugging
