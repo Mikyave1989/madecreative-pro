@@ -44,20 +44,39 @@ RUN npm run build --workspace=@madecreative/api || true
 # Build workers (TypeScript → JavaScript)
 RUN npx tsc --project workers/tsconfig.json
 
-# Install Playwright browsers in BUILD stage (node_modules available here)
-RUN npx playwright install chromium 2>&1 | tail -3 || true
-
 # --- Runtime stage ---
-FROM node:20-alpine
+FROM node:20-bullseye-slim
 WORKDIR /app
 
-# Chromium runtime dependencies
-RUN apk add --no-cache openssl chromium nss freetype harfbuzz ca-certificates ttf-freefont libstdc++
+# Install Playwright system dependencies + Chromium
+RUN apt-get update && apt-get install -y \
+  chromium \
+  chromium-driver \
+  fonts-liberation \
+  libasound2 \
+  libatk-bridge2.0-0 \
+  libatk1.0-0 \
+  libcups2 \
+  libdbus-1-3 \
+  libgdk-pixbuf2.0-0 \
+  libgtk-3-0 \
+  libnspr4 \
+  libnss3 \
+  libx11-xcb1 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxrandr2 \
+  xdg-utils \
+  --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# Copy built app including node_modules and playwright browsers
+# Copy built app from builder
 COPY --from=builder /app /app
-COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
 
+# Install Playwright browsers after node_modules are available
+RUN PLAYWRIGHT_BROWSERS_PATH=/ms-playwright npx playwright install chromium && \
+    echo "Playwright chromium installed at /ms-playwright"
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV WORKER_SCRIPT="agent-runner"
 
 CMD node workers/dist/${WORKER_SCRIPT}.js
