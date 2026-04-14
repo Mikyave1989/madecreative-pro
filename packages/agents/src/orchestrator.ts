@@ -245,11 +245,11 @@ async function chainNextAgent(
         },
       });
 
-      // Delay 30min to let preview deploy settle + avoid rate limits
+      // Small delay to let preview deploy settle
       await outreachQueue.add(
         "OUTREACH",
         { jobId: job.id, input: job.input as Record<string, unknown> },
-        { jobId: job.id, delay: 30 * 60 * 1000 },
+        { jobId: job.id, delay: 60_000 }, // 1 minute
       );
 
       // Update prospect status
