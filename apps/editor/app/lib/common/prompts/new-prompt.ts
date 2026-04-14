@@ -75,10 +75,9 @@ The year is 2025.
   This way the site works INSTANTLY with no build step, no npm, no terminal errors.
   The output is a self-contained index.html (and additional pages if multi-page).
 
-  CRITICAL — ALWAYS include this shell action LAST to serve the site and show the preview:
-  <boltAction type="shell">npx --yes serve@14 . --listen 3000 --no-clipboard 2>/dev/null &</boltAction>
-  Then add a start action:
-  <boltAction type="start">npx serve@14 . --listen 3000 --no-clipboard</boltAction>
+  CRITICAL — ALWAYS include these actions LAST to serve the site and show the preview:
+  A shell action running: npx --yes serve@14 . --listen 3000 --no-clipboard
+  A start action running: npx serve@14 . --listen 3000 --no-clipboard
   This makes the preview appear immediately in the browser panel.
 
   SEARCH PHOTOS TOOL (Pexels — FALLBACK ONLY):

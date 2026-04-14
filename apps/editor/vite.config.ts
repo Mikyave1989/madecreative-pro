@@ -4,6 +4,7 @@ import { defineConfig, type ViteDevServer } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { optimizeCssModules } from 'vite-plugin-optimize-css-modules';
 import tsconfigPaths from 'vite-tsconfig-paths';
+// @ts-ignore
 import * as dotenv from 'dotenv';
 
 // Load environment variables from multiple files
@@ -53,7 +54,7 @@ export default defineConfig((config) => {
         },
       }),
       UnoCSS(),
-      tsconfigPaths(),
+      tsconfigPaths({ ignoreConfigErrors: true }),
       chrome129IssuePlugin(),
       config.mode === 'production' && optimizeCssModules({ apply: 'build' }),
     ],
