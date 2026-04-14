@@ -112,9 +112,9 @@
   --bolt-elements-borderColor: theme('colors.alpha.white.10');
   --bolt-elements-borderColorActive: theme('colors.accent.500');
 
-  --bolt-elements-bg-depth-1: #111215;
-  --bolt-elements-bg-depth-2: #18191e;
-  --bolt-elements-bg-depth-3: #212329;
+  --bolt-elements-bg-depth-1: theme('colors.gray.950');
+  --bolt-elements-bg-depth-2: theme('colors.gray.900');
+  --bolt-elements-bg-depth-3: theme('colors.gray.800');
   --bolt-elements-bg-depth-4: rgba(255, 255, 255, 0.04);
 
   --bolt-elements-textPrimary: theme('colors.white');
