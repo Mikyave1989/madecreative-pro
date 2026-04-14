@@ -1293,7 +1293,6 @@ body{padding-top:44px!important;padding-bottom:56px!important}
         }
 
         // Use API preview URL as fallback (serves generated HTML via proxy) — NEVER localhost
-        const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
         const fallbackUrl = `${apiBase}/preview/${prospectId ?? slug}`;
 
         return {
