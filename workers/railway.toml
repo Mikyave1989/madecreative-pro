@@ -3,6 +3,8 @@ builder = "dockerfile"
 dockerfilePath = "workers/Dockerfile"
 
 [deploy]
-startCommand = "node workers/dist/agent-runner.js"
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+restartPolicyMaxRetries = 5
+
+[[services]]
+internalPort = 4000
