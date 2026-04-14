@@ -39,8 +39,8 @@ function getCompletionTokenLimit(modelDetails: any): number {
     return providerDefault;
   }
 
-  // 3. Final fallback to MAX_TOKENS, but cap at reasonable limit for safety
-  return Math.min(MAX_TOKENS, 16384);
+  // 3. Final fallback — use full provider limit for large site generation
+  return Math.min(MAX_TOKENS, 64000);
 }
 
 function sanitizeText(text: string): string {

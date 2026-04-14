@@ -12,7 +12,7 @@ export const MAX_TOKENS = 128000;
 export const PROVIDER_COMPLETION_LIMITS: Record<string, number> = {
   OpenAI: 4096, // Standard GPT models (o1 models have much higher limits)
   Github: 4096, // GitHub Models use OpenAI-compatible limits
-  Anthropic: 64000, // Conservative limit for Claude 4 models (Opus: 32k, Sonnet: 64k)
+  Anthropic: 64000, // Claude Sonnet 4.6 max output
   Google: 8192, // Gemini 1.5 Pro/Flash standard limit
   Cohere: 4000,
   DeepSeek: 8192,
@@ -43,8 +43,8 @@ export function isReasoningModel(modelName: string): boolean {
   return result;
 }
 
-// limits the number of model responses that can be returned in a single request
-export const MAX_RESPONSE_SEGMENTS = 2;
+// Number of continuations allowed — high value so large multi-page sites complete fully
+export const MAX_RESPONSE_SEGMENTS = 10;
 
 export interface File {
   type: 'file';

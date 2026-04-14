@@ -575,9 +575,7 @@ export class WorkbenchStore {
         this.setSelectedFile(fullPath);
       }
 
-      if (this.currentView.value !== 'code') {
-        this.currentView.set('code');
-      }
+      // Don't reset to code view — keep preview visible while generating
 
       const doc = this.#editorStore.documents.get()[fullPath];
 
