@@ -164,7 +164,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   const name = prospect.companyName;
   const city = prospect.city ?? "";
   const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
-  const previewUrl = prospect.previewSiteUrl; // Direct Vercel URL with banner already injected
+  const previewUrl = `${apiBase}/preview/${id}`; // API preview URL (cleaner, consistent)
   const signupUrl = `https://madecreative.pro/signup?plan=${plan}&email=${encodeURIComponent(prospect.contactEmail)}&company=${encodeURIComponent(name)}&prospectId=${id}&source=preview`;
 
   // Price label per language
