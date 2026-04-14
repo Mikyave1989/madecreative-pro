@@ -185,10 +185,53 @@ async function handleCheckoutCompleted(
   });
 
   if (prospectId) {
+    const prospect = await prisma.prospect.findUnique({
+      where: { id: prospectId },
+      select: { id: true, companyName: true, previewSiteUrl: true, scrapedContent: true },
+    });
+
     await prisma.prospect.update({
       where: { id: prospectId },
       data: { clientId: client.id, status: "CONVERTED", convertedAt: new Date() },
     });
+
+    // ── Auto-create a website project with the generated site files ──
+    // This makes the site appear immediately in the client's editor
+    if (prospect) {
+      try {
+        // Get the generated files from the latest completed builder job
+        const builderJob = await prisma.agentJob.findFirst({
+          where: { prospectId, agentType: "BUILDER", status: "COMPLETED" },
+          orderBy: { completedAt: "desc" },
+          select: { output: true },
+        });
+
+        const generatedFiles = (builderJob?.output as { files?: Record<string, string> } | null)?.files ?? null;
+        const subdomain = prospect.companyName
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 40) + "-" + Math.random().toString(36).slice(2, 6);
+
+        await prisma.clientWebsite.create({
+          data: {
+            clientId: client.id,
+            name: prospect.companyName,
+            subdomain,
+            domain: `${subdomain}.madecreative.pro`,
+            pages: {},
+            files: generatedFiles ?? {},
+            deployUrl: prospect.previewSiteUrl ?? null,
+            deployStatus: prospect.previewSiteUrl ? "DEPLOYED" : "NONE",
+            lastDeployedAt: prospect.previewSiteUrl ? new Date() : null,
+          },
+        });
+      } catch (err) {
+        console.error("[Stripe] Failed to create ClientWebsite from prospect:", err);
+      }
+    }
   }
 
   // Record first invoice

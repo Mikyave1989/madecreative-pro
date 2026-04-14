@@ -90,7 +90,30 @@ export const DeployButton = ({
       // Auto-create project if none exists (e.g. after rebuilding from URL)
       if (!deployProjectId) {
         if (!token) {
-          toast.error('Sessione scaduta. Ricarica la pagina e riaccedi.');
+          // Not logged into MadeCreative backend — deploy via Vercel directly
+          toast.info('Pubblicazione in corso...', { autoClose: 2000 });
+          // Collect files and deploy directly without a project ID
+          const apiBase = 'https://api.madecreative.pro';
+          const VERCEL_PROJECT = `mc-editor-${Date.now()}`;
+          try {
+            const encFiles = Object.entries(files).slice(0, 50).map(([file, content]) => ({
+              file, data: btoa(unescape(encodeURIComponent(content))), encoding: 'base64',
+            }));
+            const deployRes = await fetch('https://api.vercel.com/v13/deployments', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_VERCEL_TOKEN || ''}` },
+              body: JSON.stringify({ name: VERCEL_PROJECT, files: encFiles, projectSettings: { framework: null, buildCommand: '', outputDirectory: '.' }, target: 'production', public: true }),
+            });
+            if (deployRes.ok) {
+              const dep = await deployRes.json() as { url: string };
+              setMcDeployUrl(`https://${dep.url}`);
+              toast.success('Sito pubblicato!', { autoClose: 3000 });
+              setIsDeploying(false);
+              setDeployingTo(null);
+              return;
+            }
+          } catch {}
+          toast.error('Accedi per pubblicare il sito.');
           setIsDeploying(false);
           setDeployingTo(null);
           return;

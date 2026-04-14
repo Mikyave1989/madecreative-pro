@@ -72,10 +72,9 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
         'relative w-full max-w-chat mx-auto z-prompt rounded-2xl p-3',
       )}
       style={{
-        background: 'rgba(19,21,28,0.95)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(99,102,241,0.06)',
-        backdropFilter: 'blur(16px)',
+        background: 'var(--bolt-elements-prompt-background)',
+        border: '1px solid var(--bolt-elements-borderColor)',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
       }}
     >
       <svg className={classNames(styles.PromptEffectContainer)}>
@@ -142,18 +141,15 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
       <div
         className="relative rounded-xl overflow-hidden"
         style={{
-          background: 'rgba(13,15,20,0.7)',
-          border: '1px solid rgba(255,255,255,0.07)',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+          background: 'var(--bolt-elements-bg-depth-3)',
+          border: '1px solid var(--bolt-elements-borderColor)',
           transition: 'border-color 0.2s',
         }}
         onFocusCapture={(e) => {
-          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(99,102,241,0.35)';
-          (e.currentTarget as HTMLElement).style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 3px rgba(99,102,241,0.08)';
+          (e.currentTarget as HTMLElement).style.borderColor = '#6366f1';
         }}
         onBlurCapture={(e) => {
-          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)';
-          (e.currentTarget as HTMLElement).style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)';
+          (e.currentTarget as HTMLElement).style.borderColor = 'var(--bolt-elements-borderColor)';
         }}
       >
         <textarea
@@ -163,9 +159,8 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             'transition-all duration-200',
           )}
           style={{
-            color: 'rgba(255,255,255,0.88)',
+            color: 'var(--bolt-elements-textPrimary)',
             background: 'transparent',
-            caretColor: '#818cf8',
             fontFamily: 'inherit',
           }}
           onDragEnter={(e) => {
@@ -252,7 +247,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
         </ClientOnly>
         <div
           className="flex justify-between items-center text-sm px-3 py-2"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+          style={{ borderTop: '1px solid var(--bolt-elements-borderColor)' }}
         >
           <div className="flex gap-1 items-center">
             <ColorSchemeDialog designScheme={props.designScheme} setDesignScheme={props.setDesignScheme} />
