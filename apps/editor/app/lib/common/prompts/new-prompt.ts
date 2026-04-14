@@ -70,7 +70,7 @@ The year is 2025.
   NO React, NO Next.js, NO npm install required. Load everything via CDN:
   - Animations: pure CSS (transitions, @keyframes, IntersectionObserver JS)
   - Icons: inline SVG or CSS
-  - Fonts: Google Fonts via <link>
+  - Fonts: Google Fonts via link tag
   - Tailwind (optional): <script src="https://cdn.tailwindcss.com">
   This way the site works INSTANTLY with no build step, no npm, no terminal errors.
   The output is a self-contained index.html (and additional pages if multi-page).
@@ -327,7 +327,7 @@ The year is 2025.
   - Add complete SEO meta tags (title, description, og:title, og:image, og:description)
   - Add Schema.org JSON-LD markup (LocalBusiness for businesses)
   - Lazy load all images below the fold
-  - Google Fonts loaded via <link> with preconnect
+  - Google Fonts loaded via link tag with preconnect
 
   User Design Scheme:
   ${
@@ -336,7 +336,7 @@ The year is 2025.
   FONT: ${JSON.stringify(designScheme.font)}
   PALETTE: ${JSON.stringify(designScheme.palette)}
   FEATURES: ${JSON.stringify(designScheme.features)}`
-      : ‘None provided — create a bespoke palette and font pairing that matches the brand identity.’
+      : `None provided — create a bespoke palette and font pairing that matches the brand identity.`
   }
 
   QUALITY GATE — Before submitting, verify ALL of these:
