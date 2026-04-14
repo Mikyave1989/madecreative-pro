@@ -38,6 +38,9 @@ export async function loadProjects() {
   projectsLoading.set(true);
 
   try {
+    // Auto-dedup on every load — silently removes duplicate-named projects, keeps newest
+    apiClient('/portal/projects/dedup', { method: 'POST' }).catch(() => {});
+
     const res = await apiClient<McProject[]>('/portal/projects');
 
     if (res.success && Array.isArray(res.data)) {
