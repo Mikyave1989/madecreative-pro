@@ -30,14 +30,20 @@ export async function action({ context, request }: ActionFunctionArgs) {
       return json(data);
     }
 
-    // Use the portal deploy endpoint (forces static, no build)
+    // Detect project type:
+    // - Pure HTML/CSS/JS (no package.json) → forceStatic: true (serve as-is)
+    // - React/Vite or Next.js (has package.json) → let API auto-detect and build
+    const hasPackageJson = 'package.json' in files;
+    const forceStatic = !hasPackageJson;
+
+    // Use the portal deploy endpoint
     const res = await fetch(`${API_URL}/portal/projects/${projectId}/deploy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ files, forceStatic: true }),
+      body: JSON.stringify({ files, forceStatic }),
     });
 
     const data = await res.json();

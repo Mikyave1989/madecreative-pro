@@ -301,38 +301,48 @@ app.post("/:id/deploy", async (c) => {
   });
 
   const subdomain = project.subdomain || project.id.slice(0, 12);
-  // forceStatic = true when deploying from editor (bolt.diy files, no build needed)
+
+  // Detect project type from the files map:
+  //   forceStatic=true  → caller explicitly wants no-build (pure HTML/CSS/JS)
+  //   package.json with "next" dep → Next.js project
+  //   package.json with "vite" dep → Vite/React project (needs npm run build → dist/)
+  //   no package.json   → plain static HTML
   const forceStatic = Boolean(body?.forceStatic);
-  const isNextJsProject = !forceStatic && "package.json" in files;
+
+  type Framework = "nextjs" | "vite" | "static";
+  let framework: Framework = "static";
+
+  if (!forceStatic && "package.json" in files) {
+    try {
+      const pkg = JSON.parse(files["package.json"]!) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+      if ("next" in allDeps) {
+        framework = "nextjs";
+      } else if ("vite" in allDeps) {
+        framework = "vite";
+      }
+    } catch {
+      // Malformed package.json — fall back to static
+    }
+  }
 
   try {
     let deployUrl: string;
     let vercelProjectId: string;
     let deploymentId: string | undefined;
 
-    if (isNextJsProject) {
-      // ── Next.js / multi-file project ──────────────────────────────────────
+    {
+      // ── Deploy with detected framework ────────────────────────────────────
       const { deployProjectFiles } = await import("../../lib/deploy-project.js");
 
       const result = await deployProjectFiles({
         files,
         projectName: subdomain,
         subdomain,
-        framework: "nextjs",
-      });
-
-      deployUrl = result.deployUrl;
-      vercelProjectId = result.vercelProjectId;
-      deploymentId = result.deploymentId;
-    } else {
-      // ── Static deploy — used for bolt.diy generated files (no build step) ─
-      const { deployProjectFiles } = await import("../../lib/deploy-project.js");
-
-      const result = await deployProjectFiles({
-        files,
-        projectName: subdomain,
-        subdomain,
-        framework: "static",
+        framework,
       });
 
       deployUrl = result.deployUrl;

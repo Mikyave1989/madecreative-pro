@@ -30,9 +30,11 @@ export interface DeployProjectParams {
   subdomain: string;
   /**
    * Vercel framework preset.
-   * Defaults to "nextjs" when package.json is present; caller may override.
+   * - "nextjs"  → Vercel builds as Next.js (next build)
+   * - "vite"    → Vercel runs npm install + npm run build → serves dist/
+   * - "static"  → no build, no install, serve files as-is (HTML/CSS/JS only)
    */
-  framework?: "nextjs" | "static";
+  framework?: "nextjs" | "vite" | "static";
 }
 
 // ─── Internal Vercel response shapes ─────────────────────────────────────────
@@ -127,10 +129,29 @@ export async function deployProjectFiles(
   const teamQuery = VERCEL_TEAM_ID ? `?teamId=${VERCEL_TEAM_ID}` : "";
   const teamQueryAmp = VERCEL_TEAM_ID ? `&teamId=${VERCEL_TEAM_ID}` : "";
 
-  const vercelFiles = buildVercelFiles(files);
+  // For Vite SPA projects: inject vercel.json with SPA fallback if not already present.
+  // Without this, navigating directly to /about returns 404 (Vercel tries to find about/index.html).
+  const deployFiles = { ...files };
+  if (framework === "vite" && !("vercel.json" in deployFiles)) {
+    deployFiles["vercel.json"] = JSON.stringify({
+      rewrites: [{ source: "/(.*)", destination: "/index.html" }],
+    });
+  }
 
-  // Vercel framework setting: null means "no framework" (static).
+  const vercelFiles = buildVercelFiles(deployFiles);
+
+  // Vercel framework + build settings per framework type:
+  //   "nextjs"  → framework: "nextjs", Vercel handles build automatically
+  //   "vite"    → framework: null, buildCommand: "npm run build", outputDirectory: "dist"
+  //   "static"  → framework: null, buildCommand: "", installCommand: "", outputDirectory: "."
   const vercelFramework: string | null = framework === "nextjs" ? "nextjs" : null;
+
+  const buildSettings =
+    framework === "nextjs"
+      ? {}                                       // Vercel knows how to build Next.js
+      : framework === "vite"
+        ? { buildCommand: "npm run build", outputDirectory: "dist" }
+        : { buildCommand: "", installCommand: "", outputDirectory: "." };  // static: serve as-is
 
   // ── Step 1: Create deployment ──────────────────────────────────────────────
 
@@ -149,7 +170,7 @@ export async function deployProjectFiles(
         public: true,
         projectSettings: {
           framework: vercelFramework,
-          ...(vercelFramework === null ? { buildCommand: "", installCommand: "", outputDirectory: "." } : {}),
+          ...buildSettings,
         },
       }),
     }
