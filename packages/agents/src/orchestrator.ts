@@ -235,26 +235,22 @@ async function chainNextAgent(
       const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
 
       try {
-        const emailRes = await fetch(`${apiBase}/admin/prospects/${prospect.id}/send-preview-email`, {
+        // Use /internal/ endpoint which accepts X-Internal-Token (no admin JWT needed)
+        const emailRes = await fetch(`${apiBase}/internal/send-preview-email/${prospect.id}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Internal-Token": process.env["JWT_SECRET"] ?? "" },
           body: JSON.stringify({ language }),
         });
         if (emailRes.ok) {
-          console.log(`[Orchestrator] Preview email sent to ${prospect.contactEmail} for ${prospect.companyName}`);
+          console.log(`[Orchestrator] ✅ Preview email sent to ${prospect.contactEmail} for ${prospect.companyName}`);
+          await prisma.prospect.update({ where: { id: prospect.id }, data: { status: "EMAIL_QUEUED" } });
         } else {
-          console.warn(`[Orchestrator] Email send failed: ${emailRes.status}`);
+          const errText = await emailRes.text().catch(() => "");
+          console.warn(`[Orchestrator] ❌ Email send failed: ${emailRes.status} — ${errText.slice(0, 200)}`);
         }
       } catch (err) {
-        console.warn(`[Orchestrator] Email send error: ${(err as Error).message}`);
+        console.warn(`[Orchestrator] ❌ Email send error: ${(err as Error).message}`);
       }
-
-      await prisma.prospect.update({
-        where: { id: prospect.id },
-        data: { status: "EMAIL_QUEUED" },
-      });
-
-      console.log(`[Orchestrator] Preview email sent for prospect ${prospectId} (email: ${prospect.contactEmail})`);
 
       // Also chain QA for the built preview site
       const qaQueue = new Queue(AGENT_QUEUE_NAMES["QA"], { connection: redis });
