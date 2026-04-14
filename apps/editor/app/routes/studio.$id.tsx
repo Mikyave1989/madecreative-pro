@@ -217,7 +217,10 @@ function StudioClient() {
 
         // Auto-trigger rebuild if ?rebuild=url was passed from the project launcher
         if (rebuildUrl) {
-          setInput(`ricostruisci ${rebuildUrl}`);
+          const msg = `ricostruisci ${rebuildUrl}`;
+          setInput(msg);
+          // Auto-send after a short delay to let the project fully load
+          setTimeout(() => sendMessage(msg), 500);
         }
       })
       .catch((err) => {
@@ -225,7 +228,7 @@ function StudioClient() {
         setProjectError('Errore di rete. Controlla la connessione e riprova.');
         setProjectLoading(false);
       });
-  }, [id, rebuildUrl, navigate]);
+  }, [id, rebuildUrl, navigate]); // sendMessage omitted intentionally — msgOverride bypasses input state
 
   // ── Scroll to bottom of chat ───────────────────────────────────────────────
 
@@ -386,8 +389,8 @@ function StudioClient() {
 
   // ── Send message ───────────────────────────────────────────────────────────
 
-  const sendMessage = useCallback(async () => {
-    const raw = input.trim();
+  const sendMessage = useCallback(async (msgOverride?: string) => {
+    const raw = (msgOverride ?? input).trim();
     if (!raw || isStreaming || !id) return;
 
     // ── Credit check ───────────────────────────────────────────────────────

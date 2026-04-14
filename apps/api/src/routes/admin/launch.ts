@@ -430,7 +430,7 @@ app.get("/campaigns", async (c) => {
   // and count the prospects that were created by a scraper job for this config.
   // We do two aggregate queries to keep it efficient.
 
-  const [activeJobRows, prospectCountRows] = await Promise.all([
+  const [activeJobRows, prospectCountRows, sitesBuiltRows, emailsSentRows] = await Promise.all([
     // Count RUNNING or QUEUED SCRAPER jobs per configId stored in input JSON
     prisma.$queryRaw<{ configId: string; count: bigint }[]>`
       SELECT
@@ -454,6 +454,32 @@ app.get("/campaigns", async (c) => {
       WHERE j.input->>'configId' IS NOT NULL
       GROUP BY j.input->>'configId'
     `.catch(() => [] as { configId: string; count: bigint }[]),
+
+    // Count prospects with preview sites built (BUILDER completed)
+    prisma.$queryRaw<{ configId: string; count: bigint }[]>`
+      SELECT
+        j.input->>'configId' AS "configId",
+        COUNT(DISTINCT p.id)::bigint AS count
+      FROM "Prospect" p
+      JOIN "AgentJob" j
+        ON j.id = p."scrapeJobId"
+      WHERE j.input->>'configId' IS NOT NULL
+        AND p."previewSiteUrl" IS NOT NULL
+      GROUP BY j.input->>'configId'
+    `.catch(() => [] as { configId: string; count: bigint }[]),
+
+    // Count prospects that were emailed (firstContactedAt set or CONTACTED/EMAIL_SENT status)
+    prisma.$queryRaw<{ configId: string; count: bigint }[]>`
+      SELECT
+        j.input->>'configId' AS "configId",
+        COUNT(DISTINCT p.id)::bigint AS count
+      FROM "Prospect" p
+      JOIN "AgentJob" j
+        ON j.id = p."scrapeJobId"
+      WHERE j.input->>'configId' IS NOT NULL
+        AND (p."firstContactedAt" IS NOT NULL OR p.status IN ('CONTACTED', 'EMAIL_SENT', 'FOLLOWED_UP', 'REPLIED', 'CALL_SCHEDULED', 'CONVERTED'))
+      GROUP BY j.input->>'configId'
+    `.catch(() => [] as { configId: string; count: bigint }[]),
   ]);
 
   // Build lookup maps
@@ -465,6 +491,16 @@ app.get("/campaigns", async (c) => {
   const prospectMap: Record<string, number> = {};
   for (const row of prospectCountRows) {
     prospectMap[row.configId] = Number(row.count);
+  }
+
+  const sitesBuiltMap: Record<string, number> = {};
+  for (const row of sitesBuiltRows) {
+    sitesBuiltMap[row.configId] = Number(row.count);
+  }
+
+  const emailsSentMap: Record<string, number> = {};
+  for (const row of emailsSentRows) {
+    emailsSentMap[row.configId] = Number(row.count);
   }
 
   const data = configs.map((cfg) => ({
@@ -480,6 +516,8 @@ app.get("/campaigns", async (c) => {
     createdAt: cfg.createdAt.toISOString(),
     activeJobs: activeJobMap[cfg.id] ?? 0,
     prospectsFound: prospectMap[cfg.id] ?? cfg.totalFound,
+    sitesBuilt: sitesBuiltMap[cfg.id] ?? 0,
+    emailsSent: emailsSentMap[cfg.id] ?? 0,
   }));
 
   return c.json({ success: true, data });
