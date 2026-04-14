@@ -14,7 +14,25 @@ export interface McProject {
 
 export const projectsList = atom<McProject[]>([]);
 export const projectsLoading = atom<boolean>(false);
-export const activeProjectId = atom<string | null>(null);
+
+const LS_KEY = 'mc_active_project_id';
+
+function readFromLS(): string | null {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem(LS_KEY); } catch { return null; }
+}
+
+export const activeProjectId = atom<string | null>(readFromLS());
+
+// Keep localStorage in sync whenever the atom changes
+if (typeof window !== 'undefined') {
+  activeProjectId.subscribe((val) => {
+    try {
+      if (val) localStorage.setItem(LS_KEY, val);
+      else localStorage.removeItem(LS_KEY);
+    } catch {}
+  });
+}
 
 export async function loadProjects() {
   projectsLoading.set(true);
