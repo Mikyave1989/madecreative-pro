@@ -73,6 +73,16 @@ The year is 2025.
 
   If the original site is a single landing page, build a single-page site with all sections.
 
+  TECHNICAL STACK FOR REBUILDING — AVOID npm install errors:
+  When rebuilding/cloning an existing website, use PURE HTML + CSS + JS with CDN libraries only.
+  NO React, NO Next.js, NO npm install required. Load everything via CDN:
+  - Animations: <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"> OR pure CSS animations
+  - Icons: <link href="https://unpkg.com/lucide-static/font/lucide.css">
+  - Fonts: Google Fonts via <link>
+  - Tailwind (optional): <script src="https://cdn.tailwindcss.com">
+  This way the site works INSTANTLY with no build step, no npm, no terminal errors.
+  The output is a self-contained index.html (and additional pages if multi-page).
+
   SEARCH PHOTOS TOOL (Pexels — FALLBACK ONLY):
   When you need stock photos (only if originals are insufficient), use:
   curl -s "https://api.pexels.com/v1/search?query=SEARCH_QUERY&per_page=4" -H "Authorization: ${pexelsApiKey || ''}"
