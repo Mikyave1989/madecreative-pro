@@ -98,8 +98,14 @@ function randomDelay(): Promise<void> {
 
 function buildProxyUrl(sessionId: string): string {
   const zone = process.env["BRIGHTDATA_ZONE"] ?? "residential";
-  const password = process.env["BRIGHTDATA_PASSWORD"] ?? "";
+  // BRIGHTDATA_PASSWORD is the proxy auth password (from Bright Data dashboard → Residential → Auth).
+  // Fall back to BRIGHTDATA_API_KEY in case the same credential is reused.
+  const password = process.env["BRIGHTDATA_PASSWORD"] ?? process.env["BRIGHTDATA_API_KEY"] ?? "";
   return `http://brd-customer-${zone}-zone-residential-session-${sessionId}:${password}@brd.superproxy.io:22225`;
+}
+
+function hasProxyCredentials(): boolean {
+  return !!(process.env["BRIGHTDATA_PASSWORD"] ?? process.env["BRIGHTDATA_API_KEY"]);
 }
 
 function generateSessionId(): string {
@@ -189,14 +195,6 @@ export class ScraperAgent extends BaseAgent {
       this.log("warn", `Stealth plugin load failed (${(stealthErr as Error).message}) — using vanilla playwright`);
     }
 
-    // Bright Data rotating proxy — session rotates automatically with each new
-    // context creation.  We track usage per session in Redis.
-    const session = this.getOrCreateProxySession();
-    const proxyUrl = buildProxyUrl(session.sessionId);
-
-    // Parse proxy URL for playwright proxy config
-    const parsedProxy = new URL(proxyUrl);
-
     const launchOptions: Parameters<BrowserType["launch"]>[0] = {
       headless: true,
       args: [
@@ -212,12 +210,18 @@ export class ScraperAgent extends BaseAgent {
 
     this.browser = await launcher.launch(launchOptions);
 
-    this.browserContext = await this.browser.newContext({
-      proxy: {
-        server: `${parsedProxy.protocol}//${parsedProxy.host}`,
-        username: parsedProxy.username,
-        password: decodeURIComponent(parsedProxy.password),
-      },
+    // Bright Data rotating proxy — only when credentials are configured.
+    // Without BRIGHTDATA_PASSWORD/BRIGHTDATA_API_KEY the proxy URL has an empty
+    // password and auth fails silently, returning 0 results on every search.
+    // In that case we skip the proxy and scrape directly (works fine for dev/test;
+    // set BRIGHTDATA_PASSWORD in production for IP rotation + anti-bot bypass).
+    const useProxy = hasProxyCredentials();
+    if (!useProxy) {
+      this.log("warn", "No Bright Data credentials — scraping WITHOUT proxy (direct connection)");
+    }
+
+    const session = this.getOrCreateProxySession();
+    const contextOptions: Parameters<typeof this.browser.newContext>[0] = {
       viewport: { width: 1920, height: 1080 },
       locale: "de-DE",
       timezoneId: "Europe/Berlin",
@@ -228,7 +232,20 @@ export class ScraperAgent extends BaseAgent {
       extraHTTPHeaders: {
         "Accept-Language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
       },
-    });
+    };
+
+    if (useProxy) {
+      const proxyUrl = buildProxyUrl(session.sessionId);
+      const parsedProxy = new URL(proxyUrl);
+      contextOptions.proxy = {
+        server: `${parsedProxy.protocol}//${parsedProxy.host}`,
+        username: parsedProxy.username,
+        password: decodeURIComponent(parsedProxy.password),
+      };
+      this.log("info", `Using Bright Data proxy session: ${session.sessionId}`);
+    }
+
+    this.browserContext = await this.browser.newContext(contextOptions);
 
     // Block unnecessary resources to speed up scraping
     await this.browserContext.route(
