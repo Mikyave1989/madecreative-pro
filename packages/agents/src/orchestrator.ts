@@ -296,7 +296,6 @@ export async function startOrchestrator(): Promise<Worker[]> {
     "ANALYZER",
     "BUILDER",
     "OUTREACH",
-    "CHATBOT",
     "QA",
   ];
 
