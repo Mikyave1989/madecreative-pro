@@ -47,3 +47,67 @@
     transform: translateY(6px);
   }
 }
+
+/* Premium loading dots */
+@keyframes mc-dot-bounce {
+  0%, 80%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+.mc-loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  span {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: mc-dot-bounce 1.2s infinite ease-in-out;
+
+    &:nth-child(1) { animation-delay: 0s; }
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.4s; }
+  }
+}
+
+/* Subtle pulse for streaming indicator */
+@keyframes mc-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+.mc-pulse {
+  animation: mc-pulse-ring 1.8s infinite;
+}
+
+/* Fade-in slide-up for messages */
+@keyframes mc-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mc-message-appear {
+  animation: mc-message-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Gradient shimmer for header logo */
+@keyframes mc-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}

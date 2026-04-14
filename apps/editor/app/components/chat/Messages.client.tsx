@@ -65,8 +65,8 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
               return (
                 <div
                   key={index}
-                  className={classNames('flex gap-4 py-3 w-full rounded-lg', {
-                    'mt-4': !isFirst,
+                  className={classNames('flex gap-4 py-2 w-full', {
+                    'mt-2': !isFirst,
                   })}
                 >
                   <div className="grid grid-col-1 w-full">
@@ -94,7 +94,24 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
             })
           : null}
         {isStreaming && (
-          <div className="text-center w-full  text-bolt-elements-item-contentAccent i-svg-spinners:3-dots-fade text-4xl mt-4"></div>
+          <div className="flex items-center gap-3 py-4 pl-1">
+            {/* Branded AI dot */}
+            <div
+              className="mc-pulse w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))',
+                border: '1px solid rgba(99,102,241,0.3)',
+              }}
+            >
+              <div className="i-ph:sparkle-fill text-xs" style={{ color: '#a78bfa' }} />
+            </div>
+            {/* Animated dots */}
+            <div className="mc-loading-dots" style={{ color: 'rgba(165,167,255,0.6)' }}>
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
         )}
       </div>
     );

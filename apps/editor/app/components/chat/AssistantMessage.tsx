@@ -103,9 +103,24 @@ export const AssistantMessage = memo(
     ) as ToolCallAnnotation[];
 
     return (
-      <div className="overflow-hidden w-full">
+      <div className="mc-message-appear overflow-hidden w-full">
+        {/* AI label row */}
+        <div className="flex items-center gap-2 mb-3">
+          <div
+            className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))',
+              border: '1px solid rgba(99,102,241,0.25)',
+            }}
+          >
+            <div className="i-ph:sparkle-fill text-xs" style={{ color: '#a78bfa' }} />
+          </div>
+          <span className="text-xs font-semibold tracking-wide" style={{ color: 'rgba(165,167,255,0.7)' }}>
+            MadeCreative AI
+          </span>
+        </div>
         <>
-          <div className=" flex gap-2 items-center text-sm text-bolt-elements-textSecondary mb-2">
+          <div className="flex gap-2 items-center text-sm text-bolt-elements-textSecondary mb-2">
             {(codeContext || chatSummary) && (
               <Popover side="right" align="start" trigger={<div className="i-ph:info" />}>
                 {chatSummary && (

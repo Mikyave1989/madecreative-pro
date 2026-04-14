@@ -351,11 +351,35 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         <div className="flex flex-col lg:flex-row overflow-y-auto w-full h-full">
           <div className={classNames(styles.Chat, 'flex flex-col flex-grow lg:min-w-[var(--chat-min-width)] h-full')}>
             {!chatStarted && (
-              <div id="intro" className="mt-[16vh] max-w-2xl mx-auto text-center px-4 lg:px-0">
-                <h1 className="text-3xl lg:text-6xl font-bold text-bolt-elements-textPrimary mb-4 animate-fade-in">
+              <div id="intro" className="mt-[14vh] max-w-2xl mx-auto text-center px-4 lg:px-0">
+                <div
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-6"
+                  style={{
+                    background: 'rgba(99,102,241,0.1)',
+                    border: '1px solid rgba(99,102,241,0.2)',
+                    color: 'rgba(165,167,255,0.8)',
+                  }}
+                >
+                  <div className="i-ph:sparkle-fill text-xs" style={{ color: '#a78bfa' }} />
+                  AI-powered creative studio
+                </div>
+                <h1
+                  className="text-3xl lg:text-5xl font-bold mb-4 animate-fade-in"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(165,167,255,0.85) 60%, rgba(139,92,246,0.7) 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    lineHeight: 1.15,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
                   Where ideas begin
                 </h1>
-                <p className="text-md lg:text-xl mb-8 text-bolt-elements-textSecondary animate-fade-in animation-delay-200">
+                <p
+                  className="text-base lg:text-lg mb-8 animate-fade-in"
+                  style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}
+                >
                   Bring ideas to life in seconds or get help on existing projects.
                 </p>
               </div>
@@ -513,11 +537,18 @@ function ScrollToBottom() {
       <>
         <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-bolt-elements-background-depth-1 to-transparent h-20 z-10" />
         <button
-          className="sticky z-50 bottom-0 left-0 right-0 text-4xl rounded-lg px-1.5 py-0.5 flex items-center justify-center mx-auto gap-2 bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor text-bolt-elements-textPrimary text-sm"
+          className="sticky z-50 bottom-4 left-0 right-0 flex items-center justify-center mx-auto gap-1.5 text-xs font-medium rounded-full px-4 py-2 transition-all duration-200"
+          style={{
+            background: 'rgba(19,21,28,0.9)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: 'rgba(255,255,255,0.6)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(12px)',
+          }}
           onClick={() => scrollToBottom()}
         >
-          Go to last message
-          <span className="i-ph:arrow-down animate-bounce" />
+          Latest message
+          <span className="i-ph:arrow-down text-sm animate-bounce" />
         </button>
       </>
     )

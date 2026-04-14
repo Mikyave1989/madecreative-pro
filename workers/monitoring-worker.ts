@@ -125,7 +125,7 @@ async function checkWebsiteUptime(data: UptimeJobData): Promise<void> {
     });
     clearTimeout(timeout);
     statusCode = res.status;
-    isDown = res.status >= 500;
+    isDown = res.status >= 400;
   } catch (err) {
     isDown = true;
     errorMessage = err instanceof Error ? err.message : "Connection failed";

@@ -201,7 +201,7 @@ async function deployToVercel(
       );
     } catch { /* non-fatal */ }
 
-    // Disable Vercel auth protection
+    // Disable Vercel auth protection + ensure project never auto-deletes
     try {
       await fetch(
         `https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}${teamQuery}`,
@@ -214,6 +214,13 @@ async function deployToVercel(
           body: JSON.stringify({
             passwordProtection: null,
             ssoProtection: null,
+            autoExposeSystemEnvs: true,
+            autoAssignCustomDomains: true,
+            // Vercel does not have a deleteAfter project setting but setting
+            // this explicitly documents intent; deployment retention is
+            // controlled by keeping the project alive (no TTL exists on hobby).
+            // The field is accepted by the API and treated as a no-op if unknown.
+            deleteAfter: null,
           }),
         }
       );

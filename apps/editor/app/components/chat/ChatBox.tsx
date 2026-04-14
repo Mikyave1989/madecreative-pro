@@ -69,14 +69,14 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
   return (
     <div
       className={classNames(
-        'relative bg-bolt-elements-background-depth-2 backdrop-blur p-3 rounded-lg border border-bolt-elements-borderColor relative w-full max-w-chat mx-auto z-prompt',
-
-        /*
-         * {
-         *   'sticky bottom-2': chatStarted,
-         * },
-         */
+        'relative w-full max-w-chat mx-auto z-prompt rounded-2xl p-3',
       )}
+      style={{
+        background: 'rgba(19,21,28,0.95)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(99,102,241,0.06)',
+        backdropFilter: 'blur(16px)',
+      }}
     >
       <svg className={classNames(styles.PromptEffectContainer)}>
         <defs>
@@ -140,15 +140,34 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
         </div>
       )}
       <div
-        className={classNames('relative shadow-xs border border-bolt-elements-borderColor backdrop-blur rounded-lg')}
+        className="relative rounded-xl overflow-hidden"
+        style={{
+          background: 'rgba(13,15,20,0.7)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+          transition: 'border-color 0.2s',
+        }}
+        onFocusCapture={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(99,102,241,0.35)';
+          (e.currentTarget as HTMLElement).style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 3px rgba(99,102,241,0.08)';
+        }}
+        onBlurCapture={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)';
+          (e.currentTarget as HTMLElement).style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)';
+        }}
       >
         <textarea
           ref={props.textareaRef}
           className={classNames(
-            'w-full pl-4 pt-4 pr-16 outline-none resize-none text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent text-sm',
+            'w-full pl-4 pt-4 pr-16 outline-none resize-none text-sm',
             'transition-all duration-200',
-            'hover:border-bolt-elements-focus',
           )}
+          style={{
+            color: 'rgba(255,255,255,0.88)',
+            background: 'transparent',
+            caretColor: '#818cf8',
+            fontFamily: 'inherit',
+          }}
           onDragEnter={(e) => {
             e.preventDefault();
             e.currentTarget.style.border = '2px solid #1488fc';
@@ -209,7 +228,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             minHeight: props.TEXTAREA_MIN_HEIGHT,
             maxHeight: props.TEXTAREA_MAX_HEIGHT,
           }}
-          placeholder={props.chatMode === 'build' ? 'How can Bolt help you today?' : 'What would you like to discuss?'}
+          placeholder={props.chatMode === 'build' ? 'Describe what you want to build...' : 'What would you like to discuss?'}
           translate="no"
         />
         <ClientOnly>
@@ -231,7 +250,10 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             />
           )}
         </ClientOnly>
-        <div className="flex justify-between items-center text-sm p-4 pt-2">
+        <div
+          className="flex justify-between items-center text-sm px-3 py-2"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+        >
           <div className="flex gap-1 items-center">
             <ColorSchemeDialog designScheme={props.designScheme} setDesignScheme={props.setDesignScheme} />
             <McpTools />

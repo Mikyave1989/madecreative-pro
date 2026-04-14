@@ -502,7 +502,19 @@ export const Workbench = memo(
                     <DiffView fileHistory={fileHistory} setFileHistory={setFileHistory} />
                   </View>
                   <View initial={{ x: '100%' }} animate={{ x: selectedView === 'preview' ? '0%' : '100%' }}>
-                    <Preview setSelectedElement={setSelectedElement} />
+                    <div className="relative h-full w-full">
+                      <Preview setSelectedElement={setSelectedElement} />
+                      {streaming && (
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-bolt-elements-background-depth-1/90 backdrop-blur-sm">
+                          <div className="flex gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-accent-500 animate-bounce [animation-delay:-0.3s]" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-accent-500 animate-bounce [animation-delay:-0.15s]" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-accent-500 animate-bounce" />
+                          </div>
+                          <p className="text-sm text-bolt-elements-textSecondary">Building your site...</p>
+                        </div>
+                      )}
+                    </div>
                   </View>
                 </div>
               </div>

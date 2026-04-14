@@ -276,6 +276,93 @@ app.delete("/:id", async (c) => {
   return c.json({ success: true, message: "Prospect deleted" });
 });
 
+// GET /admin/prospects/:id/files — Return generated site files from latest completed build job
+app.get("/:id/files", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const id = c.req.param("id");
+
+  const prospect = await prisma.prospect.findUnique({
+    where: { id },
+    select: { id: true, companyName: true, previewSiteUrl: true },
+  });
+
+  if (!prospect) {
+    return c.json({ success: false, error: "Prospect not found" }, 404);
+  }
+
+  // Find the most recent completed BUILDER job for this prospect
+  const job = await prisma.agentJob.findFirst({
+    where: { prospectId: id, agentType: "BUILDER", status: "COMPLETED" },
+    orderBy: { completedAt: "desc" },
+    select: { id: true, output: true, completedAt: true },
+  });
+
+  if (!job) {
+    return c.json({ success: false, error: "No completed build job found for this prospect" }, 404);
+  }
+
+  const output = job.output as Record<string, unknown> | null;
+  const files = (output?.["files"] ?? output?.["generatedFiles"] ?? null) as Record<string, string> | null;
+
+  return c.json({
+    success: true,
+    data: {
+      jobId: job.id,
+      completedAt: job.completedAt,
+      previewSiteUrl: prospect.previewSiteUrl,
+      files,
+    },
+  });
+});
+
+// POST /admin/prospects/:id/open-in-editor — Return editor redirect URL for this prospect
+app.post("/:id/open-in-editor", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const id = c.req.param("id");
+
+  const prospect = await prisma.prospect.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      companyName: true,
+      website: true,
+      previewSiteUrl: true,
+      scrapedContent: true,
+    },
+  });
+
+  if (!prospect) {
+    return c.json({ success: false, error: "Prospect not found" }, 404);
+  }
+
+  // Build editor URL with query params that auto-trigger scraping on open
+  const editorBase = "https://madecreative.pro";
+  const params = new URLSearchParams({ prospectId: id });
+
+  // If there's an existing preview site, pass it so the editor can load/rebuild it
+  if (prospect.previewSiteUrl) {
+    params.set("rebuild", prospect.previewSiteUrl);
+  }
+
+  // If there's a source website, also pass it for re-scraping
+  if (prospect.website) {
+    params.set("scrapeUrl", prospect.website);
+  }
+
+  const redirectUrl = `${editorBase}?${params.toString()}`;
+
+  return c.json({
+    success: true,
+    data: {
+      redirectUrl,
+      prospectId: id,
+      companyName: prospect.companyName,
+      hasScrapedContent: prospect.scrapedContent !== null,
+      previewSiteUrl: prospect.previewSiteUrl ?? null,
+    },
+  });
+});
+
 // POST /admin/prospects/:id/build-preview — Avvia Builder Agent per un prospect
 app.post("/:id/build-preview", async (c) => {
   const { prisma } = await import("@madecreative/db");
@@ -782,46 +869,51 @@ app.post("/:id/send-preview-email", async (c) => {
   // Language-specific email templates (no Claude needed — instant)
   const templates: Record<string, { subject: string; body: string }> = {
     de: {
-      subject: `Ihre neue Website \u2014 ${name}`,
+      subject: `Ihre neue Website - ${name}`,
       body: `<p>Sehr geehrte Damen und Herren von <strong>${name}</strong>,</p>
-<p>wir haben uns Ihr Unternehmen${city ? ` in ${city}` : ""} angesehen und \u2014 vollkommen kostenlos und unverbindlich \u2014 einen <strong>Vorschlag f\u00fcr Ihre neue Website</strong> erstellt.</p>
+<p>wir haben uns Ihr Unternehmen${city ? ` in ${city}` : ""} angesehen und - vollkommen kostenlos und unverbindlich - einen <strong>Vorschlag für Ihre neue Website</strong> erstellt.</p>
 <p>Das Ergebnis wurde in weniger als 60 Sekunden von unserer KI generiert: modernes Design, mobilfreundlich, SEO-optimiert.</p>
-<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Website-Vorschau ansehen \u2192</a></p>
-<p>Wenn Ihnen das Ergebnis gef\u00e4llt, k\u00f6nnen Sie Ihre Website ab <strong>\u20ac299 Setup + \u20ac29/Monat</strong> live schalten und jederzeit \u00fcber unseren KI-Editor anpassen.</p>
-<p>Beste Gr\u00fc\u00dfe,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
+<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Website-Vorschau ansehen -></a></p>
+<p>Wenn Ihnen das Ergebnis gefällt, können Sie Ihre Website ab <strong>€299 Setup + €29/Monat</strong> live schalten und jederzeit über unseren KI-Editor anpassen.</p>
+<p>Kontaktieren Sie uns auch auf WhatsApp: <a href="https://wa.me/393317389918">https://wa.me/393317389918</a></p>
+<p>Beste Grüße,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
     },
     it: {
-      subject: `Il tuo nuovo sito web \u2014 ${name}`,
+      subject: `Il tuo nuovo sito web - ${name}`,
       body: `<p>Gentili responsabili di <strong>${name}</strong>,</p>
-<p>abbiamo analizzato la vostra attivit\u00e0${city ? ` a ${city}` : ""} e \u2014 in modo completamente gratuito \u2014 abbiamo creato una <strong>proposta per il vostro nuovo sito web</strong>.</p>
-<p>Il risultato \u00e8 stato generato dalla nostra AI in meno di 60 secondi: design moderno, ottimizzato per mobile e SEO.</p>
-<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Vedi l'anteprima \u2192</a></p>
-<p>Se il risultato vi piace, potete pubblicare il sito a partire da <strong>\u20ac299 Setup + \u20ac29/mese</strong> e modificarlo in qualsiasi momento con il nostro editor AI.</p>
+<p>abbiamo analizzato la vostra attività${city ? ` a ${city}` : ""} e - in modo completamente gratuito - abbiamo creato una <strong>proposta per il vostro nuovo sito web</strong>.</p>
+<p>Il risultato è stato generato dalla nostra AI in meno di 60 secondi: design moderno, ottimizzato per mobile e SEO.</p>
+<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Vedi l'anteprima -></a></p>
+<p>Se il risultato vi piace, potete pubblicare il sito a partire da <strong>€299 Setup + €29/mese</strong> e modificarlo in qualsiasi momento con il nostro editor AI.</p>
+<p>Puoi contattarci anche su WhatsApp: <a href="https://wa.me/393317389918">https://wa.me/393317389918</a></p>
 <p>Cordiali saluti,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
     },
     en: {
-      subject: `Your new website \u2014 ${name}`,
+      subject: `Your new website - ${name}`,
       body: `<p>Dear <strong>${name}</strong> team,</p>
-<p>We took a look at your business${city ? ` in ${city}` : ""} and \u2014 completely free of charge \u2014 created a <strong>proposal for your new website</strong>.</p>
+<p>We took a look at your business${city ? ` in ${city}` : ""} and - completely free of charge - created a <strong>proposal for your new website</strong>.</p>
 <p>The result was generated by our AI in under 60 seconds: modern design, mobile-friendly, SEO-optimized.</p>
-<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">View your preview \u2192</a></p>
-<p>If you like the result, you can launch your website starting at <strong>\u20ac299 setup + \u20ac29/month</strong> and customize it anytime with our AI editor.</p>
+<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">View your preview -></a></p>
+<p>If you like the result, you can launch your website starting at <strong>€299 setup + €29/month</strong> and customize it anytime with our AI editor.</p>
+<p>You can also reach us on WhatsApp: <a href="https://wa.me/393317389918">https://wa.me/393317389918</a></p>
 <p>Best regards,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
     },
     es: {
-      subject: `Tu nuevo sitio web \u2014 ${name}`,
+      subject: `Tu nuevo sitio web - ${name}`,
       body: `<p>Estimado equipo de <strong>${name}</strong>,</p>
 <p>Hemos analizado su negocio${city ? ` en ${city}` : ""} y hemos creado <strong>una propuesta para su nuevo sitio web</strong>, completamente gratis.</p>
-<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Ver vista previa \u2192</a></p>
-<p>A partir de <strong>\u20ac299 Setup + \u20ac29/mes</strong>. Sin compromiso.</p>
+<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Ver vista previa -></a></p>
+<p>A partir de <strong>€299 Setup + €29/mes</strong>. Sin compromiso.</p>
+<p>Contáctenos también por WhatsApp: <a href="https://wa.me/393317389918">https://wa.me/393317389918</a></p>
 <p>Saludos,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
     },
     fr: {
-      subject: `Votre nouveau site web \u2014 ${name}`,
-      body: `<p>Ch\u00e8re \u00e9quipe de <strong>${name}</strong>,</p>
-<p>Nous avons analys\u00e9 votre activit\u00e9${city ? ` \u00e0 ${city}` : ""} et cr\u00e9\u00e9 <strong>une proposition de nouveau site web</strong>, enti\u00e8rement gratuite.</p>
-<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Voir l'aper\u00e7u \u2192</a></p>
-<p>\u00c0 partir de <strong>\u20ac299 Setup + \u20ac29/mois</strong>. Sans engagement.</p>
+      subject: `Votre nouveau site web - ${name}`,
+      body: `<p>Chère équipe de <strong>${name}</strong>,</p>
+<p>Nous avons analysé votre activité${city ? ` à ${city}` : ""} et créé <strong>une proposition de nouveau site web</strong>, entièrement gratuite.</p>
+<p style="text-align:center;margin:28px 0"><a href="${previewUrl}" style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px">Voir l'aperçu -></a></p>
+<p>À partir de <strong>€299 Setup + €29/mois</strong>. Sans engagement.</p>
+<p>Contactez-nous aussi sur WhatsApp: <a href="https://wa.me/393317389918">https://wa.me/393317389918</a></p>
 <p>Cordialement,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
     },
   };
