@@ -57,8 +57,8 @@ export const DeployButton = ({
   const [gitlabProjectName, setGitlabProjectName] = useState('');
 
   const handleMcDeployClick = async () => {
-    if (!user || !projectId) {
-      toast.error('Please create a project first to deploy.');
+    if (!user) {
+      toast.error('Devi essere loggato per pubblicare.');
       return;
     }
 
@@ -78,28 +78,59 @@ export const DeployButton = ({
       }
 
       if (Object.keys(files).length === 0) {
-        toast.error('No files to deploy. Build your project first.');
+        toast.error('Nessun file da pubblicare. Genera prima il sito.');
+        setIsDeploying(false);
+        setDeployingTo(null);
         return;
       }
 
       const token = localStorage.getItem('mc_token');
+      let deployProjectId = projectId;
+
+      // Auto-create project if none exists (e.g. after rebuilding from URL)
+      if (!deployProjectId) {
+        toast.info('Creazione progetto in corso...', { autoClose: 2000 });
+        const apiBase = 'https://api.madecreative.pro';
+        // Get site name from first HTML file title or use default
+        let siteName = 'Sito Ricostruito';
+        const indexHtml = files['index.html'] || '';
+        const titleMatch = indexHtml.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch?.[1]) siteName = titleMatch[1].replace(/\s*[—|-].*$/, '').trim().slice(0, 60);
+
+        const createRes = await fetch(`${apiBase}/portal/projects`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ name: siteName }),
+        });
+        const createData = await createRes.json() as { success: boolean; data?: { id: string } };
+        if (createData.success && createData.data?.id) {
+          deployProjectId = createData.data.id;
+          activeProjectId.set(deployProjectId);
+          toast.success(`Progetto "${siteName}" creato!`, { autoClose: 2000 });
+        } else {
+          toast.error('Impossibile creare il progetto. Riprova.');
+          setIsDeploying(false);
+          setDeployingTo(null);
+          return;
+        }
+      }
 
       const res = await fetch('/api/mc-deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, files, token }),
+        body: JSON.stringify({ projectId: deployProjectId, files, token }),
       });
 
       const data = await res.json();
 
       if (data.success && data.data?.deployUrl) {
         setMcDeployUrl(data.data.deployUrl);
-        toast.success(`Deployed! ${data.data.deployUrl}`);
+        toast.success('Sito pubblicato! 🚀', { autoClose: 3000 });
       } else {
-        toast.error(data.error || 'Deploy failed');
+        toast.error(data.error || 'Pubblicazione fallita');
       }
     } catch (err) {
-      toast.error('Deploy failed. Please try again.');
+      toast.error('Pubblicazione fallita. Riprova.');
     } finally {
       setIsDeploying(false);
       setDeployingTo(null);
