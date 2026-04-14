@@ -253,15 +253,9 @@ export const DeployButton = ({
   const [customDomain, setCustomDomain] = useState('');
 
   const handlePublishClick = () => {
-    if (!projectId) {
-      toast.error('Crea prima un progetto per pubblicarlo.');
-      return;
-    }
     if (mcDeployUrl) {
-      // Already deployed — show URL + domain option
       setShowPublishModal(true);
     } else {
-      // First publish — deploy then show modal
       handleMcDeployClick().then(() => setShowPublishModal(true));
     }
   };
