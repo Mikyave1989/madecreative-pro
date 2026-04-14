@@ -73,62 +73,8 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     parseCookies(cookieHeader || '').providers || '{}',
   );
 
-  // ── Auto-scrape: if user asks to rebuild/clone a URL, inject scraped content ──
-  const lastMsg = messages[messages.length - 1];
-  const lastContent = typeof lastMsg?.content === 'string' ? lastMsg.content : '';
-  const rebuildMatch = lastContent.match(/(?:ricostruisci|rebuild|clone|clona|rifai|ricrea|copia|analizza e ricostruisci)\s+(https?:\/\/[^\s]+)/i)
-    || lastContent.match(/(https?:\/\/[^\s]+).*(?:ricostruisci|rebuild|clone|clona|rifai|ricrea)/i);
-
-  if (rebuildMatch) {
-    const urlToScrape = rebuildMatch[1] || rebuildMatch[0];
-    try {
-      const apiBase = (context.cloudflare?.env as any)?.API_URL || 'https://api.madecreative.pro';
-
-      const scrapeRes = await fetch(`${apiBase}/public/scrape-deep`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: urlToScrape }),
-        signal: AbortSignal.timeout(120_000),
-      });
-
-      if (scrapeRes.ok) {
-        const scrapeData = await scrapeRes.json() as { data?: { scraped?: any } };
-        const scraped = scrapeData.data?.scraped;
-
-        if (scraped?.pages?.length > 0) {
-          // Build rich content summary for bolt.diy
-          let pagesContent = '';
-          let totalImgs = 0;
-          for (const p of scraped.pages) {
-            const imgs = (p.images || []).filter((i: any) => i.url?.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(i.url) && !/dummy|plugin|icon|sprite|pixel/i.test(i.url));
-            totalImgs += imgs.length;
-            const imgList = imgs.map((i: any, n: number) => `  ${n + 1}. ${i.url}${i.alt ? ` (${i.alt})` : ''}`).join('\n');
-            const heads = (p.headings || []).filter((h: any) => h.text?.length > 2).map((h: any) => `  h${h.level}: ${h.text}`).join('\n');
-            const paras = (p.paragraphs || []).filter((t: string) => t.length > 20).join('\n  ');
-            const vids = (p.videos || []).map((v: any) => `  VIDEO (${v.type}): ${v.url}`).join('\n');
-            pagesContent += `\n--- PAGE: ${p.url} (${p.title || ''}) ---\nHeadings:\n${heads}\nText:\n  ${paras}\nPhotos (ALL ${imgs.length}):\n${imgList || '  none'}\n${vids ? `Videos:\n${vids}` : ''}`;
-          }
-
-          const injection = `\n\n--- SCRAPED CONTENT FROM ${urlToScrape} ---
-IMPORTANT: Use ONLY this real content. NEVER invent text or use stock photos.
-Logo: ${scraped.logo || 'none'}
-Phone: ${scraped.contact?.phone || 'N/A'} | Email: ${scraped.contact?.email || 'N/A'}
-Facebook: ${scraped.socialLinks?.facebook || ''} | Instagram: ${scraped.socialLinks?.instagram || ''}
-Total pages: ${scraped.pages.length} | Total images: ${totalImgs}
-${scraped.pages.length > 1 ? `MULTI-PAGE SITE: Build separate HTML files for each page with consistent nav.` : 'Single-page site.'}
-${pagesContent}
---- END SCRAPED CONTENT ---`;
-
-          // Inject scraped data into last user message
-          if (lastMsg && messages.length > 0) {
-            (messages[messages.length - 1] as any).content = lastContent + injection;
-          }
-        }
-      }
-    } catch {
-      // Scrape failed — bolt.diy will try on its own
-    }
-  }
+  // Scraping is now done CLIENT-SIDE in Chat.client.tsx before the message is sent.
+  // The scraped content is already injected in the user message when it reaches here.
 
   const stream = new SwitchableStream();
 

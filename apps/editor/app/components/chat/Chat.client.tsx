@@ -440,6 +440,60 @@ export const ChatImpl = memo(
 
       let finalMessageContent = messageContent;
 
+      // ── Auto-scrape: detect URL rebuild requests and inject real content ──
+      const rebuildMatch = finalMessageContent.match(
+        /(?:ricostruisci|rebuild|clone|clona|rifai|ricrea|analizza e ricostruisci)\s+(https?:\/\/[^\s]+)/i
+      ) || finalMessageContent.match(/(https?:\/\/[^\s]+).*(?:ricostruisci|rebuild|clone|clona|rifai|ricrea)/i);
+
+      if (rebuildMatch) {
+        const urlToScrape = rebuildMatch[1] || rebuildMatch[0].match(/https?:\/\/[^\s]+/)?.[0];
+        if (urlToScrape) {
+          try {
+            toast.info('Scraping ' + urlToScrape + '...', { autoClose: 3000, position: 'bottom-right' });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 90_000);
+            const res = await fetch('https://api.madecreative.pro/public/scrape-deep', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: urlToScrape }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+              const data = await res.json() as { data?: { scraped?: any } };
+              const scraped = data.data?.scraped;
+              if (scraped?.pages?.length > 0) {
+                let pagesContent = '';
+                let totalImgs = 0;
+                for (const p of scraped.pages) {
+                  const imgs = (p.images || []).filter((i: any) => i.url?.startsWith('http') && /\.(jpg|jpeg|png|webp)/i.test(i.url) && !/dummy|plugin|icon|sprite|pixel/i.test(i.url));
+                  totalImgs += imgs.length;
+                  const imgList = imgs.map((i: any, n: number) => `  ${n+1}. ${i.url}${i.alt ? ' ('+i.alt+')' : ''}`).join('\n');
+                  const heads = (p.headings || []).filter((h: any) => h.text?.length > 2).map((h: any) => `  h${h.level}: ${h.text}`).join('\n');
+                  const paras = (p.paragraphs || []).filter((t: string) => t.length > 20).slice(0, 10).join('\n  ');
+                  const vids = (p.videos || []).map((v: any) => `  VIDEO (${v.type}): ${v.url}`).join('\n');
+                  pagesContent += `\n--- PAGE: ${p.url} (${p.title||''}) ---\nHeadings:\n${heads}\nText:\n  ${paras}\nPhotos (ALL ${imgs.length}):\n${imgList||'  none'}\n${vids ? 'Videos:\n'+vids : ''}`;
+                }
+                const injection = `\n\n--- SCRAPED CONTENT FROM ${urlToScrape} ---
+IMPORTANT: Use ONLY this real content. NEVER invent text or use stock photos.
+Logo: ${scraped.logo||'none'}
+Phone: ${scraped.contact?.phone||'N/A'} | Email: ${scraped.contact?.email||'N/A'}
+Facebook: ${scraped.socialLinks?.facebook||''} | Instagram: ${scraped.socialLinks?.instagram||''}
+Total pages: ${scraped.pages.length} | Total images: ${totalImgs}
+${scraped.pages.length > 1 ? 'MULTI-PAGE SITE: Build separate HTML files for each page with consistent nav.' : 'Single-page site.'}
+${pagesContent}
+--- END SCRAPED CONTENT ---`;
+                finalMessageContent = finalMessageContent + injection;
+                toast.success(`Scraped ${scraped.pages.length} pages, ${totalImgs} images`, { autoClose: 2000, position: 'bottom-right' });
+              }
+            }
+          } catch {
+            toast.warning('Scraping failed — generating without real content', { autoClose: 3000, position: 'bottom-right' });
+          }
+        }
+      }
+
       if (selectedElement) {
         console.log('Selected Element:', selectedElement);
 
