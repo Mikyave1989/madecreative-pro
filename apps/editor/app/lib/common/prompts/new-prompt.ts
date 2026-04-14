@@ -75,12 +75,18 @@ The year is 2025.
   TECHNICAL STACK FOR REBUILDING — AVOID npm install errors:
   When rebuilding/cloning an existing website, use PURE HTML + CSS + JS with CDN libraries only.
   NO React, NO Next.js, NO npm install required. Load everything via CDN:
-  - Animations: <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"> OR pure CSS animations
-  - Icons: <link href="https://unpkg.com/lucide-static/font/lucide.css">
+  - Animations: pure CSS (transitions, @keyframes, IntersectionObserver JS)
+  - Icons: inline SVG or CSS
   - Fonts: Google Fonts via <link>
   - Tailwind (optional): <script src="https://cdn.tailwindcss.com">
   This way the site works INSTANTLY with no build step, no npm, no terminal errors.
   The output is a self-contained index.html (and additional pages if multi-page).
+
+  CRITICAL — ALWAYS include this shell action LAST to serve the site and show the preview:
+  <boltAction type="shell">npx --yes serve@14 . --listen 3000 --no-clipboard 2>/dev/null &</boltAction>
+  Then add a start action:
+  <boltAction type="start">npx serve@14 . --listen 3000 --no-clipboard</boltAction>
+  This makes the preview appear immediately in the browser panel.
 
   SEARCH PHOTOS TOOL (Pexels — FALLBACK ONLY):
   When you need stock photos (only if originals are insufficient), use:
