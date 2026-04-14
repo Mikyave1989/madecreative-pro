@@ -95,6 +95,38 @@ app.route("/public/signup", signupRoutes);
 app.route("/track", trackRoutes);
 app.route("/public/ai-generate", aiGenerateRoutes);
 
+// ─── Public deep-scrape proxy — forwards to Railway worker (has Playwright) ──
+
+app.post("/public/scrape-deep", async (c) => {
+  const body = await c.req.json().catch(() => null);
+  if (!body?.url) return c.json({ error: "url required" }, 400);
+
+  const scrapeUrl = process.env["SCRAPE_SERVICE_URL"];
+  if (!scrapeUrl) {
+    // Fallback to basic scraper if worker URL not configured
+    const { scrapeWebsite } = await import("@madecreative/shared");
+    try {
+      const scraped = await scrapeWebsite(body.url as string);
+      return c.json({ success: true, data: { scraped } });
+    } catch (err) {
+      return c.json({ error: "Scrape failed", details: err instanceof Error ? err.message : String(err) }, 500);
+    }
+  }
+
+  // Forward to Railway worker's Playwright scraper
+  try {
+    const res = await fetch(`${scrapeUrl}/scrape`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Token": process.env["JWT_SECRET"] ?? "" },
+      body: JSON.stringify({ url: body.url }),
+    });
+    const data = await res.json();
+    return c.json(data, res.ok ? 200 : 500);
+  } catch (err) {
+    return c.json({ error: "Worker unreachable", details: err instanceof Error ? err.message : String(err) }, 500);
+  }
+});
+
 // ─── Internal Route — called by workers, protected by JWT_SECRET header ──────
 
 app.post("/internal/send-preview-email/:prospectId", async (c) => {

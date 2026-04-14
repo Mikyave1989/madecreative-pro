@@ -359,8 +359,96 @@ export async function startOrchestrator(): Promise<Worker[]> {
     }
   }, 30_000);
 
-  // Cleanup on process exit
-  process.on("SIGTERM", () => clearInterval(pollInterval));
+  // ── HTTP server for deep scraping — used by the editor ──
+  // The editor calls POST /scrape on this worker (which has Playwright installed)
+  // to get JS-rendered content including all lazy-loaded images and videos.
+  const { createServer } = await import("http");
+  const SCRAPE_PORT = parseInt(process.env["SCRAPE_PORT"] ?? "4000", 10);
+
+  const httpServer = createServer(async (req, res) => {
+    if (req.method !== "POST" || !req.url?.startsWith("/scrape")) {
+      res.writeHead(404); res.end("Not found"); return;
+    }
+
+    // Auth check
+    const internalToken = req.headers["x-internal-token"];
+    if (!internalToken || internalToken !== process.env["JWT_SECRET"]) {
+      res.writeHead(401); res.end("Unauthorized"); return;
+    }
+
+    let body = "";
+    req.on("data", chunk => { body += chunk; });
+    req.on("end", async () => {
+      try {
+        const { url } = JSON.parse(body) as { url: string };
+        if (!url) { res.writeHead(400); res.end("url required"); return; }
+
+        console.log(`[ScrapeServer] Deep scraping: ${url}`);
+        const { chromium } = await import("playwright");
+        const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+        const context = await browser.newContext({ userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36" });
+
+        const mainPage = await context.newPage();
+        await mainPage.goto(url, { waitUntil: "networkidle", timeout: 30_000 }).catch(() => mainPage.goto(url, { waitUntil: "domcontentloaded", timeout: 15_000 }));
+        await mainPage.evaluate(async () => { for (let i = 0; i < Math.ceil(document.body.scrollHeight / window.innerHeight); i++) { window.scrollBy(0, window.innerHeight); await new Promise(r => setTimeout(r, 200)); } });
+        await mainPage.waitForTimeout(1000);
+
+        const baseHost = new URL(url).hostname.replace("www.", "");
+        const allLinks = await mainPage.evaluate((host: string) => Array.from(document.querySelectorAll("a[href]")).map(a => (a as HTMLAnchorElement).href).filter(h => { try { return new URL(h).hostname.replace("www.", "") === host; } catch { return false; } }).filter(h => !h.match(/\.(pdf|zip|jpg|png|gif|svg|css|js)$/i) && !h.includes("#") && !h.includes("?")), baseHost);
+        const uniqueLinks = [...new Set([url, ...allLinks])].slice(0, 25);
+        await mainPage.close();
+
+        const pages = [];
+        let siteLogo = null;
+        let siteContact: Record<string, string | null> = {};
+        let siteSocial: Record<string, string> = {};
+
+        for (const pageUrl of uniqueLinks) {
+          try {
+            const page = await context.newPage();
+            await page.goto(pageUrl, { waitUntil: "networkidle", timeout: 20_000 }).catch(() => page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 10_000 }));
+            await page.evaluate(async () => { for (let i = 0; i < Math.ceil(document.body.scrollHeight / window.innerHeight); i++) { window.scrollBy(0, window.innerHeight); await new Promise(r => setTimeout(r, 150)); } });
+            await page.waitForTimeout(300);
+
+            const data = await page.evaluate(() => {
+              const images = Array.from(document.querySelectorAll("img")).filter(img => img.src?.startsWith("http") && img.naturalWidth >= 50).filter(img => !/icon|sprite|pixel|tracking|badge|spinner/i.test(img.className + img.id + (img.alt || ""))).map(img => ({ url: img.src, alt: img.alt || "", width: img.naturalWidth, height: img.naturalHeight }));
+              const bgImages: Array<{ url: string; alt: string }> = [];
+              document.querySelectorAll("*").forEach(el => { const bg = getComputedStyle(el).backgroundImage; if (bg && bg !== "none") { const m = bg.match(/url\(["']?([^"')]+)/); if (m?.[1]?.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(m[1])) bgImages.push({ url: m[1], alt: "background" }); } });
+              const headings = Array.from(document.querySelectorAll("h1,h2,h3,h4")).map(h => ({ level: parseInt(h.tagName.slice(1)), text: h.textContent?.trim().slice(0, 300) || "" })).filter(h => h.text.length > 2);
+              const paragraphs = Array.from(document.querySelectorAll("p,li,blockquote,.text,[class*='desc'],[class*='content']")).map(p => p.textContent?.trim() || "").filter(t => t.length > 30 && t.length < 2000);
+              const videos: Array<{ url: string; type: string }> = [];
+              document.querySelectorAll("iframe[src]").forEach(f => { const src = (f as HTMLIFrameElement).src; if (/youtube|vimeo/i.test(src)) videos.push({ url: src, type: src.includes("youtube") ? "youtube" : "vimeo" }); });
+              document.querySelectorAll("video source,video[src]").forEach(v => { const src = (v as HTMLSourceElement).src || ""; if (src) videos.push({ url: src, type: "video" }); });
+              const logo = (document.querySelector("header img,nav img,.logo img,img[alt*='logo' i],img[src*='logo' i],[class*='logo'] img") as HTMLImageElement)?.src || null;
+              const phone = (document.querySelector("a[href^='tel:']") as HTMLAnchorElement)?.href?.replace("tel:", "") || null;
+              const email = (document.querySelector("a[href^='mailto:']") as HTMLAnchorElement)?.href?.replace("mailto:", "") || null;
+              const social: Record<string, string> = {};
+              document.querySelectorAll("a[href]").forEach(a => { const h = (a as HTMLAnchorElement).href; if (h.includes("facebook.com")) social.facebook = h; if (h.includes("instagram.com")) social.instagram = h; });
+              return { title: document.title, images: [...images, ...bgImages], headings, paragraphs: [...new Set(paragraphs)], videos, logo, phone, email, social };
+            });
+
+            pages.push({ url: pageUrl, title: data.title, headings: data.headings, paragraphs: data.paragraphs, images: data.images, videos: data.videos });
+            if (pages.length === 1) { siteLogo = data.logo; siteContact = { phone: data.phone, email: data.email }; siteSocial = data.social; }
+            await page.close();
+          } catch { /* skip failed pages */ }
+        }
+
+        await browser.close();
+
+        const totalImages = pages.reduce((s, p) => s + p.images.length, 0);
+        console.log(`[ScrapeServer] Done: ${pages.length} pages, ${totalImages} images`);
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, data: { scraped: { url, pages, logo: siteLogo, contact: siteContact, socialLinks: siteSocial } } }));
+      } catch (err) {
+        console.error("[ScrapeServer] Error:", (err as Error).message);
+        res.writeHead(500); res.end(JSON.stringify({ error: (err as Error).message }));
+      }
+    });
+  });
+
+  httpServer.listen(SCRAPE_PORT, () => console.log(`[ScrapeServer] Listening on :${SCRAPE_PORT}`));
+  process.on("SIGTERM", () => { httpServer.close(); clearInterval(pollInterval); });
 
   return workers;
 }
