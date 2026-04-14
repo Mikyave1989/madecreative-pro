@@ -118,6 +118,45 @@ app.post("/warming/init", async (c) => {
   });
 });
 
+// ─── POST /admin/launch/bulk-analyze — queue ANALYZER for all SCRAPED prospects ─
+// Use this to recover prospects saved by a timed-out SCRAPER job.
+
+app.post("/bulk-analyze", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const { enqueueAgentJob } = await import("../../lib/queue.js");
+
+  const body = (await c.req.json().catch(() => ({}))) as { limit?: number; sector?: string; country?: string };
+  const batchLimit = Math.min(body.limit ?? 100, 500);
+
+  const prospects = await prisma.prospect.findMany({
+    where: {
+      status: "SCRAPED",
+      leadScore: 0,
+      ...(body.sector ? { sector: body.sector } : {}),
+      ...(body.country ? { country: body.country } : {}),
+    },
+    take: batchLimit,
+    orderBy: { createdAt: "desc" },
+    select: { id: true, companyName: true },
+  });
+
+  if (prospects.length === 0) {
+    return c.json({ success: true, data: { enqueued: 0, message: "No SCRAPED prospects with leadScore=0 found" } });
+  }
+
+  const jobIds: string[] = [];
+  for (let i = 0; i < prospects.length; i++) {
+    const prospect = prospects[i]!;
+    const job = await prisma.agentJob.create({
+      data: { agentType: "ANALYZER", status: "QUEUED", input: { prospectId: prospect.id }, prospectId: prospect.id },
+    });
+    await enqueueAgentJob({ agentType: "ANALYZER", jobId: job.id, input: { prospectId: prospect.id }, delay: i * 5_000 });
+    jobIds.push(job.id);
+  }
+
+  return c.json({ success: true, data: { enqueued: jobIds.length, message: `Queued ANALYZER for ${jobIds.length} SCRAPED prospects (staggered 5s apart)` } });
+});
+
 // ─── POST /admin/launch/bulk-build ───────────────────────────────────────────
 
 app.post("/bulk-build", async (c) => {

@@ -24,7 +24,7 @@ export interface AgentConfig {
 }
 
 const DEFAULT_AGENT_CONFIG: Record<AgentType, AgentConfig> = {
-  SCRAPER:  { maxRetries: 2, retryDelayMs: 30_000, timeoutMs: 600_000 },  // 10min, high retry delay (proxy rotation)
+  SCRAPER:  { maxRetries: 1, retryDelayMs: 60_000, timeoutMs: 7_200_000 }, // 2h — 48+ URLs × 8s each = ~6min extract alone; no timeout kills mid-run
   ANALYZER: { maxRetries: 3, retryDelayMs: 5_000,  timeoutMs: 120_000 },  // 2min
   BUILDER:  { maxRetries: 2, retryDelayMs: 30_000, timeoutMs: 1_800_000 },  // 30min — bolt.diy scrape+generate takes time
   OUTREACH: { maxRetries: 3, retryDelayMs: 5_000,  timeoutMs: 60_000 },   // 1min
