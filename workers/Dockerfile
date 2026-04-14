@@ -44,16 +44,19 @@ RUN npm run build --workspace=@madecreative/api || true
 # Build workers (TypeScript → JavaScript)
 RUN npx tsc --project workers/tsconfig.json
 
+# Install Playwright browsers in BUILD stage (node_modules available here)
+RUN npx playwright install chromium 2>&1 | tail -3 || true
+
 # --- Runtime stage ---
 FROM node:20-alpine
 WORKDIR /app
 
-RUN apk add --no-cache openssl chromium nss freetype harfbuzz ca-certificates ttf-freefont
+# Chromium runtime dependencies
+RUN apk add --no-cache openssl chromium nss freetype harfbuzz ca-certificates ttf-freefont libstdc++
 
-# Install Playwright's Chromium browser in the image
-RUN npx playwright install chromium --with-deps 2>/dev/null || true
-
+# Copy built app including node_modules and playwright browsers
 COPY --from=builder /app /app
+COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
 
 ENV WORKER_SCRIPT="agent-runner"
 
