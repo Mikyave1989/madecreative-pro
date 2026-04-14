@@ -168,9 +168,9 @@ export default function BillingPage() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { credits: 100, price: 5, label: 'Starter Pack' },
-              { credits: 300, price: 12, label: 'Popular', highlight: true },
-              { credits: 1000, price: 35, label: 'Pro Pack' },
+              { credits: 100, price: 14, label: 'Starter Pack' },
+              { credits: 300, price: 38, label: 'Popular', highlight: true },
+              { credits: 1000, price: 120, label: 'Pro Pack' },
             ].map((pack) => (
               <div
                 key={pack.credits}
@@ -185,7 +185,7 @@ export default function BillingPage() {
             ))}
           </div>
           <p className="text-xs text-bolt-elements-textTertiary mt-4 text-center">
-            1 credito = 1 messaggio AI nell'editor. I crediti del piano si resettano ogni mese, quelli acquistati no.
+            1 credito = 1 generazione AI (modifiche, ricostruzioni, creazioni). I crediti del piano si resettano ogni mese. Quelli acquistati non scadono mai.
           </p>
         </div>
 
