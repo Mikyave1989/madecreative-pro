@@ -1609,6 +1609,7 @@ body{padding-bottom:56px!important}
         existingPhotoUrls?: string[];
         logoUrl?: string | null;
         photoQuality?: number | null;
+        scrapedContent?: unknown;
       } | null = null;
 
       if (parsed.data.prospectId) {
@@ -1719,8 +1720,14 @@ body{padding-bottom:56px!important}
         return { success: false, error, apiCost: 0, tokensUsed: 0, durationMs: 0, toolCalls: [] };
       }
 
+      if (!businessData) {
+        const error = "No businessData — either prospectId or clientId must be provided";
+        await this.markJobFailed(error);
+        return { success: false, error, apiCost: 0, tokensUsed: 0, durationMs: 0, toolCalls: [] };
+      }
+
       // Store scraped content for multi-page generation in handleToolCall
-      const rawScraped = (businessData as Record<string, unknown>).scrapedContent;
+      const rawScraped = businessData.scrapedContent;
       this._scrapedContent = (rawScraped && typeof rawScraped === "object" && !Array.isArray(rawScraped)) ? rawScraped as Record<string, unknown> : null;
 
       await this.updateProgress(15);

@@ -659,8 +659,8 @@ export class ScraperAgent extends BaseAgent {
       photoUrls: photoUrls.length > 0 ? photoUrls : undefined,
       logoUrl,
       openingHours: openingHours ?? undefined,
-      scrapedContent: scrapedContent ?? undefined,
-    };
+      ...(scrapedContent ? { scrapedContent } : {}),
+    } as Record<string, unknown>;
   }
 
   private async toolCheckDuplicate(
@@ -828,7 +828,7 @@ export class ScraperAgent extends BaseAgent {
           photoUrls: data.photoUrls ?? [],
           logoUrl: data.logoUrl ?? null,
           photoQuality: (data.photoUrls?.length ?? 0) > 0 ? 70 : 0,
-          scrapedContent: (data as Record<string, unknown>).scrapedContent ?? null,
+          scrapedContent: ((data as Record<string, unknown>).scrapedContent as object) ?? undefined,
           status: "SCRAPED",
           source: "GOOGLE_MAPS",
           scrapeJobId: this.jobId,
