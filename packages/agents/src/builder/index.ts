@@ -1052,15 +1052,108 @@ export class BuilderAgent extends BaseAgent {
             }
           }
 
-          // ── Step 2: Generate premium Next.js project from i18n template ──
-          // Template is now multilingual — correct language, route slugs, labels.
-          // Uses real scraped content (photos, contact info) in projectData.
-          // Compiles 100% of the time, deploys instantly, looks premium.
-          this.log("info", `build_preview_site: generating i18n Next.js project for "${projectData.businessName}" (lang: ${projectData.language})`);
-          projectFiles = generateNextJsProject(projectData);
-          this.log("info", `build_preview_site: generated ${Object.keys(projectFiles).length} files (lang: ${projectData.language})`);
+          // ── Step 2: Generate UNIQUE premium site via Claude streaming ──
+          // Each site is generated from scratch by Claude — truly unique design.
+          // Uses streaming to avoid HTTP timeout (chunks flow continuously).
+          // Falls back to template if Claude fails.
+
+          const langMap: Record<string, string> = { de: "German", it: "Italian", en: "English", fr: "French", es: "Spanish" };
+          const langName = langMap[projectData.language.toLowerCase().slice(0, 2)] ?? "English";
+          const routeMap: Record<string, { about: string; services: string; gallery: string; contact: string }> = {
+            de: { about: "ueber-uns", services: "leistungen", gallery: "galerie", contact: "kontakt" },
+            it: { about: "chi-siamo", services: "servizi", gallery: "galleria", contact: "contatti" },
+            en: { about: "about", services: "services", gallery: "gallery", contact: "contact" },
+            fr: { about: "a-propos", services: "services", gallery: "galerie", contact: "contact" },
+            es: { about: "sobre-nosotros", services: "servicios", gallery: "galeria", contact: "contacto" },
+          };
+          const routes = routeMap[projectData.language.toLowerCase().slice(0, 2)] ?? routeMap["en"]!;
+
+          // Build scraped content summary for Claude
+          const scrapedPages = (scrapedContent as { pages?: Array<{ url?: string; title?: string; headings?: Array<{ level: number; text: string }>; paragraphs?: string[]; images?: Array<{ url: string; alt?: string }>; videos?: Array<{ url: string; type?: string }> }> })?.pages ?? [];
+          const scrapedSummary = scrapedPages.map((p, i) => {
+            const headings = (p.headings ?? []).map(h => `${"#".repeat(h.level)} ${h.text}`).join("\n");
+            const text = (p.paragraphs ?? []).join("\n\n");
+            const imgs = (p.images ?? []).map(img => typeof img === "string" ? img : img.url).join("\n");
+            const vids = (p.videos ?? []).map(v => `VIDEO: ${v.url} (${v.type ?? "unknown"})`).join("\n");
+            return `--- PAGE ${i + 1}: ${p.title ?? p.url ?? ""} ---\n${headings}\n\n${text}\n\nIMAGES:\n${imgs}${vids ? `\nVIDEOS:\n${vids}` : ""}`;
+          }).join("\n\n");
+          const scrapedContact = (scrapedContent as { contact?: Record<string, string> })?.contact ?? {};
+
+          const prompt = `Generate a UNIQUE premium Next.js 14 website that REBUILDS this business site with a €10,000+ design.
+
+BUSINESS: ${projectData.businessName}
+SECTOR: ${projectData.sector} | CITY: ${projectData.city ?? ""} | LANGUAGE: ${langName}
+PHONE: ${scrapedContact.phone ?? projectData.phone} | EMAIL: ${scrapedContact.email ?? projectData.email}
+ADDRESS: ${scrapedContact.address ?? projectData.address}
+GOOGLE: ${projectData.googleRating ?? "N/A"}/5 (${projectData.reviewCount ?? 0} reviews)
+
+REAL PHOTOS (use ALL of these):
+${photos.slice(0, 15).map((p) => p["url"] as string).join("\n")}
+
+REAL CONTENT FROM ORIGINAL SITE:
+${scrapedSummary.slice(0, 20000)}
+
+RULES:
+1. ALL text must be in ${langName}. Use the REAL text from the scraped content above.
+2. Use the REAL photos listed above — reference them with <img> or next/image.
+3. Every site must look DIFFERENT — vary layout, hero style, section order, typography.
+4. If the site has a VIDEO, put it as autoplay muted loop hero background.
+5. Responsive: mobile (hamburger nav, stacked), tablet, desktop.
+6. Premium animations: Framer Motion scroll reveals, parallax, hover effects.
+7. Routes: /${routes.about}, /${routes.services}, /${routes.gallery}, /${routes.contact}
+
+OUTPUT FORMAT — use ===FILE: path=== delimiters:
+
+===FILE: package.json===
+(content)
+===FILE: next.config.mjs===
+(content)
+
+Required files: package.json, next.config.mjs, tsconfig.json, app/globals.css, app/layout.tsx (with Nav+Footer), app/page.tsx (full homepage with all sections), app/${routes.about}/page.tsx, app/${routes.services}/page.tsx, app/${routes.gallery}/page.tsx, app/${routes.contact}/page.tsx
+
+Start with ===FILE: package.json===`;
+
+          this.log("info", `build_preview_site: streaming Claude generation for "${projectData.businessName}" (${langName})`);
+
+          try {
+            const result = await this.client.streamText(
+              [{ role: "user", content: prompt }],
+              { system: `Expert Next.js developer. Output ONLY files in ===FILE: path=== format. Every word in ${langName}. No explanation. Make each site visually UNIQUE — vary hero styles, layouts, color usage, section arrangements. Premium €10k+ quality.`, maxTokens: 16384 }
+            );
+
+            this.totalCost += result.cost;
+            this.totalInputTokens += result.inputTokens;
+            this.totalOutputTokens += result.outputTokens;
+
+            // Parse delimiter output
+            const parsed: Record<string, string> = {};
+            const blocks = result.text.split(/===FILE:\s*/);
+            for (const block of blocks) {
+              if (!block.trim()) continue;
+              const endOfPath = block.indexOf("===");
+              if (endOfPath === -1) continue;
+              const filePath = block.slice(0, endOfPath).trim();
+              const content = block.slice(endOfPath + 3).trim();
+              if (filePath && content && filePath.includes(".")) {
+                parsed[filePath] = content;
+              }
+            }
+
+            this.log("info", `build_preview_site: streamed ${Object.keys(parsed).length} files ($${result.cost.toFixed(3)}, ${result.outputTokens} tokens)`);
+
+            if (Object.keys(parsed).length >= 4 && "package.json" in parsed) {
+              projectFiles = parsed;
+              this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} UNIQUE files for ${projectData.businessName}`);
+            } else {
+              throw new Error(`Only ${Object.keys(parsed).length} files parsed (need 4+ with package.json)`);
+            }
+          } catch (streamErr) {
+            this.log("warn", `build_preview_site: streaming failed: ${streamErr instanceof Error ? streamErr.message : String(streamErr)} — using template fallback`);
+            projectFiles = generateNextJsProject(projectData);
+            this.log("info", `build_preview_site: template fallback: ${Object.keys(projectFiles).length} files`);
+          }
         } catch (err) {
-          this.log("warn", `build_preview_site: generation error: ${err instanceof Error ? err.message : String(err)}`);
+          this.log("warn", `build_preview_site: error: ${err instanceof Error ? err.message : String(err)}`);
           projectFiles = generateNextJsProject(projectData);
         }
 

@@ -155,6 +155,49 @@ export class ClaudeClient {
   }
 
   /**
+   * Stream a text response — no timeout issues even for large outputs.
+   * Collects all text chunks into a single string.
+   * Uses streaming so the HTTP connection stays alive (no 10-min timeout).
+   */
+  async streamText(
+    messages: MessageParam[],
+    options: ClaudeCallOptions = {}
+  ): Promise<{ text: string; cost: number; inputTokens: number; outputTokens: number }> {
+    const {
+      model = this.defaultModel,
+      maxTokens = 16384,
+      system,
+      temperature,
+    } = options;
+
+    const params: Anthropic.MessageStreamParams = {
+      model,
+      max_tokens: maxTokens,
+      messages,
+      ...(system ? { system } : {}),
+      ...(temperature !== undefined ? { temperature } : {}),
+    };
+
+    const stream = this.client.messages.stream(params);
+    let text = "";
+    let inputTokens = 0;
+    let outputTokens = 0;
+
+    for await (const event of stream) {
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+        text += event.delta.text;
+      } else if (event.type === "message_start" && event.message.usage) {
+        inputTokens = event.message.usage.input_tokens;
+      } else if (event.type === "message_delta" && event.usage) {
+        outputTokens = event.usage.output_tokens;
+      }
+    }
+
+    const cost = calculateCost(model, inputTokens, outputTokens);
+    return { text, cost, inputTokens, outputTokens };
+  }
+
+  /**
    * Runs a tool use loop: sends messages, processes tool calls, loops until end_turn
    */
   async toolUseLoop(
