@@ -1102,7 +1102,7 @@ PHOTOS (use these REAL photos from the original site):
 ${photos.slice(0, 10).map((p) => p["url"] as string).join("\n")}
 
 ORIGINAL SITE CONTENT (scraped — use this as source of truth):
-${scrapedSummary}
+${scrapedSummary.slice(0, 20000)}
 
 REQUIREMENTS:
 1. COPY the real text from the scraped content above. Do NOT invent or translate content — use the original ${langName} text as-is.
