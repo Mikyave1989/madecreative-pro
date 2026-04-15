@@ -184,6 +184,23 @@ async function deployToVercel(
       };
     });
 
+    // Reset project settings to match current files (Vercel caches old settings)
+    try {
+      await fetch(
+        `https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}${teamQuery}`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            framework: framework ?? null,
+            buildCommand: buildCommand || null,
+            outputDirectory: outputDirectory === "." ? null : outputDirectory,
+            installCommand: installCommand || null,
+          }),
+        }
+      );
+    } catch { /* project may not exist yet — that's fine */ }
+
     const payload = {
       name: projectName,
       files: vercelFiles,
