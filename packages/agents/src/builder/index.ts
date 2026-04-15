@@ -1156,7 +1156,7 @@ Generate ALL files now. Start with ===FILE: package.json===`;
           try {
             const claudeResult = await this.client.callWithText(
               [{ role: "user", content: claudePrompt }],
-              { system: "You are an expert Next.js developer. Output files using the ===FILE: path=== delimiter format. No JSON, no markdown fences, no explanation — just the files.", maxTokens: 32000 }
+              { system: "You are an expert Next.js developer. Output files using the ===FILE: path=== delimiter format. No JSON, no markdown fences, no explanation — just the files.", maxTokens: 128000 }
             );
 
             this.totalCost += claudeResult.cost;

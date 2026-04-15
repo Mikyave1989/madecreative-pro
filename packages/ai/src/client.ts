@@ -65,7 +65,7 @@ export class ClaudeClient {
   constructor(apiKey?: string) {
     this.client = new Anthropic({
       apiKey: apiKey ?? process.env["ANTHROPIC_API_KEY"],
-      timeout: 1_200_000, // 20 min — no premature timeout on large generations
+      timeout: 3_600_000, // 60 min — no timeout, Claude takes as long as needed
     });
     this.defaultModel = AI_MODELS.DEFAULT as ClaudeModel;
   }
