@@ -70,10 +70,216 @@ export interface ProjectData {
 
 const J = JSON.stringify; // shorthand
 
+// ─── i18n ──────────────────────────────────────────────────────────────────
+
+interface I18nTranslations {
+  routes: {
+    about: string;
+    services: string;
+    gallery: string;
+    contact: string;
+  };
+  nav: {
+    about: string;
+    services: string;
+    gallery: string;
+    contact: string;
+  };
+  home: {
+    aboutEyebrow: string;
+    aboutTitle: string;
+    aboutReadMore: string;
+    servicesEyebrow: string;
+    servicesTitle: string;
+    servicesDesc: string;
+    servicesAll: string;
+    galleryEyebrow: string;
+    galleryTitle: string;
+    galleryAll: string;
+    reviewsEyebrow: string;
+    reviewsTitle: string;
+    ctaSubtitle: string;
+  };
+  aboutPage: {
+    title: string;
+    historyEyebrow: string;
+    missionTitle: string;
+    numbersEyebrow: string;
+    impactTitle: string;
+    reviewsEyebrow: string;
+    reviewsTitle: string;
+    ctaTitle: string;
+    ctaSubtitle: string;
+  };
+  servicesPage: {
+    title: string;
+    subtitle: string;
+    ctaTitle: string;
+    ctaSubtitle: string;
+  };
+  galleryPage: {
+    title: string;
+    subtitle: string;
+    ctaTitle: string;
+    ctaSubtitle: string;
+  };
+  contactPage: {
+    title: string;
+    subtitle: string;
+    addressLabel: string;
+    phoneLabel: string;
+    emailLabel: string;
+    mapTitle: string;
+  };
+  form: {
+    nameLabel: string;
+    namePlaceholder: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    phoneLabel: string;
+    phonePlaceholder: string;
+    messageLabel: string;
+    messagePlaceholder: string;
+    sent: string;
+  };
+  footer: {
+    copyright: string;
+  };
+  misc: {
+    backToTop: string;
+    onGoogle: string;
+    reviews: string;
+  };
+}
+
+const I18N: Record<string, I18nTranslations> = {
+  it: {
+    routes: { about: "chi-siamo", services: "servizi", gallery: "galleria", contact: "contatti" },
+    nav: { about: "Chi siamo", services: "Servizi", gallery: "Galleria", contact: "Contatti" },
+    home: {
+      aboutEyebrow: "La nostra storia", aboutTitle: "Chi Siamo", aboutReadMore: "Scopri di pi\u00f9 \u2192",
+      servicesEyebrow: "Cosa offriamo", servicesTitle: "I nostri servizi", servicesDesc: "Eccellenza in ogni dettaglio, soluzioni su misura.", servicesAll: "Tutti i servizi \u2192",
+      galleryEyebrow: "Galleria", galleryTitle: "I nostri momenti", galleryAll: "Vedi tutta la galleria \u2192",
+      reviewsEyebrow: "Recensioni", reviewsTitle: "Cosa dicono i nostri clienti",
+      ctaSubtitle: "Contattaci oggi per una consulenza gratuita",
+    },
+    aboutPage: {
+      title: "Chi Siamo", historyEyebrow: "La nostra storia", missionTitle: "La nostra missione",
+      numbersEyebrow: "I numeri", impactTitle: "Il nostro impatto",
+      reviewsEyebrow: "Recensioni", reviewsTitle: "Cosa dicono di noi",
+      ctaTitle: "Vuoi saperne di pi\u00f9?", ctaSubtitle: "Siamo sempre disponibili per te",
+    },
+    servicesPage: { title: "I Nostri Servizi", subtitle: "Eccellenza in ogni dettaglio", ctaTitle: "Interessato ai nostri servizi?", ctaSubtitle: "Contattaci per un preventivo personalizzato" },
+    galleryPage: { title: "Galleria", subtitle: "I nostri momenti migliori", ctaTitle: "Ti piace quello che vedi?", ctaSubtitle: "Vieni a trovarci di persona" },
+    contactPage: { title: "Contatti", subtitle: "Siamo qui per te", addressLabel: "Indirizzo", phoneLabel: "Telefono", emailLabel: "Email", mapTitle: "Mappa" },
+    form: { nameLabel: "Nome", namePlaceholder: "Il tuo nome", emailLabel: "Email", emailPlaceholder: "La tua email", phoneLabel: "Telefono", phonePlaceholder: "Il tuo numero (opzionale)", messageLabel: "Messaggio", messagePlaceholder: "Come possiamo aiutarti?", sent: "Inviato \u2713" },
+    footer: { copyright: "Sito creato con MadeCreative" },
+    misc: { backToTop: "Torna su", onGoogle: "su Google", reviews: "recensioni" },
+  },
+  de: {
+    routes: { about: "ueber-uns", services: "leistungen", gallery: "galerie", contact: "kontakt" },
+    nav: { about: "\u00dcber uns", services: "Leistungen", gallery: "Galerie", contact: "Kontakt" },
+    home: {
+      aboutEyebrow: "Unsere Geschichte", aboutTitle: "\u00dcber uns", aboutReadMore: "Mehr erfahren \u2192",
+      servicesEyebrow: "Was wir anbieten", servicesTitle: "Unsere Leistungen", servicesDesc: "Exzellenz in jedem Detail, ma\u00dfgeschneiderte L\u00f6sungen.", servicesAll: "Alle Leistungen \u2192",
+      galleryEyebrow: "Galerie", galleryTitle: "Unsere Momente", galleryAll: "Gesamte Galerie ansehen \u2192",
+      reviewsEyebrow: "Bewertungen", reviewsTitle: "Was unsere Kunden sagen",
+      ctaSubtitle: "Kontaktieren Sie uns noch heute f\u00fcr eine kostenlose Beratung",
+    },
+    aboutPage: {
+      title: "\u00dcber uns", historyEyebrow: "Unsere Geschichte", missionTitle: "Unsere Mission",
+      numbersEyebrow: "Zahlen", impactTitle: "Unsere Wirkung",
+      reviewsEyebrow: "Bewertungen", reviewsTitle: "Was andere sagen",
+      ctaTitle: "M\u00f6chten Sie mehr erfahren?", ctaSubtitle: "Wir sind immer f\u00fcr Sie da",
+    },
+    servicesPage: { title: "Unsere Leistungen", subtitle: "Exzellenz in jedem Detail", ctaTitle: "Interessiert an unseren Leistungen?", ctaSubtitle: "Kontaktieren Sie uns f\u00fcr ein individuelles Angebot" },
+    galleryPage: { title: "Galerie", subtitle: "Unsere besten Momente", ctaTitle: "Gef\u00e4llt Ihnen was Sie sehen?", ctaSubtitle: "Besuchen Sie uns pers\u00f6nlich" },
+    contactPage: { title: "Kontakt", subtitle: "Wir sind f\u00fcr Sie da", addressLabel: "Adresse", phoneLabel: "Telefon", emailLabel: "E-Mail", mapTitle: "Karte" },
+    form: { nameLabel: "Name", namePlaceholder: "Ihr Name", emailLabel: "E-Mail", emailPlaceholder: "Ihre E-Mail", phoneLabel: "Telefon", phonePlaceholder: "Ihre Telefonnummer (optional)", messageLabel: "Nachricht", messagePlaceholder: "Wie k\u00f6nnen wir Ihnen helfen?", sent: "Gesendet \u2713" },
+    footer: { copyright: "Website erstellt mit MadeCreative" },
+    misc: { backToTop: "Nach oben", onGoogle: "auf Google", reviews: "Bewertungen" },
+  },
+  en: {
+    routes: { about: "about", services: "services", gallery: "gallery", contact: "contact" },
+    nav: { about: "About", services: "Services", gallery: "Gallery", contact: "Contact" },
+    home: {
+      aboutEyebrow: "Our story", aboutTitle: "About Us", aboutReadMore: "Learn more \u2192",
+      servicesEyebrow: "What we offer", servicesTitle: "Our services", servicesDesc: "Excellence in every detail, tailored solutions.", servicesAll: "All services \u2192",
+      galleryEyebrow: "Gallery", galleryTitle: "Our moments", galleryAll: "View full gallery \u2192",
+      reviewsEyebrow: "Reviews", reviewsTitle: "What our clients say",
+      ctaSubtitle: "Contact us today for a free consultation",
+    },
+    aboutPage: {
+      title: "About Us", historyEyebrow: "Our story", missionTitle: "Our mission",
+      numbersEyebrow: "Numbers", impactTitle: "Our impact",
+      reviewsEyebrow: "Reviews", reviewsTitle: "What people say",
+      ctaTitle: "Want to know more?", ctaSubtitle: "We are always here for you",
+    },
+    servicesPage: { title: "Our Services", subtitle: "Excellence in every detail", ctaTitle: "Interested in our services?", ctaSubtitle: "Contact us for a personalised quote" },
+    galleryPage: { title: "Gallery", subtitle: "Our finest moments", ctaTitle: "Like what you see?", ctaSubtitle: "Come visit us in person" },
+    contactPage: { title: "Contact", subtitle: "We are here for you", addressLabel: "Address", phoneLabel: "Phone", emailLabel: "Email", mapTitle: "Map" },
+    form: { nameLabel: "Name", namePlaceholder: "Your name", emailLabel: "Email", emailPlaceholder: "Your email", phoneLabel: "Phone", phonePlaceholder: "Your phone number (optional)", messageLabel: "Message", messagePlaceholder: "How can we help you?", sent: "Sent \u2713" },
+    footer: { copyright: "Website built with MadeCreative" },
+    misc: { backToTop: "Back to top", onGoogle: "on Google", reviews: "reviews" },
+  },
+  fr: {
+    routes: { about: "a-propos", services: "services", gallery: "galerie", contact: "contact" },
+    nav: { about: "\u00c0 propos", services: "Services", gallery: "Galerie", contact: "Contact" },
+    home: {
+      aboutEyebrow: "Notre histoire", aboutTitle: "\u00c0 propos", aboutReadMore: "En savoir plus \u2192",
+      servicesEyebrow: "Ce que nous proposons", servicesTitle: "Nos services", servicesDesc: "Excellence dans chaque d\u00e9tail, solutions sur mesure.", servicesAll: "Tous les services \u2192",
+      galleryEyebrow: "Galerie", galleryTitle: "Nos moments", galleryAll: "Voir toute la galerie \u2192",
+      reviewsEyebrow: "Avis", reviewsTitle: "Ce que disent nos clients",
+      ctaSubtitle: "Contactez-nous aujourd\u2019hui pour une consultation gratuite",
+    },
+    aboutPage: {
+      title: "\u00c0 propos", historyEyebrow: "Notre histoire", missionTitle: "Notre mission",
+      numbersEyebrow: "Chiffres", impactTitle: "Notre impact",
+      reviewsEyebrow: "Avis", reviewsTitle: "Ce qu\u2019ils disent",
+      ctaTitle: "Vous souhaitez en savoir plus\u00a0?", ctaSubtitle: "Nous sommes toujours disponibles pour vous",
+    },
+    servicesPage: { title: "Nos services", subtitle: "Excellence dans chaque d\u00e9tail", ctaTitle: "Int\u00e9ress\u00e9 par nos services\u00a0?", ctaSubtitle: "Contactez-nous pour un devis personnalis\u00e9" },
+    galleryPage: { title: "Galerie", subtitle: "Nos meilleurs moments", ctaTitle: "Vous aimez ce que vous voyez\u00a0?", ctaSubtitle: "Venez nous rendre visite" },
+    contactPage: { title: "Contact", subtitle: "Nous sommes l\u00e0 pour vous", addressLabel: "Adresse", phoneLabel: "T\u00e9l\u00e9phone", emailLabel: "E-mail", mapTitle: "Carte" },
+    form: { nameLabel: "Nom", namePlaceholder: "Votre nom", emailLabel: "E-mail", emailPlaceholder: "Votre e-mail", phoneLabel: "T\u00e9l\u00e9phone", phonePlaceholder: "Votre num\u00e9ro (optionnel)", messageLabel: "Message", messagePlaceholder: "Comment pouvons-nous vous aider\u00a0?", sent: "Envoy\u00e9 \u2713" },
+    footer: { copyright: "Site cr\u00e9\u00e9 avec MadeCreative" },
+    misc: { backToTop: "Retour en haut", onGoogle: "sur Google", reviews: "avis" },
+  },
+  es: {
+    routes: { about: "quienes-somos", services: "servicios", gallery: "galeria", contact: "contacto" },
+    nav: { about: "Qui\u00e9nes somos", services: "Servicios", gallery: "Galer\u00eda", contact: "Contacto" },
+    home: {
+      aboutEyebrow: "Nuestra historia", aboutTitle: "Qui\u00e9nes somos", aboutReadMore: "Saber m\u00e1s \u2192",
+      servicesEyebrow: "Lo que ofrecemos", servicesTitle: "Nuestros servicios", servicesDesc: "Excelencia en cada detalle, soluciones a medida.", servicesAll: "Todos los servicios \u2192",
+      galleryEyebrow: "Galer\u00eda", galleryTitle: "Nuestros momentos", galleryAll: "Ver toda la galer\u00eda \u2192",
+      reviewsEyebrow: "Rese\u00f1as", reviewsTitle: "Lo que dicen nuestros clientes",
+      ctaSubtitle: "Cont\u00e1ctenos hoy para una consulta gratuita",
+    },
+    aboutPage: {
+      title: "Qui\u00e9nes somos", historyEyebrow: "Nuestra historia", missionTitle: "Nuestra misi\u00f3n",
+      numbersEyebrow: "N\u00fameros", impactTitle: "Nuestro impacto",
+      reviewsEyebrow: "Rese\u00f1as", reviewsTitle: "Lo que dicen",
+      ctaTitle: "\u00bfQuieres saber m\u00e1s?", ctaSubtitle: "Siempre estamos disponibles para ti",
+    },
+    servicesPage: { title: "Nuestros servicios", subtitle: "Excelencia en cada detalle", ctaTitle: "\u00bfInteresado en nuestros servicios?", ctaSubtitle: "Cont\u00e1ctenos para un presupuesto personalizado" },
+    galleryPage: { title: "Galer\u00eda", subtitle: "Nuestros mejores momentos", ctaTitle: "\u00bfTe gusta lo que ves?", ctaSubtitle: "Ven a visitarnos en persona" },
+    contactPage: { title: "Contacto", subtitle: "Estamos aqu\u00ed para ti", addressLabel: "Direcci\u00f3n", phoneLabel: "Tel\u00e9fono", emailLabel: "Email", mapTitle: "Mapa" },
+    form: { nameLabel: "Nombre", namePlaceholder: "Tu nombre", emailLabel: "Email", emailPlaceholder: "Tu email", phoneLabel: "Tel\u00e9fono", phonePlaceholder: "Tu n\u00famero (opcional)", messageLabel: "Mensaje", messagePlaceholder: "\u00bfC\u00f3mo podemos ayudarte?", sent: "Enviado \u2713" },
+    footer: { copyright: "Sitio creado con MadeCreative" },
+    misc: { backToTop: "Volver arriba", onGoogle: "en Google", reviews: "rese\u00f1as" },
+  },
+};
+
+/** Resolve translations for a given language code, falling back to Italian. */
+function getI18n(language: string): I18nTranslations {
+  return I18N[language] ?? I18N["it"]!;
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────
 
 export function generateNextJsProject(data: ProjectData): Record<string, string> {
   const cfg = getTemplateConfig(data.sector);
+  const t = getI18n(data.language);
   const f: Record<string, string> = {};
 
   f["package.json"] = genPackageJson(data);
@@ -83,21 +289,21 @@ export function generateNextJsProject(data: ProjectData): Record<string, string>
   f["lib/data.ts"] = genDataFile(data, cfg);
   f["app/globals.css"] = genGlobalsCss(cfg);
   f["app/layout.tsx"] = genLayout(data, cfg);
-  f["app/page.tsx"] = genHomePage(data, cfg);
-  f["app/chi-siamo/page.tsx"] = genChiSiamoPage();
-  f["app/servizi/page.tsx"] = genServiziPage();
-  f["app/galleria/page.tsx"] = genGalleriaPage();
-  f["app/contatti/page.tsx"] = genContattiPage();
+  f["app/page.tsx"] = genHomePage(data, cfg, t);
+  f[`app/${t.routes.about}/page.tsx`] = genChiSiamoPage(t);
+  f[`app/${t.routes.services}/page.tsx`] = genServiziPage(t);
+  f[`app/${t.routes.gallery}/page.tsx`] = genGalleriaPage(t);
+  f[`app/${t.routes.contact}/page.tsx`] = genContattiPage(t);
 
-  f["components/Nav.tsx"] = genNav();
-  f["components/Hero.tsx"] = genHero(cfg);
-  f["components/Footer.tsx"] = genFooter();
+  f["components/Nav.tsx"] = genNav(t);
+  f["components/Hero.tsx"] = genHero(cfg, t);
+  f["components/Footer.tsx"] = genFooter(t);
   f["components/Section.tsx"] = genSection();
   f["components/Stats.tsx"] = genStats();
   f["components/ServiceCard.tsx"] = genServiceCard();
   f["components/GalleryGrid.tsx"] = genGalleryGrid();
-  f["components/ContactForm.tsx"] = genContactForm();
-  f["components/BackToTop.tsx"] = genBackToTop();
+  f["components/ContactForm.tsx"] = genContactForm(t);
+  f["components/BackToTop.tsx"] = genBackToTop(t);
   f["components/WhatsApp.tsx"] = genWhatsApp();
   f["components/ScrollProgress.tsx"] = genScrollProgress();
   f["components/Preloader.tsx"] = genPreloader();
@@ -347,7 +553,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 // ─── Homepage ───────────────────────────────────────────────────────────────
 
-function genHomePage(d: ProjectData, cfg: TemplateConfig): string {
+function genHomePage(d: ProjectData, cfg: TemplateConfig, t: I18nTranslations): string {
+  const h = t.home;
+  const r = t.routes;
   return `import { Hero } from "@/components/Hero";
 import { Section } from "@/components/Section";
 import { Stats } from "@/components/Stats";
@@ -362,12 +570,12 @@ export default function Home() {
       <Hero />
 
       {/* About preview */}
-      <Section eyebrow="La nostra storia" title="Chi Siamo" bg="surface">
+      <Section eyebrow=${J(h.aboutEyebrow)} title=${J(h.aboutTitle)} bg="surface">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(40px, 6vw, 80px)", alignItems: "center" }}>
           <div>
             <p style={{ fontSize: "1.05rem", lineHeight: 1.85 }}>{BUSINESS.aboutText}</p>
-            <Link href="/chi-siamo" className="btn-primary" style={{ marginTop: 28, display: "inline-flex" }}>
-              Scopri di pi\u00f9 \u2192
+            <Link href=${J("/" + r.about)} className="btn-primary" style={{ marginTop: 28, display: "inline-flex" }}>
+              ${h.aboutReadMore}
             </Link>
           </div>
           <Stats stats={STATS} />
@@ -375,27 +583,27 @@ export default function Home() {
       </Section>
 
       {/* Services preview */}
-      <Section eyebrow="Cosa offriamo" title="I nostri servizi" desc="Eccellenza in ogni dettaglio, soluzioni su misura.">
+      <Section eyebrow=${J(h.servicesEyebrow)} title=${J(h.servicesTitle)} desc=${J(h.servicesDesc)}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, marginTop: 48 }}>
           {SERVICES.slice(0, 3).map((s, i) => (
             <ServiceCard key={i} icon={s.icon} name={s.name} desc={s.desc} delay={i * 0.1} />
           ))}
         </div>
         <div style={{ textAlign: "center", marginTop: 40 }}>
-          <Link href="/servizi" className="btn-primary">Tutti i servizi \u2192</Link>
+          <Link href=${J("/" + r.services)} className="btn-primary">${h.servicesAll}</Link>
         </div>
       </Section>
 
       {/* Gallery preview */}
-      <Section eyebrow="Galleria" title="I nostri momenti" bg="surface" center>
+      <Section eyebrow=${J(h.galleryEyebrow)} title=${J(h.galleryTitle)} bg="surface" center>
         <GalleryGrid images={GALLERY.slice(0, 3)} />
         <div style={{ textAlign: "center", marginTop: 40 }}>
-          <Link href="/galleria" className="btn-primary">Vedi tutta la galleria \u2192</Link>
+          <Link href=${J("/" + r.gallery)} className="btn-primary">${h.galleryAll}</Link>
         </div>
       </Section>
 
       {/* Testimonials */}
-      <Section eyebrow="Recensioni" title="Cosa dicono i nostri clienti" center>
+      <Section eyebrow=${J(h.reviewsEyebrow)} title=${J(h.reviewsTitle)} center>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, marginTop: 48 }}>
           {TESTIMONIALS.map((t, i) => (
             <div key={i} className="test-c">
@@ -414,8 +622,8 @@ export default function Home() {
       {/* CTA Banner */}
       <div className="cta-banner">
         <h2>{BUSINESS.tagline}</h2>
-        <p>Contattaci oggi per una consulenza gratuita</p>
-        <Link href="/contatti" className="btn-primary">{BUSINESS.cta} \u2192</Link>
+        <p>${h.ctaSubtitle}</p>
+        <Link href=${J("/" + r.contact)} className="btn-primary">{BUSINESS.cta} \u2192</Link>
       </div>
     </>
   );
@@ -425,24 +633,26 @@ export default function Home() {
 
 // ─── Inner pages ────────────────────────────────────────────────────────────
 
-function genChiSiamoPage(): string {
+function genChiSiamoPage(t: I18nTranslations): string {
+  const p = t.aboutPage;
+  const r = t.routes;
   return `import { Section } from "@/components/Section";
 import { Stats } from "@/components/Stats";
 import { BUSINESS, STATS, TESTIMONIALS } from "@/lib/data";
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Chi Siamo" };
+export const metadata: Metadata = { title: ${J(p.title)} };
 
-export default function ChiSiamo() {
+export default function AboutPage() {
   return (
     <>
       <div className="page-hdr">
-        <h1>Chi Siamo</h1>
+        <h1>${p.title}</h1>
         <p>{BUSINESS.tagline}</p>
       </div>
 
-      <Section eyebrow="La nostra storia" title="La nostra missione" bg="surface">
+      <Section eyebrow=${J(p.historyEyebrow)} title=${J(p.missionTitle)} bg="surface">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(40px, 6vw, 80px)", alignItems: "center" }}>
           <div>
             <p style={{ fontSize: "1.05rem", lineHeight: 1.85 }}>{BUSINESS.aboutText}</p>
@@ -454,13 +664,13 @@ export default function ChiSiamo() {
         </div>
       </Section>
 
-      <Section eyebrow="I numeri" title="Il nostro impatto" center>
+      <Section eyebrow=${J(p.numbersEyebrow)} title=${J(p.impactTitle)} center>
         <div style={{ maxWidth: 600, margin: "48px auto 0" }}>
           <Stats stats={STATS} />
         </div>
       </Section>
 
-      <Section eyebrow="Recensioni" title="Cosa dicono di noi" bg="surface" center>
+      <Section eyebrow=${J(p.reviewsEyebrow)} title=${J(p.reviewsTitle)} bg="surface" center>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, marginTop: 48 }}>
           {TESTIMONIALS.map((t, i) => (
             <div key={i} className="test-c">
@@ -475,9 +685,9 @@ export default function ChiSiamo() {
       </Section>
 
       <div className="cta-banner">
-        <h2>Vuoi saperne di pi\u00f9?</h2>
-        <p>Siamo sempre disponibili per te</p>
-        <Link href="/contatti" className="btn-primary">{BUSINESS.cta} \u2192</Link>
+        <h2>${p.ctaTitle}</h2>
+        <p>${p.ctaSubtitle}</p>
+        <Link href=${J("/" + r.contact)} className="btn-primary">{BUSINESS.cta} \u2192</Link>
       </div>
     </>
   );
@@ -485,21 +695,23 @@ export default function ChiSiamo() {
 `;
 }
 
-function genServiziPage(): string {
+function genServiziPage(t: I18nTranslations): string {
+  const p = t.servicesPage;
+  const r = t.routes;
   return `import { Section } from "@/components/Section";
 import { ServiceCard } from "@/components/ServiceCard";
 import { BUSINESS, SERVICES } from "@/lib/data";
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Servizi" };
+export const metadata: Metadata = { title: ${J(p.title)} };
 
-export default function Servizi() {
+export default function ServicesPage() {
   return (
     <>
       <div className="page-hdr">
-        <h1>I Nostri Servizi</h1>
-        <p>Eccellenza in ogni dettaglio</p>
+        <h1>${p.title}</h1>
+        <p>${p.subtitle}</p>
       </div>
 
       <Section>
@@ -511,9 +723,9 @@ export default function Servizi() {
       </Section>
 
       <div className="cta-banner">
-        <h2>Interessato ai nostri servizi?</h2>
-        <p>Contattaci per un preventivo personalizzato</p>
-        <Link href="/contatti" className="btn-primary">{BUSINESS.cta} \u2192</Link>
+        <h2>${p.ctaTitle}</h2>
+        <p>${p.ctaSubtitle}</p>
+        <Link href=${J("/" + r.contact)} className="btn-primary">{BUSINESS.cta} \u2192</Link>
       </div>
     </>
   );
@@ -521,19 +733,21 @@ export default function Servizi() {
 `;
 }
 
-function genGalleriaPage(): string {
+function genGalleriaPage(t: I18nTranslations): string {
+  const p = t.galleryPage;
+  const r = t.routes;
   return `"use client";
 import { Section } from "@/components/Section";
 import { GalleryGrid } from "@/components/GalleryGrid";
 import { BUSINESS, GALLERY } from "@/lib/data";
 import Link from "next/link";
 
-export default function Galleria() {
+export default function GalleryPage() {
   return (
     <>
       <div className="page-hdr">
-        <h1>Galleria</h1>
-        <p>I nostri momenti migliori</p>
+        <h1>${p.title}</h1>
+        <p>${p.subtitle}</p>
       </div>
 
       <Section>
@@ -541,9 +755,9 @@ export default function Galleria() {
       </Section>
 
       <div className="cta-banner">
-        <h2>Ti piace quello che vedi?</h2>
-        <p>Vieni a trovarci di persona</p>
-        <Link href="/contatti" className="btn-primary">{BUSINESS.cta} \u2192</Link>
+        <h2>${p.ctaTitle}</h2>
+        <p>${p.ctaSubtitle}</p>
+        <Link href=${J("/" + r.contact)} className="btn-primary">{BUSINESS.cta} \u2192</Link>
       </div>
     </>
   );
@@ -551,20 +765,21 @@ export default function Galleria() {
 `;
 }
 
-function genContattiPage(): string {
+function genContattiPage(t: I18nTranslations): string {
+  const p = t.contactPage;
   return `import { Section } from "@/components/Section";
 import { ContactForm } from "@/components/ContactForm";
 import { BUSINESS } from "@/lib/data";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Contatti" };
+export const metadata: Metadata = { title: ${J(p.title)} };
 
 export default function Contatti() {
   return (
     <>
       <div className="page-hdr">
-        <h1>Contatti</h1>
-        <p>Siamo qui per te</p>
+        <h1>${p.title}</h1>
+        <p>${p.subtitle}</p>
       </div>
 
       <section className="sec ctc">
@@ -572,9 +787,9 @@ export default function Contatti() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(32px, 4vw, 64px)", alignItems: "start" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
               {[
-                { icon: "\ud83d\udccd", label: "Indirizzo", value: BUSINESS.address },
-                { icon: "\ud83d\udcde", label: "Telefono", value: BUSINESS.phone },
-                { icon: "\u2709\ufe0f", label: "Email", value: BUSINESS.email },
+                { icon: "\ud83d\udccd", label: "${p.addressLabel}", value: BUSINESS.address },
+                { icon: "\ud83d\udcde", label: "${p.phoneLabel}", value: BUSINESS.phone },
+                { icon: "\u2709\ufe0f", label: "${p.emailLabel}", value: BUSINESS.email },
               ].map((item) => (
                 <div key={item.label} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
                   <div style={{ fontSize: 24, width: 48, height: 48, background: "rgba(255,255,255,0.08)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -594,7 +809,7 @@ export default function Contatti() {
 
       {BUSINESS.googleMapsEmbedUrl && (
         <div className="map-wrap" style={{ borderRadius: 0, height: 450, border: "none" }}>
-          <iframe src={BUSINESS.googleMapsEmbedUrl} allowFullScreen loading="lazy" title="Mappa" />
+          <iframe src={BUSINESS.googleMapsEmbedUrl} allowFullScreen loading="lazy" title="${p.mapTitle}" />
         </div>
       )}
     </>
@@ -607,7 +822,9 @@ export default function Contatti() {
 // COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-function genNav(): string {
+function genNav(t: I18nTranslations): string {
+  const r = t.routes;
+  const n = t.nav;
   return `"use client";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -616,10 +833,10 @@ import { usePathname } from "next/navigation";
 import { BUSINESS } from "@/lib/data";
 
 const LINKS = [
-  { href: "/chi-siamo", label: "Chi siamo" },
-  { href: "/servizi", label: "Servizi" },
-  { href: "/galleria", label: "Galleria" },
-  { href: "/contatti", label: "Contatti" },
+  { href: "/${r.about}", label: "${n.about}" },
+  { href: "/${r.services}", label: "${n.services}" },
+  { href: "/${r.gallery}", label: "${n.gallery}" },
+  { href: "/${r.contact}", label: "${n.contact}" },
 ];
 
 export function Nav() {
@@ -679,7 +896,7 @@ export function Nav() {
                 {l.label}
               </Link>
             ))}
-            <Link href="/contatti" style={{
+            <Link href="/${r.contact}" style={{
               background: "var(--a)", color: "#fff", padding: "12px 28px",
               borderRadius: 12, fontSize: 13, fontWeight: 700, letterSpacing: "0.03em",
             }}>
@@ -712,7 +929,7 @@ export function Nav() {
                   {l.label}
                 </Link>
               ))}
-              <Link href="/contatti" style={{ marginTop: "auto", background: "var(--a)", color: "#fff", textAlign: "center", padding: 16, borderRadius: 14, fontWeight: 700 }}>
+              <Link href="/${r.contact}" style={{ marginTop: "auto", background: "var(--a)", color: "#fff", textAlign: "center", padding: 16, borderRadius: 14, fontWeight: 700 }}>
                 {BUSINESS.cta}
               </Link>
             </motion.div>
@@ -725,7 +942,8 @@ export function Nav() {
 `;
 }
 
-function genHero(cfg: TemplateConfig): string {
+function genHero(cfg: TemplateConfig, t: I18nTranslations): string {
+  const r = t.routes;
   // Generate the correct hero based on heroVariant
   return `"use client";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -757,13 +975,13 @@ function Badge() {
       style={{ display: "inline-flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 16, padding: "16px 24px", marginTop: 48 }}>
       <div>
         <div style={{ fontFamily: "var(--fh)", fontSize: 28, fontWeight: 700, color: "#fff", lineHeight: 1 }}>{BUSINESS.googleRating}</div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.05em" }}>su Google</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.05em" }}>${t.misc.onGoogle}</div>
       </div>
       <div>
         <div style={{ color: "var(--a)", fontSize: 14, letterSpacing: 2 }}>
           {"\u2605".repeat(Math.round(BUSINESS.googleRating))}{"\u2606".repeat(5 - Math.round(BUSINESS.googleRating))}
         </div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{BUSINESS.reviewCount}+ recensioni</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{BUSINESS.reviewCount}+ ${t.misc.reviews}</div>
       </div>
     </motion.div>
   );
@@ -804,8 +1022,8 @@ function HeroCentered() {
         </motion.p>
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }}
           style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/contatti" className="btn-primary">{BUSINESS.cta} \u2192</Link>
-          <Link href="/servizi" className="btn-ghost">{BUSINESS.ctaSecondary}</Link>
+          <Link href="/${r.contact}" className="btn-primary">{BUSINESS.cta} \u2192</Link>
+          <Link href="/${r.services}" className="btn-ghost">{BUSINESS.ctaSecondary}</Link>
         </motion.div>
         <Badge />
       </div>
@@ -834,8 +1052,8 @@ function HeroSplit() {
             {BUSINESS.heroSubtitle}
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }} style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <Link href="/contatti" className="btn-primary">{BUSINESS.cta} \u2192</Link>
-            <Link href="/servizi" className="btn-ghost">{BUSINESS.ctaSecondary}</Link>
+            <Link href="/${r.contact}" className="btn-primary">{BUSINESS.cta} \u2192</Link>
+            <Link href="/${r.services}" className="btn-ghost">{BUSINESS.ctaSecondary}</Link>
           </motion.div>
         </div>
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5, duration: 1 }}
@@ -872,8 +1090,8 @@ function HeroBold() {
           {BUSINESS.heroSubtitle}
         </motion.p>
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }} style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <Link href="/contatti" className="btn-primary" style={{ padding: "20px 48px", fontSize: "1.05rem" }}>{BUSINESS.cta} \u2192</Link>
-          <Link href="/servizi" className="btn-ghost">{BUSINESS.ctaSecondary}</Link>
+          <Link href="/${r.contact}" className="btn-primary" style={{ padding: "20px 48px", fontSize: "1.05rem" }}>{BUSINESS.cta} \u2192</Link>
+          <Link href="/${r.services}" className="btn-ghost">{BUSINESS.ctaSecondary}</Link>
         </motion.div>
       </div>
     </section>
@@ -895,7 +1113,10 @@ export function Hero() {
 `;
 }
 
-function genFooter(): string {
+function genFooter(t: I18nTranslations): string {
+  const r = t.routes;
+  const n = t.nav;
+  const year = new Date().getFullYear();
   return `import Link from "next/link";
 import { BUSINESS } from "@/lib/data";
 
@@ -908,11 +1129,11 @@ export function Footer() {
           {BUSINESS.address && <span style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.3)" }}>{BUSINESS.address}</span>}
         </div>
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-          {[{ href: "/", label: "Home" }, { href: "/chi-siamo", label: "Chi siamo" }, { href: "/servizi", label: "Servizi" }, { href: "/galleria", label: "Galleria" }, { href: "/contatti", label: "Contatti" }].map((l) => (
+          {[{ href: "/", label: "Home" }, { href: "/${r.about}", label: "${n.about}" }, { href: "/${r.services}", label: "${n.services}" }, { href: "/${r.gallery}", label: "${n.gallery}" }, { href: "/${r.contact}", label: "${n.contact}" }].map((l) => (
             <Link key={l.href} href={l.href}>{l.label}</Link>
           ))}
         </div>
-        <span style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.2)" }}>\u00a9 ${new Date().getFullYear()} {BUSINESS.name} \u00b7 Sito creato con MadeCreative</span>
+        <span style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.2)" }}>\u00a9 ${year} {BUSINESS.name} \u00b7 ${t.footer.copyright}</span>
       </div>
     </footer>
   );
@@ -1062,7 +1283,8 @@ export function GalleryGrid({ images, withLightbox }: { images: Array<{ url: str
 `;
 }
 
-function genContactForm(): string {
+function genContactForm(t: I18nTranslations): string {
+  const f = t.form;
   return `"use client";
 import { useState } from "react";
 import { BUSINESS } from "@/lib/data";
@@ -1073,13 +1295,13 @@ export function ContactForm() {
     <form className="ctc-form" style={{ display: "flex", flexDirection: "column", gap: 16 }}
       onSubmit={(e) => { e.preventDefault(); setSent(true); }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div><label htmlFor="fn">Nome</label><input id="fn" name="name" placeholder="Il tuo nome" required /></div>
-        <div><label htmlFor="fe">Email</label><input id="fe" name="email" type="email" placeholder="La tua email" required /></div>
+        <div><label htmlFor="fn">${f.nameLabel}</label><input id="fn" name="name" placeholder="${f.namePlaceholder}" required /></div>
+        <div><label htmlFor="fe">${f.emailLabel}</label><input id="fe" name="email" type="email" placeholder="${f.emailPlaceholder}" required /></div>
       </div>
-      <div><label htmlFor="fp">Telefono</label><input id="fp" name="phone" type="tel" placeholder="Il tuo numero (opzionale)" /></div>
-      <div><label htmlFor="fm">Messaggio</label><textarea id="fm" name="message" placeholder="Come possiamo aiutarti?" required /></div>
+      <div><label htmlFor="fp">${f.phoneLabel}</label><input id="fp" name="phone" type="tel" placeholder="${f.phonePlaceholder}" /></div>
+      <div><label htmlFor="fm">${f.messageLabel}</label><textarea id="fm" name="message" placeholder="${f.messagePlaceholder}" required /></div>
       <button type="submit" className="btn-primary" style={{ width: "100%", justifyContent: "center", background: sent ? "#22c55e" : undefined }}>
-        {sent ? "Inviato \u2713" : \`\${BUSINESS.cta} \u2192\`}
+        {sent ? "${f.sent}" : \`\${BUSINESS.cta} \u2192\`}
       </button>
     </form>
   );
@@ -1098,7 +1320,7 @@ export function ScrollProgress() {
 `;
 }
 
-function genBackToTop(): string {
+function genBackToTop(t: I18nTranslations): string {
   return `"use client";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1114,7 +1336,7 @@ export function BackToTop() {
     <AnimatePresence>
       {show && (
         <motion.button className="btt" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Torna su">
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="${t.misc.backToTop}">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
         </motion.button>
       )}
@@ -1196,6 +1418,7 @@ export function projectToPreviewHtml(files: Record<string, string>): string {
 
   const fontsUrl = (layout.match(/href=["'](https:\/\/fonts\.googleapis\.com[^"']+)["']/) ?? [])[1] ?? "";
   const title = (layout.match(/default:\s*["']([^"']+)["']/) ?? layout.match(/title:\s*["']([^"']+)["']/) ?? [])[1] ?? "MadeCreative";
+  const lang = (layout.match(/lang=["']([^"']+)["']/) ?? [])[1] ?? "it";
 
   // Clean data.ts for browser: strip import/export, strip "as const"
   const cleanData = dataTs
@@ -1208,7 +1431,7 @@ export function projectToPreviewHtml(files: Record<string, string>): string {
   // htm approach: 1KB library, no Babel, no JSX transpilation needed
   // Uses tagged template literals: html`<div>...</div>` instead of JSX
   return `<!DOCTYPE html>
-<html lang="it"><head>
+<html lang="${lang}"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 ${fontsUrl ? `<link href="${fontsUrl}" rel="stylesheet">` : ""}
