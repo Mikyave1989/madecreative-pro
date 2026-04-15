@@ -348,7 +348,7 @@ export async function startOrchestrator(): Promise<Worker[]> {
             {
               status: "RUNNING",
               progress: { gt: 0, lt: 100 },
-              startedAt: { lt: new Date(Date.now() - 600_000) }, // stuck >10 min
+              startedAt: { lt: new Date(Date.now() - 3_600_000) }, // stuck >60 min = worker crashed
             },
           ],
         },

@@ -26,7 +26,7 @@ export interface AgentConfig {
 const DEFAULT_AGENT_CONFIG: Record<AgentType, AgentConfig> = {
   SCRAPER:  { maxRetries: 1, retryDelayMs: 60_000, timeoutMs: 7_200_000 }, // 2h — 48+ URLs × 8s each = ~6min extract alone; no timeout kills mid-run
   ANALYZER: { maxRetries: 3, retryDelayMs: 5_000,  timeoutMs: 120_000 },  // 2min
-  BUILDER:  { maxRetries: 2, retryDelayMs: 30_000, timeoutMs: 600_000 },  // 10min — direct Next.js generation + Vercel deploy
+  BUILDER:  { maxRetries: 2, retryDelayMs: 30_000, timeoutMs: 3_600_000 },  // 60min — scrape + rebuild premium site takes time
   OUTREACH: { maxRetries: 3, retryDelayMs: 5_000,  timeoutMs: 60_000 },   // 1min
   CHATBOT:  { maxRetries: 2, retryDelayMs: 5_000,  timeoutMs: 120_000 },  // 2min
   QA:       { maxRetries: 2, retryDelayMs: 5_000,  timeoutMs: 180_000 },  // 3min
