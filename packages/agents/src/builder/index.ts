@@ -234,7 +234,8 @@ async function deployToVercel(
       );
     } catch { /* non-fatal */ }
 
-    // Disable ALL Vercel auth protection — preview must be public, no login
+    // Disable Vercel auth on production deploys — preview sites must be public
+    // ssoProtection "preview" = only protect preview deploys, production is public
     try {
       await fetch(
         `https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}${teamQuery}`,
@@ -246,8 +247,7 @@ async function deployToVercel(
           },
           body: JSON.stringify({
             passwordProtection: null,
-            ssoProtection: null,
-            vercelAuthentication: { deploymentType: "none" },
+            ssoProtection: { deploymentType: "preview" },
             autoExposeSystemEnvs: true,
             autoAssignCustomDomains: true,
           }),
