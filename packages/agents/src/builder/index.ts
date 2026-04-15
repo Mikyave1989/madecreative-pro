@@ -141,9 +141,38 @@ async function deployToVercel(
 
   try {
     const projectName = `mc-preview-${slug}`.slice(0, 52);
-    const isNextJs = "package.json" in files;
+    const hasPackageJson = "package.json" in files;
     const teamQuery = teamId ? `?teamId=${teamId}` : "";
     const teamQueryAmp = teamId ? `&teamId=${teamId}` : "";
+
+    // Detect framework from package.json
+    let framework: string | null = null;
+    let buildCommand = "";
+    let outputDirectory = ".";
+    let installCommand = "";
+
+    if (hasPackageJson) {
+      try {
+        const pkg = JSON.parse(files["package.json"]!);
+        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+        if (deps["next"]) {
+          framework = "nextjs";
+          buildCommand = "next build";
+          outputDirectory = ".next";
+          installCommand = "npm install";
+        } else if (deps["vite"]) {
+          framework = null;
+          buildCommand = "vite build";
+          outputDirectory = "dist";
+          installCommand = "npm install";
+        } else {
+          // Unknown framework — try generic build
+          installCommand = "npm install";
+          buildCommand = pkg.scripts?.build ?? "";
+          outputDirectory = "dist";
+        }
+      } catch { /* invalid package.json — deploy as static */ }
+    }
 
     // Build Vercel files array — base64 only (no sha/size, Vercel v13 rejects them)
     const vercelFiles = Object.entries(files).map(([filePath, content]) => {
@@ -159,14 +188,14 @@ async function deployToVercel(
       name: projectName,
       files: vercelFiles,
       projectSettings: {
-        framework: null,        // Static — no framework detection
-        buildCommand: "",       // Empty = no build (all files are pre-built HTML)
-        outputDirectory: ".",   // Serve files as-is
-        installCommand: "",     // No npm install needed
+        framework,
+        buildCommand,
+        outputDirectory,
+        installCommand,
         nodeVersion: "20.x",
       },
       target: "production",
-      public: true,             // CRITICAL: make deployment publicly accessible
+      public: true,
       meta: {
         slug,
         madecreativePreview: "true",
@@ -1265,25 +1294,20 @@ body{padding-bottom:56px!important}
           }
         }
 
-        // ── Deploy as STATIC HTML — always convert source to HTML first ──
-        // Next.js projects (.tsx, package.json) can't be served as-is on Vercel
-        // without a build step, and bolt.diy output needs compilation too.
-        // Convert everything to static HTML using projectToPreviewHtml().
+        // ── Prepare files for Vercel deploy ──
+        // If package.json exists → Vercel will build (Next.js/Vite)
+        // If only HTML → deploy as static
         let deployFiles: Record<string, string>;
 
         const htmlFileCount = Object.keys(projectFiles).filter(f => f.endsWith(".html")).length;
         const hasPackageJson = "package.json" in projectFiles;
 
         if (hasPackageJson) {
-          // Next.js project (from bolt.diy or generateNextJsProject fallback)
-          // → convert to self-contained HTML with React+Tailwind CDN
-          const htmlContent = projectToPreviewHtml(projectFiles);
-          deployFiles = { "index.html": htmlContent };
-          this.log("info", `build_preview_site: converted Next.js project (${Object.keys(projectFiles).length} files) → single HTML`);
-        } else if (htmlFileCount > 1) {
-          // Multi-page static HTML (bolt.diy generated HTML directly)
+          // Full project (Next.js/Vite) — Vercel will npm install + build
           deployFiles = { ...projectFiles };
-          // Only keep HTML/CSS/JS/image files — strip source files
+          this.log("info", `build_preview_site: full project (${Object.keys(projectFiles).length} files) — Vercel will build`);
+        } else if (htmlFileCount > 1) {
+          deployFiles = { ...projectFiles };
           for (const key of Object.keys(deployFiles)) {
             if (!key.match(/\.(html|css|js|json|svg|png|jpg|jpeg|webp|gif|ico|woff2?|ttf|eot)$/i)) {
               delete deployFiles[key];
@@ -1300,14 +1324,9 @@ body{padding-bottom:56px!important}
           }
           routes.push({ src: "/(.*)", dest: "/$1" });
 
-          deployFiles["vercel.json"] = JSON.stringify({
-            cleanUrls: true,
-            trailingSlash: false,
-            routes,
-          }, null, 2);
-          this.log("info", `build_preview_site: multi-page (${htmlFileCount} pages), ${routes.length} routes`);
+          deployFiles["vercel.json"] = JSON.stringify({ cleanUrls: true, trailingSlash: false, routes }, null, 2);
+          this.log("info", `build_preview_site: multi-page static (${htmlFileCount} pages)`);
         } else if (htmlFileCount === 1) {
-          // Single HTML file already present
           deployFiles = {};
           for (const [k, v] of Object.entries(projectFiles)) {
             if (k.match(/\.(html|css|js|json|svg|png|jpg|jpeg|webp|gif|ico)$/i)) {
@@ -1316,10 +1335,10 @@ body{padding-bottom:56px!important}
           }
           this.log("info", "build_preview_site: single-page static HTML");
         } else {
-          // No HTML at all — force conversion
+          // No HTML and no package.json — convert to preview HTML
           const htmlContent = projectToPreviewHtml(projectFiles);
           deployFiles = { "index.html": htmlContent };
-          this.log("info", "build_preview_site: no HTML found, converted to single page");
+          this.log("info", "build_preview_site: converted to preview HTML");
         }
 
         // Save project files to temp dir for debugging
@@ -1340,11 +1359,12 @@ body{padding-bottom:56px!important}
           });
         }
 
-        // Deploy to Vercel — retry once on failure
+        // Deploy to Vercel — if full build fails, fallback to static HTML preview
         let deployResult = await deployToVercel(slug, deployFiles);
-        if (!deployResult.url && deployResult.warning) {
-          this.log("warn", "build_preview_site: first deploy failed, retrying...", { warning: deployResult.warning });
-          deployResult = await deployToVercel(slug, deployFiles);
+        if (!deployResult.url && deployResult.warning && hasPackageJson) {
+          this.log("warn", "build_preview_site: Vercel build failed, falling back to static HTML preview", { warning: deployResult.warning });
+          const htmlContent = projectToPreviewHtml(projectFiles);
+          deployResult = await deployToVercel(slug, { "index.html": htmlContent });
         }
 
         if (deployResult.warning) {
