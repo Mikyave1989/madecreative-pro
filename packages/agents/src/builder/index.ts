@@ -1056,12 +1056,14 @@ export class BuilderAgent extends BaseAgent {
           this.log("info", `build_preview_site: generating premium site via Claude for "${projectData.businessName}"`);
 
           // Prepare scraped content summary for Claude
-          const scrapedPages = (scrapedContent as { pages?: Array<{ url?: string; title?: string; headings?: Array<{ level: number; text: string }>; paragraphs?: string[]; images?: Array<{ url: string; alt?: string }> }> })?.pages ?? [];
+          const scrapedPages = (scrapedContent as { pages?: Array<{ url?: string; title?: string; headings?: Array<{ level: number; text: string }>; paragraphs?: string[]; images?: Array<{ url: string; alt?: string }>; videos?: Array<{ url: string; type?: string }> }> })?.pages ?? [];
+          // NO LIMITS — include ALL scraped content (all pages, all images, all text, all videos)
           const scrapedSummary = scrapedPages.map((p, i) => {
             const headings = (p.headings ?? []).map(h => `${"#".repeat(h.level)} ${h.text}`).join("\n");
-            const text = (p.paragraphs ?? []).slice(0, 15).join("\n\n");
-            const imgs = (p.images ?? []).slice(0, 8).map(img => typeof img === "string" ? img : img.url).join("\n");
-            return `--- PAGE ${i + 1}: ${p.title ?? p.url ?? "Unknown"} ---\nURL: ${p.url ?? ""}\n\nHEADINGS:\n${headings}\n\nTEXT:\n${text}\n\nIMAGES:\n${imgs}`;
+            const text = (p.paragraphs ?? []).join("\n\n");
+            const imgs = (p.images ?? []).map(img => typeof img === "string" ? img : img.url).join("\n");
+            const vids = (p.videos ?? []).map(v => `VIDEO: ${v.url} (${v.type ?? "unknown"})`).join("\n");
+            return `--- PAGE ${i + 1}: ${p.title ?? p.url ?? "Unknown"} ---\nURL: ${p.url ?? ""}\n\nHEADINGS:\n${headings}\n\nTEXT:\n${text}\n\nIMAGES:\n${imgs}${vids ? `\n\nVIDEOS:\n${vids}` : ""}`;
           }).join("\n\n");
 
           const scrapedContact = (scrapedContent as { contact?: Record<string, string> })?.contact ?? {};
@@ -1070,12 +1072,25 @@ export class BuilderAgent extends BaseAgent {
           const langMap: Record<string, string> = { de: "German", it: "Italian", en: "English", fr: "French", es: "Spanish" };
           const langName = langMap[projectData.language.toLowerCase().slice(0, 2)] ?? "English";
 
+          // Language-specific route slugs
+          const routeMap: Record<string, { about: string; services: string; gallery: string; contact: string }> = {
+            de: { about: "ueber-uns", services: "leistungen", gallery: "galerie", contact: "kontakt" },
+            it: { about: "chi-siamo", services: "servizi", gallery: "galleria", contact: "contatti" },
+            en: { about: "about", services: "services", gallery: "gallery", contact: "contact" },
+            fr: { about: "a-propos", services: "services", gallery: "galerie", contact: "contact" },
+            es: { about: "sobre-nosotros", services: "servicios", gallery: "galeria", contact: "contacto" },
+          };
+          const routes = routeMap[projectData.language.toLowerCase().slice(0, 2)] ?? routeMap["en"]!;
+
           const claudePrompt = `You are a premium web developer. Generate a complete Next.js 14 App Router project that REBUILDS this business website with a premium €10,000+ design upgrade.
+
+⚠️ CRITICAL — LANGUAGE RULE: The website MUST be ENTIRELY in ${langName}. Every single word — navigation labels, headings, paragraphs, buttons, form labels, footer text, meta tags, alt text — MUST be in ${langName}. NEVER use Italian, English, or any other language. This is a ${langName} business in ${projectData.city ?? ""}.
 
 BUSINESS: ${projectData.businessName}
 SECTOR: ${projectData.sector}
 CITY: ${projectData.city ?? ""}
-LANGUAGE: ${langName} — ALL text in the site MUST be in ${langName}. Navigation, headings, sections, buttons, footer — everything.
+COUNTRY: ${(businessData as Record<string, unknown>).country as string ?? "DE"}
+LANGUAGE: ${langName} (MANDATORY — zero exceptions)
 WEBSITE: ${projectData.website ?? ""}
 PHONE: ${scrapedContact.phone ?? projectData.phone}
 EMAIL: ${scrapedContact.email ?? projectData.email}
@@ -1083,37 +1098,37 @@ ADDRESS: ${scrapedContact.address ?? projectData.address}
 GOOGLE RATING: ${projectData.googleRating ?? "N/A"} (${projectData.reviewCount ?? 0} reviews)
 LOGO: ${scrapedLogo}
 
-PHOTOS (use these REAL photos, not placeholders):
+PHOTOS (use these REAL photos from the original site):
 ${photos.slice(0, 10).map((p) => p["url"] as string).join("\n")}
 
-SCRAPED CONTENT FROM ORIGINAL SITE:
-${scrapedSummary.slice(0, 12000)}
+ORIGINAL SITE CONTENT (scraped — use this as source of truth):
+${scrapedSummary}
 
 REQUIREMENTS:
-1. Use the REAL content from the original site — headings, paragraphs, images. Do NOT invent content.
-2. ALL text must be in ${langName}
+1. COPY the real text from the scraped content above. Do NOT invent or translate content — use the original ${langName} text as-is.
+2. Every word on the site must be in ${langName}. Navigation: "${routes.about}", "${routes.services}", "${routes.gallery}", "${routes.contact}".
 3. Stack: Next.js 14 App Router, React 18, Framer Motion, TypeScript
-4. Premium design: elegant typography, smooth animations, scroll reveals
-5. Multi-page: home page + about + services + gallery + contact
-6. Responsive, mobile-first
-7. Use the real business photos listed above
-8. Include contact info (phone, email, address) from the original site
+4. Premium €10k+ design: elegant typography, smooth scroll animations, parallax effects
+5. Multi-page with ${langName} URL slugs:
+   - app/page.tsx (homepage)
+   - app/${routes.about}/page.tsx
+   - app/${routes.services}/page.tsx
+   - app/${routes.gallery}/page.tsx
+   - app/${routes.contact}/page.tsx
+6. FULLY RESPONSIVE — must look perfect on all devices:
+   - Mobile (320-480px): single column, touch-friendly buttons (min 44px), hamburger nav
+   - Tablet (481-768px): flexible grid, side padding
+   - Laptop (769-1024px): multi-column layout
+   - Desktop (1025px+): max-width container, full design
+   Use CSS clamp(), fluid typography, and @media queries for all breakpoints.
+7. VIDEO HERO: If the scraped content contains a video (YouTube, Vimeo, or .mp4), use it as the hero background on the homepage. The video should autoplay, loop, muted, with a dark overlay and text on top. If no video found, use the best photo as hero background.
+8. Use ALL the real business photos listed above
+9. Contact info from original site (phone, email, address)
 
-OUTPUT FORMAT:
-Return ONLY a JSON object where keys are file paths and values are file contents.
-Example: {"package.json": "...", "app/layout.tsx": "...", "app/page.tsx": "...", ...}
+OUTPUT: Return ONLY a JSON object. Keys = file paths, values = file contents.
+Required: package.json, next.config.mjs, tsconfig.json, app/layout.tsx, app/globals.css, app/page.tsx, app/${routes.about}/page.tsx, app/${routes.services}/page.tsx, app/${routes.gallery}/page.tsx, app/${routes.contact}/page.tsx, components/Nav.tsx, components/Hero.tsx, components/Footer.tsx
 
-Required files:
-- package.json (with next, react, react-dom, framer-motion)
-- next.config.mjs
-- tsconfig.json
-- app/layout.tsx (with fonts, metadata, nav, footer)
-- app/globals.css (full design system)
-- app/page.tsx (homepage)
-- At least 3 more pages (about, services, contact)
-- components/ (Nav, Hero, Footer, etc.)
-
-Generate the COMPLETE project now. Return only the JSON object, no markdown fences.`;
+Return the JSON object now. No markdown fences, no explanation.`;
 
           try {
             const claudeResult = await this.client.callWithText(
