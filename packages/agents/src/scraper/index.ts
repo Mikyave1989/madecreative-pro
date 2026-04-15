@@ -316,17 +316,26 @@ export class ScraperAgent extends BaseAgent {
       page = await this.setupBrowser();
 
       const encodedQuery = encodeURIComponent(query);
-      // City coordinates lookup — defaults to Berlin center
-      const CITY_COORDS: Record<string, string> = {
-        berlin: "52.5200,13.4050", münchen: "48.1351,11.5820", munich: "48.1351,11.5820",
-        hamburg: "53.5511,9.9937", frankfurt: "50.1109,8.6821", köln: "50.9375,6.9603",
-        düsseldorf: "51.2277,6.7735", stuttgart: "48.7758,9.1829", wien: "48.2082,16.3738",
-        zürich: "47.3769,8.5417", roma: "41.9028,12.4964", milano: "45.4642,9.1900",
-        paris: "48.8566,2.3522", madrid: "40.4168,-3.7038", london: "51.5074,-0.1278",
-        amsterdam: "52.3676,4.9041", bruxelles: "50.8503,4.3517", lisboa: "38.7223,-9.1393",
-      };
-      const coords = CITY_COORDS[city.toLowerCase()] ?? "52.5200,13.4050";
-      const lang = country === "DE" || country === "AT" || country === "CH" ? "de" : country === "IT" ? "it" : country === "FR" || country === "BE" ? "fr" : country === "ES" ? "es" : "en";
+
+      // Geocode any city via Nominatim (OpenStreetMap) — free, no API key
+      let coords = "52.5200,13.4050"; // fallback: Berlin
+      try {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ", " + country)}&format=json&limit=1`,
+          { headers: { "User-Agent": "MadeCreative/1.0" } }
+        );
+        if (geoRes.ok) {
+          const geoData = (await geoRes.json()) as Array<{ lat: string; lon: string }>;
+          if (geoData[0]) {
+            coords = `${geoData[0].lat},${geoData[0].lon}`;
+            this.log("info", `Geocoded "${city}, ${country}" → ${coords}`);
+          }
+        }
+      } catch {
+        this.log("warn", `Geocoding failed for "${city}" — using fallback coordinates`);
+      }
+
+      const lang = ["DE", "AT", "CH"].includes(country) ? "de" : country === "IT" ? "it" : ["FR", "BE"].includes(country) ? "fr" : country === "ES" ? "es" : country === "PT" ? "pt" : country === "NL" ? "nl" : "en";
       const mapsUrl = `https://www.google.com/maps/search/${encodedQuery}/@${coords},13z?hl=${lang}`;
 
       await page.goto(mapsUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
