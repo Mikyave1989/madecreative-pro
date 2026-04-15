@@ -1,4 +1,4 @@
-import { useNavigate } from '@remix-run/react';
+// useNavigate removed — no more login/signup
 import { useState, useEffect } from 'react';
 import { API_URL } from '~/lib/api/client';
 
@@ -62,7 +62,7 @@ const FAQS = [
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export function Landing() {
-  const navigate = useNavigate();
+  // navigate removed — no more login/signup
   const [cPlan, setCPlan] = useState<string | null>(null);
   const [cEmail, setCEmail] = useState('');
   const [cLoad, setCLoad] = useState(false);
@@ -121,8 +121,7 @@ export function Landing() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <a href="#agents" className="mc-link" style={{ fontSize: 14, ...S.t3, textDecoration: 'none' }}>Agents</a>
             <a href="#pricing" className="mc-link" style={{ fontSize: 14, ...S.t3, textDecoration: 'none' }}>Pricing</a>
-            <button onClick={() => navigate('/login')} className="mc-link" style={{ fontSize: 14, ...S.t3, background: 'none', border: 'none', cursor: 'pointer' }}>Sign In</button>
-            <a href="#pricing" style={{ ...S.gb, padding: '8px 16px', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Get Started</a>
+            <a href="https://wa.me/393317389918?text=Ciao%2C%20vorrei%20sapere%20di%20pi%C3%B9%20su%20MadeCreative!" target="_blank" rel="noopener" style={{ ...S.gb, padding: '8px 16px', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Contact Us</a>
           </div>
         </div>
       </nav>

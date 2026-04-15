@@ -1230,24 +1230,27 @@ RESPONSIVE: mobile (320-480px) single column + hamburger, tablet (481-1024px) 2-
         const country = (businessData as Record<string, unknown>).country as string ?? "EN";
         const lang = langMap[country.toUpperCase()] ?? "en";
 
-        const cta: Record<string, { top: string; buy: string }> = {
-          de: { top: "KI-generierte Website-Vorschau", buy: `Kaufen & bearbeiten — €${price.setup} + €${price.monthly}/Mo` },
-          it: { top: "Anteprima sito generata dall'AI", buy: `Acquista e modifica — €${price.setup} + €${price.monthly}/mese` },
-          fr: { top: "Aperçu du site généré par IA", buy: `Acheter et modifier — €${price.setup} + €${price.monthly}/mois` },
-          es: { top: "Vista previa del sitio generada por IA", buy: `Comprar y editar — €${price.setup} + €${price.monthly}/mes` },
-          en: { top: "AI-generated website preview", buy: `Buy & Edit — €${price.setup} + €${price.monthly}/mo` },
+        const cta: Record<string, { top: string; wa: string }> = {
+          de: { top: "KI-generierte Website-Vorschau", wa: "Auf WhatsApp schreiben" },
+          it: { top: "Anteprima sito generata dall'AI", wa: "Scrivici su WhatsApp" },
+          fr: { top: "Aperçu du site généré par IA", wa: "Ecrivez-nous sur WhatsApp" },
+          es: { top: "Vista previa del sitio generada por IA", wa: "Escribenos por WhatsApp" },
+          en: { top: "AI-generated website preview", wa: "Chat on WhatsApp" },
         };
         const t = cta[lang] ?? cta.en!;
-        const signupUrl = `https://madecreative.pro/signup?plan=${plan}&prospectId=${prospectId ?? ""}&source=preview`;
+        const waNumber = "393317389918";
+        const businessName = (businessData as Record<string, unknown>).businessName as string ?? slug;
+        const waText = encodeURIComponent(`Ciao, ho visto l'anteprima del sito per ${businessName}. Vorrei saperne di più!`);
+        const whatsappUrl = `https://wa.me/${waNumber}?text=${waText}`;
         // Bottom bar only — no top bar (was blocking hamburger menu on mobile)
         const banner = `<style>
 #_mc_bot{position:fixed;bottom:0;left:0;right:0;height:56px;z-index:2147483647;background:linear-gradient(90deg,#1e1b4b,#312e81);display:flex;align-items:center;justify-content:space-between;padding:0 20px;gap:12px}
 #_mc_bot span{color:#c7d2fe;font-family:-apple-system,sans-serif;font-size:12px}
-#_mc_cta{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff!important;font-family:-apple-system,sans-serif;font-size:13px;font-weight:700;padding:9px 20px;border-radius:9999px;text-decoration:none!important;white-space:nowrap;box-shadow:0 4px 14px rgba(99,102,241,.5)}
+#_mc_cta{background:linear-gradient(135deg,#25D366,#128C7E);color:#fff!important;font-family:-apple-system,sans-serif;font-size:13px;font-weight:700;padding:9px 20px;border-radius:9999px;text-decoration:none!important;white-space:nowrap;box-shadow:0 4px 14px rgba(37,211,102,.5)}
 body{padding-bottom:56px!important}
 @media(max-width:600px){#_mc_bot span{display:none}#_mc_cta{font-size:12px;padding:8px 14px}}
 </style>
-<div id="_mc_bot"><span>madecreative.pro</span><a id="_mc_cta" href="${signupUrl}" target="_blank">${t.buy} →</a></div>`;
+<div id="_mc_bot"><span>madecreative.pro</span><a id="_mc_cta" href="${whatsappUrl}" target="_blank">${t.wa} →</a></div>`;
 
         // Inject banner into all HTML files
         for (const [path, content] of Object.entries(projectFiles)) {

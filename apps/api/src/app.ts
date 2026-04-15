@@ -186,14 +186,19 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
     en: `${name} - your new website is ready`,
   };
 
+  const waNumber = "393317389918";
+  const waMsg = encodeURIComponent(`Ciao, ho visto l'anteprima del sito per ${name}. Vorrei saperne di più!`);
+  const waLink = `https://wa.me/${waNumber}?text=${waMsg}`;
+
   const btn = `<a href="${previewUrl}" style="display:inline-block;background:#6366f1;color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;padding:14px 28px;border-radius:8px;text-decoration:none;margin:20px 0">`;
+  const waBtn = `<a href="${waLink}" style="display:inline-block;background:#25D366;color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;padding:12px 24px;border-radius:8px;text-decoration:none;margin:8px 0">`;
 
   const bodies: Record<string, string> = {
-    de: `<p style="margin:0 0 16px">Hallo,</p><p style="margin:0 0 16px">ich habe mir <strong>${name}</strong>${city ? ` in ${city}` : ""} angesehen und einen kostenlosen Webseiten-Vorschlag erstellt.</p><p style="margin:0 0 24px">Hier ist das Ergebnis:</p><p style="margin:0 0 24px;text-align:center">${btn}Website-Vorschau ansehen</a></p><p style="margin:0 0 16px">Haben Sie Fragen? Antworten Sie auf diese E-Mail oder schreiben Sie mir auf WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Viele Gruesse,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
-    it: `<p style="margin:0 0 16px">Ciao,</p><p style="margin:0 0 16px">ho visto <strong>${name}</strong>${city ? ` a ${city}` : ""} e ho creato una proposta gratuita per un nuovo sito web.</p><p style="margin:0 0 24px">Ecco il risultato:</p><p style="margin:0 0 24px;text-align:center">${btn}Vedi l'anteprima</a></p><p style="margin:0 0 16px">Hai domande? Rispondi a questa email o scrivimi su WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Cordialmente,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
-    fr: `<p style="margin:0 0 16px">Bonjour,</p><p style="margin:0 0 16px">J'ai vu <strong>${name}</strong>${city ? ` a ${city}` : ""} et j'ai cree une proposition gratuite de nouveau site web.</p><p style="margin:0 0 24px">Voici le resultat:</p><p style="margin:0 0 24px;text-align:center">${btn}Voir l'apercu</a></p><p style="margin:0 0 16px">Des questions? Repondez a cet email ou ecrivez-moi sur WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Cordialement,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
-    es: `<p style="margin:0 0 16px">Hola,</p><p style="margin:0 0 16px">He visto <strong>${name}</strong>${city ? ` en ${city}` : ""} y he creado una propuesta gratuita de nuevo sitio web.</p><p style="margin:0 0 24px">Aqui esta el resultado:</p><p style="margin:0 0 24px;text-align:center">${btn}Ver vista previa</a></p><p style="margin:0 0 16px">Tienes preguntas? Responde a este email o escribeme en WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Saludos,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
-    en: `<p style="margin:0 0 16px">Hi,</p><p style="margin:0 0 16px">I came across <strong>${name}</strong>${city ? ` in ${city}` : ""} and created a free website proposal for you.</p><p style="margin:0 0 24px">Here is the result:</p><p style="margin:0 0 24px;text-align:center">${btn}View your preview</a></p><p style="margin:0 0 16px">Questions? Reply to this email or reach me on WhatsApp: <strong>+393317389918</strong></p><p style="margin:0">Best,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    de: `<p style="margin:0 0 16px">Hallo,</p><p style="margin:0 0 16px">ich habe mir <strong>${name}</strong>${city ? ` in ${city}` : ""} angesehen und einen kostenlosen Webseiten-Vorschlag erstellt.</p><p style="margin:0 0 24px">Hier ist das Ergebnis:</p><p style="margin:0 0 16px;text-align:center">${btn}Website-Vorschau ansehen</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Auf WhatsApp schreiben</a></p><p style="margin:0">Viele Gruesse,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    it: `<p style="margin:0 0 16px">Ciao,</p><p style="margin:0 0 16px">ho visto <strong>${name}</strong>${city ? ` a ${city}` : ""} e ho creato una proposta gratuita per un nuovo sito web.</p><p style="margin:0 0 24px">Ecco il risultato:</p><p style="margin:0 0 16px;text-align:center">${btn}Vedi l'anteprima</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Scrivici su WhatsApp</a></p><p style="margin:0">Cordialmente,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    fr: `<p style="margin:0 0 16px">Bonjour,</p><p style="margin:0 0 16px">J'ai vu <strong>${name}</strong>${city ? ` a ${city}` : ""} et j'ai cree une proposition gratuite de nouveau site web.</p><p style="margin:0 0 24px">Voici le resultat:</p><p style="margin:0 0 16px;text-align:center">${btn}Voir l'apercu</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Ecrivez-nous sur WhatsApp</a></p><p style="margin:0">Cordialement,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    es: `<p style="margin:0 0 16px">Hola,</p><p style="margin:0 0 16px">He visto <strong>${name}</strong>${city ? ` en ${city}` : ""} y he creado una propuesta gratuita de nuevo sitio web.</p><p style="margin:0 0 24px">Aqui esta el resultado:</p><p style="margin:0 0 16px;text-align:center">${btn}Ver vista previa</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Escribenos por WhatsApp</a></p><p style="margin:0">Saludos,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    en: `<p style="margin:0 0 16px">Hi,</p><p style="margin:0 0 16px">I came across <strong>${name}</strong>${city ? ` in ${city}` : ""} and created a free website proposal for you.</p><p style="margin:0 0 24px">Here is the result:</p><p style="margin:0 0 16px;text-align:center">${btn}View your preview</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Chat with us on WhatsApp</a></p><p style="margin:0">Best,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
   };
 
   const subject = subjects[lang] ?? subjects.en!;
@@ -237,7 +242,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Das ist eine Vorschau Ihrer neuen Website — von KI in 60 Sekunden erstellt",
         bottomLabel: `${prospect.companyName} — Ihre neue Website ist fertig!`,
-        cta: "Kaufen & im Editor bearbeiten — €299 + €29/Mo",
+        cta: "Auf WhatsApp schreiben",
         powered: "Bereitgestellt von MadeCreative",
       };
     }
@@ -245,7 +250,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Questa è un'anteprima del tuo nuovo sito web — creato dall'AI in 60 secondi",
         bottomLabel: `${prospect.companyName} — Il tuo nuovo sito è pronto!`,
-        cta: "Acquista e modifica nell'editor — €299 + €29/mese",
+        cta: "Scrivici su WhatsApp",
         powered: "Offerto da MadeCreative",
       };
     }
@@ -253,7 +258,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Ceci est un aperçu de votre nouveau site web — créé par l'IA en 60 secondes",
         bottomLabel: `${prospect.companyName} — Votre nouveau site est prêt\u00a0!`,
-        cta: "Acheter et modifier dans l'éditeur — €299 + €29/mois",
+        cta: "Ecrivez-nous sur WhatsApp",
         powered: "Propulsé par MadeCreative",
       };
     }
@@ -261,7 +266,7 @@ app.get("/preview/:prospectId", async (c) => {
       return {
         topBar: "Esta es una vista previa de su nuevo sitio web — creado por IA en 60 segundos",
         bottomLabel: `${prospect.companyName} — ¡Tu nuevo sitio está listo!`,
-        cta: "Comprar y editar en el editor — €299 + €29/mes",
+        cta: "Escribenos por WhatsApp",
         powered: "Ofrecido por MadeCreative",
       };
     }
@@ -269,12 +274,14 @@ app.get("/preview/:prospectId", async (c) => {
     return {
       topBar: "This is a preview of your new website — built by AI in 60 seconds",
       bottomLabel: `${prospect.companyName} — Your new website is ready!`,
-      cta: "Buy & Edit in Editor — €299 + €29/mo",
+      cta: "Chat on WhatsApp",
       powered: "Powered by MadeCreative",
     };
   })();
 
-  const signupUrl = `https://madecreative.pro/signup?plan=STARTER&email=${encodeURIComponent(prospect.contactEmail ?? "")}&company=${encodeURIComponent(prospect.companyName)}&prospectId=${id}&source=preview`;
+  const waNumber = "393317389918";
+  const waText = encodeURIComponent(`Ciao, ho visto l'anteprima del sito per ${prospect.companyName}. Vorrei saperne di più!`);
+  const whatsappUrl = `https://wa.me/${waNumber}?text=${waText}`;
 
   // ─── If builder has deployed a real site, redirect to it ──
   // Direct redirect avoids proxy issues with Next.js relative paths (/_next/...)
@@ -349,7 +356,7 @@ app.get("/preview/:prospectId", async (c) => {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
     color: #fff !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 14px;
@@ -361,17 +368,17 @@ app.get("/preview/:prospectId", async (c) => {
     border: none;
     cursor: pointer;
     white-space: nowrap;
-    box-shadow: 0 4px 14px rgba(99,102,241,0.5);
+    box-shadow: 0 4px 14px rgba(37,211,102,0.5);
     transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
   #mc-cta-btn:hover {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    background: linear-gradient(135deg, #20BD5A 0%, #0E7A6C 100%);
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(99,102,241,0.65);
+    box-shadow: 0 6px 20px rgba(37,211,102,0.65);
   }
   #mc-cta-btn:active {
     transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(99,102,241,0.4);
+    box-shadow: 0 2px 8px rgba(37,211,102,0.4);
   }
   #mc-cta-btn .mc-arrow {
     font-size: 16px;
@@ -394,7 +401,7 @@ app.get("/preview/:prospectId", async (c) => {
   <span class="mc-company-label">${i18n.bottomLabel}</span>
   <div class="mc-right">
     <span class="mc-powered">${i18n.powered}</span>
-    <a id="mc-cta-btn" href="${signupUrl}" target="_blank" rel="noopener noreferrer">
+    <a id="mc-cta-btn" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">
       ${i18n.cta}<span class="mc-arrow" aria-hidden="true">&#8594;</span>
     </a>
   </div>
