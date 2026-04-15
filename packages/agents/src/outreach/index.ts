@@ -46,10 +46,10 @@ function getWarmingLimit(day: number): number {
 
 let _redis: IORedis | null = null;
 
-function getRedis(): IORedis {
+function getRedis(): IORedis | null {
   if (!_redis) {
     const url = process.env["REDIS_URL"];
-    if (!url) throw new Error("REDIS_URL is not set");
+    if (!url) return null;
     _redis = new IORedis(url, {
       maxRetriesPerRequest: null,
       enableReadyCheck: false,
@@ -95,7 +95,7 @@ async function sendViaResend(params: {
   });
 
   if (!response.ok) {
-    const errText = await response.text();
+    const errText = (await response.text().catch(() => "")).slice(0, 500);
     throw new Error(`Resend API error ${response.status}: ${errText}`);
   }
 
@@ -276,7 +276,7 @@ export class OutreachAgent extends BaseAgent {
 
     const redis = getRedis();
     const key = `outreach:daily:${date}`;
-    const countStr = await redis.get(key);
+    const countStr = redis ? await redis.get(key) : null;
     const count = parseInt(countStr ?? "0", 10);
 
     const configLimit = parseInt(process.env["EMAIL_DAILY_LIMIT"] ?? "200", 10);
@@ -296,7 +296,7 @@ export class OutreachAgent extends BaseAgent {
 
   private async toolHandleWarming(): Promise<WarmingState> {
     const redis = getRedis();
-    const dayStr = await redis.get("outreach:warming:day");
+    const dayStr = redis ? await redis.get("outreach:warming:day") : null;
     const day = parseInt(dayStr ?? "0", 10);
     const limit = getWarmingLimit(day);
 
@@ -313,7 +313,7 @@ export class OutreachAgent extends BaseAgent {
     const redis = getRedis();
 
     // Check Redis blacklist set
-    const inRedisBlacklist = await redis.sismember("blacklist:emails", email);
+    const inRedisBlacklist = redis ? await redis.sismember("blacklist:emails", email) : 0;
     if (inRedisBlacklist) {
       return { isBlacklisted: true, reason: "Email in Redis blacklist (bounced/unsubscribed)" };
     }
@@ -440,17 +440,19 @@ export class OutreachAgent extends BaseAgent {
       await prisma.prospect.update({
         where: { id: prospectId },
         data: {
-          status: stepNumber === 1 ? "EMAIL_SENT" : "EMAIL_SENT",
+          status: stepNumber === 1 ? "EMAIL_SENT" : "FOLLOWED_UP",
           lastContactedAt: new Date(),
           ...(stepNumber === 1 ? { firstContactedAt: new Date() } : {}),
         },
       });
 
-      // ⑤ Increment daily counter
+      // ⑤ Increment daily counter (skip if Redis unavailable)
       const redis = getRedis();
-      const counterKey = `outreach:daily:${today}`;
-      await redis.incr(counterKey);
-      await redis.expire(counterKey, 86400 * 2); // keep 2 days
+      if (redis) {
+        const counterKey = `outreach:daily:${today}`;
+        await redis.incr(counterKey);
+        await redis.expire(counterKey, 86400 * 2); // keep 2 days
+      }
 
       this.log("info", `Email sent to ${toEmail} via Resend`, {
         emailId,
@@ -487,6 +489,10 @@ export class OutreachAgent extends BaseAgent {
     const { prospectId, emailId, stepNumber, delayDays } = parsed.data;
 
     const redis = getRedis();
+    if (!redis) {
+      this.log("warn", "Redis unavailable — cannot schedule follow-up");
+      return { scheduled: false, reason: "Redis unavailable" };
+    }
     const queue = new Queue("outreach-followup", {
       connection: redis,
       defaultJobOptions: {

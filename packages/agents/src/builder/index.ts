@@ -1662,7 +1662,7 @@ body{padding-bottom:56px!important}
 
         // Derive language from country
         const langMap: Record<string, string> = { IT: "it", DE: "de", FR: "fr", ES: "es", PT: "pt", NL: "nl", AT: "de", CH: "de", BE: "fr" };
-        const language = langMap[prospect.country.toUpperCase()] ?? "en";
+        const language = langMap[(prospect.country ?? "").toUpperCase()] ?? "en";
 
         // Extract photos + contact from scraped data if available
         const scraped = scrapedData as { contact?: Record<string, string>; logo?: string; pages?: Array<{ images?: Array<{ url: string; alt?: string }>; headings?: Array<{ level: number; text: string }>; paragraphs?: string[] }> } | null;
@@ -1732,7 +1732,8 @@ body{padding-bottom:56px!important}
       }
 
       // Store scraped content for multi-page generation in handleToolCall
-      this._scrapedContent = (businessData as Record<string, unknown>).scrapedContent as Record<string, unknown> | null ?? null;
+      const rawScraped = (businessData as Record<string, unknown>).scrapedContent;
+      this._scrapedContent = (rawScraped && typeof rawScraped === "object" && !Array.isArray(rawScraped)) ? rawScraped as Record<string, unknown> : null;
 
       await this.updateProgress(15);
       this.log("info", "Builder agent: starting build", {

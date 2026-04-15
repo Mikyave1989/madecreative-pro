@@ -92,18 +92,24 @@ export function createOrchestratorWorker(
   );
 
   worker.on("completed", (job, result) => {
-    console.log(`[Orchestrator] ${agentType} job completed: ${job.id}`, {
+    console.log(`[Orchestrator] ✅ ${agentType} job completed: ${job.id}`, {
       cost: (result as { apiCost?: number })?.apiCost,
     });
 
     // Auto-pipeline: chain agents after completion
     void chainNextAgent(agentType, job.data as { jobId: string; input: Record<string, unknown> }, result).catch((err) => {
-      console.error(`[Orchestrator] Auto-chain error for ${agentType}:`, err);
+      console.error(`[Orchestrator] ❌ Auto-chain FAILED for ${agentType} → next step:`, err instanceof Error ? err.message : String(err));
+      // Mark job in DB so we can see chain failures in the dashboard
+      const jobId = (job.data as { jobId: string }).jobId;
+      void prisma.agentJob.update({
+        where: { id: jobId },
+        data: { error: `Chain failed: ${err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500)}` },
+      }).catch(() => {});
     });
   });
 
   worker.on("failed", (job, err) => {
-    console.error(`[Orchestrator] ${agentType} job failed: ${job?.id}`, err.message);
+    console.error(`[Orchestrator] ❌ ${agentType} job FAILED: ${job?.id}`, err.message);
 
     // If SCRAPER failed/timed-out, still try to chain ANALYZER for any prospects it managed to save
     if (agentType === "SCRAPER" && job) {
@@ -113,7 +119,7 @@ export function createOrchestratorWorker(
   });
 
   worker.on("error", (err) => {
-    console.error(`[Orchestrator] Worker error for ${agentType}:`, err.message);
+    console.error(`[Orchestrator] ⚠️ Worker error for ${agentType}:`, err.message);
   });
 
   return worker;
