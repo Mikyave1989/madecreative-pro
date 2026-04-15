@@ -206,6 +206,7 @@ export class ScraperAgent extends BaseAgent {
         "--no-first-run",
         "--no-zygote",
         "--disable-gpu",
+        "--ignore-certificate-errors",  // Required for BrightData proxy SSL passthrough
       ],
     };
 
