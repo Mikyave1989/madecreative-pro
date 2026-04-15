@@ -1228,7 +1228,7 @@ Start with ===FILE: index.html===`;
           this.log("info", `build_preview_site: streaming Claude generation for "${projectData.businessName}" (${langName})`);
 
           try {
-            const result = await this.client.streamText(
+            const result = await this.client.callWithText(
               [{ role: "user", content: prompt }],
               { system: `You are a premium web redesigner. You CLONE existing websites with a luxury visual upgrade. Keep ALL original content, structure, pages, photos, videos IDENTICAL. Change ONLY the visual design to look like a 10000 EUR custom site. Output HTML files using ===FILE: path=== delimiters. All text stays in ${langName}. No explanation — just the HTML files.`, maxTokens: 16384 }
             );
