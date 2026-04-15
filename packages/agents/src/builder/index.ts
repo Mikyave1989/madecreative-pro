@@ -1,7 +1,7 @@
 import type { Tool } from "@anthropic-ai/sdk/resources/messages/index";
 import { BaseAgent, type AgentContext } from "../base-agent.js";
 import type { AgentResult } from "@madecreative/shared";
-import { getTemplateConfig, generateNextJsProject, projectToPreviewHtml } from "@madecreative/shared";
+import { getTemplateConfig, generateNextJsProject } from "@madecreative/shared";
 import type { ProjectData } from "@madecreative/shared";
 import { prisma } from "@madecreative/db";
 import { builderTools } from "./tools.js";
@@ -1295,51 +1295,20 @@ body{padding-bottom:56px!important}
         }
 
         // ── Prepare files for Vercel deploy ──
-        // If package.json exists → Vercel will build (Next.js/Vite)
-        // If only HTML → deploy as static
-        let deployFiles: Record<string, string>;
+        // Always deploy the full project — Vercel builds Next.js/Vite server-side.
+        // No static HTML fallback — we only deploy premium sites.
+        const deployFiles = { ...projectFiles };
 
-        const htmlFileCount = Object.keys(projectFiles).filter(f => f.endsWith(".html")).length;
-        const hasPackageJson = "package.json" in projectFiles;
-
-        if (hasPackageJson) {
-          // Full project (Next.js/Vite) — Vercel will npm install + build
-          deployFiles = { ...projectFiles };
-          this.log("info", `build_preview_site: full project (${Object.keys(projectFiles).length} files) — Vercel will build`);
-        } else if (htmlFileCount > 1) {
-          deployFiles = { ...projectFiles };
-          for (const key of Object.keys(deployFiles)) {
-            if (!key.match(/\.(html|css|js|json|svg|png|jpg|jpeg|webp|gif|ico|woff2?|ttf|eot)$/i)) {
-              delete deployFiles[key];
-            }
+        // Ensure package.json exists (use generateNextJsProject template if needed)
+        if (!("package.json" in deployFiles)) {
+          this.log("info", "build_preview_site: no package.json found, generating full Next.js project");
+          const fullProject = generateNextJsProject(projectData);
+          for (const [k, v] of Object.entries(fullProject)) {
+            if (!(k in deployFiles)) deployFiles[k] = v;
           }
-
-          const htmlFiles = Object.keys(deployFiles).filter(f => f.endsWith(".html"));
-          const routes: Array<{ src: string; dest: string }> = [];
-          for (const file of htmlFiles) {
-            if (file === "index.html") continue;
-            const withoutHtml = file.replace(/\/index\.html$/, "").replace(/\.html$/, "");
-            routes.push({ src: `/${withoutHtml}/?`, dest: `/${file}` });
-            routes.push({ src: `/${withoutHtml}`, dest: `/${file}` });
-          }
-          routes.push({ src: "/(.*)", dest: "/$1" });
-
-          deployFiles["vercel.json"] = JSON.stringify({ cleanUrls: true, trailingSlash: false, routes }, null, 2);
-          this.log("info", `build_preview_site: multi-page static (${htmlFileCount} pages)`);
-        } else if (htmlFileCount === 1) {
-          deployFiles = {};
-          for (const [k, v] of Object.entries(projectFiles)) {
-            if (k.match(/\.(html|css|js|json|svg|png|jpg|jpeg|webp|gif|ico)$/i)) {
-              deployFiles[k] = v;
-            }
-          }
-          this.log("info", "build_preview_site: single-page static HTML");
-        } else {
-          // No HTML and no package.json — convert to preview HTML
-          const htmlContent = projectToPreviewHtml(projectFiles);
-          deployFiles = { "index.html": htmlContent };
-          this.log("info", "build_preview_site: converted to preview HTML");
         }
+
+        this.log("info", `build_preview_site: deploying ${Object.keys(deployFiles).length} files — Vercel will build`);
 
         // Save project files to temp dir for debugging
         const outputDir = `/tmp/preview-${slug}`;
@@ -1359,12 +1328,11 @@ body{padding-bottom:56px!important}
           });
         }
 
-        // Deploy to Vercel — if full build fails, fallback to static HTML preview
+        // Deploy to Vercel — retry once on failure
         let deployResult = await deployToVercel(slug, deployFiles);
-        if (!deployResult.url && deployResult.warning && hasPackageJson) {
-          this.log("warn", "build_preview_site: Vercel build failed, falling back to static HTML preview", { warning: deployResult.warning });
-          const htmlContent = projectToPreviewHtml(projectFiles);
-          deployResult = await deployToVercel(slug, { "index.html": htmlContent });
+        if (!deployResult.url && deployResult.warning) {
+          this.log("warn", "build_preview_site: first deploy failed, retrying...", { warning: deployResult.warning });
+          deployResult = await deployToVercel(slug, deployFiles);
         }
 
         if (deployResult.warning) {
