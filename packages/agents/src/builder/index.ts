@@ -123,6 +123,12 @@ async function fetchPexelsPhotos(
 }
 
 // ─── Helper: deploy to Cloudflare Pages (static HTML — zero build issues) ───
+// Uses the Pages Direct Upload API (v2):
+//   POST /accounts/{id}/pages/projects/{name}/deployments
+// with a multipart body where:
+//   - "manifest" field = JSON object mapping file path → sha256 hex
+//   - each file field key = sha256 hex of the file, value = file content
+// Only HTML, CSS, JS, and image asset files are uploaded — no build step.
 
 async function deployToCloudflare(
   slug: string,
@@ -135,23 +141,52 @@ async function deployToCloudflare(
   }
 
   try {
+    const { createHash } = await import("crypto");
     const projectName = `mc-${slug}`.slice(0, 58).replace(/[^a-z0-9-]/g, "");
 
-    // Create project if it doesn't exist (idempotent)
+    // Create project if it doesn't exist (idempotent — ignore 409 conflict)
     await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ name: projectName, production_branch: "main" }),
     }).catch(() => {});
 
-    // Upload files via Direct Upload API
-    const formData = new FormData();
+    // Filter to static-serveable files only — no TS/TSX/JSON source files
+    const STATIC_EXTS = /\.(html|css|js|mjs|ico|png|jpg|jpeg|webp|gif|svg|woff|woff2|ttf|txt|xml|json)$/i;
+    const staticFiles = Object.fromEntries(
+      Object.entries(files).filter(([p]) => STATIC_EXTS.test(p) || p.endsWith(".html"))
+    );
 
-    for (const [filePath, content] of Object.entries(files)) {
-      const blob = new Blob([content], { type: filePath.endsWith(".html") ? "text/html" : "text/plain" });
-      // Cloudflare wants the path as the form field name (with leading /)
-      const cfPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
-      formData.append(cfPath, blob, filePath);
+    // Always include at least index.html
+    if (!("index.html" in staticFiles) && "index.html" in files) {
+      staticFiles["index.html"] = files["index.html"]!;
+    }
+
+    // Build manifest: { "/path/to/file": sha256hex }
+    const manifest: Record<string, string> = {};
+    const hashToContent: Record<string, { content: string; mimeType: string }> = {};
+
+    for (const [filePath, content] of Object.entries(staticFiles)) {
+      const normalised = filePath.startsWith("/") ? filePath : `/${filePath}`;
+      const hash = createHash("sha256").update(content, "utf8").digest("hex");
+      manifest[normalised] = hash;
+      if (!(hash in hashToContent)) {
+        const mimeType = filePath.endsWith(".html") ? "text/html; charset=utf-8"
+          : filePath.endsWith(".css") ? "text/css"
+          : filePath.endsWith(".js") || filePath.endsWith(".mjs") ? "application/javascript"
+          : filePath.endsWith(".json") ? "application/json"
+          : "text/plain";
+        hashToContent[hash] = { content, mimeType };
+      }
+    }
+
+    // Build multipart FormData
+    const formData = new FormData();
+    formData.append("manifest", JSON.stringify(manifest));
+
+    for (const [hash, { content, mimeType }] of Object.entries(hashToContent)) {
+      const blob = new Blob([content], { type: mimeType });
+      formData.append(hash, blob, hash);
     }
 
     const deployRes = await fetch(
@@ -165,7 +200,7 @@ async function deployToCloudflare(
 
     if (!deployRes.ok) {
       const errBody = await deployRes.text().catch(() => "");
-      throw new Error(`Cloudflare deploy error ${deployRes.status}: ${errBody.slice(0, 300)}`);
+      throw new Error(`Cloudflare deploy error ${deployRes.status}: ${errBody.slice(0, 500)}`);
     }
 
     const deployData = await deployRes.json() as { result?: { url?: string; id?: string } };
@@ -1157,7 +1192,7 @@ ORIGINAL PHOTOS (use ALL of these — they are from the real site):
 ${photos.slice(0, 15).map((p) => p["url"] as string).join("\n")}
 
 ORIGINAL SITE CONTENT (scraped from the real website — KEEP IT ALL):
-${scrapedSummary.slice(0, 20000)}
+${scrapedSummary.slice(0, 10000)}
 
 CRITICAL RULES:
 1. This is a CLONE with premium design — NOT a new site. Keep the SAME structure, SAME pages, SAME navigation, SAME text content.

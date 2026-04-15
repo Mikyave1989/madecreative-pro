@@ -158,6 +158,7 @@ export class ClaudeClient {
    * Stream a text response — no timeout issues even for large outputs.
    * Collects all text chunks into a single string.
    * Uses streaming so the HTTP connection stays alive (no 10-min timeout).
+   * Wraps the entire stream in a 9-minute timeout so Railway never hangs forever.
    */
   async streamText(
     messages: MessageParam[],
@@ -178,21 +179,33 @@ export class ClaudeClient {
       ...(temperature !== undefined ? { temperature } : {}),
     };
 
-    const stream = this.client.messages.stream(params);
-    let text = "";
-    let inputTokens = 0;
-    let outputTokens = 0;
+    // 9-minute hard timeout — if the stream stalls this rejects the promise
+    const STREAM_TIMEOUT_MS = 9 * 60 * 1000;
 
-    for await (const event of stream) {
-      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-        text += event.delta.text;
-      } else if (event.type === "message_start" && event.message.usage) {
-        inputTokens = event.message.usage.input_tokens;
-      } else if (event.type === "message_delta" && event.usage) {
-        outputTokens = event.usage.output_tokens;
+    const streamPromise = async (): Promise<{ text: string; inputTokens: number; outputTokens: number }> => {
+      const stream = this.client.messages.stream(params);
+      let text = "";
+      let inputTokens = 0;
+      let outputTokens = 0;
+
+      for await (const event of stream) {
+        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+          text += event.delta.text;
+        } else if (event.type === "message_start" && event.message.usage) {
+          inputTokens = event.message.usage.input_tokens;
+        } else if (event.type === "message_delta" && event.usage) {
+          outputTokens = event.usage.output_tokens;
+        }
       }
-    }
 
+      return { text, inputTokens, outputTokens };
+    };
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`streamText timed out after ${STREAM_TIMEOUT_MS / 1000}s`)), STREAM_TIMEOUT_MS)
+    );
+
+    const { text, inputTokens, outputTokens } = await Promise.race([streamPromise(), timeoutPromise]);
     const cost = calculateCost(model, inputTokens, outputTokens);
     return { text, cost, inputTokens, outputTokens };
   }
