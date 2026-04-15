@@ -83,7 +83,9 @@ export function createOrchestratorWorker(
     },
     {
       connection: redisConnection,
-      concurrency: 2,
+      concurrency: agentType === "BUILDER" ? 1 : 2, // BUILDER: 1 at a time (Playwright-heavy)
+      lockDuration: 300_000,     // 5 min lock — covers Playwright scrape + Vercel deploy
+      stalledInterval: 120_000,  // check for stalled every 2 min
       limiter: {
         max: 5,
         duration: 60_000, // 5 jobs per minute per agent type
@@ -120,6 +122,10 @@ export function createOrchestratorWorker(
 
   worker.on("error", (err) => {
     console.error(`[Orchestrator] ⚠️ Worker error for ${agentType}:`, err.message);
+  });
+
+  worker.on("stalled", (jobId) => {
+    console.error(`[Orchestrator] ⚠️ ${agentType} job STALLED (lock expired): ${jobId}`);
   });
 
   return worker;
@@ -305,11 +311,12 @@ export async function startOrchestrator(): Promise<Worker[]> {
 
   // Scale-out: 6 workers each for the core pipeline agents
   // so all 6 run in parallel when a campaign launches
+  // Builder uses Playwright (Chromium ~200MB each) — keep low to avoid OOM
   const WORKER_COUNTS: Record<AgentType, number> = {
-    SCRAPER: 6,
-    ANALYZER: 6,
-    BUILDER: 6,
-    OUTREACH: 6,
+    SCRAPER: 3,
+    ANALYZER: 4,
+    BUILDER: 2,    // max 2 concurrent builds (each with 1 Chromium)
+    OUTREACH: 4,
     QA: 1,
     CHATBOT: 1,
   };

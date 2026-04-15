@@ -29,3 +29,11 @@ main().catch((err) => {
   console.error("[AgentRunner] Fatal error:", err);
   process.exit(1);
 });
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[AgentRunner] Unhandled rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[AgentRunner] Uncaught exception:", err);
+  process.exit(1);
+});

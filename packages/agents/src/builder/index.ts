@@ -1220,9 +1220,10 @@ body{padding-bottom:56px!important}
         const previewUrl = toolInput["previewUrl"] as string;
         const slug = (toolInput["slug"] as string) ?? "preview";
 
+        let browser: import("playwright").Browser | null = null;
         try {
           const { chromium } = await import("playwright");
-          const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
+          browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
 
           const screenshots: { desktop?: string; mobile?: string } = {};
 
@@ -1241,8 +1242,6 @@ body{padding-bottom:56px!important}
           await mobilePage.waitForTimeout(1500);
           const mobileBuffer = await mobilePage.screenshot({ fullPage: false });
           await mobilePage.close();
-
-          await browser.close();
 
           // Try to upload to R2 if configured
           const r2AccountId = process.env["CLOUDFLARE_ACCOUNT_ID"];
@@ -1311,6 +1310,9 @@ body{padding-bottom:56px!important}
             screenshotMobileUrl: null,
             error: message,
           };
+        } finally {
+          // Always close browser to prevent Chromium leak
+          await browser?.close().catch(() => {});
         }
       }
 
