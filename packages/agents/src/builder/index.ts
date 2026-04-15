@@ -1136,20 +1136,24 @@ OUTPUT FORMAT — use this EXACT delimiter format (NOT JSON):
 
 Each file starts with ===FILE: path/to/file.ext=== on its own line, followed by the complete file content.
 
-BATCH 1 — Generate these core files now:
+Generate ALL files in a single response. Be concise — inline styles, no separate CSS file needed if styles are in components. Focus on QUALITY over QUANTITY.
+
+Required files:
 ===FILE: package.json===
 ===FILE: next.config.mjs===
 ===FILE: tsconfig.json===
 ===FILE: app/globals.css===
-===FILE: app/layout.tsx===
-===FILE: app/page.tsx===
-===FILE: components/Nav.tsx===
-===FILE: components/Hero.tsx===
-===FILE: components/Footer.tsx===
+===FILE: app/layout.tsx===  (includes Nav + Footer inline)
+===FILE: app/page.tsx===  (homepage with hero, about preview, services, gallery, contact form — ALL IN ONE PAGE if needed to save tokens)
+
+Optional (if tokens allow):
+===FILE: app/${routes.about}/page.tsx===
+===FILE: app/${routes.services}/page.tsx===
+===FILE: app/${routes.contact}/page.tsx===
 
 Start with ===FILE: package.json===`;
 
-          const systemMsg = "You are an expert Next.js developer. Output files using the ===FILE: path=== delimiter format. No JSON, no markdown fences, no explanation — just the files. Be concise but complete.";
+          const systemMsg = "You are an expert Next.js developer. Output files using the ===FILE: path=== delimiter format. No JSON, no markdown fences. Be concise — use inline styles when possible. Every word must be in " + langName + ".";
 
           // Helper: parse ===FILE: path=== delimiter format
           const parseDelimiterOutput = (text: string): Record<string, string> => {
@@ -1169,59 +1173,24 @@ Start with ===FILE: package.json===`;
           };
 
           try {
-            // ── BATCH 1: Core files (layout, CSS, homepage, nav, hero, footer) ──
-            this.log("info", "build_preview_site: Claude BATCH 1 — core files");
-            const batch1 = await this.client.callWithText(
+            // Single Claude call — concise but complete
+            this.log("info", "build_preview_site: Claude generating site (single call, 16k tokens)");
+            const claudeResult = await this.client.callWithText(
               [{ role: "user", content: claudePrompt }],
               { system: systemMsg, maxTokens: 16384 }
             );
-            this.totalCost += batch1.cost;
-            this.totalInputTokens += batch1.inputTokens;
-            this.totalOutputTokens += batch1.outputTokens;
+            this.totalCost += claudeResult.cost;
+            this.totalInputTokens += claudeResult.inputTokens;
+            this.totalOutputTokens += claudeResult.outputTokens;
 
-            const coreFiles = parseDelimiterOutput(batch1.text);
-            this.log("info", `build_preview_site: BATCH 1 parsed — ${Object.keys(coreFiles).length} files ($${batch1.cost.toFixed(3)})`);
+            const parsed = parseDelimiterOutput(claudeResult.text);
+            this.log("info", `build_preview_site: Claude output parsed — ${Object.keys(parsed).length} files ($${claudeResult.cost.toFixed(3)})`);
 
-            // ── BATCH 2: Inner pages (about, services, gallery, contact) ──
-            const batch2Prompt = `Continue generating the remaining pages for the same ${name} website in ${langName}.
-Use the same design system, colors, and fonts as BATCH 1.
-
-Generate these files:
-===FILE: app/${routes.about}/page.tsx===
-===FILE: app/${routes.services}/page.tsx===
-===FILE: app/${routes.gallery}/page.tsx===
-===FILE: app/${routes.contact}/page.tsx===
-
-Use the REAL content from the original site. ALL text in ${langName}.
-
-PHOTOS: ${photos.slice(0, 10).map((p) => p["url"] as string).join("\n")}
-
-SCRAPED CONTENT:
-${scrapedSummary.slice(0, 8000)}
-
-Start with ===FILE: app/${routes.about}/page.tsx===`;
-
-            this.log("info", "build_preview_site: Claude BATCH 2 — inner pages");
-            const batch2 = await this.client.callWithText(
-              [{ role: "user", content: batch2Prompt }],
-              { system: systemMsg, maxTokens: 16384 }
-            );
-            this.totalCost += batch2.cost;
-            this.totalInputTokens += batch2.inputTokens;
-            this.totalOutputTokens += batch2.outputTokens;
-
-            const innerPages = parseDelimiterOutput(batch2.text);
-            this.log("info", `build_preview_site: BATCH 2 parsed — ${Object.keys(innerPages).length} files ($${batch2.cost.toFixed(3)})`);
-
-            // Merge batches
-            const parsed = { ...coreFiles, ...innerPages };
-            this.log("info", `build_preview_site: total ${Object.keys(parsed).length} custom files`);
-
-            if (Object.keys(parsed).length >= 5 && "package.json" in parsed) {
+            if (Object.keys(parsed).length >= 3 && "package.json" in parsed) {
               projectFiles = parsed;
-              this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} custom files ($${(batch1.cost + batch2.cost).toFixed(3)} total)`);
+              this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} custom files`);
             } else {
-              throw new Error(`Claude returned only ${Object.keys(parsed).length} files (need >= 5 with package.json)`);
+              throw new Error(`Claude returned only ${Object.keys(parsed).length} files (need >= 3 with package.json)`);
             }
           } catch (claudeErr) {
             this.log("warn", `build_preview_site: Claude generation failed: ${claudeErr instanceof Error ? claudeErr.message : String(claudeErr)} — falling back to template`);
