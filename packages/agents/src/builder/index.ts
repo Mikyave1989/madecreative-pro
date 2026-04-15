@@ -1140,10 +1140,45 @@ Return the JSON object now. No markdown fences, no explanation.`;
             this.totalInputTokens += claudeResult.inputTokens;
             this.totalOutputTokens += claudeResult.outputTokens;
 
-            // Parse Claude's JSON response
+            // Parse Claude's JSON response — sanitize escape chars that break JSON.parse
             const jsonMatch = claudeResult.text.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]) as Record<string, string>;
+              let rawJson = jsonMatch[0];
+
+              // Fix common JSON escape issues from Claude-generated code-in-JSON:
+              // 1. Fix unescaped control chars inside string values (newlines, tabs)
+              // 2. Try parsing as-is first, then sanitize if it fails
+              let parsed: Record<string, string>;
+              try {
+                parsed = JSON.parse(rawJson) as Record<string, string>;
+              } catch {
+                // Sanitize: replace literal newlines/tabs inside JSON string values
+                // by replacing them with \\n and \\t
+                rawJson = rawJson.replace(/(?<=":[ ]*")((?:[^"\\]|\\.)*)(?=")/gs, (match) => {
+                  return match
+                    .replace(/\n/g, "\\n")
+                    .replace(/\r/g, "\\r")
+                    .replace(/\t/g, "\\t");
+                });
+                try {
+                  parsed = JSON.parse(rawJson) as Record<string, string>;
+                } catch {
+                  // Last resort: extract files manually by splitting on key patterns
+                  this.log("warn", "build_preview_site: JSON.parse failed even after sanitize, trying manual extraction");
+                  const files: Record<string, string> = {};
+                  const fileRegex = /"([^"]+\.[a-z]{2,4})":\s*"((?:[^"\\]|\\.)*)"/g;
+                  let m;
+                  while ((m = fileRegex.exec(claudeResult.text)) !== null) {
+                    files[m[1]!] = m[2]!.replace(/\\n/g, "\n").replace(/\\t/g, "\t").replace(/\\"/g, '"');
+                  }
+                  if (Object.keys(files).length >= 3) {
+                    parsed = files;
+                  } else {
+                    throw new Error(`Manual extraction found only ${Object.keys(files).length} files`);
+                  }
+                }
+              }
+
               if (Object.keys(parsed).length >= 5 && "package.json" in parsed) {
                 projectFiles = parsed;
                 this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} custom files ($${claudeResult.cost.toFixed(3)})`);
