@@ -896,8 +896,6 @@ export class BuilderAgent extends BaseAgent {
         const bd = (toolInput["businessData"] as Record<string, unknown>) ?? {};
         const website = (bd["website"] as string) ?? (toolInput["website"] as string) ?? undefined;
         const prospectId = (toolInput["prospectId"] as string) ?? undefined;
-        const boltUrl = process.env["EDITOR_URL"] ?? "https://madecreative.pro";
-        const anthropicKey = process.env["ANTHROPIC_API_KEY"] ?? "";
 
         try {
           // ── Step 1: Scrape website if needed ──
@@ -1071,152 +1069,16 @@ export class BuilderAgent extends BaseAgent {
             }
           }
 
-          // ── Step 2: Build message with ALL scraped content ──
-          let boltMessage: string;
-          if (scrapedContent) {
-            const scraped = scrapedContent as { pages?: Array<{ url: string; title?: string; headings?: Array<{ level: number; text: string }>; paragraphs?: string[]; images?: Array<{ url: string; alt?: string }>; videos?: Array<{ url: string; type: string }> }>; logo?: string; contact?: Record<string, string>; colors?: Record<string, string>; socialLinks?: Record<string, string> };
-            const seenUrls = new Set<string>();
-            const uniquePages = (scraped.pages ?? []).filter(p => {
-              const norm = (p.url ?? "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
-              if (!norm || seenUrls.has(norm)) return false;
-              seenUrls.add(norm);
-              return (p.headings?.length ?? 0) > 0 || (p.paragraphs?.length ?? 0) > 0;
-            });
-
-            let pagesContent = "";
-            let totalPhotos = 0;
-            let totalVideos = 0;
-            for (const p of uniquePages) {
-              const pageImgs = (p.images ?? [])
-                .filter(i => i.url?.startsWith("http") && /\.(jpg|jpeg|png|webp)/i.test(i.url) && !/dummy|plugin|admin|icon|sprite|pixel/i.test(i.url));
-              const imgs = pageImgs.map((img, i) => `  ${i + 1}. ${img.url}${img.alt ? ` (${img.alt})` : ""}`).join("\n");
-              totalPhotos += pageImgs.length;
-              const headings = (p.headings ?? []).filter(h => h.text?.length > 2).map(h => `  h${h.level}: ${h.text}`).join("\n");
-              const paras = (p.paragraphs ?? []).filter(t => t.length > 20).map(t => `  ${t}`).join("\n");
-              const pageVideos = (p.videos ?? []);
-              totalVideos += pageVideos.length;
-              const videos = pageVideos.map(v => `  VIDEO (${v.type}): ${v.url}`).join("\n");
-              pagesContent += `\n--- PAGE: ${p.url} (${p.title || ""}) ---\nHeadings:\n${headings}\nText:\n${paras}\nPhotos (ALL ${pageImgs.length}):\n${imgs || "  none"}\n${videos ? `Videos:\n${videos}` : ""}`;
-            }
-            this.log("info", `build_preview_site: ${uniquePages.length} pages, ${totalPhotos} total photos, ${totalVideos} total videos`);
-
-            boltMessage = `You are rebuilding: ${website}
-
-MISSION: Create an EXACT FAITHFUL COPY of this website but with a premium €10,000+ visual upgrade.
-WHAT STAYS IDENTICAL: Every page, every section, every navigation item, every menu item, every photo, every video, every text, every contact detail, every opening hour, every price, every product — 100% preserved.
-WHAT CHANGES: Only the visual design — premium fonts, refined colors, smooth animations, glassmorphism nav, scroll reveals, better spacing, modern layout. The content is SACRED and must not be touched.
-
-GOLDEN RULE: If it exists on the original site, it MUST exist on the rebuilt site. If it does not exist on the original, do NOT add it.
-
-Use ONLY the real scraped content. NEVER invent text. NEVER use stock photos. NEVER omit anything.
-
-BUSINESS:
-- Logo: ${scraped.logo || "none"}
-- Phone: ${scraped.contact?.phone || "N/A"}, Email: ${scraped.contact?.email || "N/A"}, Address: ${scraped.contact?.address || "N/A"}
-- WhatsApp: ${scraped.contact?.whatsapp || "N/A"}
-- Facebook: ${scraped.socialLinks?.facebook || ""}, Instagram: ${scraped.socialLinks?.instagram || ""}
-- Colors: ${JSON.stringify(scraped.colors || {})}
-
-${uniquePages.length > 1 ? `MULTI-PAGE: You MUST create ${uniquePages.length} separate HTML files (one per page listed below). Every single page must be generated. Use write_file for EACH page: ${uniquePages.map(p => { const path = (p.url as string).replace(/^https?:\/\/(www\.)?[^/]+/, "").replace(/\/$/, ""); return (path || "/index") + "/index.html"; }).join(", ")}` : "Single-page site: create index.html only."}
-
-SCRAPED CONTENT:
-${pagesContent}
-
-Include EVERY photo and video.
-
-VIDEO HERO — CRITICAL RULE:
-If ANY video is found in the scraped content (YouTube, Vimeo, or direct mp4/webm):
-- Use it as a FULL-SCREEN autoplay hero at the very top of the home page
-- Muted, loop, autoplay, playsInline
-- For YouTube/Vimeo: embed as iframe with autoplay&mute=1&loop=1&controls=0&showinfo=0
-- For direct video files: use <video autoplay muted loop playsinline> with object-fit: cover
-- Overlay a dark gradient (rgba 0,0,0,0.4) over the video for text readability
-- Place the hero heading, subtitle and CTA button on top of the video
-- This makes the site look like a €50,000 premium production
-- If no video: use the best full-resolution photo as the hero background
-
-RESPONSIVE — MANDATORY:
-- Mobile (320-480px): single column, hamburger nav, min 44px tap targets
-- Tablet (481-1024px): 2-column layouts where applicable
-- Laptop (1025-1440px): full multi-column layout
-- Desktop (1441px+): max-width container, centered
-Every component must use @media breakpoints or Tailwind sm:/md:/lg:/xl:.
-Nav MUST collapse to hamburger on mobile.`;
-          } else {
-            const allPhotos = photos.map((p, i) => `${i + 1}. ${(p as Record<string, unknown>).url ?? p}`).join("\n");
-            boltMessage = `Build a premium website for "${projectData.businessName}" (${sector}).
-Content: ${projectData.heroTitle}, ${projectData.description}
-Address: ${projectData.address}, Phone: ${projectData.phone}, Email: ${projectData.email}
-${allPhotos ? `Photos (ALL):\n${allPhotos}` : ""}
-Include ALL photos. NEVER use stock images.
-RESPONSIVE: mobile (320-480px) single column + hamburger, tablet (481-1024px) 2-col, desktop (1441px+) max-width centered. EVERY component must have @media breakpoints.`;
-          }
-
-          // ── Step 3: Call bolt.diy DIRECTLY (NO timeout — worker runs on Railway) ──
-          this.log("info", `build_preview_site: calling bolt.diy at ${boltUrl}/api/chat`);
-
-          const apiKeys = { Anthropic: anthropicKey };
-          const chatRes = await fetch(`${boltUrl}/api/chat`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Cookie: `apiKeys=${encodeURIComponent(JSON.stringify(apiKeys))}`,
-            },
-            body: JSON.stringify({
-              messages: [{ role: "user", content: `[Model: claude-sonnet-4-6]\n\n[Provider: Anthropic]\n\n${boltMessage}` }],
-              files: {},
-              contextOptimization: false,
-              chatMode: "build",
-              maxLLMSteps: 5,
-            }),
-          });
-
-          if (!chatRes.ok) {
-            throw new Error(`bolt.diy error ${chatRes.status}: ${(await chatRes.text().catch(() => "")).slice(0, 200)}`);
-          }
-
-          // ── Step 4: Parse SSE stream to extract files from boltAction tags ──
-          const reader = chatRes.body?.getReader();
-          if (!reader) throw new Error("No response body from bolt.diy");
-
-          const decoder = new TextDecoder();
-          let fullText = "";
-          let sseBuffer = "";
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            sseBuffer += decoder.decode(value, { stream: true });
-            const lines = sseBuffer.split("\n");
-            sseBuffer = lines.pop() ?? "";
-            for (const line of lines) {
-              if (line.startsWith("0:")) {
-                try { fullText += JSON.parse(line.slice(2)) as string; } catch { /* skip */ }
-              }
-            }
-          }
-
-          this.log("info", `build_preview_site: bolt.diy response ${fullText.length} chars`);
-
-          // Extract files from <boltAction type="file" filePath="...">
-          const fileRegex = /<boltAction\s+type="file"\s+filePath="([^"]+)"[^>]*>([\s\S]*?)<\/boltAction>/g;
-          let match;
-          while ((match = fileRegex.exec(fullText)) !== null) {
-            // Clean bolt.diy WebContainer paths: /home/project/src/app.tsx → src/app.tsx
-            let filePath = match[1]!.replace(/^\/home\/project\//, "").replace(/^\//, "");
-            projectFiles[filePath] = match[2]!;
-          }
-
-          this.log("info", `build_preview_site: extracted ${Object.keys(projectFiles).length} files from bolt.diy`);
-        } catch (aiErr) {
-          this.log("warn", `build_preview_site: AI generation failed, falling back to template: ${aiErr instanceof Error ? aiErr.message : String(aiErr)}`);
-          // Fallback to static template if AI fails
+          // ── Step 2: Generate premium Next.js project from template ──
+          // Uses generateNextJsProject which produces 30+ files:
+          // Next.js 14 + Framer Motion + GSAP + Three.js + Tailwind
+          // Multi-page: home, chi-siamo, servizi, galleria, contatti
+          this.log("info", `build_preview_site: generating Next.js project for "${projectData.businessName}"`);
           projectFiles = generateNextJsProject(projectData);
-        }
-
-        if (Object.keys(projectFiles).length === 0) {
+          this.log("info", `build_preview_site: generated ${Object.keys(projectFiles).length} files`);
+        } catch (err) {
+          this.log("warn", `build_preview_site: generation error: ${err instanceof Error ? err.message : String(err)}`);
           projectFiles = generateNextJsProject(projectData);
-          this.log("info", `build_preview_site: used template fallback (${Object.keys(projectFiles).length} files)`);
         }
 
         // Save project files to ClientWebsite if prospect has one
