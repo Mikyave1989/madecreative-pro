@@ -1133,7 +1133,7 @@ Return the JSON object now. No markdown fences, no explanation.`;
           try {
             const claudeResult = await this.client.callWithText(
               [{ role: "user", content: claudePrompt }],
-              { system: "You are an expert Next.js developer. Output only valid JSON with file paths as keys and file contents as values. No markdown, no explanation, no code fences.", maxTokens: 64000 }
+              { system: "You are an expert Next.js developer. Output only valid JSON with file paths as keys and file contents as values. No markdown, no explanation, no code fences.", maxTokens: 128000 }
             );
 
             this.totalCost += claudeResult.cost;
