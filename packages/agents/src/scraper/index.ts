@@ -97,11 +97,12 @@ function randomDelay(): Promise<void> {
 }
 
 function buildProxyUrl(sessionId: string): string {
-  const zone = process.env["BRIGHTDATA_ZONE"] ?? "residential";
-  // BRIGHTDATA_PASSWORD is the proxy auth password (from Bright Data dashboard → Residential → Auth).
-  // Fall back to BRIGHTDATA_API_KEY in case the same credential is reused.
+  const customer = process.env["BRIGHTDATA_CUSTOMER"] ?? "brd-customer-hl_2d1138b4";
+  const zone = process.env["BRIGHTDATA_ZONE"] ?? "residential_proxy1";
   const password = process.env["BRIGHTDATA_PASSWORD"] ?? process.env["BRIGHTDATA_API_KEY"] ?? "";
-  return `http://brd-customer-${zone}-zone-residential-session-${sessionId}:${password}@brd.superproxy.io:22225`;
+  const host = process.env["BRIGHTDATA_HOST"] ?? "brd.superproxy.io";
+  const port = process.env["BRIGHTDATA_PORT"] ?? "33335";
+  return `http://${customer}-zone-${zone}-session-${sessionId}:${password}@${host}:${port}`;
 }
 
 function hasProxyCredentials(): boolean {
@@ -315,7 +316,18 @@ export class ScraperAgent extends BaseAgent {
       page = await this.setupBrowser();
 
       const encodedQuery = encodeURIComponent(query);
-      const mapsUrl = `https://www.google.com/maps/search/${encodedQuery}/@48.1351,11.5820,13z?hl=de`;
+      // City coordinates lookup — defaults to Berlin center
+      const CITY_COORDS: Record<string, string> = {
+        berlin: "52.5200,13.4050", münchen: "48.1351,11.5820", munich: "48.1351,11.5820",
+        hamburg: "53.5511,9.9937", frankfurt: "50.1109,8.6821", köln: "50.9375,6.9603",
+        düsseldorf: "51.2277,6.7735", stuttgart: "48.7758,9.1829", wien: "48.2082,16.3738",
+        zürich: "47.3769,8.5417", roma: "41.9028,12.4964", milano: "45.4642,9.1900",
+        paris: "48.8566,2.3522", madrid: "40.4168,-3.7038", london: "51.5074,-0.1278",
+        amsterdam: "52.3676,4.9041", bruxelles: "50.8503,4.3517", lisboa: "38.7223,-9.1393",
+      };
+      const coords = CITY_COORDS[city.toLowerCase()] ?? "52.5200,13.4050";
+      const lang = country === "DE" || country === "AT" || country === "CH" ? "de" : country === "IT" ? "it" : country === "FR" || country === "BE" ? "fr" : country === "ES" ? "es" : "en";
+      const mapsUrl = `https://www.google.com/maps/search/${encodedQuery}/@${coords},13z?hl=${lang}`;
 
       await page.goto(mapsUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
 
