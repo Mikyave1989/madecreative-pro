@@ -297,20 +297,31 @@ export async function startOrchestrator(): Promise<Worker[]> {
     enableReadyCheck: false,
   });
 
-  const agentTypes: AgentType[] = [
-    "SCRAPER",
-    "ANALYZER",
-    "BUILDER",
-    "OUTREACH",
-    "QA",
-  ];
+  // Scale-out: 6 workers each for SCRAPER, BUILDER, OUTREACH
+  // 1 worker each for ANALYZER, QA (lighter workloads)
+  const WORKER_COUNTS: Record<AgentType, number> = {
+    SCRAPER: 6,
+    ANALYZER: 1,
+    BUILDER: 6,
+    OUTREACH: 6,
+    QA: 1,
+    CHATBOT: 1,
+  };
 
-  const workers = agentTypes.map((type) =>
-    createOrchestratorWorker(type, redis)
-  );
+  const workers: Worker[] = [];
 
+  for (const [type, count] of Object.entries(WORKER_COUNTS) as [AgentType, number][]) {
+    for (let i = 0; i < count; i++) {
+      workers.push(createOrchestratorWorker(type, redis));
+    }
+  }
+
+  const summary = Object.entries(WORKER_COUNTS)
+    .filter(([, n]) => n > 0)
+    .map(([t, n]) => `${t}×${n}`)
+    .join(", ");
   console.log(
-    `[Orchestrator] Started ${workers.length} workers for agent types: ${agentTypes.join(", ")}`
+    `[Orchestrator] Started ${workers.length} workers: ${summary}`
   );
 
   // ── DB Poller: pick up jobs that were created but never reached BullMQ ──

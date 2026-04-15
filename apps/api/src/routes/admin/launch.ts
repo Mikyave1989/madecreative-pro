@@ -581,4 +581,41 @@ app.get("/campaigns", async (c) => {
   return c.json({ success: true, data });
 });
 
+// ─── PATCH /admin/launch/campaigns/:id/toggle — pause/resume a campaign ─────
+
+app.patch("/campaigns/:id/toggle", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const id = c.req.param("id");
+
+  const config = await prisma.scrapeConfig.findUnique({ where: { id } });
+  if (!config) return c.json({ success: false, error: "Campaign not found" }, 404);
+
+  const newActive = !config.isActive;
+
+  await prisma.scrapeConfig.update({
+    where: { id },
+    data: { isActive: newActive },
+  });
+
+  // If pausing, also cancel all QUEUED jobs for this campaign
+  if (!newActive) {
+    await prisma.agentJob.updateMany({
+      where: {
+        status: "QUEUED",
+        input: { path: ["configId"], equals: id },
+      },
+      data: { status: "CANCELLED" },
+    });
+  }
+
+  return c.json({
+    success: true,
+    data: {
+      id,
+      isActive: newActive,
+      message: newActive ? "Campaign resumed" : "Campaign paused — queued jobs cancelled",
+    },
+  });
+});
+
 export default app;

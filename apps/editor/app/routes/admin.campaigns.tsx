@@ -221,6 +221,23 @@ export default function AdminCampaigns() {
     loadCampaigns();
   }, [loadWarming, loadCampaigns]);
 
+  // ── toggle handler (pause/resume) ─────────────────────────────────────────────
+
+  const handleToggle = async (id: string) => {
+    try {
+      const res = await adminFetch(`/admin/launch/campaigns/${id}/toggle`, { method: 'PATCH' });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.data?.message ?? 'Campaign toggled');
+        await loadCampaigns();
+      } else {
+        toast.error(data.error ?? 'Toggle failed');
+      }
+    } catch {
+      toast.error('Network error — toggle failed');
+    }
+  };
+
   // ── launch handler ───────────────────────────────────────────────────────────
 
   const handleLaunch = async () => {
@@ -550,7 +567,7 @@ export default function AdminCampaigns() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {campaigns.map((c) => (
-              <CampaignRow key={c.id} campaign={c} />
+              <CampaignRow key={c.id} campaign={c} onToggle={handleToggle} />
             ))}
           </div>
         )}
@@ -564,7 +581,7 @@ export default function AdminCampaigns() {
 
 // ─── Campaign row ─────────────────────────────────────────────────────────────
 
-function CampaignRow({ campaign: c }: { campaign: ActiveCampaign }) {
+function CampaignRow({ campaign: c, onToggle }: { campaign: ActiveCampaign; onToggle: (id: string) => void }) {
   const cities = c.cities?.join(', ') ?? (c.countries ?? []).join(', ');
   const hasJobs = c.activeJobs > 0;
 
@@ -621,9 +638,27 @@ function CampaignRow({ campaign: c }: { campaign: ActiveCampaign }) {
         </div>
       </div>
 
+      {/* Pause / Resume button */}
+      <button
+        onClick={() => onToggle(c.id)}
+        style={{
+          padding: '6px 14px',
+          borderRadius: '8px',
+          backgroundColor: c.isActive ? 'rgba(239,68,68,.15)' : 'rgba(16,185,129,.15)',
+          border: `1px solid ${c.isActive ? 'rgba(239,68,68,.3)' : 'rgba(16,185,129,.3)'}`,
+          color: c.isActive ? '#ef4444' : '#10b981',
+          fontSize: '12px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      >
+        {c.isActive ? 'Pause' : 'Resume'}
+      </button>
+
       {/* Badge */}
       <span style={S.badge(hasJobs ? '#10b981' : c.isActive ? '#6366f1' : '#6b7280')}>
-        {hasJobs ? 'Running' : c.isActive ? 'Active' : 'Idle'}
+        {hasJobs ? 'Running' : c.isActive ? 'Active' : 'Paused'}
       </span>
     </div>
   );

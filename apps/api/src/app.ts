@@ -26,8 +26,9 @@ import portalWebsiteRoutes from "./routes/portal/website.js";
 import portalChatbotRoutes from "./routes/portal/chatbot.js";
 import portalBillingRoutes from "./routes/portal/billing.js";
 import portalReportsRoutes from "./routes/portal/reports.js";
-import portalEditorRoutes from "./routes/portal/editor.js";
-import portalEditorChatRoutes from "./routes/portal/editor-chat.js";
+// Editor removed — sites are modified directly via Claude
+// import portalEditorRoutes from "./routes/portal/editor.js";
+// import portalEditorChatRoutes from "./routes/portal/editor-chat.js";
 import portalSettingsRoutes from "./routes/portal/settings.js";
 import portalProjectsRoutes from "./routes/portal/projects.js";
 
@@ -52,7 +53,6 @@ app.use(
       process.env["MARKETING_URL"] ?? "https://madecreative.pro",
       process.env["ADMIN_URL"] ?? "https://admin.madecreative.pro",
       process.env["PORTAL_URL"] ?? "https://madecreative.pro",
-      process.env["EDITOR_URL"] ?? "https://madecreative.pro",
       "http://localhost:3000",
       "http://localhost:3001",
       "http://localhost:3002",
@@ -464,15 +464,11 @@ app.use("/portal/website/*", clientAuthMiddleware);
 app.use("/portal/chatbot/*", clientAuthMiddleware);
 app.use("/portal/billing/*", clientAuthMiddleware);
 app.use("/portal/reports/*", clientAuthMiddleware);
-app.use("/portal/editor/*", clientAuthMiddleware);
-
 app.route("/portal/dashboard", portalDashboardRoutes);
 app.route("/portal/website", portalWebsiteRoutes);
 app.route("/portal/chatbot", portalChatbotRoutes);
 app.route("/portal/billing", portalBillingRoutes);
 app.route("/portal/reports", portalReportsRoutes);
-app.route("/portal/editor", portalEditorRoutes);
-app.route("/portal/editor/chat", portalEditorChatRoutes);
 app.use("/portal/settings/*", clientAuthMiddleware);
 app.route("/portal/settings", portalSettingsRoutes);
 
