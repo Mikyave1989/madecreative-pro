@@ -205,9 +205,9 @@ async function deployToVercel(
       name: projectName,
       files: vercelFiles,
       projectSettings: {
-        framework,
-        buildCommand,
-        outputDirectory,
+        framework: framework ?? null,
+        buildCommand: hasPackageJson ? buildCommand : null,
+        outputDirectory: hasPackageJson ? outputDirectory : null,
         installCommand,
         nodeVersion: "20.x",
       },
@@ -1096,50 +1096,50 @@ export class BuilderAgent extends BaseAgent {
           }).join("\n\n");
           const scrapedContact = (scrapedContent as { contact?: Record<string, string> })?.contact ?? {};
 
-          const prompt = `Generate a UNIQUE premium Next.js 14 website that REBUILDS this business site with a €10,000+ design.
+          const prompt = `You are redesigning an existing website. Your job is to create a PREMIUM CLONE — same structure, same content, same pages, same menu, same photos, same videos — but with a stunning 10,000 EUR+ visual design upgrade.
 
+ORIGINAL WEBSITE: ${projectData.website ?? ""}
 BUSINESS: ${projectData.businessName}
 SECTOR: ${projectData.sector} | CITY: ${projectData.city ?? ""} | LANGUAGE: ${langName}
-PHONE: ${scrapedContact.phone ?? projectData.phone} | EMAIL: ${scrapedContact.email ?? projectData.email}
+PHONE: ${scrapedContact.phone ?? projectData.phone}
+EMAIL: ${scrapedContact.email ?? projectData.email}
 ADDRESS: ${scrapedContact.address ?? projectData.address}
 GOOGLE: ${projectData.googleRating ?? "N/A"}/5 (${projectData.reviewCount ?? 0} reviews)
 
-REAL PHOTOS (use ALL of these):
+ORIGINAL PHOTOS (use ALL of these — they are from the real site):
 ${photos.slice(0, 15).map((p) => p["url"] as string).join("\n")}
 
-REAL CONTENT FROM ORIGINAL SITE:
+ORIGINAL SITE CONTENT (scraped from the real website — KEEP IT ALL):
 ${scrapedSummary.slice(0, 20000)}
 
-RULES:
-1. ALL text must be in ${langName}. Use the REAL text from the scraped content.
-2. Use the REAL photos listed above with <img> tags.
-3. Every site must look DIFFERENT — vary layout, hero style, section order, typography, color usage.
-4. If the site has a VIDEO, put it as autoplay muted loop hero background with <video> tag.
-5. FULLY responsive: mobile hamburger nav, tablet 2-col, desktop max-width 1200px.
-6. Premium CSS animations: scroll reveal (IntersectionObserver), parallax, smooth hover effects, nav color change on scroll.
-7. Google Fonts: use 2 premium fonts (one serif for headings, one sans for body).
-8. Sections: Navigation, Hero (full-screen), About, Services/Menu, Gallery (grid), Testimonials/Reviews, Contact, Footer.
+CRITICAL RULES:
+1. This is a CLONE with premium design — NOT a new site. Keep the SAME structure, SAME pages, SAME navigation, SAME text content.
+2. Use the EXACT text from the scraped content. Do NOT rewrite, summarize, or translate it. Copy it verbatim.
+3. Use ALL the original photos in their original positions.
+4. If the original site has a VIDEO, keep it — use <video autoplay muted loop playsinline> or <iframe> for YouTube/Vimeo.
+5. Keep the same page structure — if the original has 6 pages, create 6 pages. If it has a menu/price list, include that menu/price list.
+6. The ONLY thing you change is the VISUAL DESIGN: better typography (Google Fonts), smooth animations (IntersectionObserver), modern layout, premium spacing, elegant color palette.
+7. FULLY responsive: mobile (hamburger nav, stacked), tablet, desktop (max-width 1200px).
+8. All text stays in ${langName} — the original language.
 
-OUTPUT: Generate a MULTI-PAGE static website using ===FILE: path=== delimiters.
+DESIGN UPGRADE:
+- Premium Google Fonts (2 fonts: serif heading + sans body)
+- Elegant color palette extracted from the business photos
+- Scroll reveal animations (fade-in, slide-up via IntersectionObserver)
+- Glassmorphism navigation that changes on scroll
+- Hover effects on cards, buttons, images
+- Full-screen hero with overlay
+- Modern spacing and typography scale
+- Smooth transitions everywhere
 
-Each HTML file must be self-contained with inline <style> and <script> tags.
-Share the same nav, footer, and CSS design across all pages (copy the styles into each file).
-No external dependencies except Google Fonts and the business photos.
+OUTPUT: Multi-page static HTML using ===FILE: path=== delimiters.
+Each file is self-contained with inline <style> and <script>.
 
-Every page must include:
-- <meta viewport> for responsive
-- Google Fonts <link>
-- Full CSS with media queries (@media max-width:768px, @media max-width:480px)
-- Scroll animations via IntersectionObserver
-- Hamburger menu for mobile with links to all pages
-- All business photos and content
+Generate one HTML file per original page. Use the scraped page structure above to determine the pages.
+At minimum:
+===FILE: index.html=== (homepage — clone of original homepage with premium design)
 
-Required files:
-===FILE: index.html=== (homepage: hero, about preview, services preview, gallery preview, CTA, contact)
-===FILE: ${routes.about}/index.html=== (about page: full story, team, history, stats)
-===FILE: ${routes.services}/index.html=== (services page: full service/menu grid with details)
-===FILE: ${routes.gallery}/index.html=== (gallery page: full masonry grid with all photos)
-===FILE: ${routes.contact}/index.html=== (contact page: form, map embed, phone, email, address, hours)
+Add more pages matching the original site structure.
 
 Start with ===FILE: index.html===`;
 
@@ -1148,7 +1148,7 @@ Start with ===FILE: index.html===`;
           try {
             const result = await this.client.streamText(
               [{ role: "user", content: prompt }],
-              { system: `Premium web designer. Output ONLY a single complete index.html file. Every word in ${langName}. No explanation. Make each site visually UNIQUE. Premium €10k+ quality. Use real photos and content from the scraped data.`, maxTokens: 16384 }
+              { system: `You are a premium web redesigner. You CLONE existing websites with a luxury visual upgrade. Keep ALL original content, structure, pages, photos, videos IDENTICAL. Change ONLY the visual design to look like a 10000 EUR custom site. Output HTML files using ===FILE: path=== delimiters. All text stays in ${langName}. No explanation — just the HTML files.`, maxTokens: 16384 }
             );
 
             this.totalCost += result.cost;
