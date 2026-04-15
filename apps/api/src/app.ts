@@ -171,11 +171,11 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 
   // Clean email — personal intro + one preview button + WhatsApp
   const subjects: Record<string, string> = {
-    de: `${name} - Ihre neue Website ist fertig`,
-    it: `${name} - il vostro nuovo sito e pronto`,
-    fr: `${name} - votre nouveau site est pret`,
-    es: `${name} - su nuevo sitio web esta listo`,
-    en: `${name} - your new website is ready`,
+    de: `${name} - so koennte Ihre neue Website aussehen`,
+    it: `${name} - ecco come potrebbe essere il vostro nuovo sito`,
+    fr: `${name} - voici a quoi pourrait ressembler votre nouveau site`,
+    es: `${name} - asi podria ser su nueva web`,
+    en: `${name} - here is what your new website could look like`,
   };
 
   const waNumber = "393317389918";
@@ -186,11 +186,85 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   const waBtn = `<a href="${waLink}" style="display:inline-block;background:#25D366;color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;padding:12px 24px;border-radius:8px;text-decoration:none;margin:8px 0">`;
 
   const bodies: Record<string, string> = {
-    de: `<p style="margin:0 0 16px">Hallo,</p><p style="margin:0 0 16px">ich habe mir <strong>${name}</strong>${city ? ` in ${city}` : ""} angesehen und einen kostenlosen Webseiten-Vorschlag erstellt.</p><p style="margin:0 0 24px">Hier ist das Ergebnis:</p><p style="margin:0 0 16px;text-align:center">${btn}Website-Vorschau ansehen</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Auf WhatsApp schreiben</a></p><p style="margin:0">Viele Gruesse,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
-    it: `<p style="margin:0 0 16px">Ciao,</p><p style="margin:0 0 16px">ho visto <strong>${name}</strong>${city ? ` a ${city}` : ""} e ho creato una proposta gratuita per un nuovo sito web.</p><p style="margin:0 0 24px">Ecco il risultato:</p><p style="margin:0 0 16px;text-align:center">${btn}Vedi l'anteprima</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Scrivici su WhatsApp</a></p><p style="margin:0">Cordialmente,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
-    fr: `<p style="margin:0 0 16px">Bonjour,</p><p style="margin:0 0 16px">J'ai vu <strong>${name}</strong>${city ? ` a ${city}` : ""} et j'ai cree une proposition gratuite de nouveau site web.</p><p style="margin:0 0 24px">Voici le resultat:</p><p style="margin:0 0 16px;text-align:center">${btn}Voir l'apercu</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Ecrivez-nous sur WhatsApp</a></p><p style="margin:0">Cordialement,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
-    es: `<p style="margin:0 0 16px">Hola,</p><p style="margin:0 0 16px">He visto <strong>${name}</strong>${city ? ` en ${city}` : ""} y he creado una propuesta gratuita de nuevo sitio web.</p><p style="margin:0 0 24px">Aqui esta el resultado:</p><p style="margin:0 0 16px;text-align:center">${btn}Ver vista previa</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Escribenos por WhatsApp</a></p><p style="margin:0">Saludos,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
-    en: `<p style="margin:0 0 16px">Hi,</p><p style="margin:0 0 16px">I came across <strong>${name}</strong>${city ? ` in ${city}` : ""} and created a free website proposal for you.</p><p style="margin:0 0 24px">Here is the result:</p><p style="margin:0 0 16px;text-align:center">${btn}View your preview</a></p><p style="margin:0 0 24px;text-align:center">${waBtn}Chat with us on WhatsApp</a></p><p style="margin:0">Best,<br>Marco Bianchi<br><span style="color:#6366f1">madecreative.pro</span></p>`,
+    de: `<p style="margin:0 0 16px">Sehr geehrtes Team von <strong>${name}</strong>,</p>
+<p style="margin:0 0 16px">wir haben uns Ihre Online-Praesenz${city ? ` in ${city}` : ""} genau angesehen und waren beeindruckt von dem, was Sie aufgebaut haben. Gleichzeitig ist uns aufgefallen, dass Ihre Website das Potenzial Ihres Unternehmens noch nicht voll widerspiegelt.</p>
+<p style="margin:0 0 16px">Deshalb haben wir uns erlaubt, <strong>einen komplett neuen Website-Entwurf fuer ${name} zu erstellen</strong> - kostenlos und unverbindlich. Dieser Entwurf basiert auf Ihren echten Inhalten, Fotos und Informationen:</p>
+<ul style="margin:16px 0;padding-left:20px;color:#555">
+<li>- <strong>Premium-Design</strong> - modern, elegant, auf Ihre Branche zugeschnitten</li>
+<li>- <strong>Perfekt auf allen Geraeten</strong> - Smartphone, Tablet, Laptop, Desktop</li>
+<li>- <strong>SEO-optimiert</strong> - bessere Sichtbarkeit bei Google</li>
+<li>- <strong>Blitzschnell</strong> - gebaut mit modernster Technologie</li>
+<li>- <strong>Ihre echten Fotos und Texte</strong> - kein generischer Template-Look</li>
+</ul>
+<p style="margin:0 0 16px;text-align:center">${btn}Ihren Website-Entwurf ansehen</a></p>
+<p style="margin:0 0 16px">Ueberzeugt Sie das Ergebnis? Dann koennen Sie Ihre neue Website <strong>ab EUR 997 (einmalig) + EUR 49/Monat</strong> sofort live schalten - inklusive Hosting, SSL, Domain und laufende Updates.</p>
+<p style="margin:0 0 16px"><strong>Keine versteckten Kosten. Keine Vertragsbindung. 14 Tage Geld-zurueck-Garantie.</strong></p>
+<p style="margin:0 0 16px">Haben Sie Fragen? Schreiben Sie mir direkt:</p>
+<p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Jetzt schreiben</a></p>
+<p style="margin:0 0 8px">Oder antworten Sie einfach auf diese E-Mail.</p>
+<p style="margin:24px 0 0">Mit freundlichen Gruessen,<br><strong>Marco Bianchi</strong><br>MadeCreative<br><span style="color:#888">AI-Webdesign fuer anspruchsvolle Unternehmen</span></p>`,
+    it: `<p style="margin:0 0 16px">Gentile team di <strong>${name}</strong>,</p>
+<p style="margin:0 0 16px">abbiamo analizzato attentamente la vostra presenza online${city ? ` a ${city}` : ""} e siamo rimasti colpiti da cio che avete costruito. Allo stesso tempo, abbiamo notato che il vostro sito web non riflette ancora appieno il potenziale della vostra attivita.</p>
+<p style="margin:0 0 16px">Per questo ci siamo permessi di creare <strong>un nuovo design completo per il sito di ${name}</strong> - completamente gratuito e senza impegno:</p>
+<ul style="margin:16px 0;padding-left:20px;color:#555">
+<li>- <strong>Design premium</strong> - moderno, elegante, su misura per il vostro settore</li>
+<li>- <strong>Perfetto su ogni dispositivo</strong> - smartphone, tablet, laptop, desktop</li>
+<li>- <strong>Ottimizzato SEO</strong> - maggiore visibilita su Google</li>
+<li>- <strong>Velocita estrema</strong> - costruito con tecnologia all'avanguardia</li>
+<li>- <strong>Le vostre foto e testi reali</strong> - nessun aspetto da template generico</li>
+</ul>
+<p style="margin:0 0 16px;text-align:center">${btn}Guarda l'anteprima del vostro sito</a></p>
+<p style="margin:0 0 16px">Vi piace il risultato? Potete pubblicare il vostro nuovo sito <strong>da EUR 997 (una tantum) + EUR 49/mese</strong> - hosting, SSL, dominio e aggiornamenti inclusi.</p>
+<p style="margin:0 0 16px"><strong>Nessun costo nascosto. Nessun vincolo. Garanzia soddisfatti o rimborsati 14 giorni.</strong></p>
+<p style="margin:0 0 16px">Avete domande? Scrivetemi direttamente:</p>
+<p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Scrivici ora</a></p>
+<p style="margin:0 0 8px">Oppure rispondete a questa email.</p>
+<p style="margin:24px 0 0">Cordiali saluti,<br><strong>Marco Bianchi</strong><br>MadeCreative<br><span style="color:#888">Web design AI per aziende ambiziose</span></p>`,
+    fr: `<p style="margin:0 0 16px">Cher equipe de <strong>${name}</strong>,</p>
+<p style="margin:0 0 16px">Nous avons analyse votre presence en ligne${city ? ` a ${city}` : ""} et avons ete impressionnes par ce que vous avez construit. En meme temps, nous avons remarque que votre site web ne reflete pas encore tout le potentiel de votre activite.</p>
+<p style="margin:0 0 16px">C'est pourquoi nous nous sommes permis de creer <strong>un nouveau design complet pour ${name}</strong> - entierement gratuit et sans engagement:</p>
+<ul style="margin:16px 0;padding-left:20px;color:#555">
+<li>- <strong>Design premium</strong> - moderne, elegant, adapte a votre secteur</li>
+<li>- <strong>Parfait sur chaque appareil</strong></li>
+<li>- <strong>Optimise SEO</strong></li>
+<li>- <strong>Ultra rapide</strong></li>
+<li>- <strong>Vos vraies photos et textes</strong></li>
+</ul>
+<p style="margin:0 0 16px;text-align:center">${btn}Voir l'apercu de votre site</a></p>
+<p style="margin:0 0 16px">A partir de <strong>EUR 997 + EUR 49/mois</strong>. Sans frais caches. Garantie 14 jours.</p>
+<p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Ecrire maintenant</a></p>
+<p style="margin:24px 0 0">Cordialement,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
+    es: `<p style="margin:0 0 16px">Estimado equipo de <strong>${name}</strong>,</p>
+<p style="margin:0 0 16px">Hemos analizado su presencia online${city ? ` en ${city}` : ""} y nos ha impresionado lo que han construido. Al mismo tiempo, hemos notado que su sitio web aun no refleja todo el potencial de su negocio.</p>
+<p style="margin:0 0 16px">Por eso nos hemos tomado la libertad de crear <strong>un diseno web completamente nuevo para ${name}</strong> - gratis y sin compromiso:</p>
+<ul style="margin:16px 0;padding-left:20px;color:#555">
+<li>- <strong>Diseno premium</strong> - moderno, elegante, adaptado a su sector</li>
+<li>- <strong>Perfecto en cada dispositivo</strong></li>
+<li>- <strong>Optimizado para SEO</strong></li>
+<li>- <strong>Ultrarapido</strong></li>
+<li>- <strong>Sus fotos y textos reales</strong></li>
+</ul>
+<p style="margin:0 0 16px;text-align:center">${btn}Ver vista previa de su web</a></p>
+<p style="margin:0 0 16px">Desde <strong>EUR 997 + EUR 49/mes</strong>. Sin costes ocultos. Garantia de 14 dias.</p>
+<p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Escribir ahora</a></p>
+<p style="margin:24px 0 0">Saludos cordiales,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
+    en: `<p style="margin:0 0 16px">Dear <strong>${name}</strong> team,</p>
+<p style="margin:0 0 16px">We took a close look at your online presence${city ? ` in ${city}` : ""} and we were impressed by what you have built. At the same time, we noticed that your website does not yet fully reflect the potential of your business.</p>
+<p style="margin:0 0 16px">That is why we took the liberty of creating <strong>a complete new website design for ${name}</strong> - completely free and with no obligation:</p>
+<ul style="margin:16px 0;padding-left:20px;color:#555">
+<li>- <strong>Premium design</strong> - modern, elegant, tailored to your industry</li>
+<li>- <strong>Perfect on every device</strong> - smartphone, tablet, laptop, desktop</li>
+<li>- <strong>SEO optimized</strong> - better visibility on Google</li>
+<li>- <strong>Lightning fast</strong> - built with cutting-edge technology</li>
+<li>- <strong>Your real photos and text</strong> - no generic template look</li>
+</ul>
+<p style="margin:0 0 16px;text-align:center">${btn}View your website preview</a></p>
+<p style="margin:0 0 16px">Like what you see? Launch your new website <strong>from EUR 997 (one-time) + EUR 49/month</strong> - including hosting, SSL, domain, and ongoing updates.</p>
+<p style="margin:0 0 16px"><strong>No hidden costs. No contracts. 14-day money-back guarantee.</strong></p>
+<p style="margin:0 0 16px">Questions? Write to me directly:</p>
+<p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Chat now</a></p>
+<p style="margin:0 0 8px">Or simply reply to this email.</p>
+<p style="margin:24px 0 0">Best regards,<br><strong>Marco Bianchi</strong><br>MadeCreative<br><span style="color:#888">AI web design for ambitious businesses</span></p>`,
   };
 
   const subject = subjects[lang] ?? subjects.en!;
