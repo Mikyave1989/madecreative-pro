@@ -1125,68 +1125,66 @@ REQUIREMENTS:
 8. Use ALL the real business photos listed above
 9. Contact info from original site (phone, email, address)
 
-OUTPUT: Return ONLY a JSON object. Keys = file paths, values = file contents.
-Required: package.json, next.config.mjs, tsconfig.json, app/layout.tsx, app/globals.css, app/page.tsx, app/${routes.about}/page.tsx, app/${routes.services}/page.tsx, app/${routes.gallery}/page.tsx, app/${routes.contact}/page.tsx, components/Nav.tsx, components/Hero.tsx, components/Footer.tsx
+OUTPUT FORMAT — use this EXACT delimiter format (NOT JSON):
 
-Return the JSON object now. No markdown fences, no explanation.`;
+===FILE: package.json===
+(file content here)
+===FILE: next.config.mjs===
+(file content here)
+===FILE: app/layout.tsx===
+(file content here)
+
+Each file starts with ===FILE: path/to/file.ext=== on its own line, followed by the complete file content.
+
+Required files:
+===FILE: package.json===
+===FILE: next.config.mjs===
+===FILE: tsconfig.json===
+===FILE: app/layout.tsx===
+===FILE: app/globals.css===
+===FILE: app/page.tsx===
+===FILE: app/${routes.about}/page.tsx===
+===FILE: app/${routes.services}/page.tsx===
+===FILE: app/${routes.gallery}/page.tsx===
+===FILE: app/${routes.contact}/page.tsx===
+===FILE: components/Nav.tsx===
+===FILE: components/Hero.tsx===
+===FILE: components/Footer.tsx===
+
+Generate ALL files now. Start with ===FILE: package.json===`;
 
           try {
             const claudeResult = await this.client.callWithText(
               [{ role: "user", content: claudePrompt }],
-              { system: "You are an expert Next.js developer. Output only valid JSON with file paths as keys and file contents as values. No markdown, no explanation, no code fences.", maxTokens: 128000 }
+              { system: "You are an expert Next.js developer. Output files using the ===FILE: path=== delimiter format. No JSON, no markdown fences, no explanation — just the files.", maxTokens: 128000 }
             );
 
             this.totalCost += claudeResult.cost;
             this.totalInputTokens += claudeResult.inputTokens;
             this.totalOutputTokens += claudeResult.outputTokens;
 
-            // Parse Claude's JSON response — sanitize escape chars that break JSON.parse
-            const jsonMatch = claudeResult.text.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              let rawJson = jsonMatch[0];
-
-              // Fix common JSON escape issues from Claude-generated code-in-JSON:
-              // 1. Fix unescaped control chars inside string values (newlines, tabs)
-              // 2. Try parsing as-is first, then sanitize if it fails
-              let parsed: Record<string, string>;
-              try {
-                parsed = JSON.parse(rawJson) as Record<string, string>;
-              } catch {
-                // Sanitize: replace literal newlines/tabs inside JSON string values
-                // by replacing them with \\n and \\t
-                rawJson = rawJson.replace(/(?<=":[ ]*")((?:[^"\\]|\\.)*)(?=")/gs, (match) => {
-                  return match
-                    .replace(/\n/g, "\\n")
-                    .replace(/\r/g, "\\r")
-                    .replace(/\t/g, "\\t");
-                });
-                try {
-                  parsed = JSON.parse(rawJson) as Record<string, string>;
-                } catch {
-                  // Last resort: extract files manually by splitting on key patterns
-                  this.log("warn", "build_preview_site: JSON.parse failed even after sanitize, trying manual extraction");
-                  const files: Record<string, string> = {};
-                  const fileRegex = /"([^"]+\.[a-z]{2,4})":\s*"((?:[^"\\]|\\.)*)"/g;
-                  let m;
-                  while ((m = fileRegex.exec(claudeResult.text)) !== null) {
-                    files[m[1]!] = m[2]!.replace(/\\n/g, "\n").replace(/\\t/g, "\t").replace(/\\"/g, '"');
-                  }
-                  if (Object.keys(files).length >= 3) {
-                    parsed = files;
-                  } else {
-                    throw new Error(`Manual extraction found only ${Object.keys(files).length} files`);
-                  }
-                }
+            // Parse Claude's delimiter-based output: ===FILE: path/file.ext===\ncontent\n===FILE: ...
+            // This is much more robust than JSON — no escape issues with code content
+            const fileBlocks = claudeResult.text.split(/===FILE:\s*/);
+            const parsed: Record<string, string> = {};
+            for (const block of fileBlocks) {
+              if (!block.trim()) continue;
+              const endOfPath = block.indexOf("===");
+              if (endOfPath === -1) continue;
+              const filePath = block.slice(0, endOfPath).trim();
+              const content = block.slice(endOfPath + 3).trim();
+              if (filePath && content && filePath.includes(".")) {
+                parsed[filePath] = content;
               }
+            }
 
-              if (Object.keys(parsed).length >= 5 && "package.json" in parsed) {
-                projectFiles = parsed;
-                this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} custom files ($${claudeResult.cost.toFixed(3)})`);
-              } else {
-                throw new Error(`Claude returned only ${Object.keys(parsed).length} files`);
-              }
+            this.log("info", `build_preview_site: Claude output parsed — ${Object.keys(parsed).length} files extracted`);
+
+            if (Object.keys(parsed).length >= 5 && "package.json" in parsed) {
+              projectFiles = parsed;
+              this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} custom files ($${claudeResult.cost.toFixed(3)})`);
             } else {
-              throw new Error("No JSON found in Claude response");
+              throw new Error(`Claude returned only ${Object.keys(parsed).length} files (need >= 5 with package.json)`);
             }
           } catch (claudeErr) {
             this.log("warn", `build_preview_site: Claude generation failed: ${claudeErr instanceof Error ? claudeErr.message : String(claudeErr)} — falling back to template`);
