@@ -84,8 +84,8 @@ export function createOrchestratorWorker(
     {
       connection: redisConnection,
       concurrency: agentType === "BUILDER" ? 1 : 2, // BUILDER: 1 at a time (Playwright-heavy)
-      lockDuration: 900_000,     // 15 min lock — covers scrape + Claude generation + Vercel deploy
-      stalledInterval: 300_000,  // check for stalled every 5 min
+      lockDuration: 3_600_000,   // 60 min — no time limit, builder takes as long as needed
+      stalledInterval: 600_000,  // check every 10 min
       limiter: {
         max: 5,
         duration: 60_000, // 5 jobs per minute per agent type

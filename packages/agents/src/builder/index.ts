@@ -1118,7 +1118,7 @@ Generate the COMPLETE project now. Return only the JSON object, no markdown fenc
           try {
             const claudeResult = await this.client.callWithText(
               [{ role: "user", content: claudePrompt }],
-              { system: "You are an expert Next.js developer. Output only valid JSON with file paths as keys and file contents as values. No markdown, no explanation.", maxTokens: 16384 }
+              { system: "You are an expert Next.js developer. Output only valid JSON with file paths as keys and file contents as values. No markdown, no explanation, no code fences.", maxTokens: 64000 }
             );
 
             this.totalCost += claudeResult.cost;

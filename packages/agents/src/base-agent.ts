@@ -26,7 +26,7 @@ export interface AgentConfig {
 const DEFAULT_AGENT_CONFIG: Record<AgentType, AgentConfig> = {
   SCRAPER:  { maxRetries: 1, retryDelayMs: 60_000, timeoutMs: 7_200_000 }, // 2h — 48+ URLs × 8s each = ~6min extract alone; no timeout kills mid-run
   ANALYZER: { maxRetries: 3, retryDelayMs: 5_000,  timeoutMs: 120_000 },  // 2min
-  BUILDER:  { maxRetries: 2, retryDelayMs: 30_000, timeoutMs: 3_600_000 },  // 60min — scrape + rebuild premium site takes time
+  BUILDER:  { maxRetries: 2, retryDelayMs: 30_000, timeoutMs: 0 },  // no timeout — takes as long as needed
   OUTREACH: { maxRetries: 3, retryDelayMs: 5_000,  timeoutMs: 60_000 },   // 1min
   CHATBOT:  { maxRetries: 2, retryDelayMs: 5_000,  timeoutMs: 120_000 },  // 2min
   QA:       { maxRetries: 2, retryDelayMs: 5_000,  timeoutMs: 180_000 },  // 3min
@@ -65,15 +65,19 @@ export abstract class BaseAgent {
       }
 
       try {
-        const result = await Promise.race([
-          this.run(input),
-          new Promise<never>((_, reject) =>
-            setTimeout(
-              () => reject(new Error(`Agent timeout after ${this.config.timeoutMs}ms`)),
-              this.config.timeoutMs,
-            ),
-          ),
-        ]);
+        // timeoutMs=0 means no timeout — let it run as long as needed
+        const runPromise = this.run(input);
+        const result = this.config.timeoutMs > 0
+          ? await Promise.race([
+              runPromise,
+              new Promise<never>((_, reject) =>
+                setTimeout(
+                  () => reject(new Error(`Agent timeout after ${this.config.timeoutMs}ms`)),
+                  this.config.timeoutMs,
+                ),
+              ),
+            ])
+          : await runPromise;
         return result;
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
