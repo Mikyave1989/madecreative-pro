@@ -311,12 +311,12 @@ export async function startOrchestrator(): Promise<Worker[]> {
 
   // Scale-out: 6 workers each for the core pipeline agents
   // so all 6 run in parallel when a campaign launches
-  // Builder uses Playwright (Chromium ~200MB each) — keep low to avoid OOM
+  // Minimal workers to save RAM — Railway kills process on OOM
   const WORKER_COUNTS: Record<AgentType, number> = {
-    SCRAPER: 3,
-    ANALYZER: 4,
-    BUILDER: 2,    // max 2 concurrent builds (each with 1 Chromium)
-    OUTREACH: 4,
+    SCRAPER: 1,
+    ANALYZER: 1,
+    BUILDER: 1,
+    OUTREACH: 1,
     QA: 1,
     CHATBOT: 1,
   };

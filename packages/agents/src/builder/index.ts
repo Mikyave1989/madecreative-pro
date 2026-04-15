@@ -1192,7 +1192,7 @@ ORIGINAL PHOTOS (use ALL of these — they are from the real site):
 ${photos.slice(0, 15).map((p) => p["url"] as string).join("\n")}
 
 ORIGINAL SITE CONTENT (scraped from the real website — KEEP IT ALL):
-${scrapedSummary.slice(0, 10000)}
+${scrapedSummary.slice(0, 5000)}
 
 CRITICAL RULES:
 1. This is a CLONE with premium design — NOT a new site. Keep the SAME structure, SAME pages, SAME navigation, SAME text content.
