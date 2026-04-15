@@ -35,9 +35,9 @@ const COMPARISON = [
 ];
 
 const PLANS = [
-  { name: 'Starter', slug: 'STARTER', price: 29, setup: 299, desc: 'For small businesses.', features: ['1 website', '200 AI credits/mo', 'Custom subdomain', 'AI chatbot', 'Monthly reports', 'Email support'], hl: false },
-  { name: 'Growth', slug: 'GROWTH', price: 49, setup: 599, desc: 'For growing businesses.', features: ['3 websites', '500 AI credits/mo', 'Custom domain', 'AI chatbot', 'Monthly reports', 'Analytics', 'Priority support', 'Uptime monitoring'], hl: true },
-  { name: 'Pro', slug: 'PRO', price: 99, setup: 999, desc: 'For agencies & power users.', features: ['10 websites', '1,000 AI credits/mo', 'Custom domain', 'AI chatbot', 'Reports + Analytics', 'Dedicated support', 'API access', 'White-label', 'Multi-language'], hl: false },
+  { name: 'Essential', slug: 'STARTER', price: 49, setup: 997, desc: 'Perfect to get started.', features: ['3-page website', 'Responsive design', 'Custom domain', 'Hosting included', 'SSL certificate', 'Email support'], hl: false },
+  { name: 'Business', slug: 'GROWTH', price: 79, setup: 1997, desc: 'Most popular choice.', features: ['5+ page website', 'Framer Motion animations', 'Photo gallery + reviews', 'WhatsApp integration', 'SEO optimized', 'Custom domain', 'Hosting included', 'Priority support'], hl: true },
+  { name: 'Premium', slug: 'PRO', price: 129, setup: 3497, desc: 'For maximum impact.', features: ['8+ page website', 'Video hero section', 'Multi-language', 'Advanced animations', 'Analytics dashboard', 'Custom domain', 'Hosting included', 'Dedicated support'], hl: false },
 ];
 
 const TESTIMONIALS = [
@@ -51,8 +51,8 @@ const FAQS = [
   { q: 'What does the AI build?', a: 'Real production code: React, Next.js, Tailwind. Not templates. Every site is unique. You own the source.' },
   { q: 'Can I edit after?', a: 'Yes. Chat: "Change the header", "Add a gallery". Or edit code directly in the built-in editor.' },
   { q: 'Do I need coding skills?', a: 'Zero. If you can describe what you want, you can build a website.' },
-  { q: 'What are AI credits?', a: 'Each interaction uses credits. Full build = ~5 credits. Small edit = 0.5. Credits reset monthly.' },
-  { q: 'Custom domain?', a: 'Growth + Pro plans. Point your DNS, we handle SSL automatically.' },
+  { q: 'What do I get?', a: 'A premium multi-page website built with Next.js, Framer Motion animations, responsive design, custom domain, and hosting — all included.' },
+  { q: 'Custom domain?', a: 'Yes, included. Point your DNS, we handle SSL automatically.' },
   { q: 'Can I cancel?', a: 'Anytime. No contracts. 14-day money-back guarantee.' },
   { q: 'How do the 5 agents work?', a: 'Automatic pipeline: SCRAPER collects data, ANALYZER scores, BUILDER creates site, OUTREACH sends emails, QA monitors 24/7.' },
 ];
@@ -144,7 +144,7 @@ export function Landing() {
           <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', maxWidth: 640, margin: '0 auto 40px', lineHeight: 1.6, ...S.t2 }}>
             5 specialized AI agents scrape your data, analyze your market,
             write production code, deploy your site, and grow your business.
-            <span style={S.t1}> Fully automated, from €299 setup + €29/month.</span>
+            <span style={S.t1}> Premium websites from €997. Fully automated, AI-powered.</span>
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
@@ -418,7 +418,7 @@ export function Landing() {
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
             <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// PRICING</div>
             <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Start building today</h2>
-            <p style={{ ...S.t2, maxWidth: 480, margin: '0 auto' }}>All plans include AI builder, chatbot, deploy, monitoring, and reports.</p>
+            <p style={{ ...S.t2, maxWidth: 480, margin: '0 auto' }}>Premium websites with hosting, maintenance, and support included.</p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 48 }}>

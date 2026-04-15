@@ -1108,9 +1108,9 @@ export class BuilderAgent extends BaseAgent {
         const pageCount = Object.keys(projectFiles).filter(f => f.endsWith(".html")).length || 1;
         const plan = pageCount >= 10 ? "PRO" : pageCount >= 2 ? "GROWTH" : "STARTER";
         const planPrices: Record<string, { setup: number; monthly: number }> = {
-          STARTER: { setup: 299, monthly: 29 },
-          GROWTH: { setup: 599, monthly: 49 },
-          PRO: { setup: 999, monthly: 99 },
+          STARTER: { setup: 997, monthly: 49 },
+          GROWTH: { setup: 1997, monthly: 79 },
+          PRO: { setup: 3497, monthly: 129 },
         };
         const price = planPrices[plan]!;
         this.log("info", `build_preview_site: ${pageCount} pages → plan=${plan} €${price.setup}+€${price.monthly}/mo`);

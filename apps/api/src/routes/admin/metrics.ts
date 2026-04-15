@@ -320,7 +320,7 @@ app.get("/dashboard", async (c) => {
         activeClients,
         newClientsMonth,
         monthlyRevenue,
-        mrr: activeClients * 29, // STARTER plan default
+        mrr: activeClients * 79, // Business plan average
       },
     },
   });

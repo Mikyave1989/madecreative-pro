@@ -151,13 +151,13 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   if (!resendKey) return c.json({ error: "RESEND not configured" }, 500);
 
   // Determine plan & price based on number of pages in scrapedContent
-  const pageCount = (prospect.scrapedContent as { pages?: unknown[] } | null)?.pages?.length ?? 1;
-  const plan = pageCount >= 10 ? "PRO" : pageCount >= 2 ? "GROWTH" : "STARTER";
   const planPrices: Record<string, { setup: number; monthly: number }> = {
-    STARTER: { setup: 299, monthly: 29 },
-    GROWTH: { setup: 599, monthly: 49 },
-    PRO: { setup: 999, monthly: 99 },
+    STARTER: { setup: 997, monthly: 49 },
+    GROWTH: { setup: 1997, monthly: 79 },
+    PRO: { setup: 3497, monthly: 129 },
   };
+  const pageCount = (prospect.scrapedContent as { pages?: unknown[] } | null)?.pages?.length ?? 1;
+  const plan = pageCount >= 8 ? "PRO" : pageCount >= 3 ? "GROWTH" : "STARTER";
   const price = planPrices[plan]!;
 
   const lang = body.language ?? "en";
@@ -167,15 +167,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   const previewUrl = `${apiBase}/preview/${id}`; // API preview URL (cleaner, consistent)
   const signupUrl = `https://madecreative.pro/signup?plan=${plan}&email=${encodeURIComponent(prospect.contactEmail)}&company=${encodeURIComponent(name)}&prospectId=${id}&source=preview`;
 
-  // Price label per language
-  const priceLabel: Record<string, string> = {
-    de: `€${price.setup} Setup + €${price.monthly}/Monat`,
-    it: `€${price.setup} Setup + €${price.monthly}/mese`,
-    fr: `€${price.setup} Setup + €${price.monthly}/mois`,
-    es: `€${price.setup} Setup + €${price.monthly}/mes`,
-    en: `€${price.setup} setup + €${price.monthly}/month`,
-  };
-  const pl = priceLabel[lang] ?? priceLabel.en!;
+  // Price labels removed — WhatsApp CTA doesn't show prices
 
   // Clean email — personal intro + one preview button + WhatsApp
   const subjects: Record<string, string> = {
