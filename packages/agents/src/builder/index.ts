@@ -1094,58 +1094,82 @@ REAL CONTENT FROM ORIGINAL SITE:
 ${scrapedSummary.slice(0, 20000)}
 
 RULES:
-1. ALL text must be in ${langName}. Use the REAL text from the scraped content above.
-2. Use the REAL photos listed above — reference them with <img> or next/image.
-3. Every site must look DIFFERENT — vary layout, hero style, section order, typography.
-4. If the site has a VIDEO, put it as autoplay muted loop hero background.
-5. Responsive: mobile (hamburger nav, stacked), tablet, desktop.
-6. Premium animations: Framer Motion scroll reveals, parallax, hover effects.
-7. Routes: /${routes.about}, /${routes.services}, /${routes.gallery}, /${routes.contact}
+1. ALL text must be in ${langName}. Use the REAL text from the scraped content.
+2. Use the REAL photos listed above with <img> tags.
+3. Every site must look DIFFERENT — vary layout, hero style, section order, typography, color usage.
+4. If the site has a VIDEO, put it as autoplay muted loop hero background with <video> tag.
+5. FULLY responsive: mobile hamburger nav, tablet 2-col, desktop max-width 1200px.
+6. Premium CSS animations: scroll reveal (IntersectionObserver), parallax, smooth hover effects, nav color change on scroll.
+7. Google Fonts: use 2 premium fonts (one serif for headings, one sans for body).
+8. Sections: Navigation, Hero (full-screen), About, Services/Menu, Gallery (grid), Testimonials/Reviews, Contact, Footer.
 
-OUTPUT FORMAT — use ===FILE: path=== delimiters:
+OUTPUT: Generate a MULTI-PAGE static website using ===FILE: path=== delimiters.
 
-===FILE: package.json===
-(content)
-===FILE: next.config.mjs===
-(content)
+Each HTML file must be self-contained with inline <style> and <script> tags.
+Share the same nav, footer, and CSS design across all pages (copy the styles into each file).
+No external dependencies except Google Fonts and the business photos.
 
-Required files: package.json, next.config.mjs, tsconfig.json, app/globals.css, app/layout.tsx (with Nav+Footer), app/page.tsx (full homepage with all sections), app/${routes.about}/page.tsx, app/${routes.services}/page.tsx, app/${routes.gallery}/page.tsx, app/${routes.contact}/page.tsx
+Every page must include:
+- <meta viewport> for responsive
+- Google Fonts <link>
+- Full CSS with media queries (@media max-width:768px, @media max-width:480px)
+- Scroll animations via IntersectionObserver
+- Hamburger menu for mobile with links to all pages
+- All business photos and content
 
-Start with ===FILE: package.json===`;
+Required files:
+===FILE: index.html=== (homepage: hero, about preview, services preview, gallery preview, CTA, contact)
+===FILE: ${routes.about}/index.html=== (about page: full story, team, history, stats)
+===FILE: ${routes.services}/index.html=== (services page: full service/menu grid with details)
+===FILE: ${routes.gallery}/index.html=== (gallery page: full masonry grid with all photos)
+===FILE: ${routes.contact}/index.html=== (contact page: form, map embed, phone, email, address, hours)
+
+Start with ===FILE: index.html===`;
 
           this.log("info", `build_preview_site: streaming Claude generation for "${projectData.businessName}" (${langName})`);
 
           try {
             const result = await this.client.streamText(
               [{ role: "user", content: prompt }],
-              { system: `Expert Next.js developer. Output ONLY files in ===FILE: path=== format. Every word in ${langName}. No explanation. Make each site visually UNIQUE — vary hero styles, layouts, color usage, section arrangements. Premium €10k+ quality.`, maxTokens: 16384 }
+              { system: `Premium web designer. Output ONLY a single complete index.html file. Every word in ${langName}. No explanation. Make each site visually UNIQUE. Premium €10k+ quality. Use real photos and content from the scraped data.`, maxTokens: 16384 }
             );
 
             this.totalCost += result.cost;
             this.totalInputTokens += result.inputTokens;
             this.totalOutputTokens += result.outputTokens;
 
-            // Parse delimiter output
+            // Parse delimiter output — multiple HTML files
             const parsed: Record<string, string> = {};
             const blocks = result.text.split(/===FILE:\s*/);
             for (const block of blocks) {
               if (!block.trim()) continue;
               const endOfPath = block.indexOf("===");
               if (endOfPath === -1) continue;
-              const filePath = block.slice(0, endOfPath).trim();
-              const content = block.slice(endOfPath + 3).trim();
-              if (filePath && content && filePath.includes(".")) {
+              let filePath = block.slice(0, endOfPath).trim();
+              let content = block.slice(endOfPath + 3).trim();
+              // Remove markdown fences if Claude wraps content
+              content = content.replace(/^```html?\s*/i, "").replace(/\s*```\s*$/i, "");
+              if (filePath && content && content.length > 100) {
                 parsed[filePath] = content;
               }
             }
 
-            this.log("info", `build_preview_site: streamed ${Object.keys(parsed).length} files ($${result.cost.toFixed(3)}, ${result.outputTokens} tokens)`);
+            this.log("info", `build_preview_site: streamed ${Object.keys(parsed).length} pages ($${result.cost.toFixed(3)}, ${result.outputTokens} tokens)`);
 
-            if (Object.keys(parsed).length >= 4 && "package.json" in parsed) {
+            if (Object.keys(parsed).length >= 1 && "index.html" in parsed) {
               projectFiles = parsed;
-              this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} UNIQUE files for ${projectData.businessName}`);
+              this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} UNIQUE premium pages`);
             } else {
-              throw new Error(`Only ${Object.keys(parsed).length} files parsed (need 4+ with package.json)`);
+              // Try single HTML fallback — maybe Claude output one big HTML without delimiters
+              let html = result.text.trim().replace(/^```html?\s*/i, "").replace(/\s*```\s*$/i, "");
+              const docStart = html.indexOf("<!DOCTYPE");
+              if (docStart > 0) html = html.slice(docStart);
+              if (html.includes("<html") && html.length > 5000) {
+                projectFiles = { "index.html": html };
+                this.log("info", `build_preview_site: single HTML fallback (${html.length} chars)`);
+              } else {
+                throw new Error(`No valid HTML files parsed (${Object.keys(parsed).length} files, ${result.text.length} chars total)`);
+              }
             }
           } catch (streamErr) {
             this.log("warn", `build_preview_site: streaming failed: ${streamErr instanceof Error ? streamErr.message : String(streamErr)} — using template fallback`);
