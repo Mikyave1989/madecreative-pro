@@ -11,7 +11,7 @@ export interface ScrapedPage {
   metaDescription: string | null;
   headings: Array<{ level: number; text: string }>;
   paragraphs: string[];
-  images: Array<{ url: string; alt: string; width?: number; height?: number }>;
+  images: Array<{ url: string; alt: string; width?: number; height?: number; score?: number }>;
   videos: Array<{ url: string; type: string }>;
   isHomepage: boolean;
 }
@@ -189,9 +189,9 @@ function extractParagraphs(html: string): string[] {
   return [...new Set(paragraphs)]; // No limit — preserve ALL text content
 }
 
-function extractImages(html: string, base: string): Array<{ url: string; alt: string; width?: number; height?: number }> {
+function extractImages(html: string, base: string): Array<{ url: string; alt: string; width?: number; height?: number; score?: number }> {
   const seen = new Set<string>();
-  const images: Array<{ url: string; alt: string; width?: number; height?: number }> = [];
+  const images: Array<{ url: string; alt: string; width?: number; height?: number; score?: number }> = [];
 
   const re = /<img[^>]+>/gi;
   let m: RegExpExecArray | null;
