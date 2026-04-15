@@ -1050,13 +1050,99 @@ export class BuilderAgent extends BaseAgent {
             }
           }
 
-          // ── Step 2: Generate premium Next.js project from template ──
-          // Uses generateNextJsProject which produces 30+ files:
-          // Next.js 14 + Framer Motion + GSAP + Three.js + Tailwind
-          // Multi-page: home, chi-siamo, servizi, galleria, contatti
-          this.log("info", `build_preview_site: generating Next.js project for "${projectData.businessName}"`);
-          projectFiles = generateNextJsProject(projectData);
-          this.log("info", `build_preview_site: generated ${Object.keys(projectFiles).length} files`);
+          // ── Step 2: Generate premium Next.js project via Claude AI ──
+          // Claude sees ALL scraped content and generates custom files.
+          // Falls back to template generator if Claude fails.
+          this.log("info", `build_preview_site: generating premium site via Claude for "${projectData.businessName}"`);
+
+          // Prepare scraped content summary for Claude
+          const scrapedPages = (scrapedContent as { pages?: Array<{ url?: string; title?: string; headings?: Array<{ level: number; text: string }>; paragraphs?: string[]; images?: Array<{ url: string; alt?: string }> }> })?.pages ?? [];
+          const scrapedSummary = scrapedPages.map((p, i) => {
+            const headings = (p.headings ?? []).map(h => `${"#".repeat(h.level)} ${h.text}`).join("\n");
+            const text = (p.paragraphs ?? []).slice(0, 15).join("\n\n");
+            const imgs = (p.images ?? []).slice(0, 8).map(img => typeof img === "string" ? img : img.url).join("\n");
+            return `--- PAGE ${i + 1}: ${p.title ?? p.url ?? "Unknown"} ---\nURL: ${p.url ?? ""}\n\nHEADINGS:\n${headings}\n\nTEXT:\n${text}\n\nIMAGES:\n${imgs}`;
+          }).join("\n\n");
+
+          const scrapedContact = (scrapedContent as { contact?: Record<string, string> })?.contact ?? {};
+          const scrapedLogo = (scrapedContent as { logo?: string })?.logo ?? projectData.logoUrl ?? "";
+
+          const langMap: Record<string, string> = { de: "German", it: "Italian", en: "English", fr: "French", es: "Spanish" };
+          const langName = langMap[projectData.language.toLowerCase().slice(0, 2)] ?? "English";
+
+          const claudePrompt = `You are a premium web developer. Generate a complete Next.js 14 App Router project that REBUILDS this business website with a premium €10,000+ design upgrade.
+
+BUSINESS: ${projectData.businessName}
+SECTOR: ${projectData.sector}
+CITY: ${projectData.city ?? ""}
+LANGUAGE: ${langName} — ALL text in the site MUST be in ${langName}. Navigation, headings, sections, buttons, footer — everything.
+WEBSITE: ${projectData.website ?? ""}
+PHONE: ${scrapedContact.phone ?? projectData.phone}
+EMAIL: ${scrapedContact.email ?? projectData.email}
+ADDRESS: ${scrapedContact.address ?? projectData.address}
+GOOGLE RATING: ${projectData.googleRating ?? "N/A"} (${projectData.reviewCount ?? 0} reviews)
+LOGO: ${scrapedLogo}
+
+PHOTOS (use these REAL photos, not placeholders):
+${photos.slice(0, 10).map((p) => p["url"] as string).join("\n")}
+
+SCRAPED CONTENT FROM ORIGINAL SITE:
+${scrapedSummary.slice(0, 12000)}
+
+REQUIREMENTS:
+1. Use the REAL content from the original site — headings, paragraphs, images. Do NOT invent content.
+2. ALL text must be in ${langName}
+3. Stack: Next.js 14 App Router, React 18, Framer Motion, TypeScript
+4. Premium design: elegant typography, smooth animations, scroll reveals
+5. Multi-page: home page + about + services + gallery + contact
+6. Responsive, mobile-first
+7. Use the real business photos listed above
+8. Include contact info (phone, email, address) from the original site
+
+OUTPUT FORMAT:
+Return ONLY a JSON object where keys are file paths and values are file contents.
+Example: {"package.json": "...", "app/layout.tsx": "...", "app/page.tsx": "...", ...}
+
+Required files:
+- package.json (with next, react, react-dom, framer-motion)
+- next.config.mjs
+- tsconfig.json
+- app/layout.tsx (with fonts, metadata, nav, footer)
+- app/globals.css (full design system)
+- app/page.tsx (homepage)
+- At least 3 more pages (about, services, contact)
+- components/ (Nav, Hero, Footer, etc.)
+
+Generate the COMPLETE project now. Return only the JSON object, no markdown fences.`;
+
+          try {
+            const claudeResult = await this.client.callWithText(
+              [{ role: "user", content: claudePrompt }],
+              { system: "You are an expert Next.js developer. Output only valid JSON with file paths as keys and file contents as values. No markdown, no explanation.", maxTokens: 16384 }
+            );
+
+            this.totalCost += claudeResult.cost;
+            this.totalInputTokens += claudeResult.inputTokens;
+            this.totalOutputTokens += claudeResult.outputTokens;
+
+            // Parse Claude's JSON response
+            const jsonMatch = claudeResult.text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const parsed = JSON.parse(jsonMatch[0]) as Record<string, string>;
+              if (Object.keys(parsed).length >= 5 && "package.json" in parsed) {
+                projectFiles = parsed;
+                this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} custom files ($${claudeResult.cost.toFixed(3)})`);
+              } else {
+                throw new Error(`Claude returned only ${Object.keys(parsed).length} files`);
+              }
+            } else {
+              throw new Error("No JSON found in Claude response");
+            }
+          } catch (claudeErr) {
+            this.log("warn", `build_preview_site: Claude generation failed: ${claudeErr instanceof Error ? claudeErr.message : String(claudeErr)} — falling back to template`);
+            projectFiles = generateNextJsProject(projectData);
+            this.log("info", `build_preview_site: template fallback generated ${Object.keys(projectFiles).length} files`);
+          }
         } catch (err) {
           this.log("warn", `build_preview_site: generation error: ${err instanceof Error ? err.message : String(err)}`);
           projectFiles = generateNextJsProject(projectData);
