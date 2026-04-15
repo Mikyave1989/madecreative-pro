@@ -584,6 +584,8 @@ function generateStaticHtml(params: {
 export class BuilderAgent extends BaseAgent {
   // Stored by run() so handleToolCall can access scraped content for multi-page generation
   private _scrapedContent: Record<string, unknown> | null = null;
+  private _language: string = "en";
+  private _country: string = "DE";
 
   constructor(context: AgentContext) {
     super(context);
@@ -856,7 +858,7 @@ export class BuilderAgent extends BaseAgent {
           email: (businessData["email"] as string) ?? "info@business.com",
           website: (businessData["website"] as string) ?? undefined,
           sector,
-          language: (businessData["language"] as string) ?? ({ DE: "de", AT: "de", CH: "de", IT: "it", FR: "fr", ES: "es", BE: "fr", NL: "nl", PT: "pt" } as Record<string, string>)[(businessData["country"] as string ?? "").toUpperCase()] ?? "en",
+          language: this._language,
           colors,
           galleryImages: photos.slice(0, 6).map((p) => ({ url: p["url"] as string, alt: (p["alt"] as string) ?? undefined })),
           menuItems: (businessData["menuItems"] as ProjectData["menuItems"]) ?? undefined,
@@ -1574,6 +1576,8 @@ body{padding-bottom:56px!important}
       // Store scraped content for multi-page generation in handleToolCall
       const rawScraped = businessData.scrapedContent;
       this._scrapedContent = (rawScraped && typeof rawScraped === "object" && !Array.isArray(rawScraped)) ? rawScraped as Record<string, unknown> : null;
+      this._language = businessData.language;
+      this._country = businessData.country;
 
       await this.updateProgress(15);
       this.log("info", "Builder agent: starting build", {
