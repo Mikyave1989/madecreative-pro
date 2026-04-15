@@ -856,7 +856,7 @@ export class BuilderAgent extends BaseAgent {
           email: (businessData["email"] as string) ?? "info@business.com",
           website: (businessData["website"] as string) ?? undefined,
           sector,
-          language: (businessData["language"] as string) ?? "it",
+          language: (businessData["language"] as string) ?? ({ DE: "de", AT: "de", CH: "de", IT: "it", FR: "fr", ES: "es", BE: "fr", NL: "nl", PT: "pt" } as Record<string, string>)[(businessData["country"] as string ?? "").toUpperCase()] ?? "en",
           colors,
           galleryImages: photos.slice(0, 6).map((p) => ({ url: p["url"] as string, alt: (p["alt"] as string) ?? undefined })),
           menuItems: (businessData["menuItems"] as ProjectData["menuItems"]) ?? undefined,
