@@ -297,11 +297,11 @@ export async function startOrchestrator(): Promise<Worker[]> {
     enableReadyCheck: false,
   });
 
-  // Scale-out: 6 workers each for SCRAPER, BUILDER, OUTREACH
-  // 1 worker each for ANALYZER, QA (lighter workloads)
+  // Scale-out: 6 workers each for the core pipeline agents
+  // so all 6 run in parallel when a campaign launches
   const WORKER_COUNTS: Record<AgentType, number> = {
     SCRAPER: 6,
-    ANALYZER: 1,
+    ANALYZER: 6,
     BUILDER: 6,
     OUTREACH: 6,
     QA: 1,
