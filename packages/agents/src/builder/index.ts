@@ -160,12 +160,13 @@ async function deployToVercel(
       files: vercelFiles,
       projectSettings: {
         framework: null,        // Static — no framework detection
-        buildCommand: "",       // Empty = no build command (prevents vite build error)
+        buildCommand: "",       // Empty = no build (all files are pre-built HTML)
         outputDirectory: ".",   // Serve files as-is
         installCommand: "",     // No npm install needed
+        nodeVersion: "20.x",
       },
       target: "production",
-      public: true,
+      public: true,             // CRITICAL: make deployment publicly accessible
       meta: {
         slug,
         madecreativePreview: "true",
@@ -204,7 +205,7 @@ async function deployToVercel(
       );
     } catch { /* non-fatal */ }
 
-    // Disable Vercel auth protection + ensure project never auto-deletes
+    // Disable ALL Vercel auth protection — preview must be public, no login
     try {
       await fetch(
         `https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}${teamQuery}`,
@@ -217,21 +218,17 @@ async function deployToVercel(
           body: JSON.stringify({
             passwordProtection: null,
             ssoProtection: null,
+            vercelAuthentication: { deploymentType: "none" },
             autoExposeSystemEnvs: true,
             autoAssignCustomDomains: true,
-            // Vercel does not have a deleteAfter project setting but setting
-            // this explicitly documents intent; deployment retention is
-            // controlled by keeping the project alive (no TTL exists on hobby).
-            // The field is accepted by the API and treated as a no-op if unknown.
-            deleteAfter: null,
           }),
         }
       );
     } catch { /* non-fatal */ }
 
-    const deployUrl = deployment.url
-      ? `https://${deployment.url}`
-      : `https://${customDomain}`;
+    // Always prefer the custom domain (slug.madecreative.pro) — cleaner URL
+    // and guaranteed public access without Vercel login wall
+    const deployUrl = `https://${customDomain}`;
 
     return { url: deployUrl, warning: null };
   } catch (err) {
@@ -1265,48 +1262,61 @@ body{padding-bottom:56px!important}
           }
         }
 
-        // Deploy full project files to Vercel (multi-file deploy)
-        // Falls back to single HTML if the project has no package.json
-        const hasPackageJson = "package.json" in projectFiles;
-        let deployFiles = projectFiles;
+        // ── Deploy as STATIC HTML — always convert source to HTML first ──
+        // Next.js projects (.tsx, package.json) can't be served as-is on Vercel
+        // without a build step, and bolt.diy output needs compilation too.
+        // Convert everything to static HTML using projectToPreviewHtml().
+        let deployFiles: Record<string, string>;
 
         const htmlFileCount = Object.keys(projectFiles).filter(f => f.endsWith(".html")).length;
+        const hasPackageJson = "package.json" in projectFiles;
 
-        if (!hasPackageJson) {
-          if (htmlFileCount > 1) {
-            deployFiles = { ...projectFiles };
-
-            // Build explicit routes for every subdirectory/page
-            // e.g. /la-villa → la-villa/index.html, /matrimoni → matrimoni/index.html
-            const htmlFiles = Object.keys(projectFiles).filter(f => f.endsWith(".html"));
-            const routes: Array<{ src: string; dest: string }> = [];
-            for (const file of htmlFiles) {
-              if (file === "index.html") continue;
-              // la-villa/index.html → /la-villa and /la-villa/
-              const withoutHtml = file.replace(/\/index\.html$/, "").replace(/\.html$/, "");
-              routes.push({ src: `/${withoutHtml}/?`, dest: `/${file}` });
-              routes.push({ src: `/${withoutHtml}`, dest: `/${file}` });
-            }
-            // Catch-all for root
-            routes.push({ src: "/(.*)", dest: "/$1" });
-
-            deployFiles["vercel.json"] = JSON.stringify({
-              cleanUrls: true,
-              trailingSlash: false,
-              routes,
-            }, null, 2);
-            this.log("info", `build_preview_site: multi-page (${htmlFileCount} pages), ${routes.length} routes`);
-          } else {
-            const htmlContent = projectToPreviewHtml(projectFiles);
-            deployFiles = { "index.html": htmlContent };
-            this.log("info", "build_preview_site: single-page");
-          }
-        } else {
+        if (hasPackageJson) {
+          // Next.js project (from bolt.diy or generateNextJsProject fallback)
+          // → convert to self-contained HTML with React+Tailwind CDN
+          const htmlContent = projectToPreviewHtml(projectFiles);
+          deployFiles = { "index.html": htmlContent };
+          this.log("info", `build_preview_site: converted Next.js project (${Object.keys(projectFiles).length} files) → single HTML`);
+        } else if (htmlFileCount > 1) {
+          // Multi-page static HTML (bolt.diy generated HTML directly)
           deployFiles = { ...projectFiles };
-          if (!deployFiles["vercel.json"]) {
-            deployFiles["vercel.json"] = JSON.stringify({ cleanUrls: true, trailingSlash: false }, null, 2);
+          // Only keep HTML/CSS/JS/image files — strip source files
+          for (const key of Object.keys(deployFiles)) {
+            if (!key.match(/\.(html|css|js|json|svg|png|jpg|jpeg|webp|gif|ico|woff2?|ttf|eot)$/i)) {
+              delete deployFiles[key];
+            }
           }
-          this.log("info", `build_preview_site: ${Object.keys(projectFiles).length} files`);
+
+          const htmlFiles = Object.keys(deployFiles).filter(f => f.endsWith(".html"));
+          const routes: Array<{ src: string; dest: string }> = [];
+          for (const file of htmlFiles) {
+            if (file === "index.html") continue;
+            const withoutHtml = file.replace(/\/index\.html$/, "").replace(/\.html$/, "");
+            routes.push({ src: `/${withoutHtml}/?`, dest: `/${file}` });
+            routes.push({ src: `/${withoutHtml}`, dest: `/${file}` });
+          }
+          routes.push({ src: "/(.*)", dest: "/$1" });
+
+          deployFiles["vercel.json"] = JSON.stringify({
+            cleanUrls: true,
+            trailingSlash: false,
+            routes,
+          }, null, 2);
+          this.log("info", `build_preview_site: multi-page (${htmlFileCount} pages), ${routes.length} routes`);
+        } else if (htmlFileCount === 1) {
+          // Single HTML file already present
+          deployFiles = {};
+          for (const [k, v] of Object.entries(projectFiles)) {
+            if (k.match(/\.(html|css|js|json|svg|png|jpg|jpeg|webp|gif|ico)$/i)) {
+              deployFiles[k] = v;
+            }
+          }
+          this.log("info", "build_preview_site: single-page static HTML");
+        } else {
+          // No HTML at all — force conversion
+          const htmlContent = projectToPreviewHtml(projectFiles);
+          deployFiles = { "index.html": htmlContent };
+          this.log("info", "build_preview_site: no HTML found, converted to single page");
         }
 
         // Save project files to temp dir for debugging
