@@ -122,6 +122,62 @@ async function fetchPexelsPhotos(
   }
 }
 
+// ─── Helper: deploy to Cloudflare Pages (static HTML — zero build issues) ───
+
+async function deployToCloudflare(
+  slug: string,
+  files: Record<string, string>,
+): Promise<{ url: string | null; warning: string | null }> {
+  const accountId = process.env["CLOUDFLARE_ACCOUNT_ID"];
+  const apiToken = process.env["CLOUDFLARE_API_TOKEN"];
+  if (!accountId || !apiToken) {
+    return { url: null, warning: "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN not set" };
+  }
+
+  try {
+    const projectName = `mc-${slug}`.slice(0, 58).replace(/[^a-z0-9-]/g, "");
+
+    // Create project if it doesn't exist (idempotent)
+    await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: projectName, production_branch: "main" }),
+    }).catch(() => {});
+
+    // Upload files via Direct Upload API
+    const formData = new FormData();
+
+    for (const [filePath, content] of Object.entries(files)) {
+      const blob = new Blob([content], { type: filePath.endsWith(".html") ? "text/html" : "text/plain" });
+      // Cloudflare wants the path as the form field name (with leading /)
+      const cfPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
+      formData.append(cfPath, blob, filePath);
+    }
+
+    const deployRes = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}/deployments`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiToken}` },
+        body: formData,
+      }
+    );
+
+    if (!deployRes.ok) {
+      const errBody = await deployRes.text().catch(() => "");
+      throw new Error(`Cloudflare deploy error ${deployRes.status}: ${errBody.slice(0, 300)}`);
+    }
+
+    const deployData = await deployRes.json() as { result?: { url?: string; id?: string } };
+    const deployUrl = deployData.result?.url ?? `https://${projectName}.pages.dev`;
+
+    return { url: deployUrl, warning: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { url: null, warning: `Cloudflare deploy failed: ${message}` };
+  }
+}
+
 // ─── Helper: deploy to Vercel (multi-file project) ──────────────────────────
 
 async function deployToVercel(
@@ -184,22 +240,13 @@ async function deployToVercel(
       };
     });
 
-    // Reset project settings to match current files (Vercel caches old settings)
+    // Delete old project to reset cached settings (Vercel remembers "nextjs" forever)
     try {
       await fetch(
         `https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}${teamQuery}`,
-        {
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            framework: framework ?? null,
-            buildCommand: buildCommand || null,
-            outputDirectory: outputDirectory === "." ? null : outputDirectory,
-            installCommand: installCommand || null,
-          }),
-        }
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
       );
-    } catch { /* project may not exist yet — that's fine */ }
+    } catch { /* project may not exist — fine */ }
 
     const payload = {
       name: projectName,
@@ -1307,10 +1354,11 @@ body{padding-bottom:56px!important}
           });
         }
 
-        // Deploy to Vercel — retry once on failure
-        let deployResult = await deployToVercel(slug, deployFiles);
-        if (!deployResult.url && deployResult.warning) {
-          this.log("warn", "build_preview_site: first deploy failed, retrying...", { warning: deployResult.warning });
+        // Deploy to Cloudflare Pages first (static HTML, zero build issues)
+        // Falls back to Vercel if Cloudflare not configured
+        let deployResult = await deployToCloudflare(slug, deployFiles);
+        if (!deployResult.url) {
+          this.log("warn", "build_preview_site: Cloudflare deploy failed, trying Vercel...", { warning: deployResult.warning });
           deployResult = await deployToVercel(slug, deployFiles);
         }
 
