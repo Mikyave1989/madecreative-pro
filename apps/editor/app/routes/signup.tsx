@@ -19,24 +19,24 @@ interface Plan {
 const PLANS: Plan[] = [
   {
     id: 'STARTER',
-    label: 'Starter',
-    price: '€299',
-    period: ' setup + €29/mo',
-    features: ['5 active projects', '50 AI generations/mo', 'Basic support'],
+    label: 'Essential',
+    price: '€997',
+    period: ' setup + €49/mo',
+    features: ['3-page website', 'Responsive design', 'Custom domain + hosting'],
   },
   {
     id: 'GROWTH',
-    label: 'Growth',
-    price: '€599',
-    period: ' setup + €49/mo',
-    features: ['20 active projects', '200 AI generations/mo', 'Priority support'],
+    label: 'Business',
+    price: '€1,997',
+    period: ' setup + €79/mo',
+    features: ['5+ page website', 'Animations + gallery', 'WhatsApp + SEO'],
   },
   {
     id: 'PRO',
-    label: 'Pro',
-    price: '€999',
-    period: ' setup + €99/mo',
-    features: ['Unlimited projects', 'Unlimited AI generations', 'Dedicated support'],
+    label: 'Premium',
+    price: '€3,497',
+    period: ' setup + €129/mo',
+    features: ['8+ page website', 'Video hero + multi-lang', 'Dedicated support'],
   },
 ];
 

@@ -179,7 +179,7 @@ ${params.templateSlug ? `**Requested Template:** ${params.templateSlug}` : ""}
 ${params.customizations ? `**Custom Overrides:** ${JSON.stringify(params.customizations)}` : ""}
 
 CRITICAL: When calling build_preview_site, you MUST include the website URL in businessData.website and the prospectId parameter.
-This allows the builder to scrape the original site and use bolt.diy to rebuild it with all original content.
+This allows the builder to scrape the original site and generate a premium Next.js project with all original content.
 
 Execute the full 7-step build sequence. The final preview must look like a €10,000 custom website.`;
 }

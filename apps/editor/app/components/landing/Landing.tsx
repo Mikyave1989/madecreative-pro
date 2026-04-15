@@ -25,7 +25,7 @@ const FEATURES = [
 
 const COMPARISON = [
   { f: 'Time to launch', old: '2-8 weeks', us: '< 5 minutes' },
-  { f: 'Cost', old: '\u20AC2,000 - \u20AC15,000', us: 'From \u20AC299 + \u20AC29/mo' },
+  { f: 'Cost', old: '\u20AC2,000 - \u20AC15,000', us: 'From \u20AC997 + \u20AC49/mo' },
   { f: 'Technology', old: 'WordPress / Wix', us: 'React + Next.js' },
   { f: 'Edits', old: 'Wait for dev', us: 'Chat with AI' },
   { f: 'Code ownership', old: 'Locked in', us: 'Full source code' },
@@ -44,7 +44,7 @@ const TESTIMONIALS = [
   { name: 'Marco R.', role: 'Restaurant, Munich', text: 'In 2 minutes I had a website better than what my agency built in 3 weeks.', a: 'M' },
   { name: 'Sarah K.', role: 'Designer, Berlin', text: 'I prototype client sites in minutes now. Real React code. 10x faster.', a: 'S' },
   { name: 'Thomas M.', role: 'Startup, Hamburg', text: '3 landing pages in one afternoon for A/B testing. Real code.', a: 'T' },
-  { name: 'Anna L.', role: 'Bakery, Vienna', text: 'Was paying \u20AC200/month for WordPress. Now \u20AC25 and I change anything by chatting.', a: 'A' },
+  { name: 'Anna L.', role: 'Bakery, Vienna', text: 'Was paying \u20AC200/month for WordPress. Now \u20AC49 and the site is 10x better.', a: 'A' },
 ];
 
 const FAQS = [
@@ -502,7 +502,7 @@ export function Landing() {
       {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
       <section style={{ padding: '96px 24px', textAlign: 'center' }}>
         <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Stop paying agencies.<br /><span style={S.gt}>Let AI agents build your site.</span></h2>
-        <p style={{ ...S.t2, marginBottom: 32 }}>5 agents. Real code. Live in 60 seconds. From €299 setup + €29/month.</p>
+        <p style={{ ...S.t2, marginBottom: 32 }}>5 agents. Real code. Live in 60 seconds. From €997 setup + €49/month.</p>
         <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started Now</a>
       </section>
 

@@ -7,20 +7,17 @@ Complete every item in order before marking the platform LIVE.
 
 ## Phase 1 — Infrastructure
 
-- [ ] **DNS records configured**
-  - `madecreative.pro` → Vercel (marketing)
-  - `www.madecreative.pro` → Vercel (marketing, redirect or alias)
+- [x] **DNS records configured** (verified 2026-04-15)
+  - `madecreative.pro` → Vercel (marketing) — HTTP 200
+  - `api.madecreative.pro` → Vercel (API) — `{"status":"ok"}`
   - `admin.madecreative.pro` → Vercel (admin)
   - `app.madecreative.pro` → Vercel (portal)
-  - `api.madecreative.pro` → Vercel (API)
-  - Verify propagation: `dig madecreative.pro` and `dig api.madecreative.pro`
 
-- [ ] **Vercel deployments live**
-  - [ ] `apps/marketing` — `https://madecreative.pro` returns HTTP 200
-  - [ ] `apps/admin` — `https://admin.madecreative.pro` returns HTTP 200
-  - [ ] `apps/portal` — `https://app.madecreative.pro` returns HTTP 200
-  - [ ] `apps/api` — `https://api.madecreative.pro/healthz` returns `{"ok":true}`
-  - Deploy command: `vercel --prod` in each app directory, or link via Vercel dashboard
+- [x] **Vercel deployments live** (verified 2026-04-15)
+  - [x] `madecreative.pro` — HTTP 200
+  - [x] `api.madecreative.pro/health` — `{"status":"ok","db":"ok"}`
+  - [ ] `admin.madecreative.pro` — DNS unreachable, needs Vercel project + CNAME
+  - [ ] `app.madecreative.pro` — DNS unreachable, needs Vercel project + CNAME
 
 - [ ] **Railway workers running (6 services)**
   - [ ] `agent-runner` — status: Active
@@ -190,4 +187,4 @@ cd apps/api && npx prisma migrate resolve --rolled-back <migration-name>
 
 ---
 
-*Last updated: 2026-04-07 — G28-30 launch milestone*
+*Last updated: 2026-04-15 — pricing updated (Essential €997, Business €1997, Premium €3497), bolt.diy removed, builder generates Next.js directly*

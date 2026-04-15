@@ -898,10 +898,11 @@ export class BuilderAgent extends BaseAgent {
         const prospectId = (toolInput["prospectId"] as string) ?? undefined;
 
         try {
-          // ── Step 1: Scrape website if needed ──
+          // ── Step 1: Scrape website if needed (max 2 min timeout) ──
           let scrapedContent = this._scrapedContent;
           if (website && !scrapedContent) {
-            this.log("info", `build_preview_site: deep-scraping ${website} with Playwright`);
+            this.log("info", `build_preview_site: deep-scraping ${website} with Playwright (2min timeout)`);
+            const scrapePromise = (async () => {
             try {
               const { chromium } = await import("playwright");
               const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
@@ -1066,6 +1067,17 @@ export class BuilderAgent extends BaseAgent {
               }
             } catch (err) {
               this.log("warn", `build_preview_site: scrape failed: ${err instanceof Error ? err.message : String(err)}`);
+            }
+            })();
+
+            // Timeout scraping after 2 minutes — generate without scraped content if it takes too long
+            try {
+              await Promise.race([
+                scrapePromise,
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Scrape timeout (2min)")), 120_000)),
+              ]);
+            } catch (err) {
+              this.log("warn", `build_preview_site: scraping timed out or failed: ${err instanceof Error ? err.message : String(err)} — generating from template data only`);
             }
           }
 

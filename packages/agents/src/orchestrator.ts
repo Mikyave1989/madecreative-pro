@@ -191,7 +191,7 @@ async function chainNextAgent(
         select: { id: true, leadScore: true, previewSiteUrl: true, sector: true },
       });
 
-      if (!prospect || prospect.leadScore < 50 || prospect.previewSiteUrl) return;
+      if (!prospect || prospect.leadScore < 30 || prospect.previewSiteUrl) return;
 
       const builderQueue = new Queue(AGENT_QUEUE_NAMES["BUILDER"], { connection: redis });
 
@@ -335,11 +335,22 @@ export async function startOrchestrator(): Promise<Worker[]> {
   // and creates jobs in DB only. We poll every 30s and enqueue them.
   const pollInterval = setInterval(async () => {
     try {
+      // Find jobs that never started (progress=0, older than 1 min)
+      // OR jobs stuck mid-execution (progress>0 but not completed, older than 10 min)
       const stuckJobs = await prisma.agentJob.findMany({
         where: {
-          status: { in: ["QUEUED", "RUNNING"] },
-          progress: 0,
-          startedAt: { lt: new Date(Date.now() - 60_000) }, // older than 1 min
+          OR: [
+            {
+              status: { in: ["QUEUED", "RUNNING"] },
+              progress: 0,
+              startedAt: { lt: new Date(Date.now() - 60_000) },
+            },
+            {
+              status: "RUNNING",
+              progress: { gt: 0, lt: 100 },
+              startedAt: { lt: new Date(Date.now() - 600_000) }, // stuck >10 min
+            },
+          ],
         },
         take: 5,
         orderBy: { createdAt: "asc" },
@@ -360,10 +371,10 @@ export async function startOrchestrator(): Promise<Worker[]> {
             { jobId: job.id, input: job.input as Record<string, unknown> },
             { jobId: job.id }
           );
-          // Reset startedAt so we don't re-enqueue next cycle
+          // Reset startedAt + progress so we don't re-enqueue next cycle
           await prisma.agentJob.update({
             where: { id: job.id },
-            data: { startedAt: new Date() },
+            data: { startedAt: new Date(), progress: 0, status: "QUEUED" },
           });
           console.log(`[Orchestrator] DB Poller: re-enqueued ${agentType} job ${job.id}`);
         } catch (err) {
