@@ -218,24 +218,7 @@ async function deployToVercel(
 
     const deployment = (await res.json()) as { id: string; url: string; name: string };
 
-    // Assign custom subdomain
-    const customDomain = `${slug}.madecreative.pro`;
-    try {
-      await fetch(
-        `https://api.vercel.com/v10/projects/${encodeURIComponent(projectName)}/domains?upsert=true${teamQueryAmp}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name: customDomain }),
-        }
-      );
-    } catch { /* non-fatal */ }
-
     // Disable Vercel auth on production deploys — preview sites must be public
-    // ssoProtection "preview" = only protect preview deploys, production is public
     try {
       await fetch(
         `https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}${teamQuery}`,
@@ -249,15 +232,13 @@ async function deployToVercel(
             passwordProtection: null,
             ssoProtection: { deploymentType: "preview" },
             autoExposeSystemEnvs: true,
-            autoAssignCustomDomains: true,
           }),
         }
       );
     } catch { /* non-fatal */ }
 
-    // Always prefer the custom domain (slug.madecreative.pro) — cleaner URL
-    // and guaranteed public access without Vercel login wall
-    const deployUrl = `https://${customDomain}`;
+    // Use the direct Vercel URL — wildcard DNS *.madecreative.pro not available
+    const deployUrl = `https://${deployment.url}`;
 
     return { url: deployUrl, warning: null };
   } catch (err) {
