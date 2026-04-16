@@ -193,18 +193,45 @@ export async function cloneAndBuildSite(
     }
     console.log(`[CloneAndBuild] Phase 1 complete — clone done`);
 
-    // ── Step 3: Apply premium design upgrade via Claude Code /premium-upgrade skill ─
-    console.log(`[CloneAndBuild] Phase 2: applying premium design upgrade via /premium-upgrade skill`);
+    // ── Step 3: Apply premium design upgrade ────────────────────────────────
+    // Pass the full upgrade instructions inline (not as a skill reference —
+    // the /clone-website phase may overwrite .claude/skills/).
+    console.log(`[CloneAndBuild] Phase 2: applying premium design upgrade`);
+    const upgradePrompt = [
+      "Upgrade the visual design of this Next.js website to premium quality. Do NOT change any text, images, or page structure. Only change styling.",
+      "",
+      "Do these steps IN ORDER. After each edit run: npx tsc --noEmit",
+      "",
+      "1. Run: npm install framer-motion",
+      "",
+      "2. Create src/components/FadeIn.tsx with this exact content:",
+      "'use client'",
+      "import { motion } from 'framer-motion'",
+      "export const FadeIn = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (",
+      "  <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}>{children}</motion.div>",
+      ")",
+      "",
+      "3. Edit the Header/Nav component: add 'use client', add useState+useEffect for scroll detection (scrolled when scrollY>60), when scrolled apply 'backdrop-blur-md bg-white/85 shadow-sm', position fixed z-50",
+      "",
+      "4. Edit the Hero component: ensure min-h-screen, add dark gradient overlay div with className='absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60 z-[1]'",
+      "",
+      "5. In ALL card/grid components in src/components/: add hover:-translate-y-1 hover:shadow-lg transition-all duration-300 to card className",
+      "",
+      "6. Edit src/app/page.tsx: import FadeIn, wrap each section (except Hero) in <FadeIn>",
+      "",
+      "7. Run: npm run build — fix ALL errors until it passes with 0",
+    ].join("\n");
     const upgradeResult = await runClaudeCLI(
       workDir,
-      "/premium-upgrade",
+      upgradePrompt,
       upgradeTimeoutMs
     );
 
     if (!upgradeResult.success) {
-      console.warn(`[CloneAndBuild] Phase 2 upgrade failed (continuing with clean clone): ${upgradeResult.error}`);
+      console.warn(`[CloneAndBuild] Phase 2 FAILED: ${upgradeResult.error}`);
+      console.warn(`[CloneAndBuild] Continuing with clean clone (no premium upgrade)`);
     } else {
-      console.log(`[CloneAndBuild] Phase 2 complete — premium upgrade applied`);
+      console.log(`[CloneAndBuild] Phase 2 SUCCESS — premium upgrade applied`);
     }
 
     // ── Step 4: Verify build passes — if not, revert premium upgrade ────────
