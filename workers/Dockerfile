@@ -14,6 +14,15 @@ RUN npm install -g @anthropic-ai/claude-code vercel
 RUN git clone https://github.com/JCodesMore/ai-website-cloner-template.git /app/cloner && \
   cd /app/cloner && npm install --ignore-scripts
 
+# Inject MadeCreative rules into the cloner (prepended to SKILL.md and CLAUDE.md)
+COPY workers/madecreative-cloner-rules.md /tmp/mc-rules.md
+RUN RULES=$(cat /tmp/mc-rules.md) && \
+  SKILL=/app/cloner/.claude/skills/clone-website/SKILL.md && \
+  head -6 "$SKILL" > /tmp/skill-header.md && \
+  tail -n +7 "$SKILL" > /tmp/skill-body.md && \
+  cat /tmp/skill-header.md /tmp/mc-rules.md /tmp/skill-body.md > "$SKILL" && \
+  cat /tmp/mc-rules.md >> /app/cloner/CLAUDE.md
+
 # Copy root workspace files
 COPY package.json package-lock.json ./
 COPY tsconfig.json ./
