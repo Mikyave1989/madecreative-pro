@@ -7,26 +7,29 @@ import { API_URL } from '~/lib/api/client';
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const AGENTS = [
-  { id: 'scraper', name: 'SCRAPER', emoji: '\uD83D\uDD0D', role: 'Data Collector', verb: 'Scanning 3 pages...', color: '#3b82f6', x: 5, desc: 'Crawls your website, Google Maps, and social profiles. Extracts photos, reviews, text, and branding.' },
-  { id: 'analyzer', name: 'ANALYZER', emoji: '\uD83E\uDDE0', role: 'Business Intel', verb: 'Lead score: 87/100', color: '#8b5cf6', x: 25, desc: 'Analyzes your market, competitors, and presence. Calculates lead score and identifies what your site needs.' },
-  { id: 'builder', name: 'BUILDER', emoji: '\u26A1', role: 'Code Generator', verb: 'Writing 12 files...', color: '#6366f1', x: 45, desc: 'Writes production React + Next.js + Tailwind code. Multi-page, animated, SEO-optimized in under 60 seconds.' },
-  { id: 'outreach', name: 'OUTREACH', emoji: '\uD83D\uDCE7', role: 'Growth Engine', verb: 'Email opened!', color: '#ec4899', x: 65, desc: 'Generates personalized cold emails with your preview link. Handles follow-ups, tracks opens, warms domain.' },
-  { id: 'qa', name: 'QA', emoji: '\uD83D\uDEE1\uFE0F', role: 'Quality Guard', verb: 'Score: 98/100', color: '#22c55e', x: 85, desc: 'Lighthouse audits, mobile checks, link validation, uptime monitoring 24/7.' },
+  { id: 'scraper', name: 'SCRAPER', emoji: '\uD83D\uDD0D', role: 'Data Collector', verb: 'Scanning 3 pages...', color: '#3b82f6', x: 5, desc: 'Scans your existing website. Downloads every page, photo, video, and text. Nothing is missed.' },
+  { id: 'analyzer', name: 'ANALYZER', emoji: '\uD83E\uDDE0', role: 'Business Intel', verb: 'Lead score: 87/100', color: '#8b5cf6', x: 25, desc: 'Evaluates your online presence. Google rating, social profiles, competitors, SEO gaps.' },
+  { id: 'builder', name: 'BUILDER', emoji: '\u26A1', role: 'Design Builder', verb: 'Writing 12 files...', color: '#6366f1', x: 45, desc: 'Rebuilds your entire site with premium design. Same content, 10x better looking. Multi-page, animated, responsive.' },
+  { id: 'outreach', name: 'OUTREACH', emoji: '\uD83D\uDCE7', role: 'Delivery Engine', verb: 'Preview ready!', color: '#ec4899', x: 65, desc: 'Delivers your new site preview directly to your inbox. One click to see the result.' },
+  { id: 'qa', name: 'QA', emoji: '\uD83D\uDEE1\uFE0F', role: 'Quality Guard', verb: 'Score: 98/100', color: '#22c55e', x: 85, desc: 'Tests everything. Mobile, tablet, desktop. Speed, links, SEO. Ensures perfection.' },
 ];
 
 const FEATURES = [
-  { icon: 'i-ph:chat-circle-dots', t: 'Chat to Build', d: 'Describe what you want in plain language. The AI writes complete websites in real-time.' },
-  { icon: 'i-ph:file-code', t: 'Real Code', d: 'React, Next.js, Tailwind CSS. Production-grade, SEO-optimized. You own every line.' },
-  { icon: 'i-ph:globe-simple', t: 'Scrape & Rebuild', d: 'Paste your URL. We extract everything and rebuild it 10x better.' },
-  { icon: 'i-ph:rocket-launch', t: 'One-Click Deploy', d: 'Live in seconds with SSL, CDN, and custom domain.' },
-  { icon: 'i-ph:robot', t: 'AI Chatbot', d: 'Smart widget that answers customer questions 24/7 and generates leads.' },
-  { icon: 'i-ph:chart-line-up', t: 'Monthly Reports', d: 'Automated PDF reports with visitor stats, leads, and recommendations.' },
+  { icon: 'i-ph:paint-brush', t: 'Premium Redesign', d: 'We take your existing site and rebuild it with a stunning modern design. Same content, new look.' },
+  { icon: 'i-ph:images', t: 'Your Real Content', d: 'Your photos, your text, your videos. We don\'t use stock images or placeholder text. It\'s YOUR site, upgraded.' },
+  { icon: 'i-ph:stack', t: 'Every Page Rebuilt', d: 'Homepage, about, services, contact, team — every page of your site gets the premium treatment.' },
+  { icon: 'i-ph:devices', t: 'Fully Responsive', d: 'Looks perfect on every device. Mobile, tablet, laptop, desktop — tested on all screens.' },
+  { icon: 'i-ph:magnifying-glass', t: 'SEO Built-In', d: 'Optimized for Google from day one. Meta tags, structured data, fast loading, clean code.' },
+  { icon: 'i-ph:cloud-arrow-up', t: 'Hosting Included', d: 'Professional hosting, SSL certificate, custom domain — all included. No extra costs.' },
 ];
 
 const COMPARISON = [
-  { f: 'Agenzia web tradizionale', old: '\u20AC2.000 - \u20AC15.000', us: '\u20AC49/mese \u2014 tutto incluso' },
-  { f: 'Sviluppatore freelance', old: '\u20AC800 - \u20AC3.000', us: '\u20AC49/mese \u2014 tutto incluso' },
-  { f: 'Wix / Squarespace', old: 'Template uguali per tutti', us: 'Design unico AI' },
+  { f: 'Traditional web agency', old: '$2,000 - $15,000', us: '$49/mo \u2014 everything included' },
+  { f: 'Freelance developer', old: '$800 - $3,000', us: '$49/mo \u2014 everything included' },
+  { f: 'Wix / Squarespace', old: 'Same templates for everyone', us: 'Unique design from YOUR content' },
+  { f: 'Time to launch', old: '2\u20138 weeks', us: 'Ready in 24 hours' },
+  { f: 'Technology', old: 'WordPress / outdated CMS', us: 'Next.js + React \u2014 cutting edge' },
+  { f: 'Edits', old: 'Wait for your developer', us: '2 included monthly' },
 ];
 
 const PLANS = [
@@ -35,36 +38,36 @@ const PLANS = [
     slug: 'STARTER',
     price: 49,
     setup: 0,
-    desc: 'Primo mese gratis. Poi solo \u20AC49/mese.',
+    desc: 'First month free. Then just $49/month. Cancel anytime.',
     features: [
-      'Sito premium rigenerato con AI',
-      'Design moderno, unico, costruito sui tuoi contenuti',
-      'Hosting incluso su infrastruttura professionale',
-      'Veloce, sicuro, sempre online',
-      'Dominio custom incluso',
-      'SEO ottimizzato \u2014 Google ti trova dal primo giorno',
-      '2 modifiche al mese incluse',
-      'Assistenza via email entro 24 ore',
+      'Your website, completely redesigned with premium quality',
+      'Same content, photos, videos \u2014 just 10x better design',
+      'Professional hosting on fast infrastructure',
+      'Custom domain included',
+      'SEO optimized \u2014 Google finds you from day one',
+      'Fully responsive \u2014 mobile, tablet, desktop',
+      '2 edits per month included',
+      'Email support \u2014 we reply within 24 hours',
     ],
     hl: true,
   },
 ];
 
 const TESTIMONIALS = [
-  { name: 'Marco R.', role: 'Restaurant, Munich', text: 'In 2 minutes I had a website better than what my agency built in 3 weeks.', a: 'M' },
-  { name: 'Sarah K.', role: 'Designer, Berlin', text: 'I prototype client sites in minutes now. Real React code. 10x faster.', a: 'S' },
-  { name: 'Thomas M.', role: 'Startup, Hamburg', text: '3 landing pages in one afternoon for A/B testing. Real code.', a: 'T' },
-  { name: 'Anna L.', role: 'Bakery, Vienna', text: 'Was paying \u20AC200/month for WordPress. Now \u20AC49 and the site is 10x better.', a: 'A' },
+  { name: 'Dr. Stefan M.', role: 'Dentist, Munich', text: 'I couldn\'t believe it was the same website. All my content, but the design looks like I paid \u20AC10,000 for it.', a: 'S' },
+  { name: 'Laura K.', role: 'Restaurant Owner, Berlin', text: 'Our old site was embarrassing. Now customers compliment it every week. And I didn\'t have to change a single word.', a: 'L' },
+  { name: 'Thomas B.', role: 'Law Firm, Hamburg', text: 'Professional, modern, fast. Exactly what our firm needed. The old site took 3 months to build. This was ready overnight.', a: 'T' },
+  { name: 'Anna W.', role: 'Boutique Hotel, Vienna', text: 'Same photos, same rooms, same text \u2014 but the site now looks like a 5-star brand. Worth every cent of the \u20AC49.', a: 'A' },
 ];
 
 const FAQS = [
-  { q: 'What does the AI build?', a: 'Real production code: React, Next.js, Tailwind. Not templates. Every site is unique. You own the source.' },
-  { q: 'Can I edit after?', a: 'Yes. Chat: "Change the header", "Add a gallery". Or edit code directly in the built-in editor.' },
-  { q: 'Do I need coding skills?', a: 'Zero. If you can describe what you want, you can build a website.' },
-  { q: 'What do I get?', a: 'A premium multi-page website built with Next.js, Framer Motion animations, responsive design, custom domain, and hosting — all included.' },
-  { q: 'Custom domain?', a: 'Yes, included. Point your DNS, we handle SSL automatically.' },
-  { q: 'Can I cancel?', a: 'Anytime. No contracts. 14-day money-back guarantee.' },
-  { q: 'How do the 5 agents work?', a: 'Automatic pipeline: SCRAPER collects data, ANALYZER scores, BUILDER creates site, OUTREACH sends emails, QA monitors 24/7.' },
+  { q: 'What exactly do you do?', a: 'We take your existing website and rebuild it with a premium modern design. Your content stays exactly the same \u2014 we only upgrade the look and feel.' },
+  { q: 'Do I need to provide anything?', a: 'Just your website URL. We handle everything \u2014 downloading your content, photos, videos, and rebuilding it all with premium design.' },
+  { q: 'Will my content change?', a: 'No. Every word, every photo, every video stays exactly the same. We only change the visual design, animations, and layout.' },
+  { q: 'How long does it take?', a: 'Your new site preview is usually ready within 24 hours. You can review it before going live.' },
+  { q: 'What technology do you use?', a: 'Next.js, React, Tailwind CSS, Framer Motion. Modern, fast, SEO-friendly. The same stack used by top companies worldwide.' },
+  { q: 'Can I cancel anytime?', a: 'Yes. No contracts, no penalties. Cancel whenever you want. First month is free \u2014 no credit card required to preview.' },
+  { q: 'Is hosting included?', a: 'Yes. Professional hosting, SSL certificate, and custom domain are all included in the \u20AC49/month.' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -143,23 +146,22 @@ export function Landing() {
         <div style={{ maxWidth: 1152, margin: '0 auto', padding: '64px 24px 32px', position: 'relative', textAlign: 'center' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 9999, border: '1px solid rgba(255,255,255,.1)', backgroundColor: 'rgba(255,255,255,.03)', fontSize: 12, marginBottom: 32 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#4ade80', animation: 'mc-pulse 2s ease-in-out infinite' }} />
-            <span style={S.t3}>5 AI Agents Working For You</span>
+            <span style={S.t3}>Premium Website Redesign Service</span>
           </div>
 
           <h1 style={{ fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 800, lineHeight: 1.05, marginBottom: 24, letterSpacing: '-0.02em', color: '#fff' }}>
-            Your complete website<br />
-            <span style={S.gt}>built by AI agents</span>
+            Your website. Same content.<br />
+            <span style={S.gt}>10x better design.</span>
           </h1>
 
           <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', maxWidth: 640, margin: '0 auto 40px', lineHeight: 1.6, ...S.t2 }}>
-            5 specialized AI agents scrape your data, analyze your market,
-            write production code, deploy your site, and grow your business.
-            <span style={S.t1}> Premium websites at only \u20AC49/mese. First month free.</span>
+            We take your existing site and rebuild it with premium quality. Same photos, same text &mdash; just stunning modern design.
+            <span style={S.t1}> First month free &mdash; no credit card required.</span>
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
-            <a href="#pricing" style={{ ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Start Building</a>
-            <a href="#agents" style={{ padding: '14px 32px', borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', color: '#d4d4d8', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Meet the Agents</a>
+            <a href="#pricing" style={{ ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Your Free Preview</a>
+            <a href="#agents" style={{ padding: '14px 32px', borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', color: '#d4d4d8', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>See It in Action</a>
           </div>
         </div>
 
@@ -180,7 +182,7 @@ export function Landing() {
       {/* ── STATS ────────────────────────────────────────────────────────── */}
       <section style={{ padding: '64px 24px' }}>
         <div style={{ maxWidth: 960, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32, textAlign: 'center' }}>
-          {[{ v: '500+', l: 'Websites built' }, { v: '<60s', l: 'Build time' }, { v: '99.9%', l: 'Uptime SLA' }, { v: '5', l: 'AI Agents' }].map(s => (
+          {[{ v: '500+', l: 'Sites redesigned' }, { v: '24h', l: 'Turnaround time' }, { v: '99.9%', l: 'Uptime SLA' }, { v: '5', l: 'AI Agents' }].map(s => (
             <div key={s.l}><div style={{ fontSize: 36, fontWeight: 700, ...S.gt }}>{s.v}</div><div style={{ fontSize: 14, ...S.t4, marginTop: 4 }}>{s.l}</div></div>
           ))}
         </div>
@@ -193,7 +195,7 @@ export function Landing() {
           <div style={{ textAlign: 'center', marginBottom: 64 }}>
             <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// THE AGENT TEAM</div>
             <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Watch your agents work</h2>
-            <p style={{ ...S.t2, maxWidth: 560, margin: '0 auto' }}>Each agent has a desk in your virtual office. Click one to see what they do.</p>
+            <p style={{ ...S.t2, maxWidth: 560, margin: '0 auto' }}>Five specialized agents handle every step of your redesign. Click one to see what they do.</p>
           </div>
 
           {/* ── Agent Workspace — SVG animated scene ── */}
@@ -337,13 +339,13 @@ export function Landing() {
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 64 }}>
             <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// HOW IT WORKS</div>
-            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff' }}>From idea to live site in 3 steps</h2>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff' }}>From your old site to a premium redesign in 3 steps</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
             {[
-              { n: '01', icon: 'i-ph:chat-circle-text', t: 'Describe your vision', d: '"Build a restaurant website with menu, gallery, and reservations."' },
-              { n: '02', icon: 'i-ph:cpu', t: 'Agents get to work', d: '5 AI agents activate in parallel: scraping, analyzing, coding, setting up chatbot.' },
-              { n: '03', icon: 'i-ph:globe-simple', t: 'Live in 60 seconds', d: 'Deployed with SSL, CDN, custom domain, chatbot, and 24/7 monitoring.' },
+              { n: '01', icon: 'i-ph:link', t: 'Send us your URL', d: 'Just paste your existing website address. That\'s all we need to get started.' },
+              { n: '02', icon: 'i-ph:cpu', t: 'Agents rebuild your site', d: '5 AI agents scan your content, analyze your market, and rebuild every page with premium design.' },
+              { n: '03', icon: 'i-ph:eye', t: 'Preview and go live', d: 'Receive your new site preview within 24 hours. Review it, approve it, and we make it live.' },
             ].map(s => (
               <div key={s.n} style={{ ...S.card, padding: 24, position: 'relative' }}>
                 <div style={{ position: 'absolute', top: 16, right: 16, fontSize: 56, fontWeight: 800, color: 'rgba(255,255,255,.02)' }}>{s.n}</div>
@@ -427,8 +429,8 @@ export function Landing() {
         <div style={{ maxWidth: 1080, margin: '0 auto', position: 'relative' }}>
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
             <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#818cf8', marginBottom: 12 }}>// PRICING</div>
-            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Start building today</h2>
-            <p style={{ ...S.t2, maxWidth: 480, margin: '0 auto' }}>Premium websites with hosting, maintenance, and support included.</p>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Simple, transparent pricing</h2>
+            <p style={{ ...S.t2, maxWidth: 480, margin: '0 auto' }}>Premium redesign with hosting, domain, and support — all included.</p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 48 }}>
@@ -450,10 +452,10 @@ export function Landing() {
                   <h3 style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{plan.name}</h3>
                   <p style={{ fontSize: 13, ...S.t4, marginTop: 4, marginBottom: 16 }}>{plan.desc}</p>
                   <div style={{ marginBottom: 24 }}>
-                    <div style={{ fontSize: 14, color: '#4ade80', marginBottom: 4, fontWeight: 600 }}>Primo mese gratis</div>
-                    <span style={{ ...S.t4, fontSize: 18 }}>€</span>
+                    <div style={{ fontSize: 14, color: '#4ade80', marginBottom: 4, fontWeight: 600 }}>First month free</div>
+                    <span style={{ ...S.t4, fontSize: 18 }}>$</span>
                     <span style={{ fontSize: 48, fontWeight: 800, color: '#fff' }}>49</span>
-                    <span style={S.t4}>/mese</span>
+                    <span style={S.t4}>/month</span>
                   </div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px' }}>
                     {plan.features.map(f => (
@@ -470,7 +472,7 @@ export function Landing() {
                       {cErr && <p style={{ fontSize: 12, color: '#f87171', marginBottom: 8 }}>{cErr}</p>}
                       <button onClick={() => checkout(plan.slug)} disabled={cLoad}
                         style={{ width: '100%', padding: '10px 0', borderRadius: 8, ...S.gb, color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer', opacity: cLoad ? .5 : 1, marginBottom: 8 }}>
-                        {cLoad ? 'Redirecting...' : 'Inizia gratis'}
+                        {cLoad ? 'Redirecting...' : 'Get Started Free'}
                       </button>
                       <button onClick={() => { setCPlan(null); setCErr(''); }} style={{ width: '100%', fontSize: 12, color: '#52525b', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>Cancel</button>
                     </div>
@@ -484,7 +486,7 @@ export function Landing() {
               );
             })}
           </div>
-          <p style={{ textAlign: 'center', fontSize: 12, ...S.t4, marginTop: 32 }}>&#128274; Stripe secured. 14-day money-back.</p>
+          <p style={{ textAlign: 'center', fontSize: 12, ...S.t4, marginTop: 32 }}>&#128274; Stripe secured. Cancel anytime.</p>
         </div>
       </section>
 
@@ -511,9 +513,9 @@ export function Landing() {
 
       {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
       <section style={{ padding: '96px 24px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Stop paying agencies.<br /><span style={S.gt}>Let AI agents build your site.</span></h2>
-        <p style={{ ...S.t2, marginBottom: 32 }}>Primo mese gratis. Poi solo \u20AC49/mese. Disdici quando vuoi.</p>
-        <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started Now</a>
+        <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Ready to see your site transformed?<br /><span style={S.gt}>Same content. 10x better design.</span></h2>
+        <p style={{ ...S.t2, marginBottom: 32 }}>First month free. Then just $49/month. Cancel anytime &mdash; no penalties.</p>
+        <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started Free</a>
       </section>
 
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
