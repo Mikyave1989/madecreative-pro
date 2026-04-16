@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
   --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 # Install Claude Code CLI + Playwright MCP + Vercel CLI
-RUN npm install -g @anthropic-ai/claude-code @anthropic-ai/claude-code-playwright vercel
+RUN npm install -g @anthropic-ai/claude-code @playwright/mcp vercel
 
 # Configure Claude CLI with Playwright MCP server
 RUN mkdir -p /root/.claude && echo '{ \
@@ -16,7 +16,7 @@ RUN mkdir -p /root/.claude && echo '{ \
     "playwright": { \
       "type": "stdio", \
       "command": "npx", \
-      "args": ["@anthropic-ai/claude-code-playwright"] \
+      "args": ["@playwright/mcp@latest", "--headless"] \
     } \
   } \
 }' > /root/.claude.json
