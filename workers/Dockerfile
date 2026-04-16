@@ -4,8 +4,15 @@ WORKDIR /app
 # System deps for Playwright
 RUN apt-get update && apt-get install -y \
   python3 make g++ openssl \
-  wget gnupg \
+  wget gnupg git \
   --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
+# Install Claude Code CLI (for JCodesMore website cloner)
+RUN npm install -g @anthropic-ai/claude-code
+
+# Clone JCodesMore ai-website-cloner-template
+RUN git clone https://github.com/JCodesMore/ai-website-cloner-template.git /app/cloner && \
+  cd /app/cloner && npm install --ignore-scripts
 
 # Copy root workspace files
 COPY package.json package-lock.json ./

@@ -8,7 +8,7 @@ import { builderTools } from "./tools.js";
 import { BUILDER_SYSTEM_PROMPT, buildBuilderUserPrompt } from "./prompt.js";
 import { BuilderInputSchema } from "./types.js";
 import type { Photo, ColorPalette } from "./types.js";
-// generateNextJsProject + ProjectData now imported from @madecreative/shared
+import { cloneWebsite } from "./clone-website.js";
 
 // ─── Sector Default Palettes (from shared template configs) ──────────────────
 
@@ -119,97 +119,6 @@ async function fetchPexelsPhotos(
     }));
   } catch {
     return [];
-  }
-}
-
-// ─── Helper: deploy to Cloudflare Pages (static HTML — zero build issues) ───
-// Uses the Pages Direct Upload API (v2):
-//   POST /accounts/{id}/pages/projects/{name}/deployments
-// with a multipart body where:
-//   - "manifest" field = JSON object mapping file path → sha256 hex
-//   - each file field key = sha256 hex of the file, value = file content
-// Only HTML, CSS, JS, and image asset files are uploaded — no build step.
-
-async function deployToCloudflare(
-  slug: string,
-  files: Record<string, string>,
-): Promise<{ url: string | null; warning: string | null }> {
-  const accountId = process.env["CLOUDFLARE_ACCOUNT_ID"];
-  const apiToken = process.env["CLOUDFLARE_API_TOKEN"];
-  if (!accountId || !apiToken) {
-    return { url: null, warning: "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN not set" };
-  }
-
-  try {
-    const { createHash } = await import("crypto");
-    const projectName = `mc-${slug}`.slice(0, 58).replace(/[^a-z0-9-]/g, "");
-
-    // Create project if it doesn't exist (idempotent — ignore 409 conflict)
-    await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: projectName, production_branch: "main" }),
-    }).catch(() => {});
-
-    // Filter to static-serveable files only — no TS/TSX/JSON source files
-    const STATIC_EXTS = /\.(html|css|js|mjs|ico|png|jpg|jpeg|webp|gif|svg|woff|woff2|ttf|txt|xml|json)$/i;
-    const staticFiles = Object.fromEntries(
-      Object.entries(files).filter(([p]) => STATIC_EXTS.test(p) || p.endsWith(".html"))
-    );
-
-    // Always include at least index.html
-    if (!("index.html" in staticFiles) && "index.html" in files) {
-      staticFiles["index.html"] = files["index.html"]!;
-    }
-
-    // Build manifest: { "/path/to/file": sha256hex }
-    const manifest: Record<string, string> = {};
-    const hashToContent: Record<string, { content: string; mimeType: string }> = {};
-
-    for (const [filePath, content] of Object.entries(staticFiles)) {
-      const normalised = filePath.startsWith("/") ? filePath : `/${filePath}`;
-      const hash = createHash("sha256").update(content, "utf8").digest("hex");
-      manifest[normalised] = hash;
-      if (!(hash in hashToContent)) {
-        const mimeType = filePath.endsWith(".html") ? "text/html; charset=utf-8"
-          : filePath.endsWith(".css") ? "text/css"
-          : filePath.endsWith(".js") || filePath.endsWith(".mjs") ? "application/javascript"
-          : filePath.endsWith(".json") ? "application/json"
-          : "text/plain";
-        hashToContent[hash] = { content, mimeType };
-      }
-    }
-
-    // Build multipart FormData
-    const formData = new FormData();
-    formData.append("manifest", JSON.stringify(manifest));
-
-    for (const [hash, { content, mimeType }] of Object.entries(hashToContent)) {
-      const blob = new Blob([content], { type: mimeType });
-      formData.append(hash, blob, hash);
-    }
-
-    const deployRes = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}/deployments`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiToken}` },
-        body: formData,
-      }
-    );
-
-    if (!deployRes.ok) {
-      const errBody = await deployRes.text().catch(() => "");
-      throw new Error(`Cloudflare deploy error ${deployRes.status}: ${errBody.slice(0, 500)}`);
-    }
-
-    const deployData = await deployRes.json() as { result?: { url?: string; id?: string } };
-    const deployUrl = deployData.result?.url ?? `https://${projectName}.pages.dev`;
-
-    return { url: deployUrl, warning: null };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { url: null, warning: `Cloudflare deploy failed: ${message}` };
   }
 }
 
@@ -1151,129 +1060,29 @@ export class BuilderAgent extends BaseAgent {
             }
           }
 
-          // ── Step 2: Generate UNIQUE premium site via Claude streaming ──
-          // Each site is generated from scratch by Claude — truly unique design.
-          // Uses streaming to avoid HTTP timeout (chunks flow continuously).
-          // Falls back to template if Claude fails.
-
-          const langMap: Record<string, string> = { de: "German", it: "Italian", en: "English", fr: "French", es: "Spanish" };
-          const langName = langMap[projectData.language.toLowerCase().slice(0, 2)] ?? "English";
-          const routeMap: Record<string, { about: string; services: string; gallery: string; contact: string }> = {
-            de: { about: "ueber-uns", services: "leistungen", gallery: "galerie", contact: "kontakt" },
-            it: { about: "chi-siamo", services: "servizi", gallery: "galleria", contact: "contatti" },
-            en: { about: "about", services: "services", gallery: "gallery", contact: "contact" },
-            fr: { about: "a-propos", services: "services", gallery: "galerie", contact: "contact" },
-            es: { about: "sobre-nosotros", services: "servicios", gallery: "galeria", contact: "contacto" },
-          };
-          const routes = routeMap[projectData.language.toLowerCase().slice(0, 2)] ?? routeMap["en"]!;
-
-          // Build scraped content summary for Claude
-          const scrapedPages = (scrapedContent as { pages?: Array<{ url?: string; title?: string; headings?: Array<{ level: number; text: string }>; paragraphs?: string[]; images?: Array<{ url: string; alt?: string }>; videos?: Array<{ url: string; type?: string }> }> })?.pages ?? [];
-          const scrapedSummary = scrapedPages.map((p, i) => {
-            const headings = (p.headings ?? []).map(h => `${"#".repeat(h.level)} ${h.text}`).join("\n");
-            const text = (p.paragraphs ?? []).join("\n\n");
-            const imgs = (p.images ?? []).map(img => typeof img === "string" ? img : img.url).join("\n");
-            const vids = (p.videos ?? []).map(v => `VIDEO: ${v.url} (${v.type ?? "unknown"})`).join("\n");
-            return `--- PAGE ${i + 1}: ${p.title ?? p.url ?? ""} ---\n${headings}\n\n${text}\n\nIMAGES:\n${imgs}${vids ? `\nVIDEOS:\n${vids}` : ""}`;
-          }).join("\n\n");
-          const scrapedContact = (scrapedContent as { contact?: Record<string, string> })?.contact ?? {};
-
-          const prompt = `You are redesigning an existing website. Your job is to create a PREMIUM CLONE — same structure, same content, same pages, same menu, same photos, same videos — but with a stunning 10,000 EUR+ visual design upgrade.
-
-ORIGINAL WEBSITE: ${projectData.website ?? ""}
-BUSINESS: ${projectData.businessName}
-SECTOR: ${projectData.sector} | CITY: ${projectData.city ?? ""} | LANGUAGE: ${langName}
-PHONE: ${scrapedContact.phone ?? projectData.phone}
-EMAIL: ${scrapedContact.email ?? projectData.email}
-ADDRESS: ${scrapedContact.address ?? projectData.address}
-GOOGLE: ${projectData.googleRating ?? "N/A"}/5 (${projectData.reviewCount ?? 0} reviews)
-
-ORIGINAL PHOTOS (use ALL of these — they are from the real site):
-${photos.slice(0, 15).map((p) => p["url"] as string).join("\n")}
-
-ORIGINAL SITE CONTENT (scraped from the real website — KEEP IT ALL):
-${scrapedSummary.slice(0, 5000)}
-
-CRITICAL RULES:
-1. This is a CLONE with premium design — NOT a new site. Keep the SAME structure, SAME pages, SAME navigation, SAME text content.
-2. Use the EXACT text from the scraped content. Do NOT rewrite, summarize, or translate it. Copy it verbatim.
-3. Use ALL the original photos in their original positions.
-4. If the original site has a VIDEO, keep it — use <video autoplay muted loop playsinline> or <iframe> for YouTube/Vimeo.
-5. Keep the same page structure — if the original has 6 pages, create 6 pages. If it has a menu/price list, include that menu/price list.
-6. The ONLY thing you change is the VISUAL DESIGN: better typography (Google Fonts), smooth animations (IntersectionObserver), modern layout, premium spacing, elegant color palette.
-7. FULLY responsive: mobile (hamburger nav, stacked), tablet, desktop (max-width 1200px).
-8. All text stays in ${langName} — the original language.
-
-DESIGN UPGRADE:
-- Premium Google Fonts (2 fonts: serif heading + sans body)
-- Elegant color palette extracted from the business photos
-- Scroll reveal animations (fade-in, slide-up via IntersectionObserver)
-- Glassmorphism navigation that changes on scroll
-- Hover effects on cards, buttons, images
-- Full-screen hero with overlay
-- Modern spacing and typography scale
-- Smooth transitions everywhere
-
-OUTPUT: Multi-page static HTML using ===FILE: path=== delimiters.
-Each file is self-contained with inline <style> and <script>.
-
-Generate one HTML file per original page. Use the scraped page structure above to determine the pages.
-At minimum:
-===FILE: index.html=== (homepage — clone of original homepage with premium design)
-
-Add more pages matching the original site structure.
-
-Start with ===FILE: index.html===`;
-
-          this.log("info", `build_preview_site: streaming Claude generation for "${projectData.businessName}" (${langName})`);
-
-          try {
-            const result = await this.client.callWithText(
-              [{ role: "user", content: prompt }],
-              { system: `You are a premium web redesigner. You CLONE existing websites with a luxury visual upgrade. Keep ALL original content, structure, pages, photos, videos IDENTICAL. Change ONLY the visual design to look like a 10000 EUR custom site. Output HTML files using ===FILE: path=== delimiters. All text stays in ${langName}. No explanation — just the HTML files.`, maxTokens: 16384 }
-            );
-
-            this.totalCost += result.cost;
-            this.totalInputTokens += result.inputTokens;
-            this.totalOutputTokens += result.outputTokens;
-
-            // Parse delimiter output — multiple HTML files
-            const parsed: Record<string, string> = {};
-            const blocks = result.text.split(/===FILE:\s*/);
-            for (const block of blocks) {
-              if (!block.trim()) continue;
-              const endOfPath = block.indexOf("===");
-              if (endOfPath === -1) continue;
-              let filePath = block.slice(0, endOfPath).trim();
-              let content = block.slice(endOfPath + 3).trim();
-              // Remove markdown fences if Claude wraps content
-              content = content.replace(/^```html?\s*/i, "").replace(/\s*```\s*$/i, "");
-              if (filePath && content && content.length > 100) {
-                parsed[filePath] = content;
-              }
-            }
-
-            this.log("info", `build_preview_site: streamed ${Object.keys(parsed).length} pages ($${result.cost.toFixed(3)}, ${result.outputTokens} tokens)`);
-
-            if (Object.keys(parsed).length >= 1 && "index.html" in parsed) {
-              projectFiles = parsed;
-              this.log("info", `build_preview_site: Claude generated ${Object.keys(projectFiles).length} UNIQUE premium pages`);
-            } else {
-              // Try single HTML fallback — maybe Claude output one big HTML without delimiters
-              let html = result.text.trim().replace(/^```html?\s*/i, "").replace(/\s*```\s*$/i, "");
-              const docStart = html.indexOf("<!DOCTYPE");
-              if (docStart > 0) html = html.slice(docStart);
-              if (html.includes("<html") && html.length > 5000) {
-                projectFiles = { "index.html": html };
-                this.log("info", `build_preview_site: single HTML fallback (${html.length} chars)`);
+          // ── Step 2: Clone website with JCodesMore + apply premium design ──
+          // JCodesMore cloner scrapes everything (assets, CSS, structure, pages)
+          // Then we deploy the cloned project with premium design
+          if (website) {
+            this.log("info", `build_preview_site: cloning ${website} with JCodesMore...`);
+            try {
+              const cloneResult = await cloneWebsite(website, slug, { timeoutMs: 1_800_000 });
+              if (cloneResult.success && Object.keys(cloneResult.files).length > 5) {
+                projectFiles = cloneResult.files;
+                this.log("info", `build_preview_site: JCodesMore cloned ${Object.keys(projectFiles).length} files`);
               } else {
-                throw new Error(`No valid HTML files parsed (${Object.keys(parsed).length} files, ${result.text.length} chars total)`);
+                this.log("warn", `build_preview_site: clone returned ${Object.keys(cloneResult.files).length} files (need 5+): ${cloneResult.error ?? "unknown"}`);
+                throw new Error(cloneResult.error ?? "Not enough files from clone");
               }
+            } catch (cloneErr) {
+              this.log("warn", `build_preview_site: JCodesMore clone failed: ${cloneErr instanceof Error ? cloneErr.message : String(cloneErr)} — using template fallback`);
+              projectFiles = generateNextJsProject(projectData);
+              this.log("info", `build_preview_site: template fallback: ${Object.keys(projectFiles).length} files`);
             }
-          } catch (streamErr) {
-            this.log("warn", `build_preview_site: streaming failed: ${streamErr instanceof Error ? streamErr.message : String(streamErr)} — using template fallback`);
+          } else {
+            // No website URL — use template generator
             projectFiles = generateNextJsProject(projectData);
-            this.log("info", `build_preview_site: template fallback: ${Object.keys(projectFiles).length} files`);
+            this.log("info", `build_preview_site: no website URL, template generated ${Object.keys(projectFiles).length} files`);
           }
         } catch (err) {
           this.log("warn", `build_preview_site: error: ${err instanceof Error ? err.message : String(err)}`);
@@ -1389,13 +1198,8 @@ body{padding-bottom:56px!important}
           });
         }
 
-        // Deploy to Cloudflare Pages first (static HTML, zero build issues)
-        // Falls back to Vercel if Cloudflare not configured
-        let deployResult = await deployToCloudflare(slug, deployFiles);
-        if (!deployResult.url) {
-          this.log("warn", "build_preview_site: Cloudflare deploy failed, trying Vercel...", { warning: deployResult.warning });
-          deployResult = await deployToVercel(slug, deployFiles);
-        }
+        // Deploy to Vercel
+        const deployResult = await deployToVercel(slug, deployFiles);
 
         if (deployResult.warning) {
           this.log("warn", "build_preview_site: deployment warning", { warning: deployResult.warning });
