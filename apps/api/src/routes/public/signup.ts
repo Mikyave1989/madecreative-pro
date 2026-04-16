@@ -101,7 +101,6 @@ app.post("/checkout", async (c) => {
 
   try {
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card", "klarna", "paypal"],
       mode: "subscription",
       customer_email: email.toLowerCase(),
       line_items: [{ price: priceId, quantity: 1 }],
@@ -109,18 +108,17 @@ app.post("/checkout", async (c) => {
         plan,
         websiteUrl: websiteUrl ?? "",
         companyName: companyName ?? "",
-        locale: locale ?? "de",
       },
       subscription_data: { metadata: { plan } },
-      success_url: `${process.env["PORTAL_URL"] ?? "https://madecreative.pro"}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/${locale ?? "de"}#pricing`,
-      allow_promotion_codes: true,
+      success_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/#pricing`,
     });
 
     return c.json({ success: true, data: { checkoutUrl: session.url } });
   } catch (err) {
-    console.error("[Checkout] Stripe error:", err instanceof Error ? err.message : String(err));
-    return c.json({ success: false, error: "Errore nella creazione del pagamento." }, 500);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Checkout] Stripe error:", msg);
+    return c.json({ success: false, error: msg }, 500);
   }
 });
 
