@@ -22,6 +22,10 @@ export async function applyPremiumUpgrade(projectDir: string): Promise<{ success
   try {
     console.log(`[PremiumUpgrade] Starting upgrade in ${projectDir}`);
 
+    // 0. Git commit clean clone state so we can revert if upgrade breaks build
+    await runCmd("git", ["add", "-A"], projectDir);
+    await runCmd("git", ["commit", "-m", "clean clone before premium upgrade", "--allow-empty"], projectDir);
+
     // 1. Install framer-motion
     console.log("[PremiumUpgrade] Installing framer-motion...");
     await runCmd("npm", ["install", "framer-motion"], projectDir);

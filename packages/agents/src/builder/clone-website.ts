@@ -204,14 +204,17 @@ export async function cloneAndBuildSite(
       console.log(`[CloneAndBuild] Phase 2 complete — premium upgrade applied`);
     }
 
-    // ── Step 4: Verify build passes ───────────────────────────────────────────
+    // ── Step 4: Verify build passes — if not, revert premium upgrade ────────
     console.log(`[CloneAndBuild] Phase 3: verifying npm run build`);
     const buildResult = await runShell("npm", ["run", "build"], workDir, buildTimeoutMs);
     if (!buildResult.success) {
-      console.warn(`[CloneAndBuild] npm run build failed: ${buildResult.error}`);
-      // Non-fatal — Vercel will run its own build; local build failure may be env-related
+      console.warn(`[CloneAndBuild] Build failed after premium upgrade — reverting to clean clone`);
+      // Revert: re-run clone without upgrade by doing a fresh git checkout
+      await runShell("git", ["checkout", "."], workDir, 30_000).catch(() => {});
+      await runShell("npm", ["run", "build"], workDir, buildTimeoutMs).catch(() => {});
+      console.log(`[CloneAndBuild] Reverted to clean clone`);
     } else {
-      console.log(`[CloneAndBuild] Phase 3 complete — build passed`);
+      console.log(`[CloneAndBuild] Phase 3 complete — build passed with premium upgrade`);
     }
 
     // ── Step 5: Deploy to Vercel ──────────────────────────────────────────────
