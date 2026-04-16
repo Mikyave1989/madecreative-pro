@@ -24,20 +24,30 @@ const FEATURES = [
 ];
 
 const COMPARISON = [
-  { f: 'Time to launch', old: '2-8 weeks', us: '< 5 minutes' },
-  { f: 'Cost', old: '\u20AC2,000 - \u20AC15,000', us: 'From \u20AC997 + \u20AC49/mo' },
-  { f: 'Technology', old: 'WordPress / Wix', us: 'React + Next.js' },
-  { f: 'Edits', old: 'Wait for dev', us: 'Chat with AI' },
-  { f: 'Code ownership', old: 'Locked in', us: 'Full source code' },
-  { f: 'Chatbot', old: 'Extra cost', us: 'Included' },
-  { f: 'Reports', old: 'Not included', us: 'Automated PDF' },
-  { f: 'Monitoring', old: 'Not included', us: '24/7 included' },
+  { f: 'Agenzia web tradizionale', old: '\u20AC2.000 - \u20AC15.000', us: '\u20AC49/mese \u2014 tutto incluso' },
+  { f: 'Sviluppatore freelance', old: '\u20AC800 - \u20AC3.000', us: '\u20AC49/mese \u2014 tutto incluso' },
+  { f: 'Wix / Squarespace', old: 'Template uguali per tutti', us: 'Design unico AI' },
 ];
 
 const PLANS = [
-  { name: 'Essential', slug: 'STARTER', price: 49, setup: 997, desc: 'Perfect to get started.', features: ['3-page website', 'Responsive design', 'Custom domain', 'Hosting included', 'SSL certificate', 'Email support'], hl: false },
-  { name: 'Business', slug: 'GROWTH', price: 79, setup: 1997, desc: 'Most popular choice.', features: ['5+ page website', 'Framer Motion animations', 'Photo gallery + reviews', 'WhatsApp integration', 'SEO optimized', 'Custom domain', 'Hosting included', 'Priority support'], hl: true },
-  { name: 'Premium', slug: 'PRO', price: 129, setup: 3497, desc: 'For maximum impact.', features: ['8+ page website', 'Video hero section', 'Multi-language', 'Advanced animations', 'Analytics dashboard', 'Custom domain', 'Hosting included', 'Dedicated support'], hl: false },
+  {
+    name: 'MadeCreative',
+    slug: 'STARTER',
+    price: 49,
+    setup: 0,
+    desc: 'Primo mese gratis. Poi solo \u20AC49/mese.',
+    features: [
+      'Sito premium rigenerato con AI',
+      'Design moderno, unico, costruito sui tuoi contenuti',
+      'Hosting incluso su infrastruttura professionale',
+      'Veloce, sicuro, sempre online',
+      'Dominio custom incluso',
+      'SEO ottimizzato \u2014 Google ti trova dal primo giorno',
+      '2 modifiche al mese incluse',
+      'Assistenza via email entro 24 ore',
+    ],
+    hl: true,
+  },
 ];
 
 const TESTIMONIALS = [
@@ -144,7 +154,7 @@ export function Landing() {
           <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', maxWidth: 640, margin: '0 auto 40px', lineHeight: 1.6, ...S.t2 }}>
             5 specialized AI agents scrape your data, analyze your market,
             write production code, deploy your site, and grow your business.
-            <span style={S.t1}> Premium websites from €997. Fully automated, AI-powered.</span>
+            <span style={S.t1}> Premium websites at only \u20AC49/mese. First month free.</span>
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
@@ -440,10 +450,10 @@ export function Landing() {
                   <h3 style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{plan.name}</h3>
                   <p style={{ fontSize: 13, ...S.t4, marginTop: 4, marginBottom: 16 }}>{plan.desc}</p>
                   <div style={{ marginBottom: 24 }}>
-                    <div style={{ fontSize: 14, color: '#a1a1aa', marginBottom: 4 }}>€{(plan as any).setup} setup</div>
+                    <div style={{ fontSize: 14, color: '#4ade80', marginBottom: 4, fontWeight: 600 }}>Primo mese gratis</div>
                     <span style={{ ...S.t4, fontSize: 18 }}>€</span>
-                    <span style={{ fontSize: 48, fontWeight: 800, color: '#fff' }}>{price}</span>
-                    <span style={S.t4}>/mo</span>
+                    <span style={{ fontSize: 48, fontWeight: 800, color: '#fff' }}>49</span>
+                    <span style={S.t4}>/mese</span>
                   </div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px' }}>
                     {plan.features.map(f => (
@@ -460,7 +470,7 @@ export function Landing() {
                       {cErr && <p style={{ fontSize: 12, color: '#f87171', marginBottom: 8 }}>{cErr}</p>}
                       <button onClick={() => checkout(plan.slug)} disabled={cLoad}
                         style={{ width: '100%', padding: '10px 0', borderRadius: 8, ...S.gb, color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer', opacity: cLoad ? .5 : 1, marginBottom: 8 }}>
-                        {cLoad ? 'Redirecting...' : `Pay \u20AC${price}/mo`}
+                        {cLoad ? 'Redirecting...' : 'Inizia gratis'}
                       </button>
                       <button onClick={() => { setCPlan(null); setCErr(''); }} style={{ width: '100%', fontSize: 12, color: '#52525b', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>Cancel</button>
                     </div>
@@ -502,7 +512,7 @@ export function Landing() {
       {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
       <section style={{ padding: '96px 24px', textAlign: 'center' }}>
         <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Stop paying agencies.<br /><span style={S.gt}>Let AI agents build your site.</span></h2>
-        <p style={{ ...S.t2, marginBottom: 32 }}>5 agents. Real code. Live in 60 seconds. From €997 setup + €49/month.</p>
+        <p style={{ ...S.t2, marginBottom: 32 }}>Primo mese gratis. Poi solo \u20AC49/mese. Disdici quando vuoi.</p>
         <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started Now</a>
       </section>
 

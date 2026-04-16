@@ -9,7 +9,7 @@ export const meta: MetaFunction = () => [
 ];
 
 interface Plan {
-  id: 'STARTER' | 'GROWTH' | 'PRO';
+  id: 'STARTER';
   label: string;
   price: string;
   period: string;
@@ -19,24 +19,16 @@ interface Plan {
 const PLANS: Plan[] = [
   {
     id: 'STARTER',
-    label: 'Essential',
-    price: '€997',
-    period: ' setup + €49/mo',
-    features: ['3-page website', 'Responsive design', 'Custom domain + hosting'],
-  },
-  {
-    id: 'GROWTH',
-    label: 'Business',
-    price: '€1,997',
-    period: ' setup + €79/mo',
-    features: ['5+ page website', 'Animations + gallery', 'WhatsApp + SEO'],
-  },
-  {
-    id: 'PRO',
-    label: 'Premium',
-    price: '€3,497',
-    period: ' setup + €129/mo',
-    features: ['8+ page website', 'Video hero + multi-lang', 'Dedicated support'],
+    label: 'MadeCreative',
+    price: 'Gratis',
+    period: ' primo mese — poi €49/mese',
+    features: [
+      'Sito premium rigenerato con AI',
+      'Hosting, SSL, dominio custom inclusi',
+      'SEO ottimizzato dal primo giorno',
+      '2 modifiche al mese incluse',
+      'Assistenza email entro 24 ore',
+    ],
   },
 ];
 
@@ -49,7 +41,7 @@ export default function SignupPage() {
   const urlEmail = urlParams.get('email') || '';
   const urlCompany = urlParams.get('company') || '';
   const urlProspectId = urlParams.get('prospectId') || '';
-  const validPlan = (urlPlan && PLANS.find(p => p.id === urlPlan)) ? urlPlan : 'GROWTH';
+  const validPlan: Plan['id'] = (urlPlan && PLANS.find(p => p.id === urlPlan)) ? urlPlan : 'STARTER';
 
   const [email, setEmail] = useState(urlEmail);
   const [companyName, setCompanyName] = useState(urlCompany);
@@ -177,7 +169,7 @@ export default function SignupPage() {
             <span className="block text-sm font-medium text-bolt-elements-textPrimary mb-2.5">
               Choose a plan <span className="text-red-400">*</span>
             </span>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {PLANS.map((p) => {
                 const selected = plan === p.id;
                 return (
@@ -186,33 +178,30 @@ export default function SignupPage() {
                     type="button"
                     onClick={() => setPlan(p.id)}
                     className={[
-                      'relative flex flex-col items-center rounded-lg border p-3 text-center transition-all cursor-pointer',
+                      'relative flex flex-col items-start rounded-lg border p-4 text-left transition-all cursor-pointer',
                       selected
                         ? 'border-indigo-500 bg-indigo-500/10 ring-2 ring-indigo-500'
                         : 'border-bolt-elements-borderColor bg-bolt-elements-background-depth-3 hover:border-indigo-400',
                     ].join(' ')}
                   >
-                    {p.id === 'GROWTH' && (
-                      <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
-                        Popular
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span
+                        className={[
+                          'text-base font-bold',
+                          selected ? 'text-indigo-400' : 'text-bolt-elements-textPrimary',
+                        ].join(' ')}
+                      >
+                        {p.label}
                       </span>
-                    )}
-                    <span
-                      className={[
-                        'text-sm font-semibold',
-                        selected ? 'text-indigo-400' : 'text-bolt-elements-textPrimary',
-                      ].join(' ')}
-                    >
-                      {p.label}
-                    </span>
-                    <span className="text-lg font-bold text-bolt-elements-textPrimary mt-1">
-                      {p.price}
-                      <span className="text-xs font-normal text-bolt-elements-textTertiary">{p.period}</span>
-                    </span>
-                    <ul className="mt-2 space-y-0.5 text-left w-full">
+                      <span className="text-lg font-bold text-bolt-elements-textPrimary">
+                        {p.price}
+                        <span className="text-xs font-normal text-bolt-elements-textTertiary">{p.period}</span>
+                      </span>
+                    </div>
+                    <ul className="space-y-1 w-full">
                       {p.features.map((f) => (
-                        <li key={f} className="flex items-start gap-1 text-[11px] text-bolt-elements-textSecondary">
-                          <span className="mt-px text-indigo-400 shrink-0">✓</span>
+                        <li key={f} className="flex items-start gap-1 text-[12px] text-bolt-elements-textSecondary">
+                          <span className="mt-px text-indigo-400 shrink-0">&#10003;</span>
                           <span>{f}</span>
                         </li>
                       ))}

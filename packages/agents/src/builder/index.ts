@@ -1112,16 +1112,11 @@ export class BuilderAgent extends BaseAgent {
           }
         }
 
-        // ── Calculate price based on site complexity ──
+        // ── Single plan — €49/mese, primo mese gratis ──
         const pageCount = Object.keys(projectFiles).filter(f => f.endsWith(".html")).length || 1;
-        const plan = pageCount >= 10 ? "PRO" : pageCount >= 2 ? "GROWTH" : "STARTER";
-        const planPrices: Record<string, { setup: number; monthly: number }> = {
-          STARTER: { setup: 997, monthly: 49 },
-          GROWTH: { setup: 1997, monthly: 79 },
-          PRO: { setup: 3497, monthly: 129 },
-        };
-        const price = planPrices[plan]!;
-        this.log("info", `build_preview_site: ${pageCount} pages → plan=${plan} €${price.setup}+€${price.monthly}/mo`);
+        const plan = "STARTER";
+        const price = { setup: 0, monthly: 49 };
+        this.log("info", `build_preview_site: ${pageCount} pages → plan=${plan} €${price.monthly}/mo (first month free)`);
 
         // ── Inject MadeCreative CTA banner into every HTML file ──
         const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
@@ -1130,11 +1125,11 @@ export class BuilderAgent extends BaseAgent {
         const lang = langMap[country.toUpperCase()] ?? "en";
 
         const cta: Record<string, { top: string; wa: string }> = {
-          de: { top: "KI-generierte Website-Vorschau", wa: "Auf WhatsApp schreiben" },
-          it: { top: "Anteprima sito generata dall'AI", wa: "Scrivici su WhatsApp" },
-          fr: { top: "Aperçu du site généré par IA", wa: "Ecrivez-nous sur WhatsApp" },
-          es: { top: "Vista previa del sitio generada por IA", wa: "Escribenos por WhatsApp" },
-          en: { top: "AI-generated website preview", wa: "Chat on WhatsApp" },
+          de: { top: "Vorschau Ihres neuen Webauftritts — Erster Monat gratis, danach EUR 49/Monat", wa: "Auf WhatsApp schreiben" },
+          it: { top: "Anteprima del vostro nuovo sito — Primo mese gratis, poi EUR 49/mese", wa: "Scrivici su WhatsApp" },
+          fr: { top: "Apercu de votre nouveau site — Premier mois gratuit, ensuite EUR 49/mois", wa: "Ecrivez-nous sur WhatsApp" },
+          es: { top: "Vista previa de su nuevo sitio — Primer mes gratis, luego EUR 49/mes", wa: "Escribenos por WhatsApp" },
+          en: { top: "Preview of your new website — First month free, then EUR 49/month", wa: "Chat on WhatsApp" },
         };
         const t = cta[lang] ?? cta.en!;
         const waNumber = "393317389918";
@@ -1149,7 +1144,7 @@ export class BuilderAgent extends BaseAgent {
 body{padding-bottom:56px!important}
 @media(max-width:600px){#_mc_bot span{display:none}#_mc_cta{font-size:12px;padding:8px 14px}}
 </style>
-<div id="_mc_bot"><span>madecreative.pro</span><a id="_mc_cta" href="${whatsappUrl}" target="_blank">${t.wa} →</a></div>`;
+<div id="_mc_bot"><span>madecreative.pro — ${t.top}</span><a id="_mc_cta" href="${whatsappUrl}" target="_blank">${t.wa} →</a></div>`;
 
         // Inject banner into all HTML files
         for (const [path, content] of Object.entries(projectFiles)) {

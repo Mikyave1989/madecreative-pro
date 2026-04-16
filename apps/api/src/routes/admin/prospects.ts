@@ -793,102 +793,104 @@ app.post("/:id/send-preview-email", async (c) => {
   const previewUrl = `${apiBase}/preview/${prospect.id}`;
   const city = prospect.city ?? "";
 
-  // Language-specific email templates — engaging, professional, high conversion
+  // Language-specific email templates — professional, no AI mention, single €49/mese plan
   const waLink = "https://wa.me/393317389918";
   const templates: Record<string, { subject: string; body: string }> = {
     de: {
-      subject: `${name} - so koennte Ihre neue Website aussehen`,
+      subject: `${name} - Ihr neues Website-Design ist fertig`,
       body: `<p>Sehr geehrtes Team von <strong>${name}</strong>,</p>
-<p>wir haben uns Ihre Online-Präsenz${city ? ` in ${city}` : ""} genau angesehen — und waren beeindruckt von dem, was Sie aufgebaut haben. Gleichzeitig ist uns aufgefallen, dass Ihre Website das Potenzial Ihres Unternehmens noch nicht voll widerspiegelt.</p>
-<p>Deshalb haben wir uns erlaubt, <strong>einen komplett neuen Website-Entwurf für ${name} zu erstellen</strong> — kostenlos und unverbindlich. Dieser Entwurf basiert auf Ihren echten Inhalten, Fotos und Informationen:</p>
+<p>wir haben uns Ihre Online-Praesenz${city ? ` in ${city}` : ""} genau angesehen und waren beeindruckt von dem, was Sie aufgebaut haben. Gleichzeitig ist uns aufgefallen, dass Ihre Website das Potenzial Ihres Unternehmens noch nicht voll widerspiegelt.</p>
+<p>Deshalb haben wir uns erlaubt, <strong>Ihren Webauftritt komplett neu zu gestalten</strong> — kostenlos und unverbindlich. Das Ergebnis basiert auf Ihren echten Inhalten, Fotos und Informationen:</p>
 <ul style="margin:16px 0;padding-left:20px;color:#555">
-<li>-<strong>Premium-Design</strong> — modern, elegant, auf Ihre Branche zugeschnitten</li>
-<li>-<strong>Perfekt auf allen Geräten</strong> — Smartphone, Tablet, Laptop, Desktop</li>
-<li>-<strong>SEO-optimiert</strong> — bessere Sichtbarkeit bei Google</li>
-<li>-<strong>Blitzschnell</strong> — gebaut mit modernster Technologie (Next.js + React)</li>
-<li>-<strong>Ihre echten Fotos & Texte</strong> — kein generischer Template-Look</li>
+<li>- <strong>Premium-Design</strong> — modern, elegant, auf Ihre Branche zugeschnitten</li>
+<li>- <strong>Perfekt auf allen Geraeten</strong> — Smartphone, Tablet, Laptop, Desktop</li>
+<li>- <strong>SEO-optimiert</strong> — bessere Sichtbarkeit bei Google</li>
+<li>- <strong>Blitzschnell</strong> — gebaut mit modernster Technologie</li>
+<li>- <strong>Ihre echten Fotos und Texte</strong> — kein generischer Template-Look</li>
 </ul>
-<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Ihren Website-Entwurf ansehen</a></p>
-<p>Überzeugt Sie das Ergebnis? Dann können Sie Ihre neue Website <strong>ab €997 (einmalig) + €49/Monat</strong> sofort live schalten — inklusive Hosting, SSL, Domain und laufende Updates.</p>
-<p><strong>Keine versteckten Kosten. Keine Vertragsbindung. 14 Tage Geld-zurück-Garantie.</strong></p>
-<p>Haben Sie Fragen? Schreiben Sie mir direkt — ich antworte persönlich:</p>
-<p>-<a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Jetzt schreiben</a><br>
+<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Ihr neues Website-Design ansehen</a></p>
+<p>Ueberzeugt Sie das Ergebnis? Der erste Monat ist <strong>kostenlos</strong>. Danach nur <strong>EUR 49/Monat</strong> — inklusive Hosting, SSL, Domain und laufende Updates. Jederzeit kuendbar.</p>
+<p><strong>Keine Einrichtungsgebuehr. Keine versteckten Kosten. Keine Vertragsbindung.</strong></p>
+<p>Haben Sie Fragen? Schreiben Sie mir direkt — ich antworte persoenlich:</p>
+<p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Jetzt schreiben</a><br>
 Oder antworten Sie einfach auf diese E-Mail</p>
-<p style="margin-top:28px">Mit freundlichen Grüßen,<br><strong>Marco Bianchi</strong><br>Gründer & Geschäftsführer, MadeCreative<br><span style="color:#888">AI-Webdesign für anspruchsvolle Unternehmen</span></p>`,
+<p style="margin-top:28px">Mit freundlichen Gruessen,<br><strong>Marco Bianchi</strong><br>Gruender und Geschaeftsfuehrer, MadeCreative<br><span style="color:#888">Professionelles Webdesign fuer anspruchsvolle Unternehmen</span></p>`,
     },
     it: {
-      subject: `${name} - ecco come potrebbe essere il vostro nuovo sito`,
+      subject: `${name} - il vostro nuovo design e pronto`,
       body: `<p>Gentile team di <strong>${name}</strong>,</p>
-<p>abbiamo analizzato attentamente la vostra presenza online${city ? ` a ${city}` : ""} — e siamo rimasti colpiti da ciò che avete costruito. Allo stesso tempo, abbiamo notato che il vostro sito web non riflette ancora appieno il potenziale della vostra attività.</p>
-<p>Per questo ci siamo permessi di creare <strong>un nuovo design completo per il sito di ${name}</strong> — completamente gratuito e senza impegno. Il progetto si basa sui vostri contenuti reali, foto e informazioni:</p>
+<p>abbiamo analizzato attentamente la vostra presenza online${city ? ` a ${city}` : ""} e siamo rimasti colpiti da cio che avete costruito. Allo stesso tempo, abbiamo notato che il vostro sito web non riflette ancora appieno il potenziale della vostra attivita.</p>
+<p>Per questo ci siamo permessi di <strong>ridisegnare completamente il sito di ${name}</strong> — senza costi e senza impegno. Il risultato si basa sui vostri contenuti reali, foto e informazioni:</p>
 <ul style="margin:16px 0;padding-left:20px;color:#555">
-<li>-<strong>Design premium</strong> — moderno, elegante, su misura per il vostro settore</li>
-<li>-<strong>Perfetto su ogni dispositivo</strong> — smartphone, tablet, laptop, desktop</li>
-<li>-<strong>Ottimizzato SEO</strong> — maggiore visibilità su Google</li>
-<li>-<strong>Velocità estrema</strong> — costruito con tecnologia all'avanguardia (Next.js + React)</li>
-<li>-<strong>Le vostre foto e testi reali</strong> — nessun aspetto da template generico</li>
+<li>- <strong>Design premium</strong> — moderno, elegante, su misura per il vostro settore</li>
+<li>- <strong>Perfetto su ogni dispositivo</strong> — smartphone, tablet, laptop, desktop</li>
+<li>- <strong>Ottimizzato SEO</strong> — maggiore visibilita su Google</li>
+<li>- <strong>Velocita estrema</strong> — costruito con tecnologia all'avanguardia</li>
+<li>- <strong>Le vostre foto e testi reali</strong> — nessun aspetto da template generico</li>
 </ul>
-<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Guarda l'anteprima del vostro sito</a></p>
-<p>Vi piace il risultato? Potete pubblicare il vostro nuovo sito <strong>da €997 (una tantum) + €49/mese</strong> — hosting, SSL, dominio e aggiornamenti inclusi.</p>
-<p><strong>Nessun costo nascosto. Nessun vincolo. Garanzia soddisfatti o rimborsati 14 giorni.</strong></p>
+<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Guarda il vostro nuovo design</a></p>
+<p>Vi piace il risultato? Il primo mese e <strong>completamente gratuito</strong>. Poi solo <strong>EUR 49/mese</strong> — hosting, SSL, dominio e aggiornamenti inclusi. Disdici quando volete.</p>
+<p><strong>Nessuna spesa di attivazione. Nessun costo nascosto. Nessun vincolo contrattuale.</strong></p>
 <p>Avete domande? Scrivetemi direttamente — rispondo personalmente:</p>
-<p>-<a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Scrivici ora</a><br>
+<p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Scrivici ora</a><br>
 Oppure rispondete a questa email</p>
-<p style="margin-top:28px">Cordiali saluti,<br><strong>Marco Bianchi</strong><br>Fondatore & CEO, MadeCreative<br><span style="color:#888">Web design AI per aziende ambiziose</span></p>`,
+<p style="margin-top:28px">Cordiali saluti,<br><strong>Marco Bianchi</strong><br>Fondatore e CEO, MadeCreative<br><span style="color:#888">Web design professionale per aziende ambiziose</span></p>`,
     },
     en: {
-      subject: `${name} - here is what your new website could look like`,
+      subject: `${name} - your new website design is ready`,
       body: `<p>Dear <strong>${name}</strong> team,</p>
-<p>We took a close look at your online presence${city ? ` in ${city}` : ""} — and we were impressed by what you've built. At the same time, we noticed that your website doesn't yet fully reflect the potential of your business.</p>
-<p>That's why we took the liberty of creating <strong>a complete new website design for ${name}</strong> — completely free and with no obligation. This design is based on your real content, photos and information:</p>
+<p>We took a close look at your online presence${city ? ` in ${city}` : ""} and were impressed by what you have built. At the same time, we noticed that your website does not yet fully reflect the potential of your business.</p>
+<p>That is why we took the liberty of <strong>completely redesigning the website for ${name}</strong> — at no cost and with no obligation. The result is based on your real content, photos and information:</p>
 <ul style="margin:16px 0;padding-left:20px;color:#555">
-<li>-<strong>Premium design</strong> — modern, elegant, tailored to your industry</li>
-<li>-<strong>Perfect on every device</strong> — smartphone, tablet, laptop, desktop</li>
-<li>-<strong>SEO optimized</strong> — better visibility on Google</li>
-<li>-<strong>Lightning fast</strong> — built with cutting-edge technology (Next.js + React)</li>
-<li>-<strong>Your real photos & text</strong> — no generic template look</li>
+<li>- <strong>Premium design</strong> — modern, elegant, tailored to your industry</li>
+<li>- <strong>Perfect on every device</strong> — smartphone, tablet, laptop, desktop</li>
+<li>- <strong>SEO optimized</strong> — better visibility on Google</li>
+<li>- <strong>Lightning fast</strong> — built with cutting-edge technology</li>
+<li>- <strong>Your real photos and text</strong> — no generic template look</li>
 </ul>
-<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">View your website preview</a></p>
-<p>Like what you see? Launch your new website <strong>from €997 (one-time) + €49/month</strong> — including hosting, SSL, domain, and ongoing updates.</p>
-<p><strong>No hidden costs. No contracts. 14-day money-back guarantee.</strong></p>
+<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">View your new website design</a></p>
+<p>The first month is <strong>completely free</strong>. Then only <strong>EUR 49/month</strong> — including hosting, SSL, domain, and ongoing updates. Cancel anytime.</p>
+<p><strong>No setup fee. No hidden costs. No contracts.</strong></p>
 <p>Questions? Write to me directly — I reply personally:</p>
-<p>-<a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Chat now</a><br>
+<p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Chat now</a><br>
 Or simply reply to this email</p>
-<p style="margin-top:28px">Best regards,<br><strong>Marco Bianchi</strong><br>Founder & CEO, MadeCreative<br><span style="color:#888">AI web design for ambitious businesses</span></p>`,
+<p style="margin-top:28px">Best regards,<br><strong>Marco Bianchi</strong><br>Founder and CEO, MadeCreative<br><span style="color:#888">Professional web design for ambitious businesses</span></p>`,
     },
     es: {
-      subject: `${name} - asi podria ser su nueva web`,
+      subject: `${name} - su nuevo diseno esta listo`,
       body: `<p>Estimado equipo de <strong>${name}</strong>,</p>
-<p>Hemos analizado su presencia online${city ? ` en ${city}` : ""} y nos ha impresionado lo que han construido. Al mismo tiempo, hemos notado que su sitio web aún no refleja todo el potencial de su negocio.</p>
-<p>Por eso nos hemos tomado la libertad de crear <strong>un diseño web completamente nuevo para ${name}</strong> — gratis y sin compromiso:</p>
+<p>Hemos analizado su presencia online${city ? ` en ${city}` : ""} y nos ha impresionado lo que han construido. Al mismo tiempo, hemos notado que su sitio web aun no refleja todo el potencial de su negocio.</p>
+<p>Por eso nos hemos tomado la libertad de <strong>redisenar completamente el sitio web de ${name}</strong> — sin coste y sin compromiso. El resultado se basa en sus contenidos reales, fotos e informacion:</p>
 <ul style="margin:16px 0;padding-left:20px;color:#555">
-<li>-<strong>Diseño premium</strong> — moderno, elegante, adaptado a su sector</li>
-<li>-<strong>Perfecto en cada dispositivo</strong></li>
-<li>-<strong>Optimizado para SEO</strong></li>
-<li>-<strong>Ultrarrápido</strong> — construido con Next.js + React</li>
-<li>-<strong>Sus fotos y textos reales</strong></li>
+<li>- <strong>Diseno premium</strong> — moderno, elegante, adaptado a su sector</li>
+<li>- <strong>Perfecto en cada dispositivo</strong> — smartphone, tablet, portatil, escritorio</li>
+<li>- <strong>Optimizado para SEO</strong> — mayor visibilidad en Google</li>
+<li>- <strong>Ultrarapido</strong> — construido con tecnologia de vanguardia</li>
+<li>- <strong>Sus fotos y textos reales</strong> — sin aspecto de plantilla generica</li>
 </ul>
-<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Ver vista previa de su web</a></p>
-<p>Desde <strong>€997 + €49/mes</strong>. Sin costes ocultos. Garantía de 14 días.</p>
-<p>-<a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Escribir ahora</a></p>
-<p style="margin-top:28px">Saludos cordiales,<br><strong>Marco Bianchi</strong><br>Fundador & CEO, MadeCreative</p>`,
+<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Ver su nuevo diseno web</a></p>
+<p>El primer mes es <strong>completamente gratuito</strong>. Despues solo <strong>EUR 49/mes</strong> — hosting, SSL, dominio y actualizaciones incluidos. Cancelacion en cualquier momento.</p>
+<p><strong>Sin cuota de alta. Sin costes ocultos. Sin permanencia.</strong></p>
+<p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Escribir ahora</a></p>
+<p style="margin-top:28px">Saludos cordiales,<br><strong>Marco Bianchi</strong><br>Fundador y CEO, MadeCreative<br><span style="color:#888">Diseno web profesional para empresas ambiciosas</span></p>`,
     },
     fr: {
-      subject: `${name} - voici a quoi pourrait ressembler votre nouveau site`,
-      body: `<p>Chère équipe de <strong>${name}</strong>,</p>
-<p>Nous avons analysé votre présence en ligne${city ? ` à ${city}` : ""} et avons été impressionnés par ce que vous avez construit. En même temps, nous avons remarqué que votre site web ne reflète pas encore tout le potentiel de votre activité.</p>
-<p>C'est pourquoi nous nous sommes permis de créer <strong>un nouveau design complet pour ${name}</strong> — entièrement gratuit et sans engagement :</p>
+      subject: `${name} - votre nouveau design est pret`,
+      body: `<p>Chere equipe de <strong>${name}</strong>,</p>
+<p>Nous avons analyse votre presence en ligne${city ? ` a ${city}` : ""} et avons ete impressionnes par ce que vous avez construit. En meme temps, nous avons remarque que votre site web ne reflete pas encore tout le potentiel de votre activite.</p>
+<p>C'est pourquoi nous nous sommes permis de <strong>reconcevoir entierement le site de ${name}</strong> — gratuitement et sans engagement. Le resultat est base sur vos vrais contenus, photos et informations :</p>
 <ul style="margin:16px 0;padding-left:20px;color:#555">
-<li>-<strong>Design premium</strong> — moderne, élégant, adapté à votre secteur</li>
-<li>-<strong>Parfait sur chaque appareil</strong></li>
-<li>-<strong>Optimisé SEO</strong></li>
-<li>-<strong>Ultra rapide</strong> — construit avec Next.js + React</li>
-<li>-<strong>Vos vraies photos et textes</strong></li>
+<li>- <strong>Design premium</strong> — moderne, elegant, adapte a votre secteur</li>
+<li>- <strong>Parfait sur chaque appareil</strong> — smartphone, tablette, ordinateur portable, bureau</li>
+<li>- <strong>Optimise SEO</strong> — meilleure visibilite sur Google</li>
+<li>- <strong>Ultra rapide</strong> — construit avec la technologie la plus recente</li>
+<li>- <strong>Vos vraies photos et textes</strong> — sans aspect de modele generique</li>
 </ul>
-<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Voir l'aperçu de votre site</a></p>
-<p>À partir de <strong>€997 + €49/mois</strong>. Sans frais cachés. Garantie 14 jours.</p>
-<p>-<a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp : Écrire maintenant</a></p>
-<p style="margin-top:28px">Cordialement,<br><strong>Marco Bianchi</strong><br>Fondateur & CEO, MadeCreative</p>`,
+<p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Voir votre nouveau design</a></p>
+<p>Le premier mois est <strong>entierement gratuit</strong>. Ensuite seulement <strong>EUR 49/mois</strong> — hebergement, SSL, domaine et mises a jour inclus. Resiliable a tout moment.</p>
+<p><strong>Sans frais d'installation. Sans frais caches. Sans engagement.</strong></p>
+<p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp : Ecrire maintenant</a></p>
+<p style="margin-top:28px">Cordialement,<br><strong>Marco Bianchi</strong><br>Fondateur et CEO, MadeCreative<br><span style="color:#888">Design web professionnel pour entreprises ambitieuses</span></p>`,
     },
   };
 

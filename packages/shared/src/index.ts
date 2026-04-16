@@ -7,3 +7,4 @@ export * from "./site-generator.js"; // legacy — kept for backward compat, use
 export * from "./generate-project.js"; // PRIMARY — generateNextJsProject, projectToPreviewHtml, generateSitePreview
 export * from "./website-scraper.js"; // scrapeWebsite, ScrapedWebsite, ScrapedPage
 export * from "./content-to-project.js"; // buildProjectFromContent
+export * from "./extract-scraped-content.js"; // extractScrapedContent, ExtractedContent

@@ -58,12 +58,12 @@ app.post("/checkout", async (c) => {
   const websiteUrl = rawBody.websiteUrl;
   const locale = rawBody.locale;
 
-  const validPlans = ["STARTER", "GROWTH", "PRO"] as const;
+  const validPlans = ["STARTER"] as const;
   const validBillings = ["monthly", "annual"] as const;
 
   if (!plan || !validPlans.includes(plan as (typeof validPlans)[number])) {
     return c.json(
-      { success: false, error: "Plan must be STARTER, GROWTH, or PRO" },
+      { success: false, error: "Plan must be STARTER" },
       400
     );
   }

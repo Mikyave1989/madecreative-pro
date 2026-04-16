@@ -150,15 +150,9 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   const resendKey = process.env["RESEND_API_KEY"];
   if (!resendKey) return c.json({ error: "RESEND not configured" }, 500);
 
-  // Determine plan & price based on number of pages in scrapedContent
-  const planPrices: Record<string, { setup: number; monthly: number }> = {
-    STARTER: { setup: 997, monthly: 49 },
-    GROWTH: { setup: 1997, monthly: 79 },
-    PRO: { setup: 3497, monthly: 129 },
-  };
-  const pageCount = (prospect.scrapedContent as { pages?: unknown[] } | null)?.pages?.length ?? 1;
-  const plan = pageCount >= 8 ? "PRO" : pageCount >= 3 ? "GROWTH" : "STARTER";
-  const price = planPrices[plan]!;
+  // Single plan — €49/mese, primo mese gratis
+  const plan = "STARTER";
+  const price = { setup: 0, monthly: 49 };
 
   const lang = body.language ?? "en";
   const name = prospect.companyName;
@@ -171,11 +165,11 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 
   // Clean email — personal intro + one preview button + WhatsApp
   const subjects: Record<string, string> = {
-    de: `${name} - so koennte Ihre neue Website aussehen`,
-    it: `${name} - ecco come potrebbe essere il vostro nuovo sito`,
-    fr: `${name} - voici a quoi pourrait ressembler votre nouveau site`,
-    es: `${name} - asi podria ser su nueva web`,
-    en: `${name} - here is what your new website could look like`,
+    de: `${name} - Ihr neues Website-Design ist fertig`,
+    it: `${name} - il vostro nuovo design e pronto`,
+    fr: `${name} - votre nouveau design est pret`,
+    es: `${name} - su nuevo diseno esta listo`,
+    en: `${name} - your new website design is ready`,
   };
 
   const waNumber = "393317389918";
@@ -197,12 +191,12 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Ihre echten Fotos und Texte</strong> - kein generischer Template-Look</li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}Ihren Website-Entwurf ansehen</a></p>
-<p style="margin:0 0 16px">Ueberzeugt Sie das Ergebnis? Dann koennen Sie Ihre neue Website <strong>ab EUR 997 (einmalig) + EUR 49/Monat</strong> sofort live schalten - inklusive Hosting, SSL, Domain und laufende Updates.</p>
-<p style="margin:0 0 16px"><strong>Keine versteckten Kosten. Keine Vertragsbindung. 14 Tage Geld-zurueck-Garantie.</strong></p>
+<p style="margin:0 0 16px">Ueberzeugt Sie das Ergebnis? Der erste Monat ist <strong>kostenlos</strong>. Danach nur <strong>EUR 49/Monat</strong> - inklusive Hosting, SSL, Domain und laufende Updates. Jederzeit kuendbar.</p>
+<p style="margin:0 0 16px"><strong>Keine Einrichtungsgebuehr. Keine versteckten Kosten. Keine Vertragsbindung.</strong></p>
 <p style="margin:0 0 16px">Haben Sie Fragen? Schreiben Sie mir direkt:</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Jetzt schreiben</a></p>
 <p style="margin:0 0 8px">Oder antworten Sie einfach auf diese E-Mail.</p>
-<p style="margin:24px 0 0">Mit freundlichen Gruessen,<br><strong>Marco Bianchi</strong><br>MadeCreative<br><span style="color:#888">AI-Webdesign fuer anspruchsvolle Unternehmen</span></p>`,
+<p style="margin:24px 0 0">Mit freundlichen Gruessen,<br><strong>Marco Bianchi</strong><br>MadeCreative<br><span style="color:#888">Webdesign fuer anspruchsvolle Unternehmen</span></p>`,
     it: `<p style="margin:0 0 16px">Gentile team di <strong>${name}</strong>,</p>
 <p style="margin:0 0 16px">abbiamo analizzato attentamente la vostra presenza online${city ? ` a ${city}` : ""} e siamo rimasti colpiti da cio che avete costruito. Allo stesso tempo, abbiamo notato che il vostro sito web non riflette ancora appieno il potenziale della vostra attivita.</p>
 <p style="margin:0 0 16px">Per questo ci siamo permessi di creare <strong>un nuovo design completo per il sito di ${name}</strong> - completamente gratuito e senza impegno:</p>
@@ -214,12 +208,12 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Le vostre foto e testi reali</strong> - nessun aspetto da template generico</li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}Guarda l'anteprima del vostro sito</a></p>
-<p style="margin:0 0 16px">Vi piace il risultato? Potete pubblicare il vostro nuovo sito <strong>da EUR 997 (una tantum) + EUR 49/mese</strong> - hosting, SSL, dominio e aggiornamenti inclusi.</p>
-<p style="margin:0 0 16px"><strong>Nessun costo nascosto. Nessun vincolo. Garanzia soddisfatti o rimborsati 14 giorni.</strong></p>
+<p style="margin:0 0 16px">Vi piace il risultato? Il primo mese e <strong>completamente gratuito</strong>. Poi solo <strong>EUR 49/mese</strong> - hosting, SSL, dominio e aggiornamenti inclusi. Disdici quando volete.</p>
+<p style="margin:0 0 16px"><strong>Nessuna spesa di attivazione. Nessun costo nascosto. Nessun vincolo contrattuale.</strong></p>
 <p style="margin:0 0 16px">Avete domande? Scrivetemi direttamente:</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Scrivici ora</a></p>
 <p style="margin:0 0 8px">Oppure rispondete a questa email.</p>
-<p style="margin:24px 0 0">Cordiali saluti,<br><strong>Marco Bianchi</strong><br>MadeCreative<br><span style="color:#888">Web design AI per aziende ambiziose</span></p>`,
+<p style="margin:24px 0 0">Cordiali saluti,<br><strong>Marco Bianchi</strong><br>MadeCreative<br><span style="color:#888">Web design per aziende ambiziose</span></p>`,
     fr: `<p style="margin:0 0 16px">Cher equipe de <strong>${name}</strong>,</p>
 <p style="margin:0 0 16px">Nous avons analyse votre presence en ligne${city ? ` a ${city}` : ""} et avons ete impressionnes par ce que vous avez construit. En meme temps, nous avons remarque que votre site web ne reflete pas encore tout le potentiel de votre activite.</p>
 <p style="margin:0 0 16px">C'est pourquoi nous nous sommes permis de creer <strong>un nouveau design complet pour ${name}</strong> - entierement gratuit et sans engagement:</p>
@@ -231,7 +225,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Vos vraies photos et textes</strong></li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}Voir l'apercu de votre site</a></p>
-<p style="margin:0 0 16px">A partir de <strong>EUR 997 + EUR 49/mois</strong>. Sans frais caches. Garantie 14 jours.</p>
+<p style="margin:0 0 16px">Le premier mois est <strong>entierement gratuit</strong>. Ensuite seulement <strong>EUR 49/mois</strong>. Aucun frais d'installation. Resiliable a tout moment.</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Ecrire maintenant</a></p>
 <p style="margin:24px 0 0">Cordialement,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
     es: `<p style="margin:0 0 16px">Estimado equipo de <strong>${name}</strong>,</p>
@@ -245,7 +239,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Sus fotos y textos reales</strong></li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}Ver vista previa de su web</a></p>
-<p style="margin:0 0 16px">Desde <strong>EUR 997 + EUR 49/mes</strong>. Sin costes ocultos. Garantia de 14 dias.</p>
+<p style="margin:0 0 16px">El primer mes es <strong>completamente gratuito</strong>. Despues solo <strong>EUR 49/mes</strong>. Sin cuota de alta. Sin costes ocultos. Cancelacion en cualquier momento.</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Escribir ahora</a></p>
 <p style="margin:24px 0 0">Saludos cordiales,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
     en: `<p style="margin:0 0 16px">Dear <strong>${name}</strong> team,</p>
@@ -259,12 +253,12 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Your real photos and text</strong> - no generic template look</li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}View your website preview</a></p>
-<p style="margin:0 0 16px">Like what you see? Launch your new website <strong>from EUR 997 (one-time) + EUR 49/month</strong> - including hosting, SSL, domain, and ongoing updates.</p>
-<p style="margin:0 0 16px"><strong>No hidden costs. No contracts. 14-day money-back guarantee.</strong></p>
+<p style="margin:0 0 16px">The first month is <strong>completely free</strong>. Then only <strong>EUR 49/month</strong> - including hosting, SSL, domain, and ongoing updates. Cancel anytime.</p>
+<p style="margin:0 0 16px"><strong>No setup fee. No hidden costs. No contracts.</strong></p>
 <p style="margin:0 0 16px">Questions? Write to me directly:</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Chat now</a></p>
 <p style="margin:0 0 8px">Or simply reply to this email.</p>
-<p style="margin:24px 0 0">Best regards,<br><strong>Marco Bianchi</strong><br>MadeCreative<br><span style="color:#888">AI web design for ambitious businesses</span></p>`,
+<p style="margin:24px 0 0">Best regards,<br><strong>Marco Bianchi</strong><br>MadeCreative<br><span style="color:#888">Web design for ambitious businesses</span></p>`,
   };
 
   const subject = subjects[lang] ?? subjects.en!;

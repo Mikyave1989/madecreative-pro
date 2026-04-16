@@ -31,6 +31,7 @@
 
 import { getTemplateConfig } from "./templates.js";
 import type { TemplateConfig, TemplateColors } from "./templates.js";
+import { getSectorTemplate } from "./templates/index.js";
 
 /** Color palette for the project — matches TemplateColors subset */
 export type ColorPalette = Pick<TemplateColors, "primary" | "accent" | "background" | "text">;
@@ -64,6 +65,11 @@ export interface ProjectData {
   logoUrl?: string;
   whatsapp?: string;
   city?: string;
+  // Scraped content from original site (injected by builder)
+  scrapedHeadings?: string[];     // Real h1-h3 from original site
+  scrapedParagraphs?: string[];   // Real text paragraphs
+  scrapedVideos?: Array<{ url: string; type?: string }>;  // Videos for hero
+  scrapedServices?: Array<{ name: string; description: string }>;
 }
 
 // ─── Helper ────────────────────────────────────────────────────────────────
@@ -72,7 +78,7 @@ const J = JSON.stringify; // shorthand
 
 // ─── i18n ──────────────────────────────────────────────────────────────────
 
-interface I18nTranslations {
+export interface I18nTranslations {
   routes: {
     about: string;
     services: string;
@@ -280,23 +286,33 @@ function getI18n(language: string): I18nTranslations {
 export function generateNextJsProject(data: ProjectData): Record<string, string> {
   const cfg = getTemplateConfig(data.sector);
   const t = getI18n(data.language);
+  const sectorTpl = getSectorTemplate(data.sector);
   const f: Record<string, string> = {};
 
+  // ── Infrastructure (same for all sectors) ────────────────────────────────
   f["package.json"] = genPackageJson(data);
   f["next.config.mjs"] = `/** @type {import('next').NextConfig} */\nexport default { images: { remotePatterns: [{ protocol: "https", hostname: "**" }] } };\n`;
   f["tsconfig.json"] = `{"compilerOptions":{"target":"es2017","lib":["dom","dom.iterable","esnext"],"allowJs":true,"skipLibCheck":true,"strict":false,"noEmit":true,"incremental":true,"esModuleInterop":true,"module":"esnext","moduleResolution":"bundler","resolveJsonModule":true,"isolatedModules":true,"jsx":"preserve","plugins":[{"name":"next"}],"paths":{"@/*":["./*"]}},"include":["next-env.d.ts","**/*.ts","**/*.tsx",".next/types/**/*.ts"],"exclude":["node_modules"]}`;
 
   f["lib/data.ts"] = genDataFile(data, cfg);
-  f["app/globals.css"] = genGlobalsCss(cfg);
+
+  // ── CSS: base design system + optional sector overrides ──────────────────
+  f["app/globals.css"] = genGlobalsCss(cfg) + (sectorTpl ? sectorTpl.additionalCss(cfg) : "");
+
   f["app/layout.tsx"] = genLayout(data, cfg);
-  f["app/page.tsx"] = genHomePage(data, cfg, t);
+
+  // ── Homepage + Hero: sector-specific if registered, else default ─────────
+  f["app/page.tsx"] = sectorTpl ? sectorTpl.genHomePage(data, cfg, t) : genHomePage(data, cfg, t);
+
+  // ── Inner pages stay the same for all sectors ─────────────────────────────
   f[`app/${t.routes.about}/page.tsx`] = genChiSiamoPage(t);
   f[`app/${t.routes.services}/page.tsx`] = genServiziPage(t);
   f[`app/${t.routes.gallery}/page.tsx`] = genGalleriaPage(t);
   f[`app/${t.routes.contact}/page.tsx`] = genContattiPage(t);
 
+  // ── Shared components ─────────────────────────────────────────────────────
   f["components/Nav.tsx"] = genNav(t);
-  f["components/Hero.tsx"] = genHero(cfg, t);
+  f["components/Hero.tsx"] = sectorTpl ? sectorTpl.genHero(cfg, t) : genHero(cfg, t);
   f["components/Footer.tsx"] = genFooter(t);
   f["components/Section.tsx"] = genSection();
   f["components/Stats.tsx"] = genStats();
@@ -307,6 +323,14 @@ export function generateNextJsProject(data: ProjectData): Record<string, string>
   f["components/WhatsApp.tsx"] = genWhatsApp();
   f["components/ScrollProgress.tsx"] = genScrollProgress();
   f["components/Preloader.tsx"] = genPreloader();
+
+  // ── Sector-specific extra components / pages ──────────────────────────────
+  if (sectorTpl) {
+    Object.assign(f, sectorTpl.additionalComponents(data, cfg, t));
+    if (sectorTpl.additionalPages) {
+      Object.assign(f, sectorTpl.additionalPages(data, cfg, t));
+    }
+  }
 
   return f;
 }
@@ -344,17 +368,43 @@ function genDataFile(d: ProjectData, cfg: TemplateConfig): string {
     { name: "Giovanni P.", text: "Esperienza fantastica dall'inizio alla fine. Staff gentilissimo.", rating: 5 },
   ];
 
+  // ── Scraped content injection ────────────────────────────────────────────
+  // Use real content from original site when available; fall back to template
+  const hasParagraphs = d.scrapedParagraphs && d.scrapedParagraphs.length > 0;
+  const aboutText = hasParagraphs
+    ? d.scrapedParagraphs![0]!
+    : (d.aboutText ?? cfg.aboutText.replace(/\{name\}/g, d.businessName).replace(/\{city\}/g, d.city ?? ""));
+
+  const descriptionParts = hasParagraphs
+    ? d.scrapedParagraphs!.slice(0, 3)
+    : [d.description];
+  const description = descriptionParts.filter(Boolean).join(" ").slice(0, 500) || d.description;
+
+  // SERVICES: use scraped services if available, else fall back to menuItems → sector defaults
+  const services = d.scrapedServices && d.scrapedServices.length > 0
+    ? d.scrapedServices.map((s) => ({ icon: "\u2728", name: s.name, desc: s.description }))
+    : (d.menuItems?.flatMap((cat) =>
+        cat.items.map((item) => ({ icon: "\u2728", name: item.name, desc: item.description }))
+      ) ?? []);
+
+  // HERO VIDEO: embed URL if a YouTube/Vimeo video was scraped
+  const heroVideo = d.scrapedVideos?.find((v) =>
+    v.type === "youtube" || v.type === "vimeo" || /youtube|vimeo/i.test(v.url)
+  );
+  const heroVideoUrl = heroVideo?.url ?? "";
+
   return `// Auto-generated by MadeCreative Builder Agent
 // DO NOT EDIT — changes will be overwritten on next build
 
 export const BUSINESS = ${J({
     name: d.businessName,
     tagline: d.tagline,
-    description: d.description,
-    aboutText: cfg.aboutText.replace(/\{name\}/g, d.businessName).replace(/\{city\}/g, d.city ?? ""),
+    description,
+    aboutText,
     heroTitle: d.heroTitle,
     heroSubtitle: d.heroSubtitle,
     heroImage: d.heroImage,
+    heroVideoUrl,
     cta: d.cta,
     ctaSecondary: cfg.ctaSecondary,
     address: d.address,
@@ -385,9 +435,7 @@ export const FONTS = ${J({
 
 export const STATS = ${J(cfg.stats, null, 2)};
 
-export const SERVICES = ${J(d.menuItems?.flatMap(cat =>
-    cat.items.map(item => ({ icon: "\u2728", name: item.name, desc: item.description }))
-  ) ?? [], null, 2)};
+export const SERVICES = ${J(services, null, 2)};
 
 export const GALLERY = ${J(d.galleryImages.map(g => ({ url: g.url, alt: g.alt ?? d.businessName })), null, 2)};
 
@@ -556,6 +604,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 function genHomePage(d: ProjectData, cfg: TemplateConfig, t: I18nTranslations): string {
   const h = t.home;
   const r = t.routes;
+  // Use first scraped heading as the hero eyebrow override if available
+  const heroEyebrow = (d.scrapedHeadings && d.scrapedHeadings.length > 0)
+    ? d.scrapedHeadings[0]!.slice(0, 80)
+    : h.aboutEyebrow;
   return `import { Hero } from "@/components/Hero";
 import { Section } from "@/components/Section";
 import { Stats } from "@/components/Stats";
@@ -570,7 +622,7 @@ export default function Home() {
       <Hero />
 
       {/* About preview */}
-      <Section eyebrow=${J(h.aboutEyebrow)} title=${J(h.aboutTitle)} bg="surface">
+      <Section eyebrow=${J(heroEyebrow)} title=${J(h.aboutTitle)} bg="surface">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(40px, 6vw, 80px)", alignItems: "center" }}>
           <div>
             <p style={{ fontSize: "1.05rem", lineHeight: 1.85 }}>{BUSINESS.aboutText}</p>
@@ -996,14 +1048,48 @@ function HeroOverlay() {
   );
 }
 
+/** Renders either a video background (YouTube/Vimeo autoplay embed) or a static image. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function HeroBackground({ parallaxY }: { parallaxY: any }) {
+  const videoUrl = BUSINESS.heroVideoUrl;
+  if (videoUrl) {
+    // Build an autoplay/muted/loop embed URL for YouTube or Vimeo
+    let embedSrc = videoUrl;
+    if (/youtube\\.com|youtu\\.be/i.test(videoUrl)) {
+      const idMatch = videoUrl.match(/(?:v=|youtu\\.be\\/|embed\\/)([\\w-]{11})/);
+      if (idMatch?.[1]) {
+        embedSrc = \`https://www.youtube.com/embed/\${idMatch[1]}?autoplay=1&mute=1&loop=1&playlist=\${idMatch[1]}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1\`;
+      }
+    } else if (/vimeo\\.com/i.test(videoUrl)) {
+      const idMatch = videoUrl.match(/vimeo\\.com\\/(?:video\\/)?(\d+)/);
+      if (idMatch?.[1]) {
+        embedSrc = \`https://player.vimeo.com/video/\${idMatch[1]}?autoplay=1&muted=1&loop=1&background=1\`;
+      }
+    }
+    return (
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+        <iframe
+          src={embedSrc}
+          allow="autoplay; fullscreen"
+          style={{ position: "absolute", top: "50%", left: "50%", width: "177.78vh", minWidth: "100%", height: "56.25vw", minHeight: "100%", transform: "translate(-50%, -50%)", border: "none", pointerEvents: "none" }}
+          title="hero-video"
+        />
+      </div>
+    );
+  }
+  return (
+    <motion.div style={{ position: "absolute", inset: 0, y: parallaxY }}>
+      <img src={BUSINESS.heroImage} alt={BUSINESS.name} style={{ width: "100%", height: "120%", objectFit: "cover" }} />
+    </motion.div>
+  );
+}
+
 function HeroCentered() {
   const { scrollYProgress } = useScroll();
   const bgY = useTransform(scrollYProgress, [0, 0.5], ["0%", "20%"]);
   return (
     <section style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", overflow: "hidden" }}>
-      <motion.div style={{ position: "absolute", inset: 0, y: bgY }}>
-        <img src={BUSINESS.heroImage} alt={BUSINESS.name} style={{ width: "100%", height: "120%", objectFit: "cover" }} />
-      </motion.div>
+      <HeroBackground parallaxY={bgY} />
       <HeroOverlay />
       <div style={{ position: "relative", zIndex: 2, maxWidth: 1280, margin: "0 auto", padding: "140px clamp(20px, 5vw, 48px) 100px", width: "100%", textAlign: "center" }}>
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
@@ -1075,9 +1161,7 @@ function HeroBold() {
   const bgY = useTransform(scrollYProgress, [0, 0.5], ["0%", "20%"]);
   return (
     <section style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}>
-      <motion.div style={{ position: "absolute", inset: 0, y: bgY }}>
-        <img src={BUSINESS.heroImage} alt={BUSINESS.name} style={{ width: "100%", height: "120%", objectFit: "cover" }} />
-      </motion.div>
+      <HeroBackground parallaxY={bgY} />
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.8) 100%)" }} />
       <div style={{ position: "relative", zIndex: 2, maxWidth: 1280, margin: "0 auto", padding: "0 clamp(20px, 5vw, 48px)", display: "flex", flexDirection: "column", justifyContent: "flex-end", minHeight: "100vh", paddingBottom: 80 }}>
         <h1 style={{ fontFamily: "var(--fh)", fontSize: "clamp(3rem, 10vw, 8rem)", fontWeight: 900, color: "#fff", lineHeight: 0.92, letterSpacing: "-0.04em", marginBottom: 12, textTransform: "uppercase" }}>
