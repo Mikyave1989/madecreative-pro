@@ -7,8 +7,8 @@ import { API_URL } from '~/lib/api/client';
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const PORTFOLIO = [
-  { name: 'LENTRODT die zahnaerzte', city: 'Munich', sector: 'Dental', url: 'https://madecreative-cloner-f6hwmv0xa-mikyave1989s-projects.vercel.app', original: 'https://zahnarztlentrodt.de/', screenshot: 'https://api.microlink.io/?url=https%3A%2F%2Fmadecreative-cloner-f6hwmv0xa-mikyave1989s-projects.vercel.app&screenshot=true&meta=false&embed=screenshot.url' },
-  { name: 'Hamburg Smile', city: 'Hamburg', sector: 'Dental', url: 'https://mc-preview-hamburg-smile-zahnarzt-hamburg-innenstadt-prwhmany9.vercel.app', original: 'http://www.hamburg-smile.de/', screenshot: 'https://api.microlink.io/?url=https%3A%2F%2Fmc-preview-hamburg-smile-zahnarzt-hamburg-innenstadt-prwhmany9.vercel.app&screenshot=true&meta=false&embed=screenshot.url' },
+  { name: 'LENTRODT die zahnaerzte', city: 'Munich', sector: 'Dental', url: 'https://madecreative-cloner-f6hwmv0xa-mikyave1989s-projects.vercel.app', original: 'https://zahnarztlentrodt.de/', screenshot: 'https://image.thum.io/get/width/800/crop/600/https://madecreative-cloner-f6hwmv0xa-mikyave1989s-projects.vercel.app' },
+  { name: 'Hamburg Smile', city: 'Hamburg', sector: 'Dental', url: 'https://mc-preview-hamburg-smile-zahnarzt-hamburg-innenstadt-prwhmany9.vercel.app', original: 'http://www.hamburg-smile.de/', screenshot: 'https://image.thum.io/get/width/800/crop/600/https://mc-preview-hamburg-smile-zahnarzt-hamburg-innenstadt-prwhmany9.vercel.app' },
 ];
 
 const AGENTS = [
