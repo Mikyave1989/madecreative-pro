@@ -193,19 +193,15 @@ export async function cloneAndBuildSite(
     }
     console.log(`[CloneAndBuild] Phase 1 complete — clone done`);
 
-    // ── Step 3: Apply premium design upgrade ──────────────────────────────────
-    console.log(`[CloneAndBuild] Phase 2: applying premium design upgrade`);
-    const upgradeResult = await runClaudeCLI(
-      workDir,
-      PREMIUM_UPGRADE_PROMPT,
-      upgradeTimeoutMs
-    );
+    // ── Step 3: Apply premium design upgrade (programmatic — no AI) ─────────
+    console.log(`[CloneAndBuild] Phase 2: applying premium design upgrade (code-based)`);
+    const { applyPremiumUpgrade } = await import("./premium-upgrade.js");
+    const upgradeResult = await applyPremiumUpgrade(workDir);
 
     if (!upgradeResult.success) {
-      // Upgrade failure is non-fatal — we still deploy the raw clone
-      console.warn(`[CloneAndBuild] Phase 2 upgrade failed (continuing): ${upgradeResult.error}`);
+      console.warn(`[CloneAndBuild] Phase 2 upgrade warning: ${upgradeResult.error}`);
     } else {
-      console.log(`[CloneAndBuild] Phase 2 complete — premium upgrade done`);
+      console.log(`[CloneAndBuild] Phase 2 complete — premium upgrade applied`);
     }
 
     // ── Step 4: Verify build passes ───────────────────────────────────────────
