@@ -290,14 +290,14 @@ export default function AdminOverview() {
             <div className="text-[11px] text-[#71717a]">Converted</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-emerald-400">{b.mrr ? `€${fmt(b.mrr)}` : '€0'}</div>
+            <div className="text-2xl font-bold text-emerald-400">{biz.mrr ? `€${fmt(biz.mrr)}` : '€0'}</div>
             <div className="text-[11px] text-[#71717a]">Monthly Revenue</div>
           </div>
         </div>
         <div className="mt-4 pt-3 border-t border-indigo-500/10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
-          <div><span className="text-[#71717a]">Preview Sites Built:</span> <span className="text-white font-medium">{fmt(d?.previews?.built)}</span></div>
-          <div><span className="text-[#71717a]">Previews Viewed:</span> <span className="text-white font-medium">{fmt(d?.previews?.viewed)}</span></div>
-          <div><span className="text-[#71717a]">View Rate:</span> <span className="text-white font-medium">{d?.previews?.viewRate ? (d.previews.viewRate * 100).toFixed(1) + '%' : '0%'}</span></div>
+          <div><span className="text-[#71717a]">Preview Sites Built:</span> <span className="text-white font-medium">{fmt(pr.built)}</span></div>
+          <div><span className="text-[#71717a]">Previews Viewed:</span> <span className="text-white font-medium">{fmt(pr.viewed)}</span></div>
+          <div><span className="text-[#71717a]">View Rate:</span> <span className="text-white font-medium">{pr.viewRate ? (pr.viewRate * 100).toFixed(1) + '%' : '0%'}</span></div>
           <div><span className="text-[#71717a]">Bounced:</span> <span className="text-red-400 font-medium">{fmt(e.bounced)}</span></div>
         </div>
       </div>
