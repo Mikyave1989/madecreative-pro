@@ -233,7 +233,7 @@ function runClaudeCLI(
   return new Promise((resolve) => {
     const args = [
       "-p", prompt,
-      "--allowedTools", "Bash,Read,Write,Edit,Glob,Grep,Agent",
+      "--allowedTools", "Bash,Read,Write,Edit,Glob,Grep,Agent,WebFetch,mcp__playwright__browser_navigate,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_evaluate,mcp__playwright__browser_take_screenshot,mcp__playwright__browser_type",
       "--max-turns", "200",
       "--output-format", "text",
     ];

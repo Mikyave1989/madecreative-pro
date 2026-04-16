@@ -7,8 +7,19 @@ RUN apt-get update && apt-get install -y \
   wget gnupg git \
   --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# Install Claude Code CLI (for JCodesMore website cloner) + Vercel CLI (for deploy)
-RUN npm install -g @anthropic-ai/claude-code vercel
+# Install Claude Code CLI + Playwright MCP + Vercel CLI
+RUN npm install -g @anthropic-ai/claude-code @anthropic-ai/claude-code-playwright vercel
+
+# Configure Claude CLI with Playwright MCP server
+RUN mkdir -p /root/.claude && echo '{ \
+  "mcpServers": { \
+    "playwright": { \
+      "type": "stdio", \
+      "command": "npx", \
+      "args": ["@anthropic-ai/claude-code-playwright"] \
+    } \
+  } \
+}' > /root/.claude.json
 
 # Clone JCodesMore ai-website-cloner-template (disable SSL verify for Railway build env)
 RUN git config --global http.sslVerify false && \
