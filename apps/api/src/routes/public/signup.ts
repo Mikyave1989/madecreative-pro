@@ -82,14 +82,8 @@ app.post("/checkout", async (c) => {
     return c.json({ success: false, error: "A valid email is required" }, 400);
   }
 
-  // Look up the Stripe price ID from environment
-  // Try multiple naming conventions:
-  //   STRIPE_PRICE_STARTER_MONTHLY → STRIPE_STARTER_PRICE_ID → STRIPE_PRICE_ID
-  const priceId =
-    process.env[`STRIPE_PRICE_${plan}_${billing.toUpperCase()}`] ??
-    process.env[`STRIPE_${plan}_PRICE_ID`] ??
-    process.env[`STRIPE_PRICE_${plan}`] ??
-    process.env["STRIPE_PRICE_ID"];
+  // Single plan: EUR 49/month with 30-day free trial
+  const priceId = process.env["STRIPE_PRICE_ID"] ?? "price_1TMp1bPpUruzeNQ3MZsGWxzz";
 
   if (!priceId) {
     return c.json(

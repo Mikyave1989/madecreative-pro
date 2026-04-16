@@ -6,6 +6,11 @@ import { API_URL } from '~/lib/api/client';
    DATA
    ═══════════════════════════════════════════════════════════════════════════ */
 
+const PORTFOLIO = [
+  { name: 'LENTRODT die zahnaerzte', city: 'Munich', sector: 'Dental', url: 'https://madecreative-cloner-f6hwmv0xa-mikyave1989s-projects.vercel.app', original: 'https://zahnarztlentrodt.de/', image: 'https://zahnarztlentrodt.de/logo.png' },
+  { name: 'Hamburg Smile', city: 'Hamburg', sector: 'Dental', url: 'https://mc-preview-hamburg-smile-zahnarzt-hamburg-innenstadt-prwhmany9.vercel.app', original: 'http://www.hamburg-smile.de/', image: '' },
+];
+
 const AGENTS = [
   { id: 'scraper', name: 'SCRAPER', emoji: '\uD83D\uDD0D', role: 'Data Collector', verb: 'Scanning 3 pages...', color: '#3b82f6', x: 5, desc: 'Scans your existing website. Downloads every page, photo, video, and text. Nothing is missed.' },
   { id: 'analyzer', name: 'ANALYZER', emoji: '\uD83E\uDDE0', role: 'Business Intel', verb: 'Lead score: 87/100', color: '#8b5cf6', x: 25, desc: 'Evaluates your online presence. Google rating, social profiles, competitors, SEO gaps.' },
@@ -422,6 +427,34 @@ export function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ── PORTFOLIO ─────────────────────────────────────────────────────── */}
+      {PORTFOLIO.length > 0 && (
+        <section style={{ padding: '96px 24px', ...S.bg2 }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
+            <p style={{ ...S.t3, fontSize: 13, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 12 }}>Our Work</p>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Sites We've <span style={S.gt}>Redesigned</span></h2>
+            <p style={{ ...S.t2, maxWidth: 500, margin: '0 auto 48px', fontSize: 15 }}>Real businesses. Real content. Premium design upgrade.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+              {PORTFOLIO.map((p, i) => (
+                <div key={i} style={{ ...S.card, overflow: 'hidden', textAlign: 'left', transition: 'transform 0.3s, box-shadow 0.3s' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 12px 40px rgba(99,102,241,0.15)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}>
+                  <div style={{ height: 200, background: '#0d0d14', position: 'relative', overflow: 'hidden' }}>
+                    <iframe src={p.url} style={{ width: '200%', height: '200%', transform: 'scale(0.5)', transformOrigin: 'top left', border: 'none', pointerEvents: 'none' }} title={p.name} loading="lazy" />
+                  </div>
+                  <div style={{ padding: '20px 24px' }}>
+                    <h3 style={{ color: '#fff', fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{p.name}</h3>
+                    <p style={{ ...S.t3, fontSize: 13, marginBottom: 12 }}>{p.sector} — {p.city}</p>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ ...S.gb, padding: '8px 16px', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>View Redesign</a>
+                      <a href={p.original} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', color: '#a1a1aa', fontSize: 13, textDecoration: 'none' }}>Original Site</a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── PRICING ──────────────────────────────────────────────────────── */}
       <section id="pricing" style={{ padding: '96px 24px', position: 'relative' }}>
