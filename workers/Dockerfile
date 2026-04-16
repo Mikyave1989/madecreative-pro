@@ -10,8 +10,9 @@ RUN apt-get update && apt-get install -y \
 # Install Claude Code CLI (for JCodesMore website cloner) + Vercel CLI (for deploy)
 RUN npm install -g @anthropic-ai/claude-code vercel
 
-# Clone JCodesMore ai-website-cloner-template
-RUN git clone https://github.com/JCodesMore/ai-website-cloner-template.git /app/cloner && \
+# Clone JCodesMore ai-website-cloner-template (disable SSL verify for Railway build env)
+RUN git config --global http.sslVerify false && \
+  git clone https://github.com/JCodesMore/ai-website-cloner-template.git /app/cloner && \
   cd /app/cloner && npm install --ignore-scripts
 
 # Inject MadeCreative rules into the cloner (prepended to SKILL.md and CLAUDE.md)
