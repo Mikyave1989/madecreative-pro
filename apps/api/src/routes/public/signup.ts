@@ -109,7 +109,10 @@ app.post("/checkout", async (c) => {
         websiteUrl: websiteUrl ?? "",
         companyName: companyName ?? "",
       },
-      subscription_data: { metadata: { plan } },
+      subscription_data: {
+        trial_period_days: 30,
+        metadata: { plan },
+      },
       success_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/#pricing`,
     });
