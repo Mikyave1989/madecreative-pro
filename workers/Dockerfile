@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y \
   wget gnupg git \
   --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# Install Claude Code CLI (for JCodesMore website cloner)
-RUN npm install -g @anthropic-ai/claude-code
+# Install Claude Code CLI (for JCodesMore website cloner) + Vercel CLI (for deploy)
+RUN npm install -g @anthropic-ai/claude-code vercel
 
 # Clone JCodesMore ai-website-cloner-template
 RUN git clone https://github.com/JCodesMore/ai-website-cloner-template.git /app/cloner && \

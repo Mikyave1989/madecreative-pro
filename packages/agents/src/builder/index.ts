@@ -8,7 +8,7 @@ import { builderTools } from "./tools.js";
 import { BUILDER_SYSTEM_PROMPT, buildBuilderUserPrompt } from "./prompt.js";
 import { BuilderInputSchema } from "./types.js";
 import type { Photo, ColorPalette } from "./types.js";
-import { cloneWebsite } from "./clone-website.js";
+import { cloneWebsite, cloneAndBuildSite } from "./clone-website.js";
 
 // ─── Sector Default Palettes (from shared template configs) ──────────────────
 
@@ -1605,8 +1605,77 @@ body{padding-bottom:56px!important}
         business: businessData.companyName,
         sector: businessData.sector,
         hasScrapedContent: Boolean(this._scrapedContent),
+        hasWebsite: Boolean(businessData.website),
       });
 
+      // ── Fast path: prospect has a website → clone + upgrade + deploy directly ──
+      // Bypasses the Claude tool-use loop entirely.
+      if (businessData.website && businessData.isProspect) {
+        const slug = generateSlug(businessData.companyName, businessData.city);
+        this.log("info", `Builder: direct clone path for ${businessData.website} (slug: ${slug})`);
+
+        await this.updateProgress(20);
+
+        const cloneResult = await cloneAndBuildSite(
+          businessData.website,
+          slug,
+          businessData.id,
+          { timeoutMs: 2_400_000 } // 40 min total budget
+        );
+
+        await this.updateProgress(85);
+
+        if (cloneResult.previewUrl) {
+          // Persist preview URL to DB
+          try {
+            await prisma.prospect.update({
+              where: { id: businessData.id },
+              data: {
+                previewSiteUrl: cloneResult.previewUrl,
+                previewGeneratedAt: new Date(),
+                status: "PREVIEW_GENERATED",
+              },
+            });
+            this.log("info", `Builder: prospect updated with previewSiteUrl=${cloneResult.previewUrl}`);
+          } catch (dbErr) {
+            this.log("warn", `Builder: failed to update prospect previewSiteUrl: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`);
+          }
+
+          await this.updateProgress(95);
+
+          const output = {
+            businessId: businessData.id,
+            isProspect: true,
+            sector: businessData.sector,
+            previewUrl: cloneResult.previewUrl,
+            projectDir: cloneResult.projectDir,
+            slug,
+            status: "PREVIEW_READY",
+            apiCost: this.totalCost,
+            durationMs: Date.now() - startTime,
+          };
+
+          await this.markJobCompleted(output);
+          this.log("info", "Builder agent: clone pipeline completed", {
+            business: businessData.companyName,
+            previewUrl: cloneResult.previewUrl,
+          });
+
+          return {
+            success: true,
+            data: output,
+            apiCost: this.totalCost,
+            tokensUsed: this.totalInputTokens + this.totalOutputTokens,
+            durationMs: Date.now() - startTime,
+            toolCalls: this.toolCalls,
+          };
+        }
+
+        // Clone failed — fall through to template generator below
+        this.log("warn", `Builder: clone pipeline failed (${cloneResult.error}), falling back to template generator`);
+      }
+
+      // ── Standard path: no website URL, or clone failed → Claude tool-use loop ──
       const userPrompt = buildBuilderUserPrompt({
         businessName: businessData.companyName,
         sector: businessData.sector,
