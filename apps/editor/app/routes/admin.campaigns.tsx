@@ -19,16 +19,17 @@ function adminFetch(path: string, options: RequestInit = {}) {
   });
 }
 
-// ─── types ────────────────────────────────────────────────────────────────────
-
-interface WarmingStatus {
-  warmingDay: number;
-  currentLimit: number;
-  sentToday: number;
-  remaining: number;
-  initialized: boolean;
-  phase: number;
+function fmtNum(n: number | undefined | null) {
+  if (n == null) return '—';
+  return n.toLocaleString('en-US');
 }
+
+function fmtDate(d: string | null) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ─── types ────────────────────────────────────────────────────────────────────
 
 interface ActiveCampaign {
   id: string;
@@ -46,6 +47,15 @@ interface ActiveCampaign {
   analyzed: number;
   sitesBuilt: number;
   emailsSent: number;
+}
+
+interface WarmingStatus {
+  warmingDay: number;
+  currentLimit: number;
+  sentToday: number;
+  remaining: number;
+  initialized: boolean;
+  phase: number;
 }
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -76,176 +86,40 @@ const SECTORS = [
   { value: 'other', label: 'Other' },
 ];
 
-// ─── inline-style tokens ──────────────────────────────────────────────────────
+const STATUS_FILTERS = ['all', 'active', 'paused', 'completed'] as const;
+type StatusFilter = (typeof STATUS_FILTERS)[number];
 
-const S = {
-  page: {
-    backgroundColor: '#0a0a0a',
-    minHeight: '100vh',
-    padding: '2rem 2.5rem',
-    fontFamily: 'inherit',
-  } as React.CSSProperties,
-  card: {
-    backgroundColor: '#111',
-    border: '1px solid rgba(255,255,255,.06)',
-    borderRadius: '12px',
-    padding: '1.5rem',
-  } as React.CSSProperties,
-  label: {
-    display: 'block',
-    fontSize: '11px',
-    color: '#6b7280',
-    marginBottom: '6px',
-    fontWeight: 500,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '.04em',
-  },
-  input: {
-    width: '100%',
-    padding: '9px 12px',
-    borderRadius: '8px',
-    backgroundColor: '#1a1a1a',
-    border: '1px solid rgba(255,255,255,.1)',
-    color: '#fff',
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box' as const,
-  },
-  select: {
-    width: '100%',
-    padding: '9px 12px',
-    borderRadius: '8px',
-    backgroundColor: '#1a1a1a',
-    border: '1px solid rgba(255,255,255,.1)',
-    color: '#fff',
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box' as const,
-    appearance: 'none' as const,
-    cursor: 'pointer',
-  },
-  launchBtn: {
-    width: '100%',
-    padding: '14px',
-    borderRadius: '10px',
-    backgroundColor: '#6366f1',
-    border: '1px solid rgba(99,102,241,.5)',
-    color: '#fff',
-    fontSize: '15px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    letterSpacing: '.01em',
-    transition: 'background .15s',
-  } as React.CSSProperties,
-  launchBtnDisabled: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  } as React.CSSProperties,
-  grid2: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '12px',
-  } as React.CSSProperties,
-  grid3: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr 1fr',
-    gap: '12px',
-  } as React.CSSProperties,
-  sectionTitle: {
-    fontSize: '11px',
-    fontWeight: 600,
-    color: '#6b7280',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '.08em',
-    marginBottom: '12px',
-  },
-  badge: (color: string) => ({
-    display: 'inline-block',
-    padding: '2px 8px',
-    borderRadius: '999px',
-    fontSize: '11px',
-    fontWeight: 500,
-    backgroundColor: `${color}22`,
-    color: color,
-    border: `1px solid ${color}44`,
-  }),
-} as const;
+// ─── Status badge ──────────────────────────────────────────────────────────────
 
-// ─── main ─────────────────────────────────────────────────────────────────────
+function CampaignStatusBadge({ campaign: c }: { campaign: ActiveCampaign }) {
+  const running = c.activeJobs > 0;
+  if (running) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />Running</span>;
+  if (c.isActive) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/25"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />Active</span>;
+  return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/25"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Paused</span>;
+}
 
-export default function AdminCampaigns() {
-  // Form state
+// ─── Create campaign modal ────────────────────────────────────────────────────
+
+function CreateCampaignModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('DE');
   const [sector, setSector] = useState('restaurant');
-  const [maxProspects, setMaxProspects] = useState(50);
+  const [keywords, setKeywords] = useState('');
+  const [maxResults, setMaxResults] = useState(50);
   const [minRating, setMinRating] = useState(3.5);
   const [launching, setLaunching] = useState(false);
-
-  // Data state
-  const [warming, setWarming] = useState<WarmingStatus | null>(null);
-  const [campaigns, setCampaigns] = useState<ActiveCampaign[]>([]);
-  const [loadingCampaigns, setLoadingCampaigns] = useState(true);
-
-  // ── data fetchers ────────────────────────────────────────────────────────────
-
-  const loadWarming = useCallback(async () => {
-    try {
-      const res = await adminFetch('/admin/launch/warming/status');
-      if (res.ok) {
-        const d = await res.json();
-        setWarming(d.data ?? d);
-      }
-    } catch {
-      // silent — warming card just won't show data
-    }
-  }, []);
-
-  const loadCampaigns = useCallback(async () => {
-    setLoadingCampaigns(true);
-    try {
-      const res = await adminFetch('/admin/launch/campaigns');
-      if (res.ok) {
-        const d = await res.json();
-        setCampaigns(d.data ?? []);
-      }
-    } catch {
-      // silent
-    } finally {
-      setLoadingCampaigns(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadWarming();
-    loadCampaigns();
-  }, [loadWarming, loadCampaigns]);
-
-  // ── toggle handler (pause/resume) ─────────────────────────────────────────────
-
-  const handleToggle = async (id: string) => {
-    try {
-      const res = await adminFetch(`/admin/launch/campaigns/${id}/toggle`, { method: 'PATCH' });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.data?.message ?? 'Campaign toggled');
-        await loadCampaigns();
-      } else {
-        toast.error(data.error ?? 'Toggle failed');
-      }
-    } catch {
-      toast.error('Network error — toggle failed');
-    }
-  };
-
-  // ── launch handler ───────────────────────────────────────────────────────────
 
   const handleLaunch = async () => {
     if (!city.trim()) {
       toast.error('City is required');
       return;
     }
-
     setLaunching(true);
     try {
       const res = await adminFetch('/admin/launch/campaign', {
@@ -254,19 +128,17 @@ export default function AdminCampaigns() {
           city: city.trim(),
           country,
           sector,
-          maxResults: maxProspects,
+          keywords: keywords.trim() || undefined,
+          maxResults,
           minRating,
         }),
       });
-
-      const data = await res.json();
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await res.json() as any;
       if (res.ok && data.success !== false) {
-        toast.success(
-          data.data?.message ?? `Campaign launched for ${city} — pipeline starting`
-        );
-        setCity('');
-        await loadCampaigns();
+        toast.success(data.data?.message ?? `Campaign launched for ${city}`);
+        onCreated();
+        onClose();
       } else {
         toast.error(data.error ?? data.message ?? 'Launch failed');
       }
@@ -277,424 +149,497 @@ export default function AdminCampaigns() {
     }
   };
 
-  // ── render ───────────────────────────────────────────────────────────────────
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-[#111118] rounded-2xl border border-white/[0.08] shadow-2xl">
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+          <div>
+            <h2 className="text-base font-semibold text-white">New Campaign</h2>
+            <p className="text-xs text-[#71717a] mt-0.5">Full pipeline: scrape → analyze → build → email</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#71717a] hover:text-white hover:bg-white/[0.06] transition-all text-lg"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Form */}
+        <div className="px-6 py-5 space-y-4">
+          {/* Pipeline steps indicator */}
+          <div className="flex items-center gap-1 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+            {[
+              { step: '1', label: 'SCRAPE', color: '#6366f1' },
+              { step: '2', label: 'ANALYZE', color: '#8b5cf6' },
+              { step: '3', label: 'BUILD', color: '#ec4899' },
+              { step: '4', label: 'EMAIL', color: '#f59e0b' },
+            ].map((s, i) => (
+              <div key={s.step} className="flex items-center gap-1 flex-1 min-w-0">
+                <div
+                  className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0"
+                  style={{ backgroundColor: `${s.color}20`, color: s.color, border: `1px solid ${s.color}40` }}
+                >
+                  {s.step}
+                </div>
+                <span className="text-[10px] font-semibold truncate" style={{ color: s.color }}>{s.label}</span>
+                {i < 3 && <span className="text-[#3f3f46] ml-auto">›</span>}
+              </div>
+            ))}
+          </div>
+
+          {/* City + Country */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-1.5">City *</label>
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. München"
+                className="w-full px-3 py-2.5 rounded-xl bg-[#1a1a24] border border-white/[0.08] text-white text-sm placeholder-[#52525b] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                onKeyDown={(e) => e.key === 'Enter' && handleLaunch()}
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-1.5">Country</label>
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-[#1a1a24] border border-white/[0.08] text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none transition-all"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Sector + Keywords */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-1.5">Sector</label>
+              <select
+                value={sector}
+                onChange={(e) => setSector(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-[#1a1a24] border border-white/[0.08] text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none transition-all"
+              >
+                {SECTORS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-1.5">Keywords</label>
+              <input
+                type="text"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                placeholder="e.g. sushi, vegan"
+                className="w-full px-3 py-2.5 rounded-xl bg-[#1a1a24] border border-white/[0.08] text-white text-sm placeholder-[#52525b] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Max results + Min rating */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-1.5">Max Results</label>
+              <input
+                type="number"
+                value={maxResults}
+                min={1}
+                max={5000}
+                onChange={(e) => setMaxResults(Number(e.target.value))}
+                className="w-full px-3 py-2.5 rounded-xl bg-[#1a1a24] border border-white/[0.08] text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-1.5">Min Google Rating</label>
+              <input
+                type="number"
+                value={minRating}
+                min={1}
+                max={5}
+                step={0.1}
+                onChange={(e) => setMinRating(Number(e.target.value))}
+                className="w-full px-3 py-2.5 rounded-xl bg-[#1a1a24] border border-white/[0.08] text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-white/[0.06] flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-sm text-[#71717a] hover:text-white hover:bg-white/[0.04] transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleLaunch}
+            disabled={launching || !city.trim()}
+            className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20"
+          >
+            {launching ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Launching…
+              </span>
+            ) : (
+              `Launch — ${city ? `${city}, ${country}` : 'Enter city'}`
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Delete confirm modal ─────────────────────────────────────────────────────
+
+function DeleteConfirmModal({
+  campaign,
+  onClose,
+  onDeleted,
+}: {
+  campaign: ActiveCampaign;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await adminFetch(`/admin/launch/campaigns/${campaign.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Campaign deleted');
+        onDeleted();
+        onClose();
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const d = await res.json() as any;
+        toast.error(d.error ?? 'Delete failed');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
-    <div style={S.page}>
-      {/* Header row */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          marginBottom: '2rem',
-          gap: '1rem',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: 0 }}>
-            Campaigns
-          </h1>
-          <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
-            One-click full pipeline: scrape businesses, score them, build preview sites, send personalised emails
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-sm bg-[#111118] rounded-2xl border border-red-500/20 shadow-2xl p-6">
+        <div className="text-center mb-5">
+          <div className="text-3xl mb-3">🗑</div>
+          <h2 className="text-base font-semibold text-white mb-1">Delete Campaign?</h2>
+          <p className="text-sm text-[#71717a]">
+            <strong className="text-white">{campaign.name}</strong> will be permanently deleted. This cannot be undone.
           </p>
         </div>
-
-        {/* Warming status mini-card */}
-        {warming && (
-          <div
-            style={{
-              ...S.card,
-              padding: '10px 16px',
-              display: 'flex',
-              gap: '20px',
-              alignItems: 'center',
-              flexShrink: 0,
-            }}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-sm text-[#71717a] hover:text-white hover:bg-white/[0.04] transition-all"
           >
-            <div>
-              <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                Warming Day
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>
-                {warming.warmingDay}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                Sent Today
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>
-                {warming.sentToday}
-                <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400 }}>
-                  /{warming.currentLimit}
-                </span>
-              </div>
-            </div>
-            <div>
-              <span style={S.badge(warming.initialized ? '#10b981' : '#6b7280')}>
-                {warming.initialized ? 'Warmed' : 'Not initialized'}
-              </span>
-            </div>
-          </div>
-        )}
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-all disabled:opacity-50"
+          >
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Pipeline diagram */}
-      <div
-        style={{
-          ...S.card,
-          marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0',
-          flexWrap: 'wrap',
-          padding: '14px 20px',
-        }}
-      >
-        {[
-          { step: '1', label: 'SCRAPER', desc: 'Finds businesses', color: '#6366f1' },
-          { step: '2', label: 'ANALYZER', desc: 'Scores leads', color: '#8b5cf6' },
-          { step: '3', label: 'BUILDER', desc: 'Builds preview site', color: '#ec4899' },
-          { step: '4', label: 'OUTREACH', desc: 'Sends email', color: '#f59e0b' },
-          { step: '5', label: 'QA', desc: 'Quality check', color: '#10b981' },
-        ].map((s, i) => (
-          <div key={s.step} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px' }}>
-              <div
-                style={{
-                  width: '26px',
-                  height: '26px',
-                  borderRadius: '50%',
-                  backgroundColor: `${s.color}22`,
-                  border: `1px solid ${s.color}44`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: s.color,
-                  flexShrink: 0,
-                }}
-              >
-                {s.step}
+// ─── Campaign row ──────────────────────────────────────────────────────────────
+
+function CampaignRow({
+  campaign: c,
+  onToggle,
+  onDelete,
+  onSelect,
+}: {
+  campaign: ActiveCampaign;
+  onToggle: (id: string) => void;
+  onDelete: (c: ActiveCampaign) => void;
+  onSelect: (c: ActiveCampaign) => void;
+}) {
+  return (
+    <tr
+      className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer group"
+      onClick={() => onSelect(c)}
+    >
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <CampaignStatusBadge campaign={c} />
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <div className="font-medium text-white text-sm">{c.name}</div>
+        <div className="text-[11px] text-[#71717a] mt-0.5">
+          {(c.cities?.join(', ') ?? (c.countries ?? []).join(', '))} · {c.sector}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-sm text-white tabular-nums">{fmtNum(c.prospectsFound)}</td>
+      <td className="px-4 py-3 text-sm text-[#a1a1aa] tabular-nums">{fmtNum(c.analyzed ?? 0)}</td>
+      <td className="px-4 py-3 text-sm text-[#a1a1aa] tabular-nums">{fmtNum(c.sitesBuilt ?? 0)}</td>
+      <td className="px-4 py-3 text-sm text-[#a1a1aa] tabular-nums">{fmtNum(c.emailsSent ?? 0)}</td>
+      <td className="px-4 py-3 text-xs text-[#52525b]">{fmtDate(c.createdAt)}</td>
+      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => onToggle(c.id)}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              c.isActive
+                ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20'
+                : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+            }`}
+          >
+            {c.isActive ? 'Pause' : 'Resume'}
+          </button>
+          <button
+            onClick={() => onDelete(c)}
+            className="px-3 py-1 rounded-lg text-xs font-semibold bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all"
+          >
+            Delete
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─── main ─────────────────────────────────────────────────────────────────────
+
+export default function AdminCampaigns() {
+  const [warming, setWarming] = useState<WarmingStatus | null>(null);
+  const [campaigns, setCampaigns] = useState<ActiveCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ActiveCampaign | null>(null);
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
+
+  const loadWarming = useCallback(async () => {
+    try {
+      const res = await adminFetch('/admin/launch/warming/status');
+      if (res.ok) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const d = await res.json() as any;
+        setWarming(d.data ?? d);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  const loadCampaigns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch('/admin/launch/campaigns');
+      if (res.ok) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const d = await res.json() as any;
+        setCampaigns(d.data ?? []);
+      }
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    loadWarming();
+    loadCampaigns();
+  }, [loadWarming, loadCampaigns]);
+
+  const handleToggle = async (id: string) => {
+    try {
+      const res = await adminFetch(`/admin/launch/campaigns/${id}/toggle`, { method: 'PATCH' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await res.json() as any;
+      if (res.ok) {
+        toast.success(data.data?.message ?? 'Campaign toggled');
+        await loadCampaigns();
+      } else {
+        toast.error(data.error ?? 'Toggle failed');
+      }
+    } catch {
+      toast.error('Network error');
+    }
+  };
+
+  const filteredCampaigns = campaigns.filter((c) => {
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'active') return c.isActive && c.activeJobs === 0;
+    if (filterStatus === 'paused') return !c.isActive;
+    if (filterStatus === 'completed') return !c.isActive && c.emailsSent > 0;
+    return true;
+  });
+
+  return (
+    <div className="p-6 md:p-8 bg-[#0a0a0f] min-h-full">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold text-white">Campaigns</h1>
+          <p className="text-sm text-[#71717a] mt-0.5">
+            Full-pipeline: scrape businesses, score leads, build preview sites, send personalised emails
+          </p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Warming card */}
+          {warming && (
+            <div className="flex items-center gap-4 px-4 py-2.5 bg-[#111118] rounded-xl border border-white/[0.08]">
+              <div>
+                <div className="text-[10px] text-[#52525b] uppercase tracking-wide mb-0.5">Warming Day</div>
+                <div className="text-base font-bold text-white">{warming.warmingDay}</div>
               </div>
               <div>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.2 }}>
-                  {s.label}
+                <div className="text-[10px] text-[#52525b] uppercase tracking-wide mb-0.5">Sent Today</div>
+                <div className="text-base font-bold text-white">
+                  {warming.sentToday}
+                  <span className="text-[#52525b] font-normal text-xs">/{warming.currentLimit}</span>
                 </div>
-                <div style={{ fontSize: '10px', color: '#6b7280' }}>{s.desc}</div>
               </div>
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${warming.initialized ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' : 'bg-gray-500/15 text-gray-400 border-gray-500/25'}`}>
+                {warming.initialized ? 'Warmed' : 'Not init'}
+              </span>
             </div>
-            {i < 4 && (
-              <div style={{ color: '#374151', fontSize: '16px', padding: '0 2px' }}>›</div>
-            )}
-          </div>
-        ))}
-        <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#4b5563', fontStyle: 'italic' }}>
-          Auto-chained by orchestrator
+          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all shadow-lg shadow-indigo-600/20"
+          >
+            <span>+</span>
+            New Campaign
+          </button>
         </div>
       </div>
 
-      {/* Campaign launcher card */}
-      <div style={{ ...S.card, marginBottom: '1.5rem' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            marginBottom: '1.25rem',
-          }}
-        >
-          <div
-            style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(99,102,241,.15)',
-              border: '1px solid rgba(99,102,241,.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px',
-              flexShrink: 0,
-            }}
+      {/* Filter tabs */}
+      <div className="flex items-center gap-1 mb-4">
+        {STATUS_FILTERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilterStatus(f)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${
+              filterStatus === f
+                ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/25'
+                : 'text-[#71717a] hover:text-[#a1a1aa] hover:bg-white/[0.04] border border-transparent'
+            }`}
           >
-            &#9654;
-          </div>
-          <div>
-            <div style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>
-              Launch Campaign
-            </div>
-            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '1px' }}>
-              Fill in the target details and hit Launch — the full pipeline runs automatically
-            </div>
-          </div>
-        </div>
-
-        {/* Row 1: City + Country */}
-        <div style={{ ...S.grid2, marginBottom: '12px' }}>
-          <div>
-            <label style={S.label}>City *</label>
-            <input
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g. München"
-              style={S.input}
-              onKeyDown={(e) => e.key === 'Enter' && handleLaunch()}
-            />
-          </div>
-          <div>
-            <label style={S.label}>Country</label>
-            <select
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              style={S.select}
-            >
-              {COUNTRIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Row 2: Sector + Max prospects + Min rating */}
-        <div style={{ ...S.grid3, marginBottom: '20px' }}>
-          <div>
-            <label style={S.label}>Sector</label>
-            <select
-              value={sector}
-              onChange={(e) => setSector(e.target.value)}
-              style={S.select}
-            >
-              {SECTORS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={S.label}>Max prospects</label>
-            <input
-              type="number"
-              value={maxProspects}
-              min={1}
-              max={5000}
-              onChange={(e) => setMaxProspects(Number(e.target.value))}
-              style={S.input}
-            />
-          </div>
-          <div>
-            <label style={S.label}>Min Google rating</label>
-            <input
-              type="number"
-              value={minRating}
-              min={1}
-              max={5}
-              step={0.1}
-              onChange={(e) => setMinRating(Number(e.target.value))}
-              style={S.input}
-            />
-          </div>
-        </div>
-
-        {/* Launch button */}
+            {f}
+            {f !== 'all' && (
+              <span className="ml-1.5 text-[10px] opacity-60">
+                {campaigns.filter((c) => {
+                  if (f === 'active') return c.isActive && c.activeJobs === 0;
+                  if (f === 'paused') return !c.isActive;
+                  if (f === 'completed') return !c.isActive && c.emailsSent > 0;
+                  return true;
+                }).length}
+              </span>
+            )}
+          </button>
+        ))}
         <button
-          onClick={handleLaunch}
-          disabled={launching}
-          style={{
-            ...S.launchBtn,
-            ...(launching ? S.launchBtnDisabled : {}),
-          }}
+          onClick={loadCampaigns}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[#71717a] hover:text-[#a1a1aa] hover:bg-white/[0.04] transition-all border border-white/[0.06]"
         >
-          {launching ? (
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <span
-                style={{
-                  width: '14px',
-                  height: '14px',
-                  border: '2px solid rgba(255,255,255,.3)',
-                  borderTopColor: '#fff',
-                  borderRadius: '50%',
-                  animation: 'spin 0.7s linear infinite',
-                  display: 'inline-block',
-                }}
-              />
-              Launching pipeline...
-            </span>
-          ) : (
-            `Launch Campaign — ${city ? `${city}, ${country}` : 'Enter a city above'}`
-          )}
+          <span className={loading ? 'animate-spin inline-block' : ''}>↻</span>
+          Refresh
         </button>
       </div>
 
-      {/* Active campaigns */}
-      <div>
-        <div style={S.sectionTitle}>Active Campaigns</div>
-
-        {loadingCampaigns ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                style={{
-                  height: '64px',
-                  borderRadius: '8px',
-                  backgroundColor: '#111',
-                  border: '1px solid rgba(255,255,255,.04)',
-                  opacity: 0.5,
-                }}
-              />
-            ))}
-          </div>
-        ) : campaigns.length === 0 ? (
-          <div
-            style={{
-              ...S.card,
-              textAlign: 'center',
-              padding: '2.5rem 1rem',
-              color: '#4b5563',
-              fontSize: '13px',
-            }}
-          >
-            No campaigns yet. Launch your first one above.
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {campaigns.map((c) => (
-              <CampaignRow key={c.id} campaign={c} onToggle={handleToggle} />
-            ))}
+      {/* Campaigns table */}
+      <div className="bg-[#111118] rounded-xl border border-white/[0.08] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/[0.06]">
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-[#52525b] uppercase tracking-wider">Status</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-[#52525b] uppercase tracking-wider">Name</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-[#52525b] uppercase tracking-wider">Prospects</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-[#52525b] uppercase tracking-wider">Analyzed</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-[#52525b] uppercase tracking-wider">Sites Built</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-[#52525b] uppercase tracking-wider">Emails Sent</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-[#52525b] uppercase tracking-wider">Created</th>
+                <th className="w-36" />
+              </tr>
+            </thead>
+            <tbody>
+              {loading && campaigns.length === 0 ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <tr key={i} className="border-b border-white/[0.04]">
+                    {Array.from({ length: 8 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 bg-white/[0.05] rounded animate-pulse" style={{ width: `${50 + j * 6}%` }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : filteredCampaigns.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-16 text-center">
+                    <div className="text-3xl mb-3">🚀</div>
+                    <p className="text-sm text-[#52525b]">
+                      {filterStatus !== 'all' ? `No ${filterStatus} campaigns` : 'No campaigns yet. Create your first campaign.'}
+                    </p>
+                    {filterStatus === 'all' && (
+                      <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="mt-4 px-4 py-2 rounded-xl bg-indigo-600/20 border border-indigo-500/25 text-indigo-400 text-sm hover:bg-indigo-600/30 transition-all"
+                      >
+                        + Create campaign
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                filteredCampaigns.map((c) => (
+                  <CampaignRow
+                    key={c.id}
+                    campaign={c}
+                    onToggle={handleToggle}
+                    onDelete={setDeleteTarget}
+                    onSelect={() => {
+                      // Future: navigate to campaign detail
+                      toast.info(`Campaign: ${c.name} — ${c.prospectsFound} prospects`);
+                    }}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {filteredCampaigns.length > 0 && (
+          <div className="px-4 py-2.5 border-t border-white/[0.06] text-xs text-[#52525b]">
+            {filteredCampaigns.length} campaign{filteredCampaigns.length !== 1 ? 's' : ''} shown
           </div>
         )}
       </div>
 
-      {/* Spin animation */}
+      {/* Modals */}
+      {showCreateModal && (
+        <CreateCampaignModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={loadCampaigns}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          campaign={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={loadCampaigns}
+        />
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
-
-// ─── Campaign row ─────────────────────────────────────────────────────────────
-
-function CampaignRow({ campaign: c, onToggle }: { campaign: ActiveCampaign; onToggle: (id: string) => void }) {
-  const cities = c.cities?.join(', ') ?? (c.countries ?? []).join(', ');
-  const hasJobs = c.activeJobs > 0;
-
-  return (
-    <div
-      style={{
-        ...S.card,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-        padding: '14px 18px',
-        flexWrap: 'wrap',
-      }}
-    >
-      {/* Status dot */}
-      <div
-        style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: hasJobs ? '#10b981' : c.isActive ? '#6366f1' : '#374151',
-          boxShadow: hasJobs ? '0 0 6px #10b981' : 'none',
-          flexShrink: 0,
-        }}
-      />
-
-      {/* Name + meta */}
-      <div style={{ flex: 1, minWidth: '160px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff', marginBottom: '2px' }}>
-          {c.name}
-        </div>
-        <div style={{ fontSize: '11px', color: '#6b7280' }}>
-          {cities} &middot; {c.sector}
-        </div>
-      </div>
-
-      {/* Pipeline progress */}
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <Stat label="Scraped" value={c.prospectsFound} color="#6366f1" />
-        <PipelineArrow />
-        <Stat label="Analyzed" value={c.analyzed ?? 0} color="#8b5cf6" />
-        <PipelineArrow />
-        <Stat label="Sites built" value={c.sitesBuilt ?? 0} color="#ec4899" />
-        <PipelineArrow />
-        <Stat label="Emails sent" value={c.emailsSent ?? 0} color="#f59e0b" />
-        <div style={{ borderLeft: '1px solid rgba(255,255,255,.06)', paddingLeft: '16px', marginLeft: '4px' }}>
-          <Stat label="Active jobs" value={c.activeJobs} highlight={hasJobs} />
-        </div>
-        <div>
-          <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>Last run</div>
-          <div style={{ fontSize: '12px', color: '#9ca3af' }}>
-            {c.lastRunAt ? new Date(c.lastRunAt).toLocaleDateString() : '—'}
-          </div>
-        </div>
-      </div>
-
-      {/* Pause / Resume button */}
-      <button
-        onClick={() => onToggle(c.id)}
-        style={{
-          padding: '6px 14px',
-          borderRadius: '8px',
-          backgroundColor: c.isActive ? 'rgba(239,68,68,.15)' : 'rgba(16,185,129,.15)',
-          border: `1px solid ${c.isActive ? 'rgba(239,68,68,.3)' : 'rgba(16,185,129,.3)'}`,
-          color: c.isActive ? '#ef4444' : '#10b981',
-          fontSize: '12px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        {c.isActive ? 'Pause' : 'Resume'}
-      </button>
-
-      {/* Badge */}
-      <span style={S.badge(hasJobs ? '#10b981' : c.isActive ? '#6366f1' : '#6b7280')}>
-        {hasJobs ? 'Running' : c.isActive ? 'Active' : 'Paused'}
-      </span>
-    </div>
-  );
-}
-
-function PipelineArrow() {
-  return (
-    <div style={{ color: '#374151', fontSize: '14px', lineHeight: 1 }}>
-      ›
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  highlight = false,
-  color,
-}: {
-  label: string;
-  value: number;
-  highlight?: boolean;
-  color?: string;
-}) {
-  return (
-    <div>
-      <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>{label}</div>
-      <div
-        style={{
-          fontSize: '15px',
-          fontWeight: 700,
-          color: color ?? (highlight ? '#10b981' : '#fff'),
-        }}
-      >
-        {value.toLocaleString()}
-      </div>
     </div>
   );
 }

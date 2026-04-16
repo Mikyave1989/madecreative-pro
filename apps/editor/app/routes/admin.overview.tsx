@@ -52,6 +52,16 @@ interface DashboardData {
     monthlyRevenue: number;
     mrr: number;
   };
+  campaigns?: {
+    total: number;
+    active: number;
+  };
+  recentActivity?: Array<{
+    id: string;
+    type: string;
+    description: string;
+    createdAt: string;
+  }>;
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -68,81 +78,118 @@ function adminFetch(path: string) {
 
 function fmt(n: number | undefined | null): string {
   if (n == null) return '—';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return n.toLocaleString();
+  return n.toLocaleString('en-US');
+}
+
+function fmtEur(n: number | undefined | null): string {
+  if (n == null) return '—';
+  return new Intl.NumberFormat('en-EU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
-function BigStat({ label, value, sub, color = '#fff', icon }: {
-  label: string; value: string; sub?: string; color?: string; icon?: string;
+function StatCard({
+  label,
+  value,
+  sub,
+  icon,
+  accent = '#6366f1',
+  loading = false,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: string;
+  accent?: string;
+  loading?: boolean;
 }) {
   return (
-    <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,.06)', borderRadius: '12px', padding: '20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</span>
-        {icon && <span style={{ fontSize: '16px', opacity: 0.4 }}>{icon}</span>}
+    <div className="bg-[#111118] rounded-xl p-5 border border-white/[0.08] flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider">{label}</span>
+        <span className="text-base opacity-50">{icon}</span>
       </div>
-      <div style={{ fontSize: '28px', fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>{sub}</div>}
+      {loading ? (
+        <div className="h-8 bg-white/[0.06] rounded-lg animate-pulse" />
+      ) : (
+        <div className="text-3xl font-extrabold leading-none" style={{ color: accent }}>{value}</div>
+      )}
+      {sub && !loading && <div className="text-[11px] text-[#52525b]">{sub}</div>}
     </div>
   );
 }
 
-function PipelineStep({ label, value, total, color, arrow = true }: {
-  label: string; value: number; total: number; color: string; arrow?: boolean;
-}) {
-  const pct = total > 0 ? (value / total * 100).toFixed(1) : '0';
+function FunnelBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const pct = total > 0 ? Math.round(value / total * 100) : 0;
+  const barWidth = total > 0 ? `${Math.max(2, pct)}%` : '2%';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
-      <div style={{ textAlign: 'center', minWidth: '80px' }}>
-        <div style={{ fontSize: '22px', fontWeight: 800, color }}>{fmt(value)}</div>
-        <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{label}</div>
-        <div style={{ fontSize: '9px', color: '#4b5563', marginTop: '1px' }}>{pct}%</div>
+    <div className="flex items-center gap-3">
+      <div className="w-24 text-[11px] text-[#71717a] text-right shrink-0">{label}</div>
+      <div className="flex-1 h-2 bg-white/[0.05] rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: barWidth, backgroundColor: color }}
+        />
       </div>
-      {arrow && <div style={{ color: '#374151', fontSize: '20px', margin: '0 4px' }}>→</div>}
+      <div className="w-12 text-right">
+        <span className="text-sm font-bold text-white">{fmt(value)}</span>
+      </div>
+      <div className="w-10 text-right">
+        <span className="text-[11px] text-[#52525b]">{pct}%</span>
+      </div>
     </div>
   );
 }
 
-function EmailRate({ label, value, rate, color }: {
-  label: string; value: number; rate: number; color: string;
-}) {
+function EmailStatItem({ label, value, rate, color }: { label: string; value: number; rate: number; color: string }) {
   return (
-    <div style={{ textAlign: 'center', flex: 1, minWidth: '80px' }}>
-      <div style={{ fontSize: '20px', fontWeight: 800, color }}>{fmt(value)}</div>
-      <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{label}</div>
-      <div style={{
-        display: 'inline-block', marginTop: '4px', padding: '1px 8px', borderRadius: '999px',
-        fontSize: '10px', fontWeight: 600, backgroundColor: `${color}20`, color, border: `1px solid ${color}40`,
-      }}>{rate}%</div>
+    <div className="flex flex-col items-center gap-1">
+      <div className="text-xl font-extrabold" style={{ color }}>{fmt(value)}</div>
+      <div className="text-[11px] text-[#71717a]">{label}</div>
+      <span
+        className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+        style={{ backgroundColor: `${color}18`, color, border: `1px solid ${color}30` }}
+      >
+        {rate}%
+      </span>
     </div>
   );
 }
 
-function AgentRow({ type, data }: { type: string; data: Record<string, number> }) {
+function AgentTypeRow({ type, data }: { type: string; data: Record<string, number> }) {
   const completed = data['COMPLETED'] ?? 0;
   const running = data['RUNNING'] ?? 0;
   const queued = data['QUEUED'] ?? 0;
   const failed = data['FAILED'] ?? 0;
   const total = completed + running + queued + failed;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.04)' }}>
-      <div style={{ width: '90px', fontSize: '12px', fontWeight: 600, color: '#fff' }}>{type}</div>
-      <div style={{ flex: 1, height: '6px', backgroundColor: '#1a1a1a', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
-        {total > 0 && <>
-          <div style={{ width: `${completed / total * 100}%`, backgroundColor: '#10b981', height: '100%' }} />
-          <div style={{ width: `${running / total * 100}%`, backgroundColor: '#6366f1', height: '100%' }} />
-          <div style={{ width: `${queued / total * 100}%`, backgroundColor: '#f59e0b', height: '100%' }} />
-          <div style={{ width: `${failed / total * 100}%`, backgroundColor: '#ef4444', height: '100%' }} />
-        </>}
+    <div className="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
+      <div className="w-20 text-xs font-semibold text-white shrink-0">{type}</div>
+      <div className="flex-1 h-1.5 bg-white/[0.05] rounded-full overflow-hidden flex">
+        {total > 0 && (
+          <>
+            <div style={{ width: `${completed / total * 100}%`, backgroundColor: '#10b981' }} className="h-full" />
+            <div style={{ width: `${running / total * 100}%`, backgroundColor: '#6366f1' }} className="h-full" />
+            <div style={{ width: `${queued / total * 100}%`, backgroundColor: '#f59e0b' }} className="h-full" />
+            <div style={{ width: `${failed / total * 100}%`, backgroundColor: '#ef4444' }} className="h-full" />
+          </>
+        )}
       </div>
-      <div style={{ display: 'flex', gap: '10px', fontSize: '11px' }}>
-        <span style={{ color: '#10b981' }}>{completed}</span>
-        <span style={{ color: '#6366f1' }}>{running}</span>
-        <span style={{ color: '#f59e0b' }}>{queued}</span>
-        <span style={{ color: '#ef4444' }}>{failed}</span>
+      <div className="flex gap-2 text-[11px] shrink-0">
+        <span className="text-emerald-400 w-5 text-right">{completed}</span>
+        <span className="text-indigo-400 w-5 text-right">{running}</span>
+        <span className="text-amber-400 w-5 text-right">{queued}</span>
+        <span className="text-red-400 w-5 text-right">{failed}</span>
       </div>
     </div>
   );
@@ -153,19 +200,27 @@ function AgentRow({ type, data }: { type: string; data: Record<string, number> }
 export default function AdminOverview() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await adminFetch('/admin/metrics/dashboard');
-      if (res.ok) {
-        const json = await res.json();
-        setData(json.data ?? json);
+      if (!res.ok) {
+        setError(`API returned ${res.status}`);
+        return;
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const json = await res.json() as any;
+      setData(json.data ?? json);
       setLastRefresh(new Date());
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError('Network error — could not reach API');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -179,156 +234,250 @@ export default function AdminOverview() {
   const pr = data?.previews ?? { built: 0, viewed: 0, viewRate: 0 };
   const ag = data?.agents ?? { active: 0, failed30d: 0, breakdown: {} };
   const biz = data?.business ?? { totalClients: 0, activeClients: 0, newClientsMonth: 0, monthlyRevenue: 0, mrr: 0 };
-
-  const S = {
-    page: { backgroundColor: '#0a0a0a', minHeight: '100vh', padding: '2rem 2.5rem', fontFamily: 'inherit' } as React.CSSProperties,
-    card: { backgroundColor: '#111', border: '1px solid rgba(255,255,255,.06)', borderRadius: '12px', padding: '20px' } as React.CSSProperties,
-    sectionTitle: { fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '.08em', marginBottom: '14px' },
-    grid4: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' } as React.CSSProperties,
-    grid3: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' } as React.CSSProperties,
-    grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' } as React.CSSProperties,
-  };
+  const camps = data?.campaigns ?? { total: 0, active: 0 };
+  const activity = data?.recentActivity ?? [];
 
   return (
-    <div style={S.page}>
+    <div className="p-6 md:p-8 bg-[#0a0a0f] min-h-full">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: 0 }}>Dashboard</h1>
-          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-            {lastRefresh ? `Updated ${lastRefresh.toLocaleTimeString()} — auto-refresh 30s` : 'Loading...'}
+          <h1 className="text-xl font-bold text-white">Dashboard</h1>
+          <p className="text-xs text-[#52525b] mt-0.5">
+            {lastRefresh ? `Updated ${lastRefresh.toLocaleTimeString()} · auto-refresh 30s` : 'Loading…'}
           </p>
         </div>
         <button
           onClick={load}
           disabled={loading}
-          style={{
-            padding: '8px 16px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,.05)',
-            border: '1px solid rgba(255,255,255,.1)', color: '#9ca3af', fontSize: '13px', cursor: 'pointer',
-            opacity: loading ? 0.5 : 1,
-          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-[#a1a1aa] hover:bg-white/[0.08] transition-all disabled:opacity-40"
         >
-          {loading ? 'Loading...' : 'Refresh'}
+          <span className={loading ? 'animate-spin inline-block' : ''}>↻</span>
+          {loading ? 'Loading…' : 'Refresh'}
         </button>
       </div>
 
-      {/* ── Row 1: Key numbers ── */}
-      <div style={{ ...S.grid4, marginBottom: '20px' }}>
-        <BigStat label="Total Prospects" value={fmt(p.total)} icon="🔍" sub={`${fmt(p.scraped)} scraped this run`} />
-        <BigStat label="Previews Built" value={fmt(pr.built)} icon="🏗️" color="#8b5cf6" sub={`${fmt(pr.viewed)} viewed (${pr.viewRate}%)`} />
-        <BigStat label="Emails Sent" value={fmt(e.totalSent)} icon="📧" color="#f59e0b" sub={`${fmt(e.sentToday)} today · ${fmt(e.sent7d)} last 7d`} />
-        <BigStat label="Converted" value={fmt(p.converted)} icon="💰" color="#10b981" sub={`MRR: €${fmt(biz.mrr)}`} />
+      {/* Error banner */}
+      {error && (
+        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center justify-between gap-4">
+          <span>⚠ {error}</span>
+          <button onClick={load} className="text-xs underline hover:no-underline">Retry</button>
+        </div>
+      )}
+
+      {/* ── Row 1: KPI cards (4 cols) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard
+          label="Total Prospects"
+          value={fmt(p.total)}
+          icon="🔍"
+          accent="#6366f1"
+          sub={`${fmt(p.scraped)} scraped`}
+          loading={loading && !data}
+        />
+        <StatCard
+          label="Active Campaigns"
+          value={fmt(camps.active)}
+          icon="🚀"
+          accent="#8b5cf6"
+          sub={`${fmt(camps.total)} total`}
+          loading={loading && !data}
+        />
+        <StatCard
+          label="Emails Sent"
+          value={fmt(e.totalSent)}
+          icon="📧"
+          accent="#f59e0b"
+          sub={`${fmt(e.sentToday)} today · ${fmt(e.sent7d)} last 7d`}
+          loading={loading && !data}
+        />
+        <StatCard
+          label="MRR"
+          value={fmtEur(biz.mrr)}
+          icon="💰"
+          accent="#10b981"
+          sub={`${fmt(p.converted)} converted · ${fmtEur(biz.monthlyRevenue)} revenue`}
+          loading={loading && !data}
+        />
       </div>
 
-      {/* ── Row 2: Full Pipeline Flow ── */}
-      <div style={{ ...S.card, marginBottom: '20px' }}>
-        <div style={S.sectionTitle}>Pipeline Flow</div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '4px', padding: '10px 0' }}>
-          <PipelineStep label="Scraped" value={p.scraped} total={p.total} color="#6366f1" />
-          <PipelineStep label="Analyzed" value={p.analyzed} total={p.total} color="#8b5cf6" />
-          <PipelineStep label="High Score" value={p.highScore} total={p.total} color="#a855f7" />
-          <PipelineStep label="Previews Built" value={pr.built} total={p.total} color="#ec4899" />
-          <PipelineStep label="Contacted" value={p.contacted} total={p.total} color="#f59e0b" />
-          <PipelineStep label="Replied" value={p.replied} total={p.total} color="#f97316" />
-          <PipelineStep label="Converted" value={p.converted} total={p.total} color="#10b981" arrow={false} />
-        </div>
-        {p.total > 0 && (
-          <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,.04)', fontSize: '11px', color: '#6b7280' }}>
-            <span>Avg Lead Score: <strong style={{ color: '#fff' }}>{p.avgLeadScore}</strong></span>
-            <span>Contact Rate: <strong style={{ color: '#f59e0b' }}>{p.total > 0 ? (p.contacted / p.total * 100).toFixed(1) : 0}%</strong></span>
-            <span>Reply Rate: <strong style={{ color: '#f97316' }}>{p.contacted > 0 ? (p.replied / p.contacted * 100).toFixed(1) : 0}%</strong></span>
-            <span>Close Rate: <strong style={{ color: '#10b981' }}>{p.replied > 0 ? (p.converted / p.replied * 100).toFixed(1) : 0}%</strong></span>
-            <span>Lost: <strong style={{ color: '#ef4444' }}>{fmt(p.lost)}</strong></span>
-          </div>
-        )}
+      {/* ── Row 2: Secondary stats ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard
+          label="Previews Built"
+          value={fmt(pr.built)}
+          icon="🏗"
+          accent="#ec4899"
+          sub={`${fmt(pr.viewed)} viewed (${pr.viewRate}%)`}
+          loading={loading && !data}
+        />
+        <StatCard
+          label="Converted"
+          value={fmt(p.converted)}
+          icon="✅"
+          accent="#10b981"
+          sub={`${p.total > 0 ? (p.converted / p.total * 100).toFixed(1) : 0}% of total`}
+          loading={loading && !data}
+        />
+        <StatCard
+          label="Active Jobs"
+          value={fmt(ag.active)}
+          icon="⚡"
+          accent="#6366f1"
+          sub="currently running"
+          loading={loading && !data}
+        />
+        <StatCard
+          label="Failed Jobs (30d)"
+          value={fmt(ag.failed30d)}
+          icon="🔴"
+          accent="#ef4444"
+          sub="last 30 days"
+          loading={loading && !data}
+        />
       </div>
 
-      {/* ── Row 3: Email Performance + Preview Stats ── */}
-      <div style={{ ...S.grid2, marginBottom: '20px' }}>
-        {/* Email performance */}
-        <div style={S.card}>
-          <div style={S.sectionTitle}>Email Performance</div>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-            <EmailRate label="Sent" value={e.totalSent} rate={100} color="#6366f1" />
-            <EmailRate label="Opened" value={e.opened} rate={e.openRate} color="#10b981" />
-            <EmailRate label="Clicked" value={e.clicked} rate={e.clickRate} color="#8b5cf6" />
-            <EmailRate label="Replied" value={e.replied} rate={e.replyRate} color="#f59e0b" />
-            <EmailRate label="Bounced" value={e.bounced} rate={e.bounceRate} color="#ef4444" />
+      {/* ── Row 3: Pipeline funnel + Email stats ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        {/* Pipeline funnel */}
+        <div className="bg-[#111118] rounded-xl p-5 border border-white/[0.08]">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-semibold text-[#71717a] uppercase tracking-wider">Pipeline Funnel</h3>
+            <span className="text-xs text-[#52525b]">{fmt(p.total)} total</span>
           </div>
-          <div style={{ display: 'flex', gap: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,.04)', fontSize: '11px', color: '#6b7280' }}>
-            <span>Today: <strong style={{ color: '#fff' }}>{e.sentToday}</strong></span>
-            <span>7 days: <strong style={{ color: '#fff' }}>{e.sent7d}</strong></span>
-            <span>30 days: <strong style={{ color: '#fff' }}>{e.sent30d}</strong></span>
+          <div className="space-y-3">
+            <FunnelBar label="Scraped" value={p.scraped} total={p.total} color="#6366f1" />
+            <FunnelBar label="Analyzed" value={p.analyzed} total={p.total} color="#8b5cf6" />
+            <FunnelBar label="High Score" value={p.highScore} total={p.total} color="#a855f7" />
+            <FunnelBar label="Previews Built" value={pr.built} total={p.total} color="#ec4899" />
+            <FunnelBar label="Contacted" value={p.contacted} total={p.total} color="#f59e0b" />
+            <FunnelBar label="Replied" value={p.replied} total={p.total} color="#f97316" />
+            <FunnelBar label="Converted" value={p.converted} total={p.total} color="#10b981" />
           </div>
-        </div>
-
-        {/* Preview sites */}
-        <div style={S.card}>
-          <div style={S.sectionTitle}>Preview Sites</div>
-          <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
-            <div style={{ textAlign: 'center', flex: 1 }}>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#8b5cf6' }}>{fmt(pr.built)}</div>
-              <div style={{ fontSize: '11px', color: '#6b7280' }}>Sites Built</div>
-            </div>
-            <div style={{ textAlign: 'center', flex: 1 }}>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#10b981' }}>{fmt(pr.viewed)}</div>
-              <div style={{ fontSize: '11px', color: '#6b7280' }}>Viewed by Prospects</div>
-            </div>
-            <div style={{ textAlign: 'center', flex: 1 }}>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#f59e0b' }}>{pr.viewRate}%</div>
-              <div style={{ fontSize: '11px', color: '#6b7280' }}>View Rate</div>
-            </div>
-          </div>
-          {pr.built > 0 && (
-            <div style={{ height: '8px', backgroundColor: '#1a1a1a', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${pr.viewRate}%`, backgroundColor: '#10b981', borderRadius: '4px', transition: 'width .5s' }} />
+          {p.total > 0 && (
+            <div className="mt-4 pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-2 text-[11px]">
+              <span className="text-[#52525b]">Avg Lead Score: <strong className="text-white">{p.avgLeadScore}</strong></span>
+              <span className="text-[#52525b]">Contact Rate: <strong className="text-amber-400">{p.total > 0 ? (p.contacted / p.total * 100).toFixed(1) : 0}%</strong></span>
+              <span className="text-[#52525b]">Reply Rate: <strong className="text-orange-400">{p.contacted > 0 ? (p.replied / p.contacted * 100).toFixed(1) : 0}%</strong></span>
+              <span className="text-[#52525b]">Close Rate: <strong className="text-emerald-400">{p.replied > 0 ? (p.converted / p.replied * 100).toFixed(1) : 0}%</strong></span>
             </div>
           )}
         </div>
-      </div>
 
-      {/* ── Row 4: Agent Jobs + Business ── */}
-      <div style={{ ...S.grid2, marginBottom: '20px' }}>
-        {/* Agent jobs */}
-        <div style={S.card}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <div style={S.sectionTitle}>Agent Jobs</div>
-            <div style={{ display: 'flex', gap: '12px', fontSize: '10px' }}>
-              <span style={{ color: '#10b981' }}>● Done</span>
-              <span style={{ color: '#6366f1' }}>● Running</span>
-              <span style={{ color: '#f59e0b' }}>● Queued</span>
-              <span style={{ color: '#ef4444' }}>● Failed</span>
+        {/* Email performance */}
+        <div className="bg-[#111118] rounded-xl p-5 border border-white/[0.08]">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-semibold text-[#71717a] uppercase tracking-wider">Email Performance</h3>
+          </div>
+          <div className="flex justify-around py-2">
+            <EmailStatItem label="Sent" value={e.totalSent} rate={100} color="#6366f1" />
+            <EmailStatItem label="Opened" value={e.opened} rate={e.openRate} color="#10b981" />
+            <EmailStatItem label="Clicked" value={e.clicked} rate={e.clickRate} color="#8b5cf6" />
+            <EmailStatItem label="Replied" value={e.replied} rate={e.replyRate} color="#f59e0b" />
+            <EmailStatItem label="Bounced" value={e.bounced} rate={e.bounceRate} color="#ef4444" />
+          </div>
+          <div className="mt-4 pt-3 border-t border-white/[0.06] flex gap-4 text-[11px] text-[#52525b]">
+            <span>Today: <strong className="text-white">{fmt(e.sentToday)}</strong></span>
+            <span>7 days: <strong className="text-white">{fmt(e.sent7d)}</strong></span>
+            <span>30 days: <strong className="text-white">{fmt(e.sent30d)}</strong></span>
+          </div>
+
+          {/* Business metrics below email */}
+          <div className="mt-4 pt-3 border-t border-white/[0.06]">
+            <div className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-3">Business</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-[10px] text-[#52525b] uppercase tracking-wide mb-1">MRR</div>
+                <div className="text-lg font-extrabold text-emerald-400">{fmtEur(biz.mrr)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-[#52525b] uppercase tracking-wide mb-1">Monthly Revenue</div>
+                <div className="text-lg font-extrabold text-white">{fmtEur(biz.monthlyRevenue)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-[#52525b] uppercase tracking-wide mb-1">Total Clients</div>
+                <div className="text-base font-bold text-white">{fmt(biz.totalClients)}</div>
+                <div className="text-[11px] text-[#52525b]">{fmt(biz.activeClients)} active</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-[#52525b] uppercase tracking-wide mb-1">New This Month</div>
+                <div className="text-base font-bold text-indigo-400">{fmt(biz.newClientsMonth)}</div>
+              </div>
             </div>
           </div>
-          {['SCRAPER', 'ANALYZER', 'BUILDER', 'OUTREACH', 'QA'].map(type => (
-            <AgentRow key={type} type={type} data={ag.breakdown[type] ?? {}} />
+        </div>
+      </div>
+
+      {/* ── Row 4: Agent jobs + Recent activity ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Agent breakdown */}
+        <div className="bg-[#111118] rounded-xl p-5 border border-white/[0.08]">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-[#71717a] uppercase tracking-wider">Agent Jobs</h3>
+            <div className="flex gap-3 text-[10px]">
+              <span className="text-emerald-400">● Done</span>
+              <span className="text-indigo-400">● Running</span>
+              <span className="text-amber-400">● Queued</span>
+              <span className="text-red-400">● Failed</span>
+            </div>
+          </div>
+          {['SCRAPER', 'ANALYZER', 'BUILDER', 'OUTREACH', 'QA'].map((type) => (
+            <AgentTypeRow key={type} type={type} data={ag.breakdown[type] ?? {}} />
           ))}
-          <div style={{ display: 'flex', gap: '16px', paddingTop: '12px', fontSize: '11px', color: '#6b7280' }}>
-            <span>Active now: <strong style={{ color: '#6366f1' }}>{ag.active}</strong></span>
-            <span>Failed (30d): <strong style={{ color: '#ef4444' }}>{ag.failed30d}</strong></span>
+          <div className="mt-3 pt-3 border-t border-white/[0.06] flex gap-4 text-[11px] text-[#52525b]">
+            <span>Active now: <strong className="text-indigo-400">{ag.active}</strong></span>
+            <span>Failed (30d): <strong className="text-red-400">{ag.failed30d}</strong></span>
           </div>
         </div>
 
-        {/* Business */}
-        <div style={S.card}>
-          <div style={S.sectionTitle}>Business</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div>
-              <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '.04em' }}>MRR</div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#10b981' }}>€{fmt(biz.mrr)}</div>
+        {/* Recent activity feed */}
+        <div className="bg-[#111118] rounded-xl p-5 border border-white/[0.08]">
+          <h3 className="text-xs font-semibold text-[#71717a] uppercase tracking-wider mb-3">Recent Activity</h3>
+          {activity.length === 0 ? (
+            <div className="text-center py-8 text-[#3f3f46] text-sm">
+              <div className="text-3xl mb-2">📋</div>
+              No recent activity
             </div>
-            <div>
-              <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '.04em' }}>Revenue (Month)</div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#fff' }}>€{fmt(biz.monthlyRevenue)}</div>
+          ) : (
+            <div className="space-y-2">
+              {activity.slice(0, 10).map((item) => (
+                <div key={item.id} className="flex items-start gap-3 py-2 border-b border-white/[0.04] last:border-0">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-[#a1a1aa] truncate">{item.description}</div>
+                    <div className="text-[10px] text-[#52525b] mt-0.5 flex items-center gap-1.5">
+                      <span className="text-[#3f3f46]">{item.type}</span>
+                      <span>·</span>
+                      <span>{timeAgo(item.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '.04em' }}>Total Clients</div>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: '#fff' }}>{fmt(biz.totalClients)}</div>
-              <div style={{ fontSize: '11px', color: '#6b7280' }}>{fmt(biz.activeClients)} active</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '.04em' }}>New This Month</div>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: '#6366f1' }}>{fmt(biz.newClientsMonth)}</div>
+          )}
+          {/* Preview sites mini widget */}
+          <div className="mt-4 pt-3 border-t border-white/[0.06]">
+            <div className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-2">Preview Sites</div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex gap-4">
+                <div>
+                  <div className="text-lg font-extrabold text-violet-400">{fmt(pr.built)}</div>
+                  <div className="text-[10px] text-[#52525b]">Built</div>
+                </div>
+                <div>
+                  <div className="text-lg font-extrabold text-emerald-400">{fmt(pr.viewed)}</div>
+                  <div className="text-[10px] text-[#52525b]">Viewed</div>
+                </div>
+              </div>
+              <div className="flex-1 max-w-[120px]">
+                <div className="text-[10px] text-[#52525b] mb-1 text-right">{pr.viewRate}% view rate</div>
+                <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, pr.viewRate)}%` }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
