@@ -34,54 +34,120 @@ export interface CloneAndBuildResult {
 // Applied as a second Claude Code CLI call after the structural clone.
 // Does NOT change any text content — only upgrades the visual design.
 
-const PREMIUM_UPGRADE_PROMPT = `Apply premium design upgrade to this cloned website. Follow these steps exactly:
+const PREMIUM_UPGRADE_PROMPT = `You MUST upgrade this cloned website's visual design to premium quality. Execute these commands IN ORDER. Do NOT skip any step. After EACH step, verify it worked.
 
-STEP 2: Create docs/brand-analysis.json with:
-- sector: detect from business type (dental|restaurant|legal|fitness|beauty|hotel|ecommerce|realestate|medical|professional)
-- colors: extract primary, accent, background, text from existing globals.css or Tailwind config
-- tone: choose one of luxury|modern|warm|bold based on the sector and colors
+STEP 1: Read the project structure.
+Run: ls src/components/ && ls src/app/ && cat src/app/globals.css | head -30
+This tells you what files exist.
 
-STEP 3: Upgrade fonts. Choose ONE of these combinations based on sector:
-- Professional/Dental/Legal/Medical: DM Serif Display (400,700) + DM Sans (300,400,600)
-- Restaurant/Hotel/Beauty: Playfair Display (300,400,700) + Jost (300,400,600)
-- Fitness/Ecommerce: Space Grotesk (400,600,700) + Inter (300,400,500)
-Update src/app/layout.tsx to use next/font/google for the chosen fonts.
-Update src/app/globals.css: add CSS variables --font-heading and --font-body, apply them to html/body.
+STEP 2: Install framer-motion.
+Run: npm install framer-motion
+Verify: grep framer-motion package.json
 
-STEP 4: Upgrade each component file found in src/components/:
-- Header/Nav: add "use client". Apply backdrop-blur-md + bg-white/80 or bg-primary/90 when scrolled (useScrolled hook with window.scrollY > 60). Fixed position, z-50. Add hamburger button for mobile (useState for open/close).
-- Hero section: ensure min-h-screen. If any <video> or <Image> is used as background, make it autoPlay muted loop playsInline with a dark gradient overlay (from-black/70 via-black/40 to-transparent). Add staggered fade-in animation classes to heading, subtitle, CTA button.
-- Cards (service cards, feature cards, etc.): add rounded-md border border-neutral-200 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300.
-- Buttons: primary button gets bg-primary text-white hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200. Ghost button gets border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all duration-200.
-- Images: ensure all <Image> or <img> tags have className including object-cover and appropriate rounded-* class. Add loading="lazy" where missing.
-- Footer: ensure dark background (bg-neutral-900 or bg-primary). If footer has multiple link groups, use a 3-column grid (grid-cols-1 md:grid-cols-3 gap-8).
+STEP 3: Create the FadeIn animation component.
+Write this EXACT file to src/components/FadeIn.tsx:
 
-STEP 5: Install framer-motion if not already in package.json.
-Create src/components/FadeIn.tsx — a client component that wraps children in a motion.div with:
-- initial={{ opacity: 0, y: 24 }}
-- whileInView={{ opacity: 1, y: 0 }}
-- viewport={{ once: true, margin: "-60px" }}
-- transition={{ duration: 0.6, ease: "easeOut" }}
-Import and wrap each major section (hero content, about section, services/cards sections, contact section, footer inner content) in <FadeIn>.
+'use client'
+import { motion } from 'framer-motion'
 
-STEP 6: Add metadata and SEO to src/app/layout.tsx:
-- Set title, description, openGraph (title, description, type: "website", locale), twitter card metadata.
-- Use existing businessName and description from the site content.
-Add Schema.org JSON-LD to src/app/page.tsx:
-- Use LocalBusiness or the appropriate schema type
-- Include name, description, telephone, address if found in the content
+interface FadeInProps {
+  children: React.ReactNode
+  delay?: number
+  direction?: 'up' | 'down' | 'left' | 'right'
+}
 
-STEP 7: Run: npm run build
-- If it fails due to TypeScript errors, fix them. Do NOT skip — the build MUST pass.
-- Common issues: missing "use client" on components using hooks, missing types, wrong import paths.
-- Fix all errors until npm run build exits with code 0.
+export const FadeIn = ({ children, delay = 0, direction = 'up' }: FadeInProps) => {
+  const directionMap = {
+    up: { y: 30 }, down: { y: -30 },
+    left: { x: 30 }, right: { x: -30 }
+  }
+  return (
+    <motion.div
+      initial={{ opacity: 0, ...directionMap[direction] }}
+      whileInView={{ opacity: 1, x: 0, y: 0 }}
+      viewport={{ once: true, margin: '-50px' }}
+      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
+  )
+}
 
-IMPORTANT CONSTRAINTS:
-- Do NOT change any text content (business name, descriptions, phone numbers, addresses, menu items, etc.)
-- Do NOT replace any images — keep all existing public/ assets
-- Do NOT change page routes or navigation structure
-- Only modify: styling, animations, font imports, metadata, Schema.org JSON-LD
-- After every file edit that touches a .tsx or .ts file, mentally verify it still type-checks
+Verify: cat src/components/FadeIn.tsx
+
+STEP 4: Upgrade the Header/Nav component.
+Read the header file: cat src/components/Header.tsx (or whatever the nav component is called — check ls src/components/)
+Then edit it to add:
+- Add "use client" at the top
+- Add useState and useEffect imports from react
+- Add scroll detection: const [scrolled, setScrolled] = useState(false) + useEffect with window scroll listener
+- When scrolled: apply className "backdrop-blur-md bg-white/85 shadow-sm border-b border-neutral-200"
+- When not scrolled: apply "bg-transparent"
+- Make it position: fixed, top: 0, left: 0, right: 0, z-index: 50
+- Nav links: add uppercase tracking-wide text-sm
+- Add a hamburger button for mobile (hidden on md+)
+Verify: npx tsc --noEmit (must have 0 errors)
+
+STEP 5: Upgrade the Hero section.
+Read: cat src/components/HeroSection.tsx (or similar name)
+Edit it to:
+- Set min-h-screen on the container
+- If there's a video, make sure it has autoPlay muted loop playsInline
+- Add a dark gradient overlay: linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.7))
+- Make the title font-size clamp(2.5rem, 6vw, 5rem), font-weight bold, tracking-wide
+- Add primary CTA button (gold/brand color background) + ghost button (transparent with border)
+- Import and use FadeIn to stagger-animate the heading (delay=0), subtitle (delay=0.15), buttons (delay=0.3)
+Verify: npx tsc --noEmit
+
+STEP 6: Upgrade ALL card-like components.
+For EVERY file in src/components/ that renders cards, items, or grid elements, add:
+- rounded-lg border border-neutral-200 shadow-sm
+- hover:-translate-y-1 hover:shadow-md transition-all duration-300
+- padding p-6
+- background bg-white
+Read each file, edit it, verify.
+
+STEP 7: Upgrade the Footer.
+Read the footer component and edit:
+- Dark background: bg-neutral-900 text-white
+- 3-column grid layout on desktop: grid grid-cols-1 md:grid-cols-3 gap-8
+- Copyright separator: border-t border-white/10 mt-8 pt-6
+Verify: npx tsc --noEmit
+
+STEP 8: Wrap all sections in FadeIn.
+Read src/app/page.tsx (the homepage).
+Import FadeIn from "@/components/FadeIn".
+Wrap EACH section component call in <FadeIn> tags. For items in a grid, use delay={0}, delay={0.1}, delay={0.2}.
+Do the same for ALL sub-pages: read each file in src/app/*/page.tsx and add FadeIn wrapping.
+Verify: npx tsc --noEmit
+
+STEP 9: Add SEO metadata.
+Edit src/app/layout.tsx:
+- Add openGraph object to metadata with title, description, type: "website"
+- Add a <script type="application/ld+json"> with Schema.org LocalBusiness data (name, telephone, address from the site content)
+Verify: npx tsc --noEmit
+
+STEP 10: Final build verification.
+Run: npm run build
+If it fails, FIX the errors. Common fixes:
+- Add "use client" to files that use useState/useEffect/motion
+- Fix import paths
+- Remove unused variables
+Keep fixing until: npm run build exits with 0
+
+STEP 11: Verify premium features are applied.
+Run: grep -r "FadeIn" src/app/ | wc -l
+Run: grep -r "backdrop-blur" src/components/ | wc -l
+Run: grep -r "framer-motion" src/components/ | wc -l
+Run: grep -r "hover:" src/components/ | wc -l
+ALL counts must be > 0. If any is 0, go back and fix that step.
+
+ABSOLUTE RULES:
+- Do NOT change any text content
+- Do NOT delete any images
+- Do NOT change page routes
+- ONLY change visual design, animations, fonts, metadata
+- VERIFY after every edit with npx tsc --noEmit
 `;
 
 // ─── Public API ────────────────────────────────────────────────────────────────
