@@ -96,11 +96,11 @@ export async function cloneAndBuildSite(
   prospectId: string,
   options?: { timeoutMs?: number }
 ): Promise<CloneAndBuildResult> {
-  // Phase 1 clone: 20 min. Phase 2 upgrade: 10 min. Build+deploy: 10 min.
-  const cloneTimeoutMs = options?.timeoutMs ?? 1_200_000; // 20 min for clone
-  const upgradeTimeoutMs = 600_000; // 10 min for upgrade
-  const buildTimeoutMs = 300_000;   // 5 min for npm run build
-  const deployTimeoutMs = 300_000;  // 5 min for vercel deploy
+  // NO TIME LIMITS — each phase takes as long as it needs
+  const cloneTimeoutMs = 0;    // unlimited
+  const upgradeTimeoutMs = 0;  // unlimited
+  const buildTimeoutMs = 0;    // unlimited
+  const deployTimeoutMs = 0;   // unlimited
 
   const workDir = `/tmp/clone-${slug}-${Date.now()}`;
   const clonerBase = "/app/cloner"; // Pre-installed in Docker
