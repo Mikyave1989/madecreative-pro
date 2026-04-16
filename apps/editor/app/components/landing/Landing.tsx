@@ -7,8 +7,8 @@ import { API_URL } from '~/lib/api/client';
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const PORTFOLIO = [
-  { name: 'LENTRODT die zahnaerzte', city: 'Munich', sector: 'Dental', url: 'https://madecreative-cloner-f6hwmv0xa-mikyave1989s-projects.vercel.app', original: 'https://zahnarztlentrodt.de/', image: 'https://zahnarztlentrodt.de/logo.png' },
-  { name: 'Hamburg Smile', city: 'Hamburg', sector: 'Dental', url: 'https://mc-preview-hamburg-smile-zahnarzt-hamburg-innenstadt-prwhmany9.vercel.app', original: 'http://www.hamburg-smile.de/', image: '' },
+  { name: 'LENTRODT die zahnaerzte', city: 'Munich', sector: 'Dental', url: 'https://madecreative-cloner-f6hwmv0xa-mikyave1989s-projects.vercel.app', original: 'https://zahnarztlentrodt.de/', screenshot: 'https://api.microlink.io/?url=https%3A%2F%2Fmadecreative-cloner-f6hwmv0xa-mikyave1989s-projects.vercel.app&screenshot=true&meta=false&embed=screenshot.url' },
+  { name: 'Hamburg Smile', city: 'Hamburg', sector: 'Dental', url: 'https://mc-preview-hamburg-smile-zahnarzt-hamburg-innenstadt-prwhmany9.vercel.app', original: 'http://www.hamburg-smile.de/', screenshot: 'https://api.microlink.io/?url=https%3A%2F%2Fmc-preview-hamburg-smile-zahnarzt-hamburg-innenstadt-prwhmany9.vercel.app&screenshot=true&meta=false&embed=screenshot.url' },
 ];
 
 const AGENTS = [
@@ -437,19 +437,20 @@ export function Landing() {
             <p style={{ ...S.t2, maxWidth: 500, margin: '0 auto 48px', fontSize: 15 }}>Real businesses. Real content. Premium design upgrade.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
               {PORTFOLIO.map((p, i) => (
-                <div key={i} style={{ ...S.card, overflow: 'hidden', textAlign: 'left', transition: 'transform 0.3s, box-shadow 0.3s' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 12px 40px rgba(99,102,241,0.15)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}>
-                  <div style={{ height: 200, background: '#0d0d14', position: 'relative', overflow: 'hidden' }}>
-                    <iframe src={p.url} style={{ width: '200%', height: '200%', transform: 'scale(0.5)', transformOrigin: 'top left', border: 'none', pointerEvents: 'none' }} title={p.name} loading="lazy" />
+                <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" style={{ ...S.card, overflow: 'hidden', textAlign: 'left', transition: 'transform 0.3s, box-shadow 0.3s', textDecoration: 'none', cursor: 'pointer' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-6px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 16px 48px rgba(99,102,241,0.2)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}>
+                  <div style={{ height: 220, background: '#0d0d14', position: 'relative', overflow: 'hidden' }}>
+                    <img src={p.screenshot} alt={`${p.name} - redesigned`} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} loading="lazy" />
+                    <div style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(99,102,241,0.9)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20, letterSpacing: '0.05em' }}>REDESIGNED</div>
                   </div>
                   <div style={{ padding: '20px 24px' }}>
                     <h3 style={{ color: '#fff', fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{p.name}</h3>
-                    <p style={{ ...S.t3, fontSize: 13, marginBottom: 12 }}>{p.sector} — {p.city}</p>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ ...S.gb, padding: '8px 16px', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>View Redesign</a>
-                      <a href={p.original} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', color: '#a1a1aa', fontSize: 13, textDecoration: 'none' }}>Original Site</a>
+                    <p style={{ color: '#71717a', fontSize: 13, marginBottom: 16 }}>{p.sector} — {p.city}</p>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <span style={{ ...S.gb, padding: '8px 20px', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600 }}>View Live Site</span>
+                      <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(p.original, '_blank'); }} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', color: '#a1a1aa', fontSize: 13, cursor: 'pointer' }}>Original</span>
                     </div>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           </div>
