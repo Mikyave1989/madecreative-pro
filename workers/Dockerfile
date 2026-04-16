@@ -35,6 +35,11 @@ RUN RULES=$(cat /tmp/mc-rules.md) && \
   cat /tmp/skill-header.md /tmp/mc-rules.md /tmp/skill-body.md > "$SKILL" && \
   cat /tmp/mc-rules.md >> /app/cloner/CLAUDE.md
 
+# Add premium-upgrade skill to cloner
+COPY workers/premium-upgrade-skill.md /tmp/premium-skill.md
+RUN mkdir -p /app/cloner/.claude/skills/premium-upgrade && \
+  cp /tmp/premium-skill.md /app/cloner/.claude/skills/premium-upgrade/SKILL.md
+
 # Copy root workspace files
 COPY package.json package-lock.json ./
 COPY tsconfig.json ./
