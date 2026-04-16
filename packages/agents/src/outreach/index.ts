@@ -414,7 +414,7 @@ export class OutreachAgent extends BaseAgent {
     try {
       const result = await sendViaResend({
         from: fromAddress,
-        replyTo: `${fromEmail}@${domain}`,
+        replyTo: "casertamaxicasa@gmail.com",
         to: toEmail,
         subject,
         html: trackedHtml,

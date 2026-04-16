@@ -267,7 +267,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: "Marco Bianchi <marco@madecreative.pro>", to: [prospect.contactEmail], reply_to: "info@madecreative.pro", subject, html: bodyHtml }),
+    body: JSON.stringify({ from: "Marco Bianchi <marco@madecreative.pro>", to: [prospect.contactEmail], reply_to: "casertamaxicasa@gmail.com", subject, html: bodyHtml }),
   });
 
   const data = await res.json() as { id?: string; error?: unknown };

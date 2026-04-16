@@ -904,7 +904,7 @@ Or simply reply to this email</p>
       body: JSON.stringify({
         from: "Marco Bianchi <marco@madecreative.pro>",
         to: [prospect.contactEmail],
-        reply_to: "info@madecreative.pro",
+        reply_to: "casertamaxicasa@gmail.com",
         subject: tpl.subject,
         html: htmlEmail,
       }),

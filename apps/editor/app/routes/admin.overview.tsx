@@ -265,6 +265,43 @@ export default function AdminOverview() {
         </div>
       )}
 
+      {/* ── ROI / Sales Dashboard ── */}
+      <div className="mb-6 p-5 rounded-xl border border-indigo-500/20 bg-indigo-500/5">
+        <h3 className="text-sm font-semibold text-indigo-400 mb-4 uppercase tracking-wider">Sales & ROI</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-white">{fmt(e.totalSent)}</div>
+            <div className="text-[11px] text-[#71717a]">Emails Sent</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-white">{fmt(e.opened)}</div>
+            <div className="text-[11px] text-[#71717a]">Opened ({e.openRate ? (e.openRate * 100).toFixed(1) : 0}%)</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-white">{fmt(e.clicked)}</div>
+            <div className="text-[11px] text-[#71717a]">Clicked ({e.clickRate ? (e.clickRate * 100).toFixed(1) : 0}%)</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-emerald-400">{fmt(e.replied)}</div>
+            <div className="text-[11px] text-[#71717a]">Replied ({e.replyRate ? (e.replyRate * 100).toFixed(1) : 0}%)</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-amber-400">{fmt(p.converted)}</div>
+            <div className="text-[11px] text-[#71717a]">Converted</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-emerald-400">{b.mrr ? `€${fmt(b.mrr)}` : '€0'}</div>
+            <div className="text-[11px] text-[#71717a]">Monthly Revenue</div>
+          </div>
+        </div>
+        <div className="mt-4 pt-3 border-t border-indigo-500/10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
+          <div><span className="text-[#71717a]">Preview Sites Built:</span> <span className="text-white font-medium">{fmt(d?.previews?.built)}</span></div>
+          <div><span className="text-[#71717a]">Previews Viewed:</span> <span className="text-white font-medium">{fmt(d?.previews?.viewed)}</span></div>
+          <div><span className="text-[#71717a]">View Rate:</span> <span className="text-white font-medium">{d?.previews?.viewRate ? (d.previews.viewRate * 100).toFixed(1) + '%' : '0%'}</span></div>
+          <div><span className="text-[#71717a]">Bounced:</span> <span className="text-red-400 font-medium">{fmt(e.bounced)}</span></div>
+        </div>
+      </div>
+
       {/* ── Row 1: KPI cards (4 cols) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
