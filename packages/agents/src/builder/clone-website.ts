@@ -105,11 +105,15 @@ export async function cloneAndBuildSite(
     console.log(`[CloneAndBuild] Copied cloner template to ${workDir}`);
 
     // ── Step 2: Clone the website (Phase 1 — `clone-website` skill) ───────────
-    console.log(`[CloneAndBuild] Phase 1: cloning ${websiteUrl}`);
+    // Uses Haiku: clone is mechanical work (crawl, copy text, download assets,
+    // generate routes). Sonnet would be wasteful here — Haiku is ~4x cheaper
+    // and handles deterministic tasks fine.
+    console.log(`[CloneAndBuild] Phase 1: cloning ${websiteUrl} (Haiku)`);
     const cloneResult = await runClaudeCLI(
       workDir,
       `/clone-website ${websiteUrl}`,
-      cloneTimeoutMs
+      cloneTimeoutMs,
+      "claude-haiku-4-5",
     );
 
     if (!cloneResult.success) {
@@ -158,11 +162,14 @@ export async function cloneAndBuildSite(
     // /app/cloner/.claude/skills/frontend-design/SKILL.md). The skill handles
     // creative direction; FRONTEND_DESIGN_UPGRADE_PROMPT supplies our hard
     // constraints (don't mutate cloned content, must build clean).
-    console.log(`[CloneAndBuild] Phase 2: invoking frontend-design skill`);
+    // Phase 2 stays on Sonnet: creative/aesthetic work where model quality
+    // directly translates to preview polish → higher conversion rate.
+    console.log(`[CloneAndBuild] Phase 2: invoking frontend-design skill (Sonnet)`);
     const upgradeResult = await runClaudeCLI(
       workDir,
       FRONTEND_DESIGN_UPGRADE_PROMPT,
-      upgradeTimeoutMs
+      upgradeTimeoutMs,
+      "claude-sonnet-4-6",
     );
 
     if (!upgradeResult.success) {
@@ -346,11 +353,16 @@ async function verifyClonedProject(
 /**
  * Run Claude Code CLI headlessly with an arbitrary prompt.
  * Streams stdout line-by-line for Railway log visibility.
+ *
+ * @param model optional model override (e.g. "claude-haiku-4-5" for cheap
+ *   mechanical work, "claude-sonnet-4-6" for creative/aesthetic work).
+ *   Omit to use the CLI's default.
  */
 function runClaudeCLI(
   workDir: string,
   prompt: string,
-  timeoutMs: number
+  timeoutMs: number,
+  model?: string,
 ): Promise<{ success: boolean; error?: string }> {
   return new Promise((resolve) => {
     const args = [
@@ -359,8 +371,9 @@ function runClaudeCLI(
       "--max-turns", "200",
       "--output-format", "text",
     ];
+    if (model) args.push("--model", model);
 
-    console.log(`[ClaudeCLI] Running in ${workDir}`);
+    console.log(`[ClaudeCLI] Running in ${workDir}${model ? ` (model=${model})` : ""}`);
     console.log(`[ClaudeCLI] Prompt preview: ${prompt.slice(0, 120).replace(/\n/g, " ")}...`);
 
     const proc = execFile("claude", args, {

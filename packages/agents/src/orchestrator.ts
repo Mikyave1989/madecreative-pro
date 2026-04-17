@@ -197,7 +197,7 @@ async function chainNextAgent(
         select: { id: true, leadScore: true, previewSiteUrl: true, sector: true },
       });
 
-      if (!prospect || prospect.leadScore < 30 || prospect.previewSiteUrl) return;
+      if (!prospect || prospect.leadScore < 75 || prospect.previewSiteUrl) return;
 
       const builderQueue = new Queue(AGENT_QUEUE_NAMES["BUILDER"], { connection: redis });
 
