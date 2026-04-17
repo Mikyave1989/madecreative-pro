@@ -1,22 +1,19 @@
 /**
  * JCodesMore Website Cloner Integration
  *
- * Uses the ai-website-cloner-template to clone a website completely,
- * then applies the premium design upgrade, builds, and deploys to Vercel.
- *
  * Flow:
  * 1. Copy cloner template to temp dir
- * 2. Run Claude Code CLI: /clone-website <url>  (phase 1 — structural clone)
- * 3. Run Claude Code CLI: premium upgrade prompt (phase 2 — design uplift)
- * 4. Run: npm run build  (verify it compiles)
- * 5. Run: npx vercel --prod --yes  (deploy, capture URL)
- * 6. Return { previewUrl }
+ * 2. Run Claude Code CLI: /clone-website <url>  (phase 1 — structural clone via JCodesMore skill)
+ * 3. Commit clean clone as rollback point
+ * 4. Run Claude Code CLI: invoke `frontend-design` skill (phase 2 — design uplift)
+ * 5. Run: npm run build  (revert to clean clone if build fails)
+ * 6. Run: npx vercel --prod --yes  (deploy, capture URL)
+ * 7. Return { previewUrl }
  */
 
 import { execFile } from "child_process";
 import { promises as fs } from "fs";
 import * as path from "path";
-import { applyPremiumUpgrade } from "./premium-upgrade.js";
 
 export interface CloneResult {
   success: boolean;
@@ -31,125 +28,43 @@ export interface CloneAndBuildResult {
   error?: string;
 }
 
-// ─── Premium upgrade prompt ────────────────────────────────────────────────────
-// Applied as a second Claude Code CLI call after the structural clone.
-// Does NOT change any text content — only upgrades the visual design.
+// ─── Phase boundary paths ──────────────────────────────────────────────────────
+// These files define the contract between the two Claude Code sessions.
 
-const PREMIUM_UPGRADE_PROMPT = `You MUST upgrade this cloned website's visual design to premium quality. Execute these commands IN ORDER. Do NOT skip any step. After EACH step, verify it worked.
+const CLONER_ROOT = "/app/cloner";
+const CLONE_SKILL_PATH = `${CLONER_ROOT}/.claude/skills/clone-website/SKILL.md`;
+const DESIGN_SKILL_PATH = `${CLONER_ROOT}/.claude/skills/frontend-design/SKILL.md`;
 
-STEP 1: Read the project structure.
-Run: ls src/components/ && ls src/app/ && cat src/app/globals.css | head -30
-This tells you what files exist.
+// ─── Design upgrade prompt ─────────────────────────────────────────────────────
+// Invokes the official Anthropic `frontend-design` skill (installed at build time
+// into /app/cloner/.claude/skills/frontend-design/SKILL.md). The skill drives all
+// creative choices — we only supply the hard constraints that protect the cloned
+// content from being mutated, and we forbid re-invoking the clone-website skill
+// (both skills are visible in Phase 2; we must disambiguate explicitly).
 
-STEP 2: Install framer-motion.
-Run: npm install framer-motion
-Verify: grep framer-motion package.json
-
-STEP 3: Create the FadeIn animation component.
-Write this EXACT file to src/components/FadeIn.tsx:
-
-'use client'
-import { motion } from 'framer-motion'
-
-interface FadeInProps {
-  children: React.ReactNode
-  delay?: number
-  direction?: 'up' | 'down' | 'left' | 'right'
-}
-
-export const FadeIn = ({ children, delay = 0, direction = 'up' }: FadeInProps) => {
-  const directionMap = {
-    up: { y: 30 }, down: { y: -30 },
-    left: { x: 30 }, right: { x: -30 }
-  }
-  return (
-    <motion.div
-      initial={{ opacity: 0, ...directionMap[direction] }}
-      whileInView={{ opacity: 1, x: 0, y: 0 }}
-      viewport={{ once: true, margin: '-50px' }}
-      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-Verify: cat src/components/FadeIn.tsx
-
-STEP 4: Upgrade the Header/Nav component.
-Read the header file: cat src/components/Header.tsx (or whatever the nav component is called — check ls src/components/)
-Then edit it to add:
-- Add "use client" at the top
-- Add useState and useEffect imports from react
-- Add scroll detection: const [scrolled, setScrolled] = useState(false) + useEffect with window scroll listener
-- When scrolled: apply className "backdrop-blur-md bg-white/85 shadow-sm border-b border-neutral-200"
-- When not scrolled: apply "bg-transparent"
-- Make it position: fixed, top: 0, left: 0, right: 0, z-index: 50
-- Nav links: add uppercase tracking-wide text-sm
-- Add a hamburger button for mobile (hidden on md+)
-Verify: npx tsc --noEmit (must have 0 errors)
-
-STEP 5: Upgrade the Hero section.
-Read: cat src/components/HeroSection.tsx (or similar name)
-Edit it to:
-- Set min-h-screen on the container
-- If there's a video, make sure it has autoPlay muted loop playsInline
-- Add a dark gradient overlay: linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.7))
-- Make the title font-size clamp(2.5rem, 6vw, 5rem), font-weight bold, tracking-wide
-- Add primary CTA button (gold/brand color background) + ghost button (transparent with border)
-- Import and use FadeIn to stagger-animate the heading (delay=0), subtitle (delay=0.15), buttons (delay=0.3)
-Verify: npx tsc --noEmit
-
-STEP 6: Upgrade ALL card-like components.
-For EVERY file in src/components/ that renders cards, items, or grid elements, add:
-- rounded-lg border border-neutral-200 shadow-sm
-- hover:-translate-y-1 hover:shadow-md transition-all duration-300
-- padding p-6
-- background bg-white
-Read each file, edit it, verify.
-
-STEP 7: Upgrade the Footer.
-Read the footer component and edit:
-- Dark background: bg-neutral-900 text-white
-- 3-column grid layout on desktop: grid grid-cols-1 md:grid-cols-3 gap-8
-- Copyright separator: border-t border-white/10 mt-8 pt-6
-Verify: npx tsc --noEmit
-
-STEP 8: Wrap all sections in FadeIn.
-Read src/app/page.tsx (the homepage).
-Import FadeIn from "@/components/FadeIn".
-Wrap EACH section component call in <FadeIn> tags. For items in a grid, use delay={0}, delay={0.1}, delay={0.2}.
-Do the same for ALL sub-pages: read each file in src/app/*/page.tsx and add FadeIn wrapping.
-Verify: npx tsc --noEmit
-
-STEP 9: Add SEO metadata.
-Edit src/app/layout.tsx:
-- Add openGraph object to metadata with title, description, type: "website"
-- Add a <script type="application/ld+json"> with Schema.org LocalBusiness data (name, telephone, address from the site content)
-Verify: npx tsc --noEmit
-
-STEP 10: Final build verification.
-Run: npm run build
-If it fails, FIX the errors. Common fixes:
-- Add "use client" to files that use useState/useEffect/motion
-- Fix import paths
-- Remove unused variables
-Keep fixing until: npm run build exits with 0
-
-STEP 11: Verify premium features are applied.
-Run: grep -r "FadeIn" src/app/ | wc -l
-Run: grep -r "backdrop-blur" src/components/ | wc -l
-Run: grep -r "framer-motion" src/components/ | wc -l
-Run: grep -r "hover:" src/components/ | wc -l
-ALL counts must be > 0. If any is 0, go back and fix that step.
-
-ABSOLUTE RULES:
-- Do NOT change any text content
-- Do NOT delete any images
-- Do NOT change page routes
-- ONLY change visual design, animations, fonts, metadata
-- VERIFY after every edit with npx tsc --noEmit
-`;
+const FRONTEND_DESIGN_UPGRADE_PROMPT = [
+  "PHASE 2 — DESIGN UPGRADE. The website has already been cloned into the current directory by Phase 1. Your job is to redesign its aesthetics ONLY.",
+  "",
+  "FIRST, read the skill definition so you follow it exactly:",
+  "  Read(.claude/skills/frontend-design/SKILL.md)",
+  "",
+  "Then engage the `frontend-design` skill to redesign this already-cloned Next.js project to premium, production-grade quality.",
+  "",
+  "DO NOT invoke the `clone-website` skill. The clone is already done — treat the existing files on disk as the ground truth and only edit their visual aesthetics.",
+  "",
+  "HARD CONSTRAINTS (override the skill's defaults where they conflict):",
+  "- Do NOT change any text content (business name, descriptions, menu items, contact info, page titles, copy)",
+  "- Do NOT change any image URLs or delete any media files under public/",
+  "- Do NOT change page routes, navigation structure, or file layout under src/app/",
+  "- Do NOT add new pages or remove existing ones — the route set is frozen",
+  "- You MAY change: typography, colors, layout, spacing, motion, atmosphere, visual aesthetics, component internals",
+  "- You MAY install npm packages you need (framer-motion, lucide-react, @fontsource/*, etc.)",
+  "- Run `npx tsc --noEmit` after each major edit and fix errors as you go",
+  "",
+  "Pick a BOLD aesthetic direction that fits the business sector (restaurant, dental, beauty, hotel, legal, fitness, etc.) and execute it with precision per the skill's design-thinking guidelines. Vary between light and dark themes and use distinctive Google Fonts pairings — do NOT default to Inter, Space Grotesk, or generic purple gradients.",
+  "",
+  "EXIT CRITERIA: you MUST run `npm run build` and keep fixing errors until it exits with code 0. If you cannot reach a clean build, stop and report — do not declare success.",
+].join("\n");
 
 // ─── Public API ────────────────────────────────────────────────────────────────
 
@@ -173,11 +88,23 @@ export async function cloneAndBuildSite(
   const clonerBase = "/app/cloner"; // Pre-installed in Docker
 
   try {
+    // ── Preflight: verify both skills are installed in the cloner base ────────
+    // If Docker build silently skipped a COPY step, we'd otherwise burn a
+    // 30-min Claude run producing nothing. Fail fast with a clear error.
+    const skillCheck = await verifySkillsInstalled();
+    if (!skillCheck.ok) {
+      return {
+        previewUrl: null,
+        projectDir: workDir,
+        error: `Preflight failed: ${skillCheck.error}`,
+      };
+    }
+
     // ── Step 1: Copy cloner template ──────────────────────────────────────────
     await fs.cp(clonerBase, workDir, { recursive: true });
     console.log(`[CloneAndBuild] Copied cloner template to ${workDir}`);
 
-    // ── Step 2: Clone the website ─────────────────────────────────────────────
+    // ── Step 2: Clone the website (Phase 1 — `clone-website` skill) ───────────
     console.log(`[CloneAndBuild] Phase 1: cloning ${websiteUrl}`);
     const cloneResult = await runClaudeCLI(
       workDir,
@@ -193,6 +120,20 @@ export async function cloneAndBuildSite(
       };
     }
     console.log(`[CloneAndBuild] Phase 1 complete — clone done`);
+
+    // ── Step 2a: Sanity-check the Phase 1 output ──────────────────────────────
+    // Phase 2 (frontend-design) assumes a working Next.js project. If Phase 1
+    // produced something broken, redesigning it wastes time. Check the handoff
+    // contract: package.json + a page file must exist.
+    const phase1Ok = await verifyClonedProject(workDir);
+    if (!phase1Ok.ok) {
+      return {
+        previewUrl: null,
+        projectDir: workDir,
+        error: `Phase 1 output invalid — Phase 2 handoff aborted: ${phase1Ok.error}`,
+      };
+    }
+    console.log(`[CloneAndBuild] Phase 1 handoff verified — ${phase1Ok.details}`);
 
     // ── Step 2b: Commit clean clone as rollback point ─────────────────────────
     // CRITICAL: without this commit, `git checkout .` below would revert
@@ -212,62 +153,22 @@ export async function cloneAndBuildSite(
       console.log(`[CloneAndBuild] Clean clone committed as rollback point`);
     }
 
-    // ── Step 3: Apply premium design upgrade ────────────────────────────────
-    // Pass the full upgrade instructions inline (not as a skill reference —
-    // the /clone-website phase may overwrite .claude/skills/).
-    console.log(`[CloneAndBuild] Phase 2: applying premium design upgrade`);
-    const upgradePrompt = [
-      "Upgrade the visual design of this Next.js website to premium quality. Do NOT change any text, images, or page structure. Only change styling.",
-      "",
-      "Do these steps IN ORDER. After each edit run: npx tsc --noEmit",
-      "",
-      "1. Run: npm install framer-motion",
-      "",
-      "2. Create src/components/FadeIn.tsx with this exact content:",
-      "'use client'",
-      "import { motion } from 'framer-motion'",
-      "export const FadeIn = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (",
-      "  <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}>{children}</motion.div>",
-      ")",
-      "",
-      "3. Edit the Header/Nav component: add 'use client', add useState+useEffect for scroll detection (scrolled when scrollY>60), when scrolled apply 'backdrop-blur-md bg-white/85 shadow-sm', position fixed z-50",
-      "",
-      "4. Edit the Hero component: ensure min-h-screen, add dark gradient overlay div with className='absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60 z-[1]'",
-      "",
-      "5. In ALL card/grid components in src/components/: add hover:-translate-y-1 hover:shadow-lg transition-all duration-300 to card className",
-      "",
-      "6. Edit src/app/page.tsx: import FadeIn, wrap each section (except Hero) in <FadeIn>",
-      "",
-      "7. Run: npm run build — fix ALL errors until it passes with 0",
-    ].join("\n");
+    // ── Step 3: Apply premium design upgrade via OFFICIAL Anthropic skill ────
+    // Invokes Anthropic's `frontend-design` skill (installed at build time in
+    // /app/cloner/.claude/skills/frontend-design/SKILL.md). The skill handles
+    // creative direction; FRONTEND_DESIGN_UPGRADE_PROMPT supplies our hard
+    // constraints (don't mutate cloned content, must build clean).
+    console.log(`[CloneAndBuild] Phase 2: invoking frontend-design skill`);
     const upgradeResult = await runClaudeCLI(
       workDir,
-      upgradePrompt,
+      FRONTEND_DESIGN_UPGRADE_PROMPT,
       upgradeTimeoutMs
     );
 
     if (!upgradeResult.success) {
       console.warn(`[CloneAndBuild] Phase 2 FAILED: ${upgradeResult.error}`);
     } else {
-      console.log(`[CloneAndBuild] Phase 2 CLI run complete`);
-    }
-
-    // ── Step 3b: Verify AI upgrade actually applied changes ──────────────────
-    // Claude CLI sometimes silently skips steps. Check for concrete artifacts.
-    const appliedCheck = await verifyPremiumApplied(workDir);
-    console.log(`[CloneAndBuild] Premium artifacts check: ${JSON.stringify(appliedCheck)}`);
-
-    if (!appliedCheck.applied) {
-      console.warn(
-        `[CloneAndBuild] Claude CLI did not apply premium changes (${appliedCheck.reason}). ` +
-        `Falling back to PROGRAMMATIC premium upgrade...`
-      );
-      const programmatic = await applyPremiumUpgrade(workDir);
-      if (!programmatic.success) {
-        console.warn(`[CloneAndBuild] Programmatic upgrade also failed: ${programmatic.error}`);
-      } else {
-        console.log(`[CloneAndBuild] Programmatic premium upgrade applied successfully`);
-      }
+      console.log(`[CloneAndBuild] Phase 2 /frontend-design skill complete`);
     }
 
     // ── Step 4: Verify build passes — if not, revert to CLEAN CLONE COMMIT ──
@@ -361,31 +262,85 @@ export async function cloneWebsite(
 // ─── Internal helpers ──────────────────────────────────────────────────────────
 
 /**
- * Check whether the premium upgrade actually produced its concrete artifacts.
- * Claude CLI sometimes returns success without applying any edits (hits max-turns,
- * gets confused by the cloner's existing skills, etc.). Look at files directly.
+ * Preflight: verify both skill files are present in the cloner base image.
+ * If the Dockerfile drifted (e.g. a COPY step was renamed or a skill was
+ * removed upstream), we catch it here instead of discovering it 30 min into
+ * a Claude run.
  */
-async function verifyPremiumApplied(
+async function verifySkillsInstalled(): Promise<{ ok: boolean; error?: string }> {
+  for (const p of [CLONE_SKILL_PATH, DESIGN_SKILL_PATH]) {
+    try {
+      const stat = await fs.stat(p);
+      if (!stat.isFile() || stat.size < 100) {
+        return { ok: false, error: `${p} exists but looks empty (${stat.size} bytes)` };
+      }
+    } catch {
+      return { ok: false, error: `required skill missing: ${p}` };
+    }
+  }
+  return { ok: true };
+}
+
+/**
+ * Verify that Phase 1 produced a Next.js project Phase 2 can work with.
+ * This is the contract between the two skills — if it fails, we do NOT
+ * hand the project to frontend-design, because it would waste 15-30 min
+ * redesigning nothing or producing a broken build.
+ */
+async function verifyClonedProject(
   workDir: string,
-): Promise<{ applied: boolean; reason: string; framerMotion: boolean; fadeInExists: boolean }> {
-  const framerMotion = await fs
-    .readFile(path.join(workDir, "package.json"), "utf-8")
-    .then((pkg) => pkg.includes('"framer-motion"'))
-    .catch(() => false);
-
-  const fadeInExists = await fs
-    .access(path.join(workDir, "src/components/FadeIn.tsx"))
-    .then(() => true)
-    .catch(() => false);
-
-  if (framerMotion && fadeInExists) {
-    return { applied: true, reason: "framer-motion + FadeIn present", framerMotion, fadeInExists };
+): Promise<{ ok: boolean; error?: string; details?: string }> {
+  // 1. package.json must exist and be parseable
+  const pkgPath = path.join(workDir, "package.json");
+  let pkg: { dependencies?: Record<string, string>; name?: string };
+  try {
+    const raw = await fs.readFile(pkgPath, "utf-8");
+    pkg = JSON.parse(raw) as typeof pkg;
+  } catch (err) {
+    return { ok: false, error: `package.json missing or invalid: ${err instanceof Error ? err.message : String(err)}` };
+  }
+  if (!pkg.dependencies?.["next"]) {
+    return { ok: false, error: `package.json has no "next" dependency — Phase 1 did not produce a Next.js project` };
   }
 
-  const missing: string[] = [];
-  if (!framerMotion) missing.push("framer-motion not in package.json");
-  if (!fadeInExists) missing.push("FadeIn.tsx missing");
-  return { applied: false, reason: missing.join("; "), framerMotion, fadeInExists };
+  // 2. Some page entry must exist — either App Router or Pages Router
+  const appPage = path.join(workDir, "src/app/page.tsx");
+  const appPageJs = path.join(workDir, "src/app/page.jsx");
+  const pagesIndex = path.join(workDir, "src/pages/index.tsx");
+  const pagesIndexJs = path.join(workDir, "src/pages/index.jsx");
+  const pagesRootIndex = path.join(workDir, "pages/index.tsx");
+  let entryFound: string | null = null;
+  for (const candidate of [appPage, appPageJs, pagesIndex, pagesIndexJs, pagesRootIndex]) {
+    try {
+      const s = await fs.stat(candidate);
+      if (s.isFile() && s.size > 100) {
+        entryFound = candidate;
+        break;
+      }
+    } catch { /* keep looking */ }
+  }
+  if (!entryFound) {
+    return { ok: false, error: `no page entry file found (src/app/page.tsx or src/pages/index.tsx)` };
+  }
+
+  // 3. Count asset files — if 0, the clone didn't actually download anything
+  let assetCount = 0;
+  try {
+    const publicDir = path.join(workDir, "public");
+    const walk = async (dir: string): Promise<void> => {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) await walk(path.join(dir, entry.name));
+        else if (entry.isFile()) assetCount++;
+      }
+    };
+    await walk(publicDir).catch(() => { /* no public dir */ });
+  } catch { /* non-fatal */ }
+
+  return {
+    ok: true,
+    details: `entry=${path.relative(workDir, entryFound)} publicAssets=${assetCount} deps=${Object.keys(pkg.dependencies ?? {}).length}`,
+  };
 }
 
 /**
@@ -400,7 +355,7 @@ function runClaudeCLI(
   return new Promise((resolve) => {
     const args = [
       "-p", prompt,
-      "--allowedTools", "Bash,Read,Write,Edit,Glob,Grep,Agent,WebFetch,mcp__playwright__browser_navigate,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_evaluate,mcp__playwright__browser_take_screenshot,mcp__playwright__browser_type",
+      "--allowedTools", "Bash,Read,Write,Edit,MultiEdit,Glob,Grep,Agent,WebFetch,mcp__playwright__browser_navigate,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_evaluate,mcp__playwright__browser_take_screenshot,mcp__playwright__browser_type",
       "--max-turns", "200",
       "--output-format", "text",
     ];

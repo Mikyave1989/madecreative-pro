@@ -35,10 +35,11 @@ RUN RULES=$(cat /tmp/mc-rules.md) && \
   cat /tmp/skill-header.md /tmp/mc-rules.md /tmp/skill-body.md > "$SKILL" && \
   cat /tmp/mc-rules.md >> /app/cloner/CLAUDE.md
 
-# Add premium-upgrade skill to cloner
-COPY workers/premium-upgrade-skill.md /tmp/premium-skill.md
-RUN mkdir -p /app/cloner/.claude/skills/premium-upgrade && \
-  cp /tmp/premium-skill.md /app/cloner/.claude/skills/premium-upgrade/SKILL.md
+# Add Anthropic's OFFICIAL frontend-design skill to cloner
+# (replaces custom premium-upgrade — we use the real skill now)
+COPY workers/frontend-design-skill.md /tmp/frontend-design-skill.md
+RUN mkdir -p /app/cloner/.claude/skills/frontend-design && \
+  cp /tmp/frontend-design-skill.md /app/cloner/.claude/skills/frontend-design/SKILL.md
 
 # Copy root workspace files
 COPY package.json package-lock.json ./
