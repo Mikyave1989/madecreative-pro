@@ -1,4 +1,4 @@
-export { s as assets, a as assetsBuildDirectory, b as basename, e as entry, f as future, i as isSpaMode, m as mode, p as publicPath, r as routes } from './assets/server-build-CIBt8jak.js';
+export { s as assets, a as assetsBuildDirectory, b as basename, e as entry, f as future, i as isSpaMode, m as mode, p as publicPath, r as routes } from './assets/server-build-CHL2E9V6.js';
 import 'react/jsx-runtime';
 import '@remix-run/react';
 import 'isbot';

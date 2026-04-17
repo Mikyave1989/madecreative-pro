@@ -25,7 +25,46 @@ interface Prospect {
   convertedAt: string | null;
   createdAt?: string;
   aiAnalysis: string | null;
-  painPoints?: string | null;
+  painPoints?: unknown;
+}
+
+// painPoints can be: string, string[], or Array<{category, severity, description}>
+// depending on when/how it was written. Render defensively.
+function renderPainPoints(raw: unknown): React.ReactNode {
+  if (raw == null) return null;
+  if (typeof raw === 'string') return raw;
+  if (Array.isArray(raw)) {
+    return (
+      <ul className="space-y-1.5">
+        {raw.map((item, i) => {
+          if (item == null) return null;
+          if (typeof item === 'string') return <li key={i}>• {item}</li>;
+          if (typeof item === 'object') {
+            const o = item as { category?: unknown; severity?: unknown; description?: unknown };
+            const category = typeof o.category === 'string' ? o.category : '';
+            const severity = typeof o.severity === 'string' ? o.severity : '';
+            const description = typeof o.description === 'string' ? o.description : JSON.stringify(item);
+            return (
+              <li key={i} className="flex gap-2">
+                <span className="text-[#52525b]">•</span>
+                <div>
+                  {(category || severity) && (
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#52525b] mb-0.5">
+                      {[category, severity].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                  <div>{description}</div>
+                </div>
+              </li>
+            );
+          }
+          return <li key={i}>• {String(item)}</li>;
+        })}
+      </ul>
+    );
+  }
+  if (typeof raw === 'object') return JSON.stringify(raw);
+  return String(raw);
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -140,11 +179,11 @@ function ProspectDetail({
             </div>
           </div>
         )}
-        {p.painPoints && (
+        {p.painPoints != null && (Array.isArray(p.painPoints) ? p.painPoints.length > 0 : true) && (
           <div className="col-span-2 md:col-span-4">
             <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-1">Pain Points</div>
             <div className="text-xs text-[#71717a] bg-white/[0.02] rounded-xl px-3 py-2.5 border border-white/[0.06] leading-relaxed">
-              {p.painPoints}
+              {renderPainPoints(p.painPoints)}
             </div>
           </div>
         )}
