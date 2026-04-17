@@ -16,6 +16,7 @@
 import { execFile } from "child_process";
 import { promises as fs } from "fs";
 import * as path from "path";
+import { applyPremiumUpgrade } from "./premium-upgrade.js";
 
 export interface CloneResult {
   success: boolean;
@@ -193,6 +194,24 @@ export async function cloneAndBuildSite(
     }
     console.log(`[CloneAndBuild] Phase 1 complete — clone done`);
 
+    // ── Step 2b: Commit clean clone as rollback point ─────────────────────────
+    // CRITICAL: without this commit, `git checkout .` below would revert
+    // to the pristine cloner template (pre-clone), wiping out the entire clone.
+    await runShell("git", ["config", "user.email", "bot@madecreative.pro"], workDir, 10_000).catch(() => {});
+    await runShell("git", ["config", "user.name", "MadeCreative Bot"], workDir, 10_000).catch(() => {});
+    await runShell("git", ["add", "-A"], workDir, 60_000).catch(() => {});
+    const cleanCloneCommit = await runShell(
+      "git",
+      ["commit", "-m", "clean clone (pre-premium-upgrade rollback point)", "--allow-empty"],
+      workDir,
+      60_000,
+    );
+    if (!cleanCloneCommit.success) {
+      console.warn(`[CloneAndBuild] Failed to commit clean clone rollback point: ${cleanCloneCommit.error}`);
+    } else {
+      console.log(`[CloneAndBuild] Clean clone committed as rollback point`);
+    }
+
     // ── Step 3: Apply premium design upgrade ────────────────────────────────
     // Pass the full upgrade instructions inline (not as a skill reference —
     // the /clone-website phase may overwrite .claude/skills/).
@@ -229,20 +248,45 @@ export async function cloneAndBuildSite(
 
     if (!upgradeResult.success) {
       console.warn(`[CloneAndBuild] Phase 2 FAILED: ${upgradeResult.error}`);
-      console.warn(`[CloneAndBuild] Continuing with clean clone (no premium upgrade)`);
     } else {
-      console.log(`[CloneAndBuild] Phase 2 SUCCESS — premium upgrade applied`);
+      console.log(`[CloneAndBuild] Phase 2 CLI run complete`);
     }
 
-    // ── Step 4: Verify build passes — if not, revert premium upgrade ────────
+    // ── Step 3b: Verify AI upgrade actually applied changes ──────────────────
+    // Claude CLI sometimes silently skips steps. Check for concrete artifacts.
+    const appliedCheck = await verifyPremiumApplied(workDir);
+    console.log(`[CloneAndBuild] Premium artifacts check: ${JSON.stringify(appliedCheck)}`);
+
+    if (!appliedCheck.applied) {
+      console.warn(
+        `[CloneAndBuild] Claude CLI did not apply premium changes (${appliedCheck.reason}). ` +
+        `Falling back to PROGRAMMATIC premium upgrade...`
+      );
+      const programmatic = await applyPremiumUpgrade(workDir);
+      if (!programmatic.success) {
+        console.warn(`[CloneAndBuild] Programmatic upgrade also failed: ${programmatic.error}`);
+      } else {
+        console.log(`[CloneAndBuild] Programmatic premium upgrade applied successfully`);
+      }
+    }
+
+    // ── Step 4: Verify build passes — if not, revert to CLEAN CLONE COMMIT ──
     console.log(`[CloneAndBuild] Phase 3: verifying npm run build`);
     const buildResult = await runShell("npm", ["run", "build"], workDir, buildTimeoutMs);
     if (!buildResult.success) {
-      console.warn(`[CloneAndBuild] Build failed after premium upgrade — reverting to clean clone`);
-      // Revert: re-run clone without upgrade by doing a fresh git checkout
-      await runShell("git", ["checkout", "."], workDir, 30_000).catch(() => {});
-      await runShell("npm", ["run", "build"], workDir, buildTimeoutMs).catch(() => {});
-      console.log(`[CloneAndBuild] Reverted to clean clone`);
+      console.warn(`[CloneAndBuild] Build failed after premium upgrade — reverting to clean clone commit`);
+      console.warn(`[CloneAndBuild] Build error (first 1000 chars): ${buildResult.error?.slice(0, 1000)}`);
+      // Revert to the clean-clone commit (not to pristine template).
+      await runShell("git", ["reset", "--hard", "HEAD"], workDir, 30_000).catch(() => {});
+      await runShell("git", ["clean", "-fd"], workDir, 30_000).catch(() => {});
+      // Reinstall deps in case package.json was reverted (framer-motion etc.)
+      await runShell("npm", ["install", "--no-audit", "--no-fund"], workDir, 300_000).catch(() => {});
+      const retryBuild = await runShell("npm", ["run", "build"], workDir, buildTimeoutMs).catch(() => ({ success: false, error: "retry exception" }));
+      if (retryBuild.success) {
+        console.log(`[CloneAndBuild] Reverted to clean clone — build passes`);
+      } else {
+        console.warn(`[CloneAndBuild] Build still fails after revert — Vercel will retry on deploy`);
+      }
     } else {
       console.log(`[CloneAndBuild] Phase 3 complete — build passed with premium upgrade`);
     }
@@ -315,6 +359,34 @@ export async function cloneWebsite(
 }
 
 // ─── Internal helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Check whether the premium upgrade actually produced its concrete artifacts.
+ * Claude CLI sometimes returns success without applying any edits (hits max-turns,
+ * gets confused by the cloner's existing skills, etc.). Look at files directly.
+ */
+async function verifyPremiumApplied(
+  workDir: string,
+): Promise<{ applied: boolean; reason: string; framerMotion: boolean; fadeInExists: boolean }> {
+  const framerMotion = await fs
+    .readFile(path.join(workDir, "package.json"), "utf-8")
+    .then((pkg) => pkg.includes('"framer-motion"'))
+    .catch(() => false);
+
+  const fadeInExists = await fs
+    .access(path.join(workDir, "src/components/FadeIn.tsx"))
+    .then(() => true)
+    .catch(() => false);
+
+  if (framerMotion && fadeInExists) {
+    return { applied: true, reason: "framer-motion + FadeIn present", framerMotion, fadeInExists };
+  }
+
+  const missing: string[] = [];
+  if (!framerMotion) missing.push("framer-motion not in package.json");
+  if (!fadeInExists) missing.push("FadeIn.tsx missing");
+  return { applied: false, reason: missing.join("; "), framerMotion, fadeInExists };
+}
 
 /**
  * Run Claude Code CLI headlessly with an arbitrary prompt.

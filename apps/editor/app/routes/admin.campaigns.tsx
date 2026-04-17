@@ -310,18 +310,20 @@ function DeleteConfirmModal({
   onDeleted: () => void;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const [alsoDeleteProspects, setAlsoDeleteProspects] = useState(true);
 
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      const res = await adminFetch(`/admin/launch/campaigns/${campaign.id}`, { method: 'DELETE' });
+      const query = alsoDeleteProspects ? '?deleteProspects=true' : '';
+      const res = await adminFetch(`/admin/launch/campaigns/${campaign.id}${query}`, { method: 'DELETE' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const d = await res.json() as any;
       if (res.ok) {
-        toast.success('Campaign deleted');
+        toast.success(d.data?.message ?? 'Campaign deleted');
         onDeleted();
         onClose();
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const d = await res.json() as any;
         toast.error(d.error ?? 'Delete failed');
       }
     } catch {
@@ -341,6 +343,18 @@ function DeleteConfirmModal({
             <strong className="text-white">{campaign.name}</strong> will be permanently deleted. This cannot be undone.
           </p>
         </div>
+        <label className="flex items-start gap-2 mb-5 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-pointer hover:bg-white/[0.05]">
+          <input
+            type="checkbox"
+            checked={alsoDeleteProspects}
+            onChange={(e) => setAlsoDeleteProspects(e.target.checked)}
+            className="mt-0.5 accent-red-500"
+          />
+          <div>
+            <div className="text-xs font-semibold text-white">Also delete all prospects</div>
+            <div className="text-[11px] text-[#71717a] mt-0.5">Removes all {fmtNum(campaign.prospectsFound)} prospects + their emails from this campaign</div>
+          </div>
+        </label>
         <div className="flex gap-3">
           <button
             onClick={onClose}
@@ -419,6 +433,64 @@ function CampaignRow({
   );
 }
 
+// ─── Wipe-all confirm modal ───────────────────────────────────────────────────
+
+function WipeAllModal({
+  onClose,
+  onConfirm,
+  wiping,
+}: {
+  onClose: () => void;
+  onConfirm: () => void;
+  wiping: boolean;
+}) {
+  const [typed, setTyped] = useState('');
+  const confirmed = typed.trim().toUpperCase() === 'WIPE';
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-[#111118] rounded-2xl border border-red-500/30 shadow-2xl p-6">
+        <div className="text-center mb-5">
+          <div className="text-4xl mb-3">⚠️</div>
+          <h2 className="text-lg font-bold text-white mb-2">Nuclear Wipe</h2>
+          <p className="text-sm text-[#a1a1aa] leading-relaxed">
+            This will permanently delete <strong className="text-red-400">all prospects, jobs, emails, and campaigns</strong>.
+            Paying clients are preserved.
+          </p>
+        </div>
+        <div className="mb-4">
+          <label className="block text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-1.5">
+            Type <span className="text-red-400 font-mono">WIPE</span> to confirm
+          </label>
+          <input
+            type="text"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder="WIPE"
+            autoFocus
+            className="w-full px-3 py-2.5 rounded-xl bg-[#1a1a24] border border-white/[0.08] text-white text-sm font-mono placeholder-[#52525b] focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
+          />
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={wiping}
+            className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-sm text-[#71717a] hover:text-white hover:bg-white/[0.04] transition-all disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!confirmed || wiping}
+            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            {wiping ? 'Wiping…' : 'Wipe Everything'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── main ─────────────────────────────────────────────────────────────────────
 
 export default function AdminCampaigns() {
@@ -428,6 +500,9 @@ export default function AdminCampaigns() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ActiveCampaign | null>(null);
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
+  const [stopping, setStopping] = useState(false);
+  const [wiping, setWiping] = useState(false);
+  const [showWipeConfirm, setShowWipeConfirm] = useState(false);
 
   const loadWarming = useCallback(async () => {
     try {
@@ -474,6 +549,46 @@ export default function AdminCampaigns() {
     }
   };
 
+  const handleStopAll = async () => {
+    if (!confirm('Pause ALL campaigns and cancel every queued/running job? No data will be deleted.')) return;
+    setStopping(true);
+    try {
+      const res = await adminFetch('/admin/launch/stop-all', { method: 'POST' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await res.json() as any;
+      if (res.ok) {
+        toast.success(data.data?.message ?? 'All stopped');
+        await loadCampaigns();
+      } else {
+        toast.error(data.error ?? 'Stop all failed');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setStopping(false);
+    }
+  };
+
+  const handleWipeAll = async () => {
+    setWiping(true);
+    try {
+      const res = await adminFetch('/admin/launch/wipe-all?confirm=YES', { method: 'POST' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await res.json() as any;
+      if (res.ok) {
+        toast.success(data.data?.message ?? 'Wiped');
+        setShowWipeConfirm(false);
+        await loadCampaigns();
+      } else {
+        toast.error(data.error ?? 'Wipe failed');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setWiping(false);
+    }
+  };
+
   const filteredCampaigns = campaigns.filter((c) => {
     if (filterStatus === 'all') return true;
     if (filterStatus === 'active') return c.isActive && c.activeJobs === 0;
@@ -512,6 +627,23 @@ export default function AdminCampaigns() {
               </span>
             </div>
           )}
+          <button
+            onClick={handleStopAll}
+            disabled={stopping}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600/15 hover:bg-amber-600/25 border border-amber-500/30 text-amber-400 text-sm font-semibold transition-all disabled:opacity-50"
+            title="Pause every campaign and cancel all queued/running jobs"
+          >
+            {stopping ? '…' : '⏸'}
+            Stop All
+          </button>
+          <button
+            onClick={() => setShowWipeConfirm(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/15 hover:bg-red-600/25 border border-red-500/30 text-red-400 text-sm font-semibold transition-all"
+            title="Delete ALL prospects, jobs, emails, and campaigns"
+          >
+            🗑
+            Wipe All
+          </button>
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all shadow-lg shadow-indigo-600/20"
@@ -636,6 +768,13 @@ export default function AdminCampaigns() {
           campaign={deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onDeleted={loadCampaigns}
+        />
+      )}
+      {showWipeConfirm && (
+        <WipeAllModal
+          onClose={() => setShowWipeConfirm(false)}
+          onConfirm={handleWipeAll}
+          wiping={wiping}
         />
       )}
 

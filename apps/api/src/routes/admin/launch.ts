@@ -581,6 +581,191 @@ app.get("/campaigns", async (c) => {
   return c.json({ success: true, data });
 });
 
+// ─── POST /admin/launch/stop-all — EMERGENCY STOP ───────────────────────────
+// Pauses every campaign AND cancels every QUEUED/RUNNING agent job.
+// Does NOT delete any data — use /wipe-all for that.
+
+app.post("/stop-all", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+
+  // 1. Deactivate all campaigns (except internal warming marker)
+  const pausedCampaigns = await prisma.scrapeConfig.updateMany({
+    where: {
+      isActive: true,
+      NOT: { name: { equals: WARMING_CONFIG_NAME, mode: "insensitive" } },
+    },
+    data: { isActive: false },
+  });
+
+  // 2. Cancel ALL queued/running agent jobs
+  const cancelledJobs = await prisma.agentJob.updateMany({
+    where: { status: { in: ["QUEUED", "RUNNING"] } },
+    data: { status: "CANCELLED" },
+  });
+
+  // 3. Best-effort: drain BullMQ queues so workers don't pick up already-queued jobs
+  try {
+    const { getRedisConnection } = await import("../../lib/queue.js");
+    const r = getRedisConnection();
+    await r.ping();
+    const { Queue } = await import("bullmq");
+    const { AGENT_QUEUE_NAMES } = await import("@madecreative/shared");
+    for (const queueName of Object.values(AGENT_QUEUE_NAMES)) {
+      const q = new Queue(queueName as string, { connection: r });
+      await q.drain(true).catch(() => {});
+      await q.close();
+    }
+  } catch { /* Redis unavailable — DB-only cancel still applied */ }
+
+  return c.json({
+    success: true,
+    data: {
+      campaignsPaused: pausedCampaigns.count,
+      jobsCancelled: cancelledJobs.count,
+      message: `Emergency stop: ${pausedCampaigns.count} campaigns paused, ${cancelledJobs.count} jobs cancelled`,
+    },
+  });
+});
+
+// ─── POST /admin/launch/wipe-all — NUCLEAR RESET ─────────────────────────────
+// Stops everything AND deletes all prospects, jobs, emails, and campaigns.
+// Preserves: clients, admin users, warming state marker.
+// Requires ?confirm=YES in the query string to avoid accidental wipes.
+
+app.post("/wipe-all", async (c) => {
+  const confirm = c.req.query("confirm");
+  if (confirm !== "YES") {
+    return c.json(
+      {
+        success: false,
+        error: "Wipe requires ?confirm=YES query parameter",
+      },
+      422,
+    );
+  }
+
+  const { prisma } = await import("@madecreative/db");
+
+  // 1. Stop all queued/running jobs first (so they don't re-create data mid-wipe)
+  await prisma.agentJob.updateMany({
+    where: { status: { in: ["QUEUED", "RUNNING"] } },
+    data: { status: "CANCELLED" },
+  });
+
+  // 2. Drain BullMQ
+  try {
+    const { getRedisConnection } = await import("../../lib/queue.js");
+    const r = getRedisConnection();
+    await r.ping();
+    const { Queue } = await import("bullmq");
+    const { AGENT_QUEUE_NAMES } = await import("@madecreative/shared");
+    for (const queueName of Object.values(AGENT_QUEUE_NAMES)) {
+      const q = new Queue(queueName as string, { connection: r });
+      await q.drain(true).catch(() => {});
+      await q.obliterate({ force: true }).catch(() => {});
+      await q.close();
+    }
+  } catch { /* Redis unavailable */ }
+
+  // 3. Delete in dependency order
+  //    OutreachEmail has FK to Prospect → must go first
+  //    AgentJob references Prospect by id but NO FK → order doesn't matter but
+  //    we still wipe it before prospects for cleanliness
+  const [emails, jobs, prospects, configs] = await prisma.$transaction([
+    prisma.outreachEmail.deleteMany({}),
+    prisma.agentJob.deleteMany({}),
+    // Keep prospects that are linked to a paying Client (clientId set)
+    prisma.prospect.deleteMany({ where: { clientId: null } }),
+    prisma.scrapeConfig.deleteMany({
+      where: { NOT: { name: { equals: WARMING_CONFIG_NAME, mode: "insensitive" } } },
+    }),
+  ]);
+
+  return c.json({
+    success: true,
+    data: {
+      emailsDeleted: emails.count,
+      jobsDeleted: jobs.count,
+      prospectsDeleted: prospects.count,
+      campaignsDeleted: configs.count,
+      message: `Nuclear wipe complete — ${prospects.count} prospects, ${jobs.count} jobs, ${emails.count} emails, ${configs.count} campaigns deleted`,
+    },
+  });
+});
+
+// ─── DELETE /admin/launch/campaigns/:id — delete a single campaign ──────────
+// Also cancels its queued/running jobs, and (with ?deleteProspects=true) wipes
+// the prospects created by this campaign along with their emails.
+
+app.delete("/campaigns/:id", async (c) => {
+  const { prisma } = await import("@madecreative/db");
+  const id = c.req.param("id");
+  const deleteProspects = c.req.query("deleteProspects") === "true";
+
+  const existing = await prisma.scrapeConfig.findUnique({ where: { id } });
+  if (!existing) {
+    return c.json({ success: false, error: "Campaign not found" }, 404);
+  }
+
+  // 1. Cancel all queued/running jobs tied to this campaign
+  const cancelledJobs = await prisma.agentJob.updateMany({
+    where: {
+      status: { in: ["QUEUED", "RUNNING"] },
+      input: { path: ["configId"], equals: id },
+    },
+    data: { status: "CANCELLED" },
+  });
+
+  let deletedProspects = 0;
+  let deletedEmails = 0;
+
+  if (deleteProspects) {
+    // Find the SCRAPER jobs for this config, then prospects linked to those jobs
+    const scraperJobs = await prisma.agentJob.findMany({
+      where: {
+        agentType: "SCRAPER",
+        input: { path: ["configId"], equals: id },
+      },
+      select: { id: true },
+    });
+    const jobIds = scraperJobs.map((j) => j.id);
+
+    if (jobIds.length > 0) {
+      const prospects = await prisma.prospect.findMany({
+        where: { scrapeJobId: { in: jobIds }, clientId: null },
+        select: { id: true },
+      });
+      const prospectIds = prospects.map((p) => p.id);
+
+      if (prospectIds.length > 0) {
+        const emailsRes = await prisma.outreachEmail.deleteMany({
+          where: { prospectId: { in: prospectIds } },
+        });
+        deletedEmails = emailsRes.count;
+
+        const prospectsRes = await prisma.prospect.deleteMany({
+          where: { id: { in: prospectIds } },
+        });
+        deletedProspects = prospectsRes.count;
+      }
+    }
+  }
+
+  // 2. Delete the scrape config itself
+  await prisma.scrapeConfig.delete({ where: { id } });
+
+  return c.json({
+    success: true,
+    data: {
+      id,
+      jobsCancelled: cancelledJobs.count,
+      prospectsDeleted: deletedProspects,
+      emailsDeleted: deletedEmails,
+      message: `Campaign deleted (${cancelledJobs.count} jobs cancelled${deleteProspects ? `, ${deletedProspects} prospects + ${deletedEmails} emails removed` : ""})`,
+    },
+  });
+});
+
 // ─── PATCH /admin/launch/campaigns/:id/toggle — pause/resume a campaign ─────
 
 app.patch("/campaigns/:id/toggle", async (c) => {
