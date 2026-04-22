@@ -29,8 +29,8 @@ const FEATURES = [
 ];
 
 const COMPARISON = [
-  { f: 'Traditional web agency', old: '$2,000 - $15,000', us: '$49/mo \u2014 everything included' },
-  { f: 'Freelance developer', old: '$800 - $3,000', us: '$49/mo \u2014 everything included' },
+  { f: 'Traditional web agency', old: '$2,000 - $15,000', us: '\u20AC9.99/mo \u2014 everything included' },
+  { f: 'Freelance developer', old: '$800 - $3,000', us: '\u20AC9.99/mo \u2014 everything included' },
   { f: 'Wix / Squarespace', old: 'Same templates for everyone', us: 'Unique design from YOUR content' },
   { f: 'Time to launch', old: '2\u20138 weeks', us: 'Ready in 24 hours' },
   { f: 'Technology', old: 'WordPress / outdated CMS', us: 'Next.js + React \u2014 cutting edge' },
@@ -41,9 +41,9 @@ const PLANS = [
   {
     name: 'MadeCreative',
     slug: 'STARTER',
-    price: 49,
+    price: 9.99,
     setup: 0,
-    desc: 'First month free. Then just $49/month. Cancel anytime.',
+    desc: 'Just \u20AC9.99/month. No trial. Cancel anytime.',
     features: [
       'Your website, completely redesigned with premium quality',
       'Same content, photos, videos \u2014 just 10x better design',
@@ -62,7 +62,7 @@ const TESTIMONIALS = [
   { name: 'Dr. Stefan M.', role: 'Dentist, Munich', text: 'I couldn\'t believe it was the same website. All my content, but the design looks like I paid \u20AC10,000 for it.', a: 'S' },
   { name: 'Laura K.', role: 'Restaurant Owner, Berlin', text: 'Our old site was embarrassing. Now customers compliment it every week. And I didn\'t have to change a single word.', a: 'L' },
   { name: 'Thomas B.', role: 'Law Firm, Hamburg', text: 'Professional, modern, fast. Exactly what our firm needed. The old site took 3 months to build. This was ready overnight.', a: 'T' },
-  { name: 'Anna W.', role: 'Boutique Hotel, Vienna', text: 'Same photos, same rooms, same text \u2014 but the site now looks like a 5-star brand. Worth every cent of the \u20AC49.', a: 'A' },
+  { name: 'Anna W.', role: 'Boutique Hotel, Vienna', text: 'Same photos, same rooms, same text \u2014 but the site now looks like a 5-star brand. Worth every cent.', a: 'A' },
 ];
 
 const FAQS = [
@@ -71,8 +71,8 @@ const FAQS = [
   { q: 'Will my content change?', a: 'No. Every word, every photo, every video stays exactly the same. We only change the visual design, animations, and layout.' },
   { q: 'How long does it take?', a: 'Your new site preview is usually ready within 24 hours. You can review it before going live.' },
   { q: 'What technology do you use?', a: 'Next.js, React, Tailwind CSS, Framer Motion. Modern, fast, SEO-friendly. The same stack used by top companies worldwide.' },
-  { q: 'Can I cancel anytime?', a: 'Yes. No contracts, no penalties. Cancel whenever you want. First month is free \u2014 no credit card required to preview.' },
-  { q: 'Is hosting included?', a: 'Yes. Professional hosting, SSL certificate, and custom domain are all included in the \u20AC49/month.' },
+  { q: 'Can I cancel anytime?', a: 'Yes. No contracts, no penalties. Cancel whenever you want.' },
+  { q: 'Is hosting included?', a: 'Yes. Professional hosting, SSL certificate, and custom domain are all included in the \u20AC9.99/month.' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -161,7 +161,7 @@ export function Landing() {
 
           <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', maxWidth: 640, margin: '0 auto 40px', lineHeight: 1.6, ...S.t2 }}>
             We take your existing site and rebuild it with premium quality. Same photos, same text &mdash; just stunning modern design.
-            <span style={S.t1}> First month free &mdash; no credit card required.</span>
+            <span style={S.t1}> Just &euro;9.99/month &mdash; cancel anytime.</span>
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
@@ -478,7 +478,7 @@ export function Landing() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
             {PLANS.map(plan => {
-              const price = annual ? Math.round(plan.price * 0.8) : plan.price;
+              const price = annual ? +(plan.price * 0.8).toFixed(2) : plan.price;
               const isOpen = cPlan === plan.slug;
               return (
                 <div key={plan.name} style={{ ...(plan.hl ? S.cardHl : S.card), padding: 24, position: 'relative', ...(plan.hl ? { boxShadow: '0 0 60px rgba(99,102,241,.08)', transform: 'scale(1.02)' } : {}) }}>
@@ -486,9 +486,8 @@ export function Landing() {
                   <h3 style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{plan.name}</h3>
                   <p style={{ fontSize: 13, ...S.t4, marginTop: 4, marginBottom: 16 }}>{plan.desc}</p>
                   <div style={{ marginBottom: 24 }}>
-                    <div style={{ fontSize: 14, color: '#4ade80', marginBottom: 4, fontWeight: 600 }}>First month free</div>
-                    <span style={{ ...S.t4, fontSize: 18 }}>$</span>
-                    <span style={{ fontSize: 48, fontWeight: 800, color: '#fff' }}>49</span>
+                    <span style={{ ...S.t4, fontSize: 18 }}>&euro;</span>
+                    <span style={{ fontSize: 48, fontWeight: 800, color: '#fff' }}>{price.toFixed(2)}</span>
                     <span style={S.t4}>/month</span>
                   </div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px' }}>
@@ -506,7 +505,7 @@ export function Landing() {
                       {cErr && <p style={{ fontSize: 12, color: '#f87171', marginBottom: 8 }}>{cErr}</p>}
                       <button onClick={() => checkout(plan.slug)} disabled={cLoad}
                         style={{ width: '100%', padding: '10px 0', borderRadius: 8, ...S.gb, color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer', opacity: cLoad ? .5 : 1, marginBottom: 8 }}>
-                        {cLoad ? 'Redirecting...' : 'Get Started Free'}
+                        {cLoad ? 'Redirecting...' : 'Get Started'}
                       </button>
                       <button onClick={() => { setCPlan(null); setCErr(''); }} style={{ width: '100%', fontSize: 12, color: '#52525b', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>Cancel</button>
                     </div>
@@ -548,8 +547,8 @@ export function Landing() {
       {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
       <section style={{ padding: '96px 24px', textAlign: 'center' }}>
         <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Ready to see your site transformed?<br /><span style={S.gt}>Same content. 10x better design.</span></h2>
-        <p style={{ ...S.t2, marginBottom: 32 }}>First month free. Then just $49/month. Cancel anytime &mdash; no penalties.</p>
-        <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started Free</a>
+        <p style={{ ...S.t2, marginBottom: 32 }}>Just &euro;9.99/month. Cancel anytime &mdash; no penalties.</p>
+        <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started</a>
       </section>
 
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}

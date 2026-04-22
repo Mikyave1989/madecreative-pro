@@ -20,8 +20,8 @@ const PLANS: Plan[] = [
   {
     id: 'STARTER',
     label: 'MadeCreative',
-    price: 'Gratis',
-    period: ' primo mese — poi €49/mese',
+    price: '€9,99',
+    period: '/mese',
     features: [
       'Sito premium rigenerato con AI',
       'Hosting, SSL, dominio custom inclusi',

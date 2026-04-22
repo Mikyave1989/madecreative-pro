@@ -82,7 +82,7 @@ app.post("/checkout", async (c) => {
     return c.json({ success: false, error: "A valid email is required" }, 400);
   }
 
-  // Single plan: EUR 49/month with 30-day free trial
+  // Single plan: EUR 9.99/month, no trial
   const priceId = process.env["STRIPE_PRICE_ID"] ?? "price_1TMp1bPpUruzeNQ3MZsGWxzz";
 
   if (!priceId) {
@@ -110,7 +110,6 @@ app.post("/checkout", async (c) => {
         companyName: companyName ?? "",
       },
       subscription_data: {
-        trial_period_days: 30,
         metadata: { plan },
       },
       success_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,

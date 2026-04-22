@@ -57,9 +57,7 @@ function BuyCreditsButton({ credits, price }: { credits: number; price: number }
 }
 
 const PLANS = [
-  { name: 'STARTER', price: 29, setup: 299, credits: 200, features: ['1 website', '200 AI credits/mo', 'Email support'] },
-  { name: 'GROWTH', price: 49, setup: 599, credits: 500, features: ['3 websites', '500 AI credits/mo', 'Priority support', 'Custom domain'] },
-  { name: 'PRO', price: 99, setup: 999, credits: 1000, features: ['10 websites', '1000 AI credits/mo', 'Dedicated support', 'Custom domain', 'API access'] },
+  { name: 'STARTER', price: 9.99, setup: 0, credits: 100, features: ['1 website', '100 AI credits/mo', 'Hosting, SSL & custom domain', 'Email support'] },
 ];
 
 export default function BillingPage() {
@@ -204,7 +202,7 @@ export default function BillingPage() {
               >
                 <h3 className="font-semibold text-bolt-elements-textPrimary">{plan.name}</h3>
                 <div className="mt-2">
-                  <span className="text-3xl font-bold text-bolt-elements-textPrimary">{plan.price}</span>
+                  <span className="text-3xl font-bold text-bolt-elements-textPrimary">€{plan.price.toFixed(2)}</span>
                   <span className="text-bolt-elements-textTertiary">/mo</span>
                 </div>
                 <ul className="mt-4 space-y-2">

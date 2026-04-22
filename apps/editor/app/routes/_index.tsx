@@ -5,7 +5,7 @@ import { Landing } from '~/components/landing/Landing';
 export const meta: MetaFunction = () => {
   return [
     { title: 'MadeCreative — Siti web premium rigenerati con AI' },
-    { name: 'description', content: 'Il tuo sito, solo 10 volte piu bello. Primo mese gratis, poi solo 49 euro al mese. Design premium, hosting incluso, dominio custom.' },
+    { name: 'description', content: 'Il tuo sito, solo 10 volte piu bello. Solo 9,99 euro al mese. Design premium, hosting incluso, dominio custom.' },
   ];
 };
 

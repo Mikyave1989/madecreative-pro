@@ -1112,11 +1112,11 @@ export class BuilderAgent extends BaseAgent {
           }
         }
 
-        // ── Single plan — €49/mese, primo mese gratis ──
+        // ── Single plan — €9,99/mese, nessuna prova gratuita ──
         const pageCount = Object.keys(projectFiles).filter(f => f.endsWith(".html")).length || 1;
         const plan = "STARTER";
-        const price = { setup: 0, monthly: 49 };
-        this.log("info", `build_preview_site: ${pageCount} pages → plan=${plan} €${price.monthly}/mo (first month free)`);
+        const price = { setup: 0, monthly: 9.99 };
+        this.log("info", `build_preview_site: ${pageCount} pages → plan=${plan} €${price.monthly}/mo`);
 
         // ── Inject MadeCreative CTA banner into every HTML file ──
         const apiBase = process.env["API_URL"] ?? "https://api.madecreative.pro";
@@ -1125,11 +1125,11 @@ export class BuilderAgent extends BaseAgent {
         const lang = langMap[country.toUpperCase()] ?? "en";
 
         const cta: Record<string, { top: string; wa: string }> = {
-          de: { top: "Vorschau Ihres neuen Webauftritts — Erster Monat gratis, danach EUR 49/Monat", wa: "Auf WhatsApp schreiben" },
-          it: { top: "Anteprima del vostro nuovo sito — Primo mese gratis, poi EUR 49/mese", wa: "Scrivici su WhatsApp" },
-          fr: { top: "Apercu de votre nouveau site — Premier mois gratuit, ensuite EUR 49/mois", wa: "Ecrivez-nous sur WhatsApp" },
-          es: { top: "Vista previa de su nuevo sitio — Primer mes gratis, luego EUR 49/mes", wa: "Escribenos por WhatsApp" },
-          en: { top: "Preview of your new website — First month free, then EUR 49/month", wa: "Chat on WhatsApp" },
+          de: { top: "Vorschau Ihres neuen Webauftritts — nur EUR 9,99/Monat", wa: "Auf WhatsApp schreiben" },
+          it: { top: "Anteprima del vostro nuovo sito — solo EUR 9,99/mese", wa: "Scrivici su WhatsApp" },
+          fr: { top: "Apercu de votre nouveau site — seulement EUR 9,99/mois", wa: "Ecrivez-nous sur WhatsApp" },
+          es: { top: "Vista previa de su nuevo sitio — solo EUR 9,99/mes", wa: "Escribenos por WhatsApp" },
+          en: { top: "Preview of your new website — only EUR 9.99/month", wa: "Chat on WhatsApp" },
         };
         const t = cta[lang] ?? cta.en!;
         const waNumber = "393317389918";
