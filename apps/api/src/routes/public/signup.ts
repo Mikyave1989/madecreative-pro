@@ -82,8 +82,8 @@ app.post("/checkout", async (c) => {
     return c.json({ success: false, error: "A valid email is required" }, 400);
   }
 
-  // Single plan: EUR 9.99/month, no trial
-  const priceId = process.env["STRIPE_PRICE_ID"] ?? "price_1TMp1bPpUruzeNQ3MZsGWxzz";
+  // Single plan: EUR 9.99 one-time payment
+  const priceId = process.env["STRIPE_PRICE_ID"] ?? "price_1TP1G5PpUruzeNQ3iNbTjgx3";
 
   if (!priceId) {
     return c.json(
@@ -101,16 +101,14 @@ app.post("/checkout", async (c) => {
 
   try {
     const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
+      mode: "payment",
       customer_email: email.toLowerCase(),
+      customer_creation: "always",
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
         plan,
         websiteUrl: websiteUrl ?? "",
         companyName: companyName ?? "",
-      },
-      subscription_data: {
-        metadata: { plan },
       },
       success_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/#pricing`,

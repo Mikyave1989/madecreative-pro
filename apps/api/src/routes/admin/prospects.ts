@@ -793,7 +793,7 @@ app.post("/:id/send-preview-email", async (c) => {
   const previewUrl = `${apiBase}/preview/${prospect.id}`;
   const city = prospect.city ?? "";
 
-  // Language-specific email templates — professional, no AI mention, single €9,99/mese plan
+  // Language-specific email templates — professional, no AI mention, one-time €9,99 payment
   const waLink = "https://wa.me/393317389918";
   const templates: Record<string, { subject: string; body: string }> = {
     de: {
@@ -809,7 +809,7 @@ app.post("/:id/send-preview-email", async (c) => {
 <li>- <strong>Ihre echten Fotos und Texte</strong> — kein generischer Template-Look</li>
 </ul>
 <p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Ihr neues Website-Design ansehen</a></p>
-<p>Ueberzeugt Sie das Ergebnis? Nur <strong>EUR 9,99/Monat</strong> — inklusive Hosting, SSL, Domain und laufende Updates. Jederzeit kuendbar.</p>
+<p>Ueberzeugt Sie das Ergebnis? Einmalig <strong>EUR 9,99</strong> — inklusive Hosting, SSL, Domain und ein Jahr Updates. Keine Folgekosten.</p>
 <p><strong>Keine Einrichtungsgebuehr. Keine versteckten Kosten. Keine Vertragsbindung.</strong></p>
 <p>Haben Sie Fragen? Schreiben Sie mir direkt — ich antworte persoenlich:</p>
 <p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Jetzt schreiben</a><br>
@@ -829,7 +829,7 @@ Oder antworten Sie einfach auf diese E-Mail</p>
 <li>- <strong>Le vostre foto e testi reali</strong> — nessun aspetto da template generico</li>
 </ul>
 <p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Guarda il vostro nuovo design</a></p>
-<p>Vi piace il risultato? Solo <strong>EUR 9,99/mese</strong> — hosting, SSL, dominio e aggiornamenti inclusi. Disdici quando volete.</p>
+<p>Vi piace il risultato? Paghi una sola volta <strong>EUR 9,99</strong> — hosting, SSL, dominio e un anno di aggiornamenti inclusi. Nessun addebito ricorrente.</p>
 <p><strong>Nessuna spesa di attivazione. Nessun costo nascosto. Nessun vincolo contrattuale.</strong></p>
 <p>Avete domande? Scrivetemi direttamente — rispondo personalmente:</p>
 <p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Scrivici ora</a><br>
@@ -849,7 +849,7 @@ Oppure rispondete a questa email</p>
 <li>- <strong>Your real photos and text</strong> — no generic template look</li>
 </ul>
 <p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">View your new website design</a></p>
-<p>Only <strong>EUR 9.99/month</strong> — including hosting, SSL, domain, and ongoing updates. Cancel anytime.</p>
+<p>One-time payment of <strong>EUR 9.99</strong> — including hosting, SSL, domain, and one year of updates. No recurring charges.</p>
 <p><strong>No setup fee. No hidden costs. No contracts.</strong></p>
 <p>Questions? Write to me directly — I reply personally:</p>
 <p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Chat now</a><br>
@@ -869,7 +869,7 @@ Or simply reply to this email</p>
 <li>- <strong>Sus fotos y textos reales</strong> — sin aspecto de plantilla generica</li>
 </ul>
 <p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Ver su nuevo diseno web</a></p>
-<p>Solo <strong>EUR 9,99/mes</strong> — hosting, SSL, dominio y actualizaciones incluidos. Cancelacion en cualquier momento.</p>
+<p>Pago unico de <strong>EUR 9,99</strong> — hosting, SSL, dominio y un ano de actualizaciones incluidos. Sin cargos recurrentes.</p>
 <p><strong>Sin cuota de alta. Sin costes ocultos. Sin permanencia.</strong></p>
 <p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp: Escribir ahora</a></p>
 <p style="margin-top:28px">Saludos cordiales,<br><strong>Marco Bianchi</strong><br>Fundador y CEO, MadeCreative<br><span style="color:#888">Diseno web profesional para empresas ambiciosas</span></p>`,
@@ -887,7 +887,7 @@ Or simply reply to this email</p>
 <li>- <strong>Vos vraies photos et textes</strong> — sans aspect de modele generique</li>
 </ul>
 <p style="text-align:center;margin:32px 0"><a href="${previewUrl}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 14px rgba(99,102,241,0.4)">Voir votre nouveau design</a></p>
-<p>Seulement <strong>EUR 9,99/mois</strong> — hebergement, SSL, domaine et mises a jour inclus. Resiliable a tout moment.</p>
+<p>Paiement unique de <strong>EUR 9,99</strong> — hebergement, SSL, domaine et un an de mises a jour inclus. Aucun prelevement recurrent.</p>
 <p><strong>Sans frais d'installation. Sans frais caches. Sans engagement.</strong></p>
 <p>- <a href="${waLink}" style="color:#25D366;font-weight:bold">WhatsApp : Ecrire maintenant</a></p>
 <p style="margin-top:28px">Cordialement,<br><strong>Marco Bianchi</strong><br>Fondateur et CEO, MadeCreative<br><span style="color:#888">Design web professionnel pour entreprises ambitieuses</span></p>`,

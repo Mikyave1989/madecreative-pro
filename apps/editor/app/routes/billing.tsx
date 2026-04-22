@@ -7,7 +7,9 @@ import { authUser } from '~/lib/stores/auth';
 interface BillingData {
   plan: string;
   status: string;
-  nextChargeDate: string | null;
+  oneTime?: boolean;
+  priceAmount?: number;
+  clientSince?: string;
   paymentMethod: { brand: string; last4: string } | null;
   creditsUsed: number;
   creditsPurchased: number;
@@ -119,14 +121,14 @@ export default function BillingPage() {
             <div>
               <span className="text-2xl font-bold text-indigo-400">{user?.plan || billing?.plan || 'STARTER'}</span>
               <span className="text-bolt-elements-textTertiary ml-2">
-                {billing?.nextChargeDate && `Next billing: ${new Date(billing.nextChargeDate).toLocaleDateString()}`}
+                Pagamento unico · €{(billing?.priceAmount ?? 9.99).toFixed(2)}
               </span>
             </div>
             <button
               onClick={openStripePortal}
               className="px-4 py-2 rounded-lg bg-bolt-elements-background-depth-3 text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-4 border border-bolt-elements-borderColor text-sm"
             >
-              Manage Subscription
+              Stripe Portal
             </button>
           </div>
         </div>
@@ -183,7 +185,7 @@ export default function BillingPage() {
             ))}
           </div>
           <p className="text-xs text-bolt-elements-textTertiary mt-4 text-center">
-            1 credito = 1 generazione AI (modifiche, ricostruzioni, creazioni). I crediti del piano si resettano ogni mese. Quelli acquistati non scadono mai.
+            1 credito = 1 generazione AI (modifiche, ricostruzioni, creazioni). I crediti acquistati non scadono mai.
           </p>
         </div>
 
@@ -203,7 +205,7 @@ export default function BillingPage() {
                 <h3 className="font-semibold text-bolt-elements-textPrimary">{plan.name}</h3>
                 <div className="mt-2">
                   <span className="text-3xl font-bold text-bolt-elements-textPrimary">€{plan.price.toFixed(2)}</span>
-                  <span className="text-bolt-elements-textTertiary">/mo</span>
+                  <span className="text-bolt-elements-textTertiary"> una tantum</span>
                 </div>
                 <ul className="mt-4 space-y-2">
                   {plan.features.map((f) => (
@@ -213,16 +215,7 @@ export default function BillingPage() {
                     </li>
                   ))}
                 </ul>
-                {user?.plan === plan.name ? (
-                  <div className="mt-4 text-center text-sm text-indigo-400 font-medium">Current Plan</div>
-                ) : (
-                  <button
-                    onClick={openStripePortal}
-                    className="mt-4 w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors"
-                  >
-                    {PLANS.indexOf(plan) > PLANS.findIndex((p) => p.name === user?.plan) ? 'Upgrade' : 'Change'}
-                  </button>
-                )}
+                <div className="mt-4 text-center text-sm text-indigo-400 font-medium">Current Plan</div>
               </div>
             ))}
           </div>

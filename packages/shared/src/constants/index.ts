@@ -2,7 +2,7 @@ import type { AgentType, ServiceType } from "../types/index.js";
 
 // ─── Plan ─────────────────────────────────────────────────────────────────────
 
-export const PLAN_PRICE = 9.99; // €9.99/month — single plan, no trial
+export const PLAN_PRICE = 9.99; // €9.99 one-time — single plan, no subscription
 export const PLAN_PRICE_ID = process.env["STRIPE_PRICE_ID"] ?? "";
 
 export const PLANS = {

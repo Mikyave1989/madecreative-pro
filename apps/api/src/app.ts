@@ -150,9 +150,9 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
   const resendKey = process.env["RESEND_API_KEY"];
   if (!resendKey) return c.json({ error: "RESEND not configured" }, 500);
 
-  // Single plan — €9.99/mese, nessuna prova gratuita
+  // Single plan — €9,99 una tantum
   const plan = "STARTER";
-  const price = { setup: 0, monthly: 9.99 };
+  const price = { setup: 0, oneTime: 9.99 };
 
   const lang = body.language ?? "en";
   const name = prospect.companyName;
@@ -191,7 +191,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Ihre echten Fotos und Texte</strong> - kein generischer Template-Look</li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}Ihren Website-Entwurf ansehen</a></p>
-<p style="margin:0 0 16px">Ueberzeugt Sie das Ergebnis? Nur <strong>EUR 9,99/Monat</strong> - inklusive Hosting, SSL, Domain und laufende Updates. Jederzeit kuendbar.</p>
+<p style="margin:0 0 16px">Ueberzeugt Sie das Ergebnis? Einmalig <strong>EUR 9,99</strong> - inklusive Hosting, SSL, Domain und ein Jahr Updates. Keine Folgekosten.</p>
 <p style="margin:0 0 16px"><strong>Keine Einrichtungsgebuehr. Keine versteckten Kosten. Keine Vertragsbindung.</strong></p>
 <p style="margin:0 0 16px">Haben Sie Fragen? Schreiben Sie mir direkt:</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Jetzt schreiben</a></p>
@@ -208,7 +208,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Le vostre foto e testi reali</strong> - nessun aspetto da template generico</li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}Guarda l'anteprima del vostro sito</a></p>
-<p style="margin:0 0 16px">Vi piace il risultato? Solo <strong>EUR 9,99/mese</strong> - hosting, SSL, dominio e aggiornamenti inclusi. Disdici quando volete.</p>
+<p style="margin:0 0 16px">Vi piace il risultato? Paghi una sola volta <strong>EUR 9,99</strong> - hosting, SSL, dominio e un anno di aggiornamenti inclusi. Nessun addebito ricorrente.</p>
 <p style="margin:0 0 16px"><strong>Nessuna spesa di attivazione. Nessun costo nascosto. Nessun vincolo contrattuale.</strong></p>
 <p style="margin:0 0 16px">Avete domande? Scrivetemi direttamente:</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Scrivici ora</a></p>
@@ -225,7 +225,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Vos vraies photos et textes</strong></li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}Voir l'apercu de votre site</a></p>
-<p style="margin:0 0 16px">Seulement <strong>EUR 9,99/mois</strong>. Aucun frais d'installation. Resiliable a tout moment.</p>
+<p style="margin:0 0 16px">Paiement unique de <strong>EUR 9,99</strong>. Aucun frais d'installation. Aucun prelevement recurrent.</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Ecrire maintenant</a></p>
 <p style="margin:24px 0 0">Cordialement,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
     es: `<p style="margin:0 0 16px">Estimado equipo de <strong>${name}</strong>,</p>
@@ -239,7 +239,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Sus fotos y textos reales</strong></li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}Ver vista previa de su web</a></p>
-<p style="margin:0 0 16px">Solo <strong>EUR 9,99/mes</strong>. Sin cuota de alta. Sin costes ocultos. Cancelacion en cualquier momento.</p>
+<p style="margin:0 0 16px">Pago unico de <strong>EUR 9,99</strong>. Sin cuota de alta. Sin costes ocultos. Sin cargos recurrentes.</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Escribir ahora</a></p>
 <p style="margin:24px 0 0">Saludos cordiales,<br><strong>Marco Bianchi</strong><br>MadeCreative</p>`,
     en: `<p style="margin:0 0 16px">Dear <strong>${name}</strong> team,</p>
@@ -253,7 +253,7 @@ app.post("/internal/send-preview-email/:prospectId", async (c) => {
 <li>- <strong>Your real photos and text</strong> - no generic template look</li>
 </ul>
 <p style="margin:0 0 16px;text-align:center">${btn}View your website preview</a></p>
-<p style="margin:0 0 16px">Only <strong>EUR 9.99/month</strong> - including hosting, SSL, domain, and ongoing updates. Cancel anytime.</p>
+<p style="margin:0 0 16px">One-time payment of <strong>EUR 9.99</strong> - including hosting, SSL, domain, and one year of updates. No recurring charges.</p>
 <p style="margin:0 0 16px"><strong>No setup fee. No hidden costs. No contracts.</strong></p>
 <p style="margin:0 0 16px">Questions? Write to me directly:</p>
 <p style="margin:0 0 16px;text-align:center">${waBtn}WhatsApp: Chat now</a></p>

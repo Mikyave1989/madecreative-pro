@@ -24,7 +24,6 @@ app.get("/", async (c) => {
     select: {
       status: true,
       stripeCustomerId: true,
-      stripeSubId: true,
       createdAt: true,
     },
   });
@@ -46,7 +45,6 @@ app.get("/", async (c) => {
     : client.status === "AT_RISK" ? "AT_RISK"
     : "PAUSED";
 
-  let nextChargeDate: string | null = null;
   let paymentMethod: {
     brand: string;
     last4: string;
@@ -55,33 +53,25 @@ app.get("/", async (c) => {
   } | null = null;
 
   const stripe = getStripe();
-  if (stripe && (client.stripeSubId || client.stripeCustomerId)) {
-    if (client.stripeSubId) {
-      try {
-        const sub = await stripe.subscriptions.retrieve(client.stripeSubId);
-        nextChargeDate = new Date(sub.current_period_end * 1000).toISOString();
-      } catch { /* ignore */ }
-    }
-    if (client.stripeCustomerId) {
-      try {
-        const customer = await stripe.customers.retrieve(client.stripeCustomerId);
-        if (!("deleted" in customer) && customer.invoice_settings?.default_payment_method) {
-          const pm = await stripe.paymentMethods.retrieve(customer.invoice_settings.default_payment_method as string);
-          if (pm.card) {
-            paymentMethod = { brand: pm.card.brand, last4: pm.card.last4, expiryMonth: pm.card.exp_month, expiryYear: pm.card.exp_year };
-          }
+  if (stripe && client.stripeCustomerId) {
+    try {
+      const customer = await stripe.customers.retrieve(client.stripeCustomerId);
+      if (!("deleted" in customer) && customer.invoice_settings?.default_payment_method) {
+        const pm = await stripe.paymentMethods.retrieve(customer.invoice_settings.default_payment_method as string);
+        if (pm.card) {
+          paymentMethod = { brand: pm.card.brand, last4: pm.card.last4, expiryMonth: pm.card.exp_month, expiryYear: pm.card.exp_year };
         }
-      } catch { /* non-critical */ }
-    }
+      }
+    } catch { /* non-critical */ }
   }
 
   return c.json({
     success: true,
     data: {
       plan: "Standard",
-      nextChargeAmount: PLAN_PRICE,
+      priceAmount: PLAN_PRICE,
+      oneTime: true,
       status: portalStatus,
-      nextChargeDate,
       clientSince: client.createdAt.toISOString(),
       isEligibleForRefund,
       daysSinceCreation,
@@ -161,39 +151,6 @@ app.post("/portal", async (c) => {
   }
 });
 
-// POST /portal/billing/cancel — cancel subscription
-app.post("/cancel", async (c) => {
-  const { prisma } = await import("@madecreative/db");
-  const clientId = c.get("jwtPayload").sub;
-
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { stripeSubId: true, status: true },
-  });
-
-  if (!client || client.status !== "ACTIVE") {
-    return c.json({ success: false, error: "No active subscription" }, 400);
-  }
-
-  if (!client.stripeSubId) {
-    return c.json({ success: false, error: "Nessun abbonamento trovato." }, 404);
-  }
-
-  const stripe = getStripe();
-  if (!stripe) return c.json({ success: false, error: "Stripe non configurato." }, 503);
-
-  await stripe.subscriptions.update(client.stripeSubId, {
-    cancel_at_period_end: true,
-  });
-
-  return c.json({
-    success: true,
-    data: {
-      message: "Abbonamento cancellato — il sito resterà online fino alla fine del periodo.",
-    },
-  });
-});
-
 // POST /portal/billing/refund — automatic 14-day refund
 app.post("/refund", async (c) => {
   const { prisma } = await import("@madecreative/db");
@@ -205,7 +162,6 @@ app.post("/refund", async (c) => {
     select: {
       status: true,
       plan: true,
-      stripeSubId: true,
       stripeCustomerId: true,
       createdAt: true,
     },
@@ -236,18 +192,13 @@ app.post("/refund", async (c) => {
 
   const stripe = getStripe();
 
-  if (stripe) {
-    if (client.stripeSubId) {
-      try { await stripe.subscriptions.cancel(client.stripeSubId); } catch { /* may already be cancelled */ }
-    }
-    if (client.stripeCustomerId) {
-      try {
-        const charges = await stripe.charges.list({ customer: client.stripeCustomerId, limit: 1 });
-        if (charges.data.length > 0 && charges.data[0]?.status === "succeeded") {
-          await stripe.refunds.create({ charge: charges.data[0].id });
-        }
-      } catch { /* non-critical */ }
-    }
+  if (stripe && client.stripeCustomerId) {
+    try {
+      const charges = await stripe.charges.list({ customer: client.stripeCustomerId, limit: 1 });
+      if (charges.data.length > 0 && charges.data[0]?.status === "succeeded") {
+        await stripe.refunds.create({ charge: charges.data[0].id });
+      }
+    } catch { /* non-critical */ }
   }
 
   // Update client status

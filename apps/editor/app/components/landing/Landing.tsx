@@ -29,8 +29,8 @@ const FEATURES = [
 ];
 
 const COMPARISON = [
-  { f: 'Traditional web agency', old: '$2,000 - $15,000', us: '\u20AC9.99/mo \u2014 everything included' },
-  { f: 'Freelance developer', old: '$800 - $3,000', us: '\u20AC9.99/mo \u2014 everything included' },
+  { f: 'Traditional web agency', old: '$2,000 - $15,000', us: '\u20AC9.99 one-time \u2014 everything included' },
+  { f: 'Freelance developer', old: '$800 - $3,000', us: '\u20AC9.99 one-time \u2014 everything included' },
   { f: 'Wix / Squarespace', old: 'Same templates for everyone', us: 'Unique design from YOUR content' },
   { f: 'Time to launch', old: '2\u20138 weeks', us: 'Ready in 24 hours' },
   { f: 'Technology', old: 'WordPress / outdated CMS', us: 'Next.js + React \u2014 cutting edge' },
@@ -43,7 +43,7 @@ const PLANS = [
     slug: 'STARTER',
     price: 9.99,
     setup: 0,
-    desc: 'Just \u20AC9.99/month. No trial. Cancel anytime.',
+    desc: 'One-time payment of \u20AC9.99. No subscription, no recurring charges.',
     features: [
       'Your website, completely redesigned with premium quality',
       'Same content, photos, videos \u2014 just 10x better design',
@@ -71,8 +71,8 @@ const FAQS = [
   { q: 'Will my content change?', a: 'No. Every word, every photo, every video stays exactly the same. We only change the visual design, animations, and layout.' },
   { q: 'How long does it take?', a: 'Your new site preview is usually ready within 24 hours. You can review it before going live.' },
   { q: 'What technology do you use?', a: 'Next.js, React, Tailwind CSS, Framer Motion. Modern, fast, SEO-friendly. The same stack used by top companies worldwide.' },
-  { q: 'Can I cancel anytime?', a: 'Yes. No contracts, no penalties. Cancel whenever you want.' },
-  { q: 'Is hosting included?', a: 'Yes. Professional hosting, SSL certificate, and custom domain are all included in the \u20AC9.99/month.' },
+  { q: 'Is this a subscription?', a: 'No. It\u2019s a single \u20AC9.99 payment. You are never charged again.' },
+  { q: 'Is hosting included?', a: 'Yes. Professional hosting, SSL certificate, and custom domain are all included in the one-time \u20AC9.99 fee for the first year.' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -86,7 +86,6 @@ export function Landing() {
   const [cLoad, setCLoad] = useState(false);
   const [cErr, setCErr] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [annual, setAnnual] = useState(false);
   const [activeA, setActiveA] = useState(0);
 
   useEffect(() => { const t = setInterval(() => setActiveA(i => (i + 1) % AGENTS.length), 3500); return () => clearInterval(t); }, []);
@@ -95,7 +94,7 @@ export function Landing() {
     if (!cEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cEmail)) { setCErr('Enter a valid email.'); return; }
     setCLoad(true); setCErr('');
     try {
-      const r = await fetch(`${API_URL}/public/signup/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: slug, billing: annual ? 'annual' : 'monthly', email: cEmail.trim() }) });
+      const r = await fetch(`${API_URL}/public/signup/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: slug, billing: 'monthly', email: cEmail.trim() }) });
       const d = await r.json();
       if (d.success && d.data?.checkoutUrl) window.location.href = d.data.checkoutUrl;
       else { setCErr(d.error || 'Error.'); setCLoad(false); }
@@ -161,7 +160,7 @@ export function Landing() {
 
           <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', maxWidth: 640, margin: '0 auto 40px', lineHeight: 1.6, ...S.t2 }}>
             We take your existing site and rebuild it with premium quality. Same photos, same text &mdash; just stunning modern design.
-            <span style={S.t1}> Just &euro;9.99/month &mdash; cancel anytime.</span>
+            <span style={S.t1}> One-time &euro;9.99 &mdash; no subscription.</span>
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
@@ -467,18 +466,11 @@ export function Landing() {
             <p style={{ ...S.t2, maxWidth: 480, margin: '0 auto' }}>Premium redesign with hosting, domain, and support — all included.</p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 48 }}>
-            <span style={{ fontSize: 14, color: !annual ? '#fff' : '#52525b', fontWeight: !annual ? 500 : 400 }}>Monthly</span>
-            <button onClick={() => setAnnual(!annual)} style={{ position: 'relative', width: 48, height: 24, borderRadius: 12, backgroundColor: annual ? '#6366f1' : '#27272a', border: 'none', cursor: 'pointer' }}>
-              <div style={{ position: 'absolute', top: 2, width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff', transition: 'transform .2s', transform: annual ? 'translateX(24px)' : 'translateX(2px)', boxShadow: '0 1px 3px rgba(0,0,0,.3)' }} />
-            </button>
-            <span style={{ fontSize: 14, color: annual ? '#fff' : '#52525b', fontWeight: annual ? 500 : 400 }}>Annual</span>
-            {annual && <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 600, backgroundColor: 'rgba(74,222,128,.1)', padding: '2px 8px', borderRadius: 9999, border: '1px solid rgba(74,222,128,.2)' }}>-20%</span>}
-          </div>
+          <div style={{ marginBottom: 48 }} />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
             {PLANS.map(plan => {
-              const price = annual ? +(plan.price * 0.8).toFixed(2) : plan.price;
+              const price = plan.price;
               const isOpen = cPlan === plan.slug;
               return (
                 <div key={plan.name} style={{ ...(plan.hl ? S.cardHl : S.card), padding: 24, position: 'relative', ...(plan.hl ? { boxShadow: '0 0 60px rgba(99,102,241,.08)', transform: 'scale(1.02)' } : {}) }}>
@@ -488,7 +480,7 @@ export function Landing() {
                   <div style={{ marginBottom: 24 }}>
                     <span style={{ ...S.t4, fontSize: 18 }}>&euro;</span>
                     <span style={{ fontSize: 48, fontWeight: 800, color: '#fff' }}>{price.toFixed(2)}</span>
-                    <span style={S.t4}>/month</span>
+                    <span style={S.t4}> one-time</span>
                   </div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px' }}>
                     {plan.features.map(f => (
@@ -519,7 +511,7 @@ export function Landing() {
               );
             })}
           </div>
-          <p style={{ textAlign: 'center', fontSize: 12, ...S.t4, marginTop: 32 }}>&#128274; Stripe secured. Cancel anytime.</p>
+          <p style={{ textAlign: 'center', fontSize: 12, ...S.t4, marginTop: 32 }}>&#128274; Stripe secured. One-time payment &mdash; no subscription.</p>
         </div>
       </section>
 
@@ -547,7 +539,7 @@ export function Landing() {
       {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
       <section style={{ padding: '96px 24px', textAlign: 'center' }}>
         <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Ready to see your site transformed?<br /><span style={S.gt}>Same content. 10x better design.</span></h2>
-        <p style={{ ...S.t2, marginBottom: 32 }}>Just &euro;9.99/month. Cancel anytime &mdash; no penalties.</p>
+        <p style={{ ...S.t2, marginBottom: 32 }}>One-time payment of &euro;9.99 &mdash; no subscription, ever.</p>
         <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started</a>
       </section>
 
