@@ -88,8 +88,8 @@ export default function SignupPage() {
 
       const data = await res.json();
 
-      if (data.success && data.data?.checkoutUrl) {
-        window.location.href = data.data.checkoutUrl;
+      if (data.success && data.data?.clientSecret) {
+        window.location.href = `/pay?cs=${encodeURIComponent(data.data.clientSecret)}`;
       } else {
         setError(data.error || 'Something went wrong. Please try again.');
       }

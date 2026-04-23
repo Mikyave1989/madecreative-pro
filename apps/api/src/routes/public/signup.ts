@@ -103,13 +103,14 @@ app.post("/checkout", async (c) => {
   }
 
   try {
-    // Common Checkout config — optimized to minimize 3DS friction:
-    // - payment_method_options.card.request_three_d_secure: "automatic" lets
-    //   Stripe skip 3DS whenever the issuer & regulations allow it (frictionless
-    //   flow). Non-EU cards on a low-value transaction (< €30) typically qualify.
-    // - phone_number_collection improves Radar risk score → fewer 3DS challenges.
-    // - billing_address_collection: "auto" gives Radar address signals.
+    // Embedded Checkout: UI is hosted inside our own /pay page (iframe on
+    // madecreative.pro). Customer never leaves our domain → proxies/filters that
+    // block checkout.stripe.com as a top-level navigation are bypassed.
+    // 3DS friction minimizers kept: request_three_d_secure=automatic +
+    // phone_number_collection (feeds Radar) + billing_address_collection.
+    const marketingUrl = process.env["MARKETING_URL"] ?? "https://madecreative.pro";
     const commonFields = {
+      ui_mode: "embedded" as const,
       payment_method_types: ["card", "link"] as Array<"card" | "link">,
       locale: "auto" as const,
       billing_address_collection: "auto" as const,
@@ -121,8 +122,7 @@ app.post("/checkout", async (c) => {
         websiteUrl: websiteUrl ?? "",
         companyName: companyName ?? "",
       },
-      success_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/#pricing`,
+      return_url: `${marketingUrl}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,
     };
 
     const session = isSubscription
@@ -146,7 +146,18 @@ app.post("/checkout", async (c) => {
           },
         });
 
-    return c.json({ success: true, data: { checkoutUrl: session.url } });
+    if (!session.client_secret) {
+      console.error("[Checkout] No client_secret returned from Stripe");
+      return c.json({ success: false, error: "Checkout session creation failed" }, 500);
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        clientSecret: session.client_secret,
+        sessionId: session.id,
+      },
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[Checkout] Stripe error:", msg);

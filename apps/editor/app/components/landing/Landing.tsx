@@ -113,7 +113,7 @@ export function Landing() {
       const billing = slug === 'PRO' ? 'monthly' : 'onetime';
       const r = await fetch(`${API_URL}/public/signup/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: slug, billing, email: cEmail.trim() }) });
       const d = await r.json();
-      if (d.success && d.data?.checkoutUrl) window.location.href = d.data.checkoutUrl;
+      if (d.success && d.data?.clientSecret) window.location.href = `/pay?cs=${encodeURIComponent(d.data.clientSecret)}`;
       else { setCErr(d.error || 'Error.'); setCLoad(false); }
     } catch { setCErr('Connection error.'); setCLoad(false); }
   }

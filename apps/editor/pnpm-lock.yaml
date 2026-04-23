@@ -173,6 +173,9 @@ importers:
       '@remix-run/react':
         specifier: ^2.15.2
         version: 2.16.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.3)
+      '@stripe/stripe-js':
+        specifier: ^9.3.0
+        version: 9.3.0
       '@tanstack/react-virtual':
         specifier: ^3.13.0
         version: 3.13.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -3264,6 +3267,10 @@ packages:
 
   '@speed-highlight/core@1.2.7':
     resolution: {integrity: sha512-0dxmVj4gxg3Jg879kvFS/msl4s9F3T9UXC1InxgOf7t5NvcPD97u/WTA5vL/IxWHMn7qSxBozqrnnE2wvl1m8g==}
+
+  '@stripe/stripe-js@9.3.0':
+    resolution: {integrity: sha512-BPiTYrt8OEpvm5W/gyWUfGdHCk2L9DmZ2R8WmsNVhgjNCEl40CAYtyPHFQFic+j9rJbyjxifDkU+MO0sFUGkUQ==}
+    engines: {node: '>=12.16'}
 
   '@stylistic/eslint-plugin-ts@2.13.0':
     resolution: {integrity: sha512-nooe1oTwz60T4wQhZ+5u0/GAu3ygkKF9vPPZeRn/meG71ntQ0EZXVOKEonluAYl/+CV2T+nN0dknHa4evAW13Q==}
@@ -11447,6 +11454,8 @@ snapshots:
       tslib: 2.8.1
 
   '@speed-highlight/core@1.2.7': {}
+
+  '@stripe/stripe-js@9.3.0': {}
 
   '@stylistic/eslint-plugin-ts@2.13.0(eslint@9.31.0(jiti@1.21.7))(typescript@5.8.3)':
     dependencies:
