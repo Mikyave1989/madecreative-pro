@@ -58,12 +58,12 @@ app.post("/checkout", async (c) => {
   const websiteUrl = rawBody.websiteUrl;
   const locale = rawBody.locale;
 
-  const validPlans = ["STARTER"] as const;
-  const validBillings = ["monthly", "annual"] as const;
+  const validPlans = ["STARTER", "PRO"] as const;
+  const validBillings = ["monthly", "annual", "onetime"] as const;
 
   if (!plan || !validPlans.includes(plan as (typeof validPlans)[number])) {
     return c.json(
-      { success: false, error: "Plan must be STARTER" },
+      { success: false, error: "Plan must be STARTER or PRO" },
       400
     );
   }
@@ -73,7 +73,7 @@ app.post("/checkout", async (c) => {
     !validBillings.includes(billing as (typeof validBillings)[number])
   ) {
     return c.json(
-      { success: false, error: "Billing must be monthly or annual" },
+      { success: false, error: "Billing must be monthly, annual or onetime" },
       400
     );
   }
@@ -82,8 +82,11 @@ app.post("/checkout", async (c) => {
     return c.json({ success: false, error: "A valid email is required" }, 400);
   }
 
-  // Single plan: EUR 9.99 one-time payment
-  const priceId = process.env["STRIPE_PRICE_ID"] ?? "price_1TP1G5PpUruzeNQ3iNbTjgx3";
+  // STARTER = EUR 9.99 one-time; PRO = EUR 49/month with 30-day free trial
+  const isSubscription = plan === "PRO";
+  const priceId = isSubscription
+    ? process.env["STRIPE_PRICE_SUBSCRIPTION"] ?? "price_1TPL2eFJTS50UtnPeKWHkgu5"
+    : process.env["STRIPE_PRICE_ID"] ?? "price_1TP2GRFJTS50UtnPyVGT2CJ9";
 
   if (!priceId) {
     return c.json(
@@ -100,13 +103,11 @@ app.post("/checkout", async (c) => {
   }
 
   try {
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card", "link"],
-      locale: "auto",
-      billing_address_collection: "auto",
+    const commonFields = {
+      payment_method_types: ["card", "link"] as Array<"card" | "link">,
+      locale: "auto" as const,
+      billing_address_collection: "auto" as const,
       customer_email: email.toLowerCase(),
-      customer_creation: "always",
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
         plan,
@@ -115,7 +116,22 @@ app.post("/checkout", async (c) => {
       },
       success_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env["MARKETING_URL"] ?? "https://madecreative.pro"}/#pricing`,
-    });
+    };
+
+    const session = isSubscription
+      ? await stripe.checkout.sessions.create({
+          ...commonFields,
+          mode: "subscription",
+          subscription_data: {
+            trial_period_days: 30,
+            metadata: { plan },
+          },
+        })
+      : await stripe.checkout.sessions.create({
+          ...commonFields,
+          mode: "payment",
+          customer_creation: "always",
+        });
 
     return c.json({ success: true, data: { checkoutUrl: session.url } });
   } catch (err) {

@@ -26,6 +26,7 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "STRIPE_PRICE_ID": "price_1TP2GRFJTS50UtnPyVGT2CJ9"
+    "STRIPE_PRICE_ID": "price_1TP2GRFJTS50UtnPyVGT2CJ9",
+    "STRIPE_PRICE_SUBSCRIPTION": "price_1TPL2eFJTS50UtnPeKWHkgu5"
   }
 }

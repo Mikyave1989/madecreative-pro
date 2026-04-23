@@ -89,6 +89,21 @@ async function processStripeEvent(event: Stripe.Event): Promise<void> {
       await handleCheckoutCompleted(session);
       break;
     }
+    case "invoice.payment_succeeded": {
+      const invoice = event.data.object as Stripe.Invoice;
+      await handlePaymentSucceeded(invoice);
+      break;
+    }
+    case "invoice.payment_failed": {
+      const invoice = event.data.object as Stripe.Invoice;
+      await handlePaymentFailed(invoice);
+      break;
+    }
+    case "customer.subscription.deleted": {
+      const subscription = event.data.object as Stripe.Subscription;
+      await handleSubscriptionDeleted(subscription);
+      break;
+    }
     default:
       break;
   }
@@ -116,6 +131,7 @@ async function handleCheckoutCompleted(
       where: { id: existingClient.id },
       data: {
         stripeCustomerId: session.customer as string,
+        ...(session.subscription ? { stripeSubId: session.subscription as string } : {}),
         status: "ACTIVE",
         plan,
       },
@@ -161,6 +177,7 @@ async function handleCheckoutCompleted(
       plan,
       websiteUrl,
       stripeCustomerId: session.customer as string,
+      ...(session.subscription ? { stripeSubId: session.subscription as string } : {}),
       status: "ACTIVE",
     },
   });
@@ -215,16 +232,18 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // Record first invoice
+  // Record first invoice (skip for PRO trial — first charge happens after trial ends via invoice.payment_succeeded)
   const planPrice = PLANS[plan as keyof typeof PLANS]?.price ?? 9.99;
-  await prisma.clientInvoice.create({
-    data: {
-      clientId: client.id,
-      amount: planPrice,
-      status: "PAID",
-      paidAt: new Date(),
-    },
-  });
+  if (!session.subscription) {
+    await prisma.clientInvoice.create({
+      data: {
+        clientId: client.id,
+        amount: planPrice,
+        status: "PAID",
+        paidAt: new Date(),
+      },
+    });
+  }
 
   // Store temp password in Redis for onboarding
   try {
@@ -301,7 +320,7 @@ async function handleCheckoutCompleted(
 <tr><td style="padding:8px 16px;background:#f8fafc;border-radius:0 0 0 6px"><strong>Password</strong></td><td style="padding:8px 16px;background:#f8fafc;border-radius:0 0 6px 0"><code>${tempPassword}</code></td></tr>
 </table>
 <p><a href="${portalUrl}/login" style="display:inline-block;background:#6366f1;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Accedi alla dashboard</a></p>
-<p style="color:#94a3b8;font-size:13px">Piano ${plan} — €${planPrice.toFixed(2)} una tantum<br>Ti consigliamo di cambiare la password dopo il primo accesso.</p>
+<p style="color:#94a3b8;font-size:13px">Piano ${plan} — ${session.subscription ? `€${planPrice.toFixed(2)}/mese (30 giorni di prova gratuita)` : `€${planPrice.toFixed(2)} una tantum`}<br>Ti consigliamo di cambiare la password dopo il primo accesso.</p>
 <p>Il team MadeCreative</p>
 </body></html>`,
         }),
@@ -312,3 +331,71 @@ async function handleCheckoutCompleted(
   }
 }
 
+async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+  const { prisma } = await import("@madecreative/db");
+  if (!invoice.customer) return;
+
+  const client = await prisma.client.findUnique({
+    where: { stripeCustomerId: invoice.customer as string },
+  });
+
+  if (!client) return;
+
+  await prisma.clientInvoice.upsert({
+    where: { stripeInvoiceId: invoice.id },
+    create: {
+      clientId: client.id,
+      stripeInvoiceId: invoice.id,
+      amount: invoice.amount_paid / 100,
+      status: "PAID",
+      paidAt: new Date(invoice.status_transitions.paid_at! * 1000),
+    },
+    update: {
+      status: "PAID",
+      paidAt: new Date(invoice.status_transitions.paid_at! * 1000),
+    },
+  });
+}
+
+async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+  const { prisma } = await import("@madecreative/db");
+  if (!invoice.customer) return;
+
+  const client = await prisma.client.findUnique({
+    where: { stripeCustomerId: invoice.customer as string },
+  });
+
+  if (!client) return;
+
+  await prisma.clientInvoice.upsert({
+    where: { stripeInvoiceId: invoice.id },
+    create: {
+      clientId: client.id,
+      stripeInvoiceId: invoice.id,
+      amount: invoice.amount_due / 100,
+      status: "FAILED",
+    },
+    update: { status: "FAILED" },
+  });
+
+  if ((invoice.attempt_count ?? 0) >= 3) {
+    await prisma.client.update({
+      where: { id: client.id },
+      data: { status: "CHURNED" },
+    });
+  }
+}
+
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
+  const { prisma } = await import("@madecreative/db");
+  const client = await prisma.client.findUnique({
+    where: { stripeSubId: subscription.id },
+  });
+
+  if (!client) return;
+
+  await prisma.client.update({
+    where: { id: client.id },
+    data: { status: "CHURNED" },
+  });
+}

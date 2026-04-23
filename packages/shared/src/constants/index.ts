@@ -2,11 +2,12 @@ import type { AgentType, ServiceType } from "../types/index.js";
 
 // ─── Plan ─────────────────────────────────────────────────────────────────────
 
-export const PLAN_PRICE = 9.99; // €9.99 one-time — single plan, no subscription
+export const PLAN_PRICE = 9.99; // €9.99 one-time — STARTER plan
 export const PLAN_PRICE_ID = process.env["STRIPE_PRICE_ID"] ?? "";
 
 export const PLANS = {
-  STARTER: { price: 9.99, setup: 0, credits: 100 },
+  STARTER: { price: 9.99, setup: 0, credits: 100, billing: "onetime" as const },
+  PRO: { price: 49, setup: 0, credits: 1000, billing: "subscription" as const, trialDays: 30 },
 } as const;
 export type PlanKey = keyof typeof PLANS;
 

@@ -9,7 +9,7 @@ export const meta: MetaFunction = () => [
 ];
 
 interface Plan {
-  id: 'STARTER';
+  id: 'STARTER' | 'PRO';
   label: string;
   price: string;
   period: string;
@@ -19,15 +19,29 @@ interface Plan {
 const PLANS: Plan[] = [
   {
     id: 'STARTER',
-    label: 'MadeCreative',
+    label: 'Starter',
     price: '€9,99',
-    period: ' una tantum — nessun abbonamento',
+    period: ' una tantum',
     features: [
       'Sito premium rigenerato con AI',
       'Hosting, SSL, dominio custom inclusi (primo anno)',
       'SEO ottimizzato dal primo giorno',
       'Pagamento unico — nessun addebito ricorrente',
       'Assistenza email entro 24 ore',
+    ],
+  },
+  {
+    id: 'PRO',
+    label: 'Pro',
+    price: '€49',
+    period: '/mese — 30 giorni gratis',
+    features: [
+      'Tutto ciò che include Starter',
+      '30 giorni di prova gratuita — disdici quando vuoi',
+      'Hosting, SSL, dominio inclusi per sempre',
+      'Modifiche illimitate',
+      'Monitoraggio SEO mensile',
+      'Supporto prioritario entro 4 ore',
     ],
   },
 ];
@@ -58,7 +72,7 @@ export default function SignupPage() {
     try {
       const body: Record<string, string> = {
         plan,
-        billing: 'monthly',
+        billing: plan === 'PRO' ? 'monthly' : 'onetime',
         email: email.trim(),
         companyName: companyName.trim(),
       };

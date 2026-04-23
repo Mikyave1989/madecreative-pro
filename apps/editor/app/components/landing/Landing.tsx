@@ -39,20 +39,35 @@ const COMPARISON = [
 
 const PLANS = [
   {
-    name: 'MadeCreative',
+    name: 'Starter',
     slug: 'STARTER',
     price: 9.99,
-    setup: 0,
-    desc: 'One-time payment of \u20AC9.99. No subscription, no recurring charges.',
+    period: 'one-time',
+    desc: 'Pagamento unico di \u20AC9.99 \u2014 nessun abbonamento.',
     features: [
-      'Your website, completely redesigned with premium quality',
-      'Same content, photos, videos \u2014 just 10x better design',
-      'Professional hosting on fast infrastructure',
-      'Custom domain included',
-      'SEO optimized \u2014 Google finds you from day one',
+      'Sito premium ricostruito con AI',
+      'Hosting, SSL e dominio inclusi per il primo anno',
+      'SEO ottimizzato \u2014 visibile su Google dal primo giorno',
       'Fully responsive \u2014 mobile, tablet, desktop',
-      '2 edits per month included',
-      'Email support \u2014 we reply within 24 hours',
+      '2 modifiche incluse',
+      'Supporto email entro 24 ore',
+    ],
+    hl: false,
+  },
+  {
+    name: 'Pro',
+    slug: 'PRO',
+    price: 49,
+    period: '/month',
+    desc: '30 giorni gratis, poi \u20AC49/mese \u2014 sito sempre aggiornato.',
+    features: [
+      'Tutto ci\u00f2 che include Starter',
+      '30 giorni di prova gratuita \u2014 nessun addebito prima del 31\u00b0 giorno',
+      'Hosting, SSL e dominio inclusi per sempre',
+      'Modifiche illimitate al sito',
+      'Monitoraggio SEO mensile',
+      'Supporto prioritario (risposta entro 4 ore)',
+      'Disdici in qualunque momento durante la prova',
     ],
     hl: true,
   },
@@ -71,8 +86,9 @@ const FAQS = [
   { q: 'Will my content change?', a: 'No. Every word, every photo, every video stays exactly the same. We only change the visual design, animations, and layout.' },
   { q: 'How long does it take?', a: 'Your new site preview is usually ready within 24 hours. You can review it before going live.' },
   { q: 'What technology do you use?', a: 'Next.js, React, Tailwind CSS, Framer Motion. Modern, fast, SEO-friendly. The same stack used by top companies worldwide.' },
-  { q: 'Is this a subscription?', a: 'No. It\u2019s a single \u20AC9.99 payment. You are never charged again.' },
-  { q: 'Is hosting included?', a: 'Yes. Professional hosting, SSL certificate, and custom domain are all included in the one-time \u20AC9.99 fee for the first year.' },
+  { q: 'Which plan should I choose?', a: 'Starter is a one-time \u20AC9.99 payment \u2014 one year of hosting, SSL, and domain included, then you keep your site. Pro is \u20AC49/month after a 30-day free trial \u2014 unlimited edits, priority support, and hosting forever.' },
+  { q: 'Is there a free trial?', a: 'Yes \u2014 the Pro plan includes 30 days free. You won\u2019t be charged until day 31, and you can cancel anytime during the trial.' },
+  { q: 'Is hosting included?', a: 'Yes. Professional hosting, SSL certificate, and custom domain are included in both plans.' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -94,7 +110,8 @@ export function Landing() {
     if (!cEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cEmail)) { setCErr('Enter a valid email.'); return; }
     setCLoad(true); setCErr('');
     try {
-      const r = await fetch(`${API_URL}/public/signup/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: slug, billing: 'monthly', email: cEmail.trim() }) });
+      const billing = slug === 'PRO' ? 'monthly' : 'onetime';
+      const r = await fetch(`${API_URL}/public/signup/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: slug, billing, email: cEmail.trim() }) });
       const d = await r.json();
       if (d.success && d.data?.checkoutUrl) window.location.href = d.data.checkoutUrl;
       else { setCErr(d.error || 'Error.'); setCLoad(false); }
@@ -160,7 +177,7 @@ export function Landing() {
 
           <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', maxWidth: 640, margin: '0 auto 40px', lineHeight: 1.6, ...S.t2 }}>
             We take your existing site and rebuild it with premium quality. Same photos, same text &mdash; just stunning modern design.
-            <span style={S.t1}> One-time &euro;9.99 &mdash; no subscription.</span>
+            <span style={S.t1}> Da &euro;9.99 una tantum. Pro &euro;49/mese con 30 giorni gratis.</span>
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>
@@ -480,7 +497,8 @@ export function Landing() {
                   <div style={{ marginBottom: 24 }}>
                     <span style={{ ...S.t4, fontSize: 18 }}>&euro;</span>
                     <span style={{ fontSize: 48, fontWeight: 800, color: '#fff' }}>{price.toFixed(2)}</span>
-                    <span style={S.t4}> one-time</span>
+                    <span style={S.t4}> {plan.period === '/month' ? '/mese' : 'una tantum'}</span>
+                    {plan.slug === 'PRO' && <div style={{ marginTop: 8, fontSize: 13, color: '#4ade80', fontWeight: 600 }}>30 giorni gratis</div>}
                   </div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px' }}>
                     {plan.features.map(f => (
@@ -511,7 +529,7 @@ export function Landing() {
               );
             })}
           </div>
-          <p style={{ textAlign: 'center', fontSize: 12, ...S.t4, marginTop: 32 }}>&#128274; Stripe secured. One-time payment &mdash; no subscription.</p>
+          <p style={{ textAlign: 'center', fontSize: 12, ...S.t4, marginTop: 32 }}>&#128274; Stripe secured. Starter: pagamento unico. Pro: 30 giorni gratis, poi &euro;49/mese &mdash; disdici quando vuoi.</p>
         </div>
       </section>
 
@@ -539,7 +557,7 @@ export function Landing() {
       {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
       <section style={{ padding: '96px 24px', textAlign: 'center' }}>
         <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, color: '#fff', marginBottom: 16 }}>Ready to see your site transformed?<br /><span style={S.gt}>Same content. 10x better design.</span></h2>
-        <p style={{ ...S.t2, marginBottom: 32 }}>One-time payment of &euro;9.99 &mdash; no subscription, ever.</p>
+        <p style={{ ...S.t2, marginBottom: 32 }}>&euro;9.99 una tantum o &euro;49/mese con 30 giorni gratis. Scegli tu.</p>
         <a href="#pricing" style={{ display: 'inline-block', ...S.gb, padding: '14px 32px', borderRadius: 12, color: '#fff', fontWeight: 600, fontSize: 18, textDecoration: 'none' }}>Get Started</a>
       </section>
 
