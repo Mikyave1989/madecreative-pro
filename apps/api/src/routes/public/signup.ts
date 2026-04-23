@@ -103,10 +103,17 @@ app.post("/checkout", async (c) => {
   }
 
   try {
+    // Common Checkout config — optimized to minimize 3DS friction:
+    // - payment_method_options.card.request_three_d_secure: "automatic" lets
+    //   Stripe skip 3DS whenever the issuer & regulations allow it (frictionless
+    //   flow). Non-EU cards on a low-value transaction (< €30) typically qualify.
+    // - phone_number_collection improves Radar risk score → fewer 3DS challenges.
+    // - billing_address_collection: "auto" gives Radar address signals.
     const commonFields = {
       payment_method_types: ["card", "link"] as Array<"card" | "link">,
       locale: "auto" as const,
       billing_address_collection: "auto" as const,
+      phone_number_collection: { enabled: true },
       customer_email: email.toLowerCase(),
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
@@ -122,6 +129,9 @@ app.post("/checkout", async (c) => {
       ? await stripe.checkout.sessions.create({
           ...commonFields,
           mode: "subscription",
+          payment_method_options: {
+            card: { request_three_d_secure: "automatic" },
+          },
           subscription_data: {
             trial_period_days: 30,
             metadata: { plan },
@@ -131,6 +141,9 @@ app.post("/checkout", async (c) => {
           ...commonFields,
           mode: "payment",
           customer_creation: "always",
+          payment_method_options: {
+            card: { request_three_d_secure: "automatic" },
+          },
         });
 
     return c.json({ success: true, data: { checkoutUrl: session.url } });

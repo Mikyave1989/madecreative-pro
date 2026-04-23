@@ -23,6 +23,10 @@ export async function createCheckoutSession(params: {
     mode: "payment",
     locale: "auto",
     billing_address_collection: "auto",
+    phone_number_collection: { enabled: true },
+    payment_method_options: {
+      card: { request_three_d_secure: "automatic" },
+    },
     customer_email: params.email,
     customer_creation: "always",
     line_items: [{ price: priceId, quantity: 1 }],
