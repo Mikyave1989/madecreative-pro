@@ -70,8 +70,17 @@ export default async function handleRequest(
 
   responseHeaders.set('Content-Type', 'text/html');
 
-  responseHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
-  responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+  // COEP/COOP are required by WebContainer (the editor workspace), but block
+  // loading js.stripe.com (Stripe doesn't send Cross-Origin-Resource-Policy).
+  // Skip them on routes that need Stripe.js so Embedded Checkout can mount.
+  const pathname = new URL(request.url).pathname;
+  const stripeRoutes = ['/pay', '/signup', '/onboarding', '/billing'];
+  const needsStripeJs = stripeRoutes.some((r) => pathname === r || pathname.startsWith(r + '/'));
+
+  if (!needsStripeJs) {
+    responseHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+  }
 
   return new Response(body, {
     headers: responseHeaders,
