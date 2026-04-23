@@ -103,14 +103,13 @@ app.post("/checkout", async (c) => {
   }
 
   try {
-    // Embedded Checkout: UI is hosted inside our own /pay page (iframe on
-    // madecreative.pro). Customer never leaves our domain → proxies/filters that
-    // block checkout.stripe.com as a top-level navigation are bypassed.
-    // 3DS friction minimizers kept: request_three_d_secure=automatic +
-    // phone_number_collection (feeds Radar) + billing_address_collection.
+    // Create TWO sessions — embedded + hosted — in parallel so the frontend can
+    // fall back if Stripe.js can't load (e.g. Firefox Enhanced Tracking
+    // Protection blocking js.stripe.com as a "tracker"). Embedded keeps the
+    // customer on madecreative.pro; hosted is a top-level navigation to
+    // checkout.stripe.com which most tracker-blockers allow.
     const marketingUrl = process.env["MARKETING_URL"] ?? "https://madecreative.pro";
-    const commonFields = {
-      ui_mode: "embedded" as const,
+    const sharedFields = {
       payment_method_types: ["card", "link"] as Array<"card" | "link">,
       locale: "auto" as const,
       billing_address_collection: "auto" as const,
@@ -122,40 +121,45 @@ app.post("/checkout", async (c) => {
         websiteUrl: websiteUrl ?? "",
         companyName: companyName ?? "",
       },
-      return_url: `${marketingUrl}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,
     };
+    const modeSpecific = isSubscription
+      ? {
+          mode: "subscription" as const,
+          payment_method_options: { card: { request_three_d_secure: "automatic" as const } },
+          subscription_data: { trial_period_days: 30, metadata: { plan } },
+        }
+      : {
+          mode: "payment" as const,
+          customer_creation: "always" as const,
+          payment_method_options: { card: { request_three_d_secure: "automatic" as const } },
+        };
 
-    const session = isSubscription
-      ? await stripe.checkout.sessions.create({
-          ...commonFields,
-          mode: "subscription",
-          payment_method_options: {
-            card: { request_three_d_secure: "automatic" },
-          },
-          subscription_data: {
-            trial_period_days: 30,
-            metadata: { plan },
-          },
-        })
-      : await stripe.checkout.sessions.create({
-          ...commonFields,
-          mode: "payment",
-          customer_creation: "always",
-          payment_method_options: {
-            card: { request_three_d_secure: "automatic" },
-          },
-        });
+    const [embeddedSession, hostedSession] = await Promise.all([
+      stripe.checkout.sessions.create({
+        ...sharedFields,
+        ...modeSpecific,
+        ui_mode: "embedded",
+        return_url: `${marketingUrl}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      }),
+      stripe.checkout.sessions.create({
+        ...sharedFields,
+        ...modeSpecific,
+        success_url: `${marketingUrl}/signup?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${marketingUrl}/#pricing`,
+      }),
+    ]);
 
-    if (!session.client_secret) {
-      console.error("[Checkout] No client_secret returned from Stripe");
+    if (!embeddedSession.client_secret || !hostedSession.url) {
+      console.error("[Checkout] Stripe did not return expected session fields");
       return c.json({ success: false, error: "Checkout session creation failed" }, 500);
     }
 
     return c.json({
       success: true,
       data: {
-        clientSecret: session.client_secret,
-        sessionId: session.id,
+        clientSecret: embeddedSession.client_secret,
+        sessionId: embeddedSession.id,
+        hostedUrl: hostedSession.url,
       },
     });
   } catch (err) {

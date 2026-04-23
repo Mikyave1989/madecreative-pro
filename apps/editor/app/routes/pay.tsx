@@ -27,6 +27,21 @@ function EmbeddedCheckoutClient() {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
+
+  // Helper: if Stripe.js can't load (Firefox ETP, ad-blocker, proxy), redirect
+  // to the hosted checkout (top-level navigation, not a blocked third-party
+  // script). We pass the URL through from the backend via ?fb=<encoded>.
+  const triggerFallback = (reason: string) => {
+    const params = new URLSearchParams(window.location.search);
+    const fb = params.get('fb');
+    if (fb) {
+      window.location.href = fb;
+      return true;
+    }
+    setError(reason);
+    return false;
+  };
 
   useEffect(() => {
     let checkout: { destroy: () => void } | null = null;
@@ -36,6 +51,8 @@ function EmbeddedCheckoutClient() {
       try {
         const params = new URLSearchParams(window.location.search);
         const clientSecret = params.get('cs');
+        const fb = params.get('fb');
+        if (fb) setFallbackUrl(fb);
 
         if (!clientSecret) {
           setError('Missing checkout session. Please start again from the pricing page.');
@@ -50,17 +67,14 @@ function EmbeddedCheckoutClient() {
           return;
         }
 
-        // Pre-probe js.stripe.com to tell the user WHY it can't be loaded
-        // (blocked extension, CSP, proxy, network). loadStripe() otherwise
-        // just resolves to null with no explanation.
+        // Probe js.stripe.com. If it's blocked (Firefox ETP / ad-blocker /
+        // proxy) we can't use Embedded Checkout — redirect to hosted.
         try {
           await fetch('https://js.stripe.com/v3/', { mode: 'no-cors' });
-        } catch (probeErr) {
-          const msg = probeErr instanceof Error ? probeErr.message : String(probeErr);
-          setError(
-            'Impossibile raggiungere js.stripe.com. Prova a: (1) disabilitare ad-blocker / estensioni privacy (uBlock, Privacy Badger, Ghostery), (2) disattivare VPN/proxy, (3) aprire in incognito, (4) cambiare browser. Dettaglio tecnico: ' +
-              msg,
-          );
+        } catch {
+          if (triggerFallback('Il tuo browser sta bloccando Stripe.js (probabile Firefox Enhanced Tracking Protection o un ad-blocker). Reindirizzamento a Stripe in corso...')) {
+            return;
+          }
           setLoading(false);
           return;
         }
@@ -68,9 +82,9 @@ function EmbeddedCheckoutClient() {
         const { loadStripe } = await import('@stripe/stripe-js');
         const stripe = await loadStripe(pk);
         if (!stripe) {
-          setError(
-            'Stripe.js si è caricato ma non è stato inizializzato. Spesso è un ad-blocker che rimuove l\'oggetto window.Stripe. Apri la pagina in modalità incognito senza estensioni e riprova.',
-          );
+          if (triggerFallback('Stripe.js non inizializzato. Reindirizzamento a Stripe in corso...')) {
+            return;
+          }
           setLoading(false);
           return;
         }
@@ -89,7 +103,9 @@ function EmbeddedCheckoutClient() {
         setLoading(false);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        setError(msg);
+        if (!triggerFallback('Errore durante il caricamento del checkout. Reindirizzamento a Stripe...\n\n' + msg)) {
+          setError(msg);
+        }
         setLoading(false);
       }
     };

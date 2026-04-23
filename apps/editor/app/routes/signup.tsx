@@ -89,7 +89,9 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (data.success && data.data?.clientSecret) {
-        window.location.href = `/pay?cs=${encodeURIComponent(data.data.clientSecret)}`;
+        const cs = encodeURIComponent(data.data.clientSecret);
+        const fb = data.data.hostedUrl ? `&fb=${encodeURIComponent(data.data.hostedUrl)}` : '';
+        window.location.href = `/pay?cs=${cs}${fb}`;
       } else {
         setError(data.error || 'Something went wrong. Please try again.');
       }
