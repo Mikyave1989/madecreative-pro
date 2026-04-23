@@ -77,7 +77,12 @@ export default async function handleRequest(
   const stripeRoutes = ['/pay', '/signup', '/onboarding', '/billing'];
   const needsStripeJs = stripeRoutes.some((r) => pathname === r || pathname.startsWith(r + '/'));
 
-  if (!needsStripeJs) {
+  if (needsStripeJs) {
+    // Prevent any stale cached version (browser/CDN) from reintroducing COEP
+    // on the Stripe pages after this deploy.
+    responseHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    responseHeaders.set('Pragma', 'no-cache');
+  } else {
     responseHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
     responseHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
   }

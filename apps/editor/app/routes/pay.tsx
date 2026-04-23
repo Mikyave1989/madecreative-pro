@@ -50,10 +50,27 @@ function EmbeddedCheckoutClient() {
           return;
         }
 
+        // Pre-probe js.stripe.com to tell the user WHY it can't be loaded
+        // (blocked extension, CSP, proxy, network). loadStripe() otherwise
+        // just resolves to null with no explanation.
+        try {
+          await fetch('https://js.stripe.com/v3/', { mode: 'no-cors' });
+        } catch (probeErr) {
+          const msg = probeErr instanceof Error ? probeErr.message : String(probeErr);
+          setError(
+            'Impossibile raggiungere js.stripe.com. Prova a: (1) disabilitare ad-blocker / estensioni privacy (uBlock, Privacy Badger, Ghostery), (2) disattivare VPN/proxy, (3) aprire in incognito, (4) cambiare browser. Dettaglio tecnico: ' +
+              msg,
+          );
+          setLoading(false);
+          return;
+        }
+
         const { loadStripe } = await import('@stripe/stripe-js');
         const stripe = await loadStripe(pk);
         if (!stripe) {
-          setError('Failed to load Stripe.');
+          setError(
+            'Stripe.js si è caricato ma non è stato inizializzato. Spesso è un ad-blocker che rimuove l\'oggetto window.Stripe. Apri la pagina in modalità incognito senza estensioni e riprova.',
+          );
           setLoading(false);
           return;
         }
@@ -87,15 +104,17 @@ function EmbeddedCheckoutClient() {
 
   if (error) {
     return (
-      <div className="max-w-md w-full rounded-xl border border-red-500/30 bg-red-500/5 p-6 text-center">
-        <h2 className="text-lg font-semibold text-red-400 mb-2">Checkout error</h2>
-        <p className="text-sm text-red-200 mb-4">{error}</p>
-        <a
-          href="/#pricing"
-          className="inline-block px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium"
-        >
-          Back to pricing
-        </a>
+      <div className="max-w-md w-full rounded-xl border border-red-500/30 bg-red-500/5 p-6">
+        <h2 className="text-lg font-semibold text-red-400 mb-3">Problema nel caricamento del checkout</h2>
+        <p className="text-sm text-red-200 mb-4 whitespace-pre-wrap">{error}</p>
+        <div className="text-center">
+          <a
+            href="/#pricing"
+            className="inline-block text-xs text-indigo-400 hover:text-indigo-300 underline"
+          >
+            Torna ai prezzi
+          </a>
+        </div>
       </div>
     );
   }
