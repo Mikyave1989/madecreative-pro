@@ -102,6 +102,9 @@ app.post("/checkout", async (c) => {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      payment_method_types: ["card", "link"],
+      locale: "auto",
+      billing_address_collection: "auto",
       customer_email: email.toLowerCase(),
       customer_creation: "always",
       line_items: [{ price: priceId, quantity: 1 }],
