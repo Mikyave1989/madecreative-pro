@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from '@remix-run/react';
 import { useStore } from '@nanostores/react';
 import { authUser, authLoading, initAuth } from '~/lib/stores/auth';
 
-const PUBLIC_ROUTES = ['/login', '/signup', '/', '/onboarding'];
+const PUBLIC_ROUTES = ['/login', '/signup', '/', '/onboarding', '/pay'];
 const PUBLIC_PREFIXES = ['/admin'];
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
